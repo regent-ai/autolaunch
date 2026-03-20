@@ -1,13 +1,17 @@
 defmodule AutolaunchWeb.AgentbookLive do
   use AutolaunchWeb, :live_view
 
-  def mount(_params, _session, socket) do
+  def mount(params, _session, socket) do
+    register_form = default_register_form(params)
+    lookup_form = default_lookup_form(params)
+
     {:ok,
      socket
      |> assign(:page_title, "Human Proof")
      |> assign(:active_view, "agentbook")
-     |> assign(:register_form, %{"agent_address" => "", "network" => "world"})
-     |> assign(:lookup_form, %{"agent_address" => "", "network" => "world"})
+     |> assign(:register_form, register_form)
+     |> assign(:lookup_form, lookup_form)
+     |> assign(:launch_job_id, register_form["launch_job_id"])
      |> assign(:active_session, nil)
      |> assign(:lookup_result, nil)
      |> assign(:recent_sessions, context_module().list_recent_sessions())}
@@ -57,7 +61,11 @@ defmodule AutolaunchWeb.AgentbookLive do
     end
   end
 
-  def handle_event("agentbook_proof_ready", %{"session_id" => session_id, "proof" => proof}, socket) do
+  def handle_event(
+        "agentbook_proof_ready",
+        %{"session_id" => session_id, "proof" => proof},
+        socket
+      ) do
     case context_module().submit_session(session_id, %{"proof" => proof}) do
       {:ok, session} ->
         {:noreply, refresh_after_session(socket, session)}
@@ -67,7 +75,11 @@ defmodule AutolaunchWeb.AgentbookLive do
     end
   end
 
-  def handle_event("agentbook_failed", %{"session_id" => session_id, "message" => message}, socket) do
+  def handle_event(
+        "agentbook_failed",
+        %{"session_id" => session_id, "message" => message},
+        socket
+      ) do
     _ = context_module().fail_session(session_id, message)
 
     session =
@@ -139,6 +151,13 @@ defmodule AutolaunchWeb.AgentbookLive do
           </div>
 
           <form phx-change="register_changed" phx-submit="create_session" class="al-form">
+            <input
+              :if={@register_form["launch_job_id"]}
+              type="hidden"
+              name="register[launch_job_id]"
+              value={@register_form["launch_job_id"]}
+            />
+
             <div class="al-field-grid">
               <label>
                 <span>Agent wallet</span>
@@ -159,6 +178,13 @@ defmodule AutolaunchWeb.AgentbookLive do
                   <option value="base-sepolia">Base Sepolia</option>
                 </select>
               </label>
+            </div>
+
+            <div :if={@launch_job_id} class="al-inline-banner">
+              <strong>Launch follow-up</strong>
+              <p>
+                This registration will be written back to launch job <code>{@launch_job_id}</code> so listings can show the attached human identity and launch count.
+              </p>
             </div>
 
             <div class="al-action-row">
@@ -188,6 +214,12 @@ defmodule AutolaunchWeb.AgentbookLive do
                   <span>Agent wallet</span>
                   <strong>{short_address(@active_session.agent_address)}</strong>
                   <p>Nonce {@active_session.nonce} on {@active_session.contract_address}</p>
+                </div>
+
+                <div :if={session_human_id(@active_session)} class="al-note-card">
+                  <span>Human ID</span>
+                  <strong>{session_human_id(@active_session)}</strong>
+                  <p>Stored back onto the launch record after registration.</p>
                 </div>
 
                 <div class="al-note-card">
@@ -370,6 +402,27 @@ defmodule AutolaunchWeb.AgentbookLive do
   end
 
   defp session_tx_request(_session), do: nil
+
+  defp session_human_id(session) when is_map(session) do
+    Map.get(session, :human_id) || Map.get(session, "human_id")
+  end
+
+  defp session_human_id(_session), do: nil
+
+  defp default_register_form(params) do
+    %{
+      "agent_address" => Map.get(params, "agent_address", ""),
+      "network" => Map.get(params, "network", "world"),
+      "launch_job_id" => Map.get(params, "launch_job_id", "")
+    }
+  end
+
+  defp default_lookup_form(params) do
+    %{
+      "agent_address" => Map.get(params, "agent_address", ""),
+      "network" => Map.get(params, "network", "world")
+    }
+  end
 
   defp context_module do
     Application.get_env(:autolaunch, :agentbook_live, [])

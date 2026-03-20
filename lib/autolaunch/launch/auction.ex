@@ -6,6 +6,7 @@ defmodule Autolaunch.Launch.Auction do
     field :source_job_id, :string
     field :agent_id, :string
     field :agent_name, :string
+    field :ens_name, :string
     field :owner_address, :string
     field :auction_address, :string
     field :token_address, :string
@@ -22,6 +23,9 @@ defmodule Autolaunch.Launch.Auction do
     field :metrics_updated_at, :utc_datetime_usec
     field :notes, :string
     field :uniswap_url, :string
+    field :world_network, :string, default: "world"
+    field :world_registered, :boolean, default: false
+    field :world_human_id, :string
 
     timestamps()
   end
@@ -32,6 +36,7 @@ defmodule Autolaunch.Launch.Auction do
       :source_job_id,
       :agent_id,
       :agent_name,
+      :ens_name,
       :owner_address,
       :auction_address,
       :token_address,
@@ -47,7 +52,10 @@ defmodule Autolaunch.Launch.Auction do
       :progress_percent,
       :metrics_updated_at,
       :notes,
-      :uniswap_url
+      :uniswap_url,
+      :world_network,
+      :world_registered,
+      :world_human_id
     ])
     |> validate_required([
       :agent_id,

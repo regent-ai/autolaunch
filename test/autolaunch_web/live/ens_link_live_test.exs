@@ -112,4 +112,21 @@ defmodule AutolaunchWeb.EnsLinkLiveTest do
     assert html =~ "agent-registration[test][42]"
     assert html =~ "Send from wallet"
   end
+
+  test "launch follow-up query preloads the selected identity and ENS name", %{conn: conn} do
+    {:ok, human} =
+      Accounts.upsert_human_by_privy_id("did:privy:ens-followup", %{
+        "wallet_address" => "0x1111111111111111111111111111111111111111",
+        "wallet_addresses" => ["0x1111111111111111111111111111111111111111"],
+        "display_name" => "ENS Operator"
+      })
+
+    conn = init_test_session(conn, privy_user_id: human.privy_user_id)
+
+    {:ok, _view, html} = live(conn, "/ens-link?identity_id=1:42&ens_name=atlas.eth")
+
+    assert html =~ "atlas.eth"
+    assert html =~ "Launch follow-up"
+    assert html =~ "Selected"
+  end
 end

@@ -5,10 +5,10 @@ defmodule AutolaunchWeb.EnsLinkLive do
   alias Autolaunch.EnsLink
   alias Autolaunch.Launch
 
-  def mount(_params, _session, socket) do
+  def mount(params, _session, socket) do
     identities = list_identities(socket.assigns[:current_human])
-    selected_identity = default_identity(identities)
-    form = default_form(selected_identity)
+    selected_identity = selected_identity_from_params(identities, params)
+    form = default_form(selected_identity, params)
 
     {:ok,
      socket
@@ -23,7 +23,7 @@ defmodule AutolaunchWeb.EnsLinkLive do
 
   def handle_event("select_identity", %{"agent_id" => agent_id}, socket) do
     selected_identity = find_identity(socket.assigns.identities, agent_id)
-    form = default_form(selected_identity)
+    form = default_form(selected_identity, %{})
 
     {:noreply,
      socket
@@ -190,6 +190,16 @@ defmodule AutolaunchWeb.EnsLinkLive do
                   <p>Optional. This adds a primary-name transaction when the network supports it.</p>
                 </div>
               </label>
+            </div>
+
+            <div
+              :if={@selected_identity_id && @form["ens_name"] not in [nil, ""]}
+              class="al-inline-banner"
+            >
+              <strong>Launch follow-up</strong>
+              <p>
+                This planner is preloaded from the launch checklist. Review the missing writes, then send only the wallet actions that are still needed.
+              </p>
             </div>
 
             <div class="al-action-row">
@@ -363,13 +373,20 @@ defmodule AutolaunchWeb.EnsLinkLive do
     Enum.find(identities, &(&1.state in ["eligible", "wallet_bound"])) || List.first(identities)
   end
 
-  defp default_form(nil), do: %{"ens_name" => "", "include_reverse" => false}
+  defp default_form(nil, params),
+    do: %{"ens_name" => Map.get(params, "ens_name", ""), "include_reverse" => false}
 
-  defp default_form(identity) do
+  defp default_form(identity, params) do
     %{
-      "ens_name" => identity.ens || "",
+      "ens_name" => Map.get(params, "ens_name") || identity.ens || "",
       "include_reverse" => false
     }
+  end
+
+  defp selected_identity_from_params(identities, params) do
+    requested_identity_id = Map.get(params, "identity_id")
+
+    Enum.find(identities, &(&1.agent_id == requested_identity_id)) || default_identity(identities)
   end
 
   defp normalize_checkbox(form) do

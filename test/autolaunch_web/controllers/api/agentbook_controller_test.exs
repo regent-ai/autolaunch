@@ -83,7 +83,8 @@ defmodule AutolaunchWeb.Api.AgentbookControllerTest do
     conn =
       post(conn, "/api/agentbook/sessions", %{
         "agent_address" => "0x1111111111111111111111111111111111111111",
-        "network" => "world"
+        "network" => "world",
+        "launch_job_id" => "job_followup"
       })
 
     assert %{
@@ -91,7 +92,8 @@ defmodule AutolaunchWeb.Api.AgentbookControllerTest do
              "session" => %{
                "session_id" => "sess_1",
                "network" => "world",
-               "nonce" => 7
+               "nonce" => 7,
+               "launch_job_id" => "job_followup"
              }
            } = json_response(conn, 200)
   end
@@ -136,6 +138,31 @@ defmodule AutolaunchWeb.Api.AgentbookControllerTest do
                "registered" => true,
                "human_id" => "0x1234",
                "network" => "world"
+             }
+           } = json_response(conn, 200)
+  end
+
+  test "wallet registration writes back the human id", %{conn: conn} do
+    conn =
+      post(conn, "/api/agentbook/sessions", %{
+        "agent_address" => "0x1111111111111111111111111111111111111111",
+        "network" => "world",
+        "launch_job_id" => "job_followup"
+      })
+
+    assert %{"session" => %{"session_id" => session_id}} = json_response(conn, 200)
+
+    conn =
+      post(conn, "/api/agentbook/sessions/#{session_id}/submit", %{
+        "tx_hash" => "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      })
+
+    assert %{
+             "ok" => true,
+             "session" => %{
+               "status" => "registered",
+               "human_id" => "0x1234",
+               "launch_job_id" => "job_followup"
              }
            } = json_response(conn, 200)
   end

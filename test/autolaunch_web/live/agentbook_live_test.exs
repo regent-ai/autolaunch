@@ -136,6 +136,18 @@ defmodule AutolaunchWeb.AgentbookLiveTest do
     assert html =~ "No Privy needed"
   end
 
+  test "launch follow-up query preloads the world proof form", %{conn: conn} do
+    {:ok, _view, html} =
+      live(
+        conn,
+        "/agentbook?agent_address=0x1111111111111111111111111111111111111111&network=world&launch_job_id=job_followup"
+      )
+
+    assert html =~ "job_followup"
+    assert html =~ "0x1111111111111111111111111111111111111111"
+    assert html =~ "Launch follow-up"
+  end
+
   test "creating a session and receiving proof shows manual register action", %{conn: conn} do
     {:ok, view, _html} = live(conn, "/agentbook")
 

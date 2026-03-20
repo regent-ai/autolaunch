@@ -110,10 +110,51 @@ defmodule AutolaunchWeb.AuctionLive do
               value={human_position_status(@latest_position)}
               hint="Active / Borderline / Inactive / Claimable"
             />
+            <.stat_card
+              title="ENS"
+              value={if @auction.ens_attached, do: @auction.ens_name || "Linked", else: "Pending"}
+              hint="Creator identity"
+            />
+            <.stat_card
+              title="World"
+              value={if @auction.world_registered, do: "Attached", else: "Pending"}
+              hint="Human-backed AgentBook"
+            />
           </div>
         </section>
 
         <section class="al-detail-layout">
+          <article class="al-panel al-card">
+            <div class="al-section-head">
+              <div>
+                <p class="al-kicker">Creator completion</p>
+                <h3>Identity and human-proof status</h3>
+              </div>
+            </div>
+
+            <div class="al-note-grid">
+              <article class="al-note-card">
+                <span>ENS link</span>
+                <strong>{if @auction.ens_attached, do: "Linked", else: "Needs link"}</strong>
+                <p>
+                  {if @auction.ens_attached,
+                    do: "Creator identity name: #{@auction.ens_name}",
+                    else: "The creator identity still needs an ENS name attached."}
+                </p>
+              </article>
+
+              <article class="al-note-card">
+                <span>World AgentBook</span>
+                <strong>{if @auction.world_registered, do: "Attached", else: "Needs human"}</strong>
+                <p>
+                  {if @auction.world_registered,
+                    do: "Human ID #{@auction.world_human_id} has launched #{@auction.world_launch_count} tokens through autolaunch.",
+                    else: "A human still needs to finish the World proof for this token."}
+                </p>
+              </article>
+            </div>
+          </article>
+
           <article class="al-panel al-card">
             <div class="al-section-head">
               <div>

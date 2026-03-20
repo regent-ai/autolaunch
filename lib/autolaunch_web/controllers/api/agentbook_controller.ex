@@ -45,15 +45,30 @@ defmodule AutolaunchWeb.Api.AgentbookController do
   end
 
   defp render_error(conn, :invalid_agent_address) do
-    ApiError.render(conn, :unprocessable_entity, "invalid_agent_address", "Agent wallet address is invalid")
+    ApiError.render(
+      conn,
+      :unprocessable_entity,
+      "invalid_agent_address",
+      "Agent wallet address is invalid"
+    )
   end
 
   defp render_error(conn, :invalid_network) do
-    ApiError.render(conn, :unprocessable_entity, "invalid_network", "Network must be world, base, or base-sepolia")
+    ApiError.render(
+      conn,
+      :unprocessable_entity,
+      "invalid_network",
+      "Network must be world, base, or base-sepolia"
+    )
   end
 
   defp render_error(conn, :invalid_request) do
-    ApiError.render(conn, :unprocessable_entity, "invalid_request", "Required request data is missing")
+    ApiError.render(
+      conn,
+      :unprocessable_entity,
+      "invalid_request",
+      "Required request data is missing"
+    )
   end
 
   defp render_error(conn, %Error{} = error) do
@@ -65,7 +80,11 @@ defmodule AutolaunchWeb.Api.AgentbookController do
     |> put_status(:accepted)
     |> json(%{
       ok: false,
-      error: %{code: "transaction_pending", message: "Transaction is still pending", tx_hash: tx_hash}
+      error: %{
+        code: "transaction_pending",
+        message: "Transaction is still pending",
+        tx_hash: tx_hash
+      }
     })
   end
 

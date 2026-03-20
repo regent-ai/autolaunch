@@ -146,7 +146,17 @@ defmodule AutolaunchWeb.AuctionsLive do
               <div class="al-pill-row">
                 <span class="al-network-badge">{auction.chain}</span>
                 <span class="al-network-badge">{auction.bidders} bids</span>
+                <span class="al-network-badge">
+                  ENS {if auction.ens_attached, do: "linked", else: "pending"}
+                </span>
+                <span class="al-network-badge">
+                  World {if auction.world_registered, do: "attached", else: "pending"}
+                </span>
               </div>
+
+              <p class="al-inline-note">
+                {listing_completion_copy(auction)}
+              </p>
 
               <div class="al-action-row">
                 <.link navigate={~p"/auctions/#{auction.id}"} class="al-submit">Inspect auction</.link>
@@ -162,4 +172,25 @@ defmodule AutolaunchWeb.AuctionsLive do
   end
 
   defp truthy?(value), do: value in [true, "true", "1", 1, "on", "yes"]
+
+  defp listing_completion_copy(%{
+         world_registered: true,
+         world_launch_count: count,
+         ens_attached: true
+       })
+       when count > 0 do
+    "ENS is linked, World proof is attached, and this human has launched #{count} tokens through autolaunch."
+  end
+
+  defp listing_completion_copy(%{world_registered: true, ens_attached: true}),
+    do: "ENS is linked and World proof is attached."
+
+  defp listing_completion_copy(%{world_registered: true}),
+    do: "World proof is attached. ENS still needs to be linked on the creator identity."
+
+  defp listing_completion_copy(%{ens_attached: true}),
+    do: "ENS is linked. World proof still needs a human to finish registration."
+
+  defp listing_completion_copy(_auction),
+    do: "Both the ENS link and the World proof are still open follow-up steps."
 end

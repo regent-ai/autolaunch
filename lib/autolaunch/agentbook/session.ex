@@ -5,6 +5,7 @@ defmodule Autolaunch.Agentbook.Session do
   @primary_key {:session_id, :string, autogenerate: false}
 
   schema "autolaunch_agentbook_sessions" do
+    field :launch_job_id, :string
     field :agent_address, :string
     field :network, :string
     field :chain_id, :integer
@@ -24,6 +25,7 @@ defmodule Autolaunch.Agentbook.Session do
     field :tx_request, :map
     field :status, :string, default: "pending"
     field :tx_hash, :string
+    field :human_id, :string
     field :error_text, :string
     field :expires_at, :utc_datetime_usec
 
@@ -34,6 +36,7 @@ defmodule Autolaunch.Agentbook.Session do
     session
     |> cast(attrs, [
       :session_id,
+      :launch_job_id,
       :agent_address,
       :network,
       :chain_id,
@@ -53,6 +56,7 @@ defmodule Autolaunch.Agentbook.Session do
       :tx_request,
       :status,
       :tx_hash,
+      :human_id,
       :error_text,
       :expires_at
     ])
@@ -83,6 +87,7 @@ defmodule Autolaunch.Agentbook.Session do
       :tx_request,
       :status,
       :tx_hash,
+      :human_id,
       :error_text
     ])
   end

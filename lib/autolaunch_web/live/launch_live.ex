@@ -7,7 +7,7 @@ defmodule AutolaunchWeb.LaunchLive do
 
   def mount(_params, _session, socket) do
     current_human = socket.assigns[:current_human]
-    agents = Launch.list_agents(current_human)
+    agents = launch_module().list_agents(current_human)
     form = default_form(current_human)
 
     {:ok,
@@ -15,7 +15,7 @@ defmodule AutolaunchWeb.LaunchLive do
      |> assign(:page_title, "Launch")
      |> assign(:active_view, "launch")
      |> assign(:agents, agents)
-     |> assign(:chain_options, Launch.chain_options())
+     |> assign(:chain_options, launch_module().chain_options())
      |> assign(:selected_agent_id, nil)
      |> assign(:selected_agent, nil)
      |> assign(:readiness, nil)
@@ -25,14 +25,14 @@ defmodule AutolaunchWeb.LaunchLive do
      |> assign(:launching, false)
      |> assign(:job_id, nil)
      |> assign(:current_job, nil)
-     |> assign(:fee_split, Launch.fee_split_summary())}
+     |> assign(:fee_split, launch_module().fee_split_summary())}
   end
 
   def handle_event("select_agent", %{"agent_id" => agent_id}, socket) do
     case Enum.find(socket.assigns.agents, &(&1.agent_id == agent_id or &1.id == agent_id)) do
       %{state: "eligible"} = agent ->
         readiness =
-          Launch.launch_readiness_for_agent(socket.assigns.current_human, agent.agent_id)
+          launch_module().launch_readiness_for_agent(socket.assigns.current_human, agent.agent_id)
 
         selected_chain_id =
           case List.first(agent.supported_chains) do
@@ -72,7 +72,7 @@ defmodule AutolaunchWeb.LaunchLive do
   end
 
   def handle_event("prepare_review", _params, socket) do
-    case Launch.preview_launch(socket.assigns.form, socket.assigns.current_human) do
+    case launch_module().preview_launch(socket.assigns.form, socket.assigns.current_human) do
       {:ok, preview} ->
         {:noreply, socket |> assign(:preview, preview) |> assign(:step, 3)}
 
@@ -107,11 +107,11 @@ defmodule AutolaunchWeb.LaunchLive do
   end
 
   def handle_info({:poll_job, job_id}, socket) do
-    case Launch.get_job_response(job_id) do
+    case launch_module().get_job_response(job_id) do
       %{job: job} = response ->
         socket = assign(socket, :current_job, response)
 
-        if Launch.terminal_status?(job.status) do
+        if launch_module().terminal_status?(job.status) do
           flash =
             case job.status do
               "ready" -> put_flash(socket, :info, "Launch is live.")
@@ -132,11 +132,13 @@ defmodule AutolaunchWeb.LaunchLive do
   def render(assigns) do
     eligible_count = Enum.count(assigns.agents, &(&1.state == "eligible"))
     selected_agent = assigns.selected_agent
+    current_reputation_prompt = current_reputation_prompt(assigns.preview, assigns.current_job)
 
     assigns =
       assigns
       |> assign(:eligible_count, eligible_count)
       |> assign(:selected_agent, selected_agent)
+      |> assign(:current_reputation_prompt, current_reputation_prompt)
 
     ~H"""
     <.shell current_human={@current_human} active_view={@active_view}>
@@ -163,7 +165,8 @@ defmodule AutolaunchWeb.LaunchLive do
             <.step_chip index={1} label="Choose agent" active={@step == 1} complete={@step > 1} />
             <.step_chip index={2} label="Configure token" active={@step == 2} complete={@step > 2} />
             <.step_chip index={3} label="Review and sign" active={@step == 3} complete={@step > 3} />
-            <.step_chip index={4} label="Queued" active={@step == 4} complete={false} />
+            <.step_chip index={4} label="Optional trust" active={@step == 4} complete={@step > 4} />
+            <.step_chip index={5} label="Launch status" active={@step == 5} complete={false} />
           </div>
 
           <%= if @step == 1 do %>
@@ -375,6 +378,18 @@ defmodule AutolaunchWeb.LaunchLive do
                 </article>
               </div>
 
+              <article :if={@preview && @preview.reputation_prompt} class="al-note-card">
+                <p class="al-kicker">Optional trust step</p>
+                <strong>{@preview.reputation_prompt.prompt}</strong>
+                <p>{@preview.reputation_prompt.warning}</p>
+                <ul class="al-compact-list">
+                  <li :for={instruction <- @preview.reputation_prompt.instructions}>{instruction}</li>
+                </ul>
+                <p class="al-inline-note">
+                  The next screen gives the links and lets you skip this without blocking launch.
+                </p>
+              </article>
+
               <div class="al-action-row">
                 <button type="button" class="al-ghost" phx-click="go_to_step" phx-value-step="2">Edit configuration</button>
                 <button
@@ -396,6 +411,68 @@ defmodule AutolaunchWeb.LaunchLive do
             <div class="al-section-head">
               <div>
                 <p class="al-kicker">Step 4</p>
+                <h3>Optional reputation step</h3>
+              </div>
+            </div>
+
+            <%= if @current_reputation_prompt do %>
+              <div class="al-note-grid">
+                <article class="al-note-card">
+                  <p class="al-kicker">Optional</p>
+                  <strong>{@current_reputation_prompt.prompt}</strong>
+                  <p>{@current_reputation_prompt.warning}</p>
+                  <ul class="al-compact-list">
+                    <li :for={instruction <- @current_reputation_prompt.instructions}>
+                      {instruction}
+                    </li>
+                  </ul>
+                </article>
+
+                <article
+                  :for={action <- @current_reputation_prompt.actions}
+                  class="al-note-card"
+                >
+                  <p class="al-kicker">{reputation_action_status(action.status)}</p>
+                  <strong>{action.label}</strong>
+                  <p>{action.note}</p>
+                  <div class="al-pill-row">
+                    <.link
+                      :if={action.action_url}
+                      navigate={action.action_url}
+                      class="al-cta-link"
+                    >
+                      {reputation_action_cta(action)}
+                    </.link>
+                  </div>
+                </article>
+
+                <article :if={@current_job} class="al-note-card">
+                  <p class="al-kicker">Launch job</p>
+                  <ul class="al-compact-list">
+                    <li>Status: <strong>{@current_job.job.status}</strong></li>
+                    <li>Step: <strong>{@current_job.job.step}</strong></li>
+                    <li>Job id: <strong>{@current_job.job.job_id}</strong></li>
+                  </ul>
+                </article>
+              </div>
+
+              <div class="al-action-row">
+                <button type="button" class="al-ghost" phx-click="go_to_step" phx-value-step="5">
+                  {@current_reputation_prompt.skip_label}
+                </button>
+                <button type="button" class="al-submit" phx-click="go_to_step" phx-value-step="5">
+                  Continue to launch status
+                </button>
+              </div>
+            <% else %>
+              <p class="al-inline-note">Waiting for launch job response.</p>
+            <% end %>
+          <% end %>
+
+          <%= if @step == 5 do %>
+            <div class="al-section-head">
+              <div>
+                <p class="al-kicker">Step 5</p>
                 <h3>Queued and processing</h3>
               </div>
             </div>
@@ -429,6 +506,7 @@ defmodule AutolaunchWeb.LaunchLive do
                     <li :if={@current_job.auction}>Auction page becomes available after deployment.</li>
                   </ul>
                 </article>
+
                 <article class="al-note-card">
                   <p class="al-kicker">Next action</p>
                   <%= if @current_job.auction do %>
@@ -439,6 +517,15 @@ defmodule AutolaunchWeb.LaunchLive do
                     <p>Stay on this page while launch orchestration runs.</p>
                   <% end %>
                 </article>
+
+                <article :if={@current_job.job.reputation_prompt} class="al-note-card">
+                  <p class="al-kicker">Trust follow-up</p>
+                  <p>{@current_job.job.reputation_prompt.warning}</p>
+                  <button type="button" class="al-network-badge" phx-click="go_to_step" phx-value-step="4">
+                    Open optional trust step
+                  </button>
+                </article>
+
                 <article
                   :if={
                     @current_job.job.hook_address || @current_job.job.fee_vault_address ||
@@ -530,7 +617,7 @@ defmodule AutolaunchWeb.LaunchLive do
 
   defp max_available_step(socket) do
     cond do
-      socket.assigns.current_job -> 4
+      socket.assigns.job_id -> 5
       socket.assigns.preview -> 3
       socket.assigns.selected_agent -> 2
       true -> 1
@@ -585,4 +672,30 @@ defmodule AutolaunchWeb.LaunchLive do
 
   defp disabled_agent_message(_agent),
     do: "Finish the missing setup before launch."
+
+  defp launch_module do
+    :autolaunch
+    |> Application.get_env(:launch_live, [])
+    |> Keyword.get(:launch_module, Launch)
+  end
+
+  defp current_reputation_prompt(_preview, %{job: %{reputation_prompt: prompt}})
+       when is_map(prompt),
+       do: prompt
+
+  defp current_reputation_prompt(%{reputation_prompt: prompt}, _current_job) when is_map(prompt),
+    do: prompt
+
+  defp current_reputation_prompt(_preview, _current_job), do: nil
+
+  defp reputation_action_status("complete"), do: "Complete"
+  defp reputation_action_status("available"), do: "Ready now"
+  defp reputation_action_status("pending"), do: "Available after launch"
+  defp reputation_action_status(_status), do: "Optional"
+
+  defp reputation_action_cta(%{key: "ens", completed: true}), do: "Review ENS planner"
+  defp reputation_action_cta(%{key: "ens"}), do: "Open ENS planner"
+  defp reputation_action_cta(%{key: "world", completed: true}), do: "Review World proof"
+  defp reputation_action_cta(%{key: "world"}), do: "Open World proof"
+  defp reputation_action_cta(_action), do: "Open"
 end

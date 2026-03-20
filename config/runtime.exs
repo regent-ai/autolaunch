@@ -151,7 +151,10 @@ config :agent_world, :networks, %{
   "base-sepolia" => %{
     rpc_url: env_or_dotenv.("BASE_SEPOLIA_RPC_URL", ""),
     contract_address:
-      env_or_dotenv.("BASE_SEPOLIA_AGENTBOOK_ADDRESS", "0xA23aB2712eA7BBa896930544C7d6636a96b944dA"),
+      env_or_dotenv.(
+        "BASE_SEPOLIA_AGENTBOOK_ADDRESS",
+        "0xA23aB2712eA7BBa896930544C7d6636a96b944dA"
+      ),
     relay_url: env_or_dotenv.("BASE_SEPOLIA_AGENTBOOK_RELAY_URL", "")
   }
 }

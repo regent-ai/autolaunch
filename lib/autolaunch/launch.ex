@@ -49,6 +49,46 @@ defmodule Autolaunch.Launch do
 
   def fee_split_summary, do: @fee_split
 
+  def record_world_agentbook_completion(launch_job_id, attrs)
+      when is_binary(launch_job_id) and is_map(attrs) do
+    human_id =
+      normalize_optional_text(Map.get(attrs, :human_id) || Map.get(attrs, "human_id"), 255)
+
+    network =
+      normalize_optional_text(Map.get(attrs, :network) || Map.get(attrs, "network"), 32) ||
+        "world"
+
+    if is_binary(human_id) and human_id != "" do
+      if job = Repo.get(Job, launch_job_id) do
+        _ =
+          job
+          |> Job.update_changeset(%{
+            world_registered: true,
+            world_human_id: human_id,
+            world_network: network
+          })
+          |> Repo.update()
+      end
+
+      if auction = Repo.get_by(Auction, source_job_id: launch_job_auction_id(launch_job_id)) do
+        _ =
+          auction
+          |> Auction.changeset(%{
+            world_registered: true,
+            world_human_id: human_id,
+            world_network: network
+          })
+          |> Repo.update()
+      end
+
+      {:ok, %{job_id: launch_job_id, human_id: human_id, network: network}}
+    else
+      {:error, :invalid_human_id}
+    end
+  rescue
+    _ -> {:error, :record_update_failed}
+  end
+
   def chain_options do
     @supported_chain_ids
     |> Enum.map(&chain_config!/1)
@@ -136,7 +176,27 @@ defmodule Autolaunch.Launch do
           "Queue deploy job.",
           "Wait for the auction page to go live."
         ],
-        launch_notes: launch_notes
+        launch_notes: launch_notes,
+        completion_plan:
+          completion_plan(%{
+            agent_id: agent.agent_id,
+            ens_name: agent.ens,
+            world_registered: false,
+            world_human_id: nil,
+            token_address: nil,
+            launch_job_id: nil,
+            world_launch_count: 0
+          }),
+        reputation_prompt:
+          reputation_prompt(%{
+            agent_id: agent.agent_id,
+            ens_name: agent.ens,
+            world_registered: false,
+            world_human_id: nil,
+            token_address: nil,
+            launch_job_id: nil,
+            world_launch_count: 0
+          })
       }
 
       {:ok, preview}
@@ -179,6 +239,7 @@ defmodule Autolaunch.Launch do
         owner_address: wallet_address,
         agent_id: agent.agent_id,
         agent_name: agent.name,
+        ens_name: agent.ens,
         token_name: preview.token.name,
         token_symbol: preview.token.symbol,
         treasury_address: preview.token.treasury_address,
@@ -241,11 +302,17 @@ defmodule Autolaunch.Launch do
   end
 
   def list_auctions(filters \\ %{}, current_human \\ nil) do
-    Repo.all(
-      from auction in Auction,
-        order_by: [desc: auction.inserted_at]
-    )
-    |> Enum.map(&serialize_auction(&1, current_human))
+    auctions =
+      Repo.all(
+        from auction in Auction,
+          order_by: [desc: auction.inserted_at]
+      )
+
+    identity_index = identity_index_for_auctions(auctions)
+    human_launch_counts = world_launch_counts()
+
+    auctions
+    |> Enum.map(&serialize_auction(&1, current_human, identity_index, human_launch_counts))
     |> filter_auctions(filters)
     |> sort_auctions(filters)
   rescue
@@ -265,7 +332,12 @@ defmodule Autolaunch.Launch do
         nil
 
       auction ->
-        serialize_auction(auction, current_human)
+        serialize_auction(
+          auction,
+          current_human,
+          identity_index_for_auctions([auction]),
+          world_launch_counts()
+        )
     end
   rescue
     DBConnection.ConnectionError -> nil
@@ -928,13 +1000,21 @@ defmodule Autolaunch.Launch do
     end
   end
 
-  defp serialize_auction(%Auction{} = auction, current_human) do
+  defp serialize_auction(%Auction{} = auction, current_human, identity_index, human_launch_counts) do
     public_id = auction.source_job_id || "auc_#{auction.id}"
     your_bid_status = current_bid_status(public_id, current_human)
     chain = chain_config(auction.chain_id)
     live_snapshot = load_live_snapshot(auction)
     clearing_q96 = live_snapshot[:clearing_price_q96]
     currency_raised_wei = live_snapshot[:currency_raised_wei]
+    identity = Map.get(identity_index, auction.agent_id)
+    ens_name = live_ens_name(identity, auction)
+    world_human_id = auction.world_human_id
+
+    world_registered =
+      (auction.world_registered && is_binary(world_human_id)) and world_human_id != ""
+
+    world_launch_count = Map.get(human_launch_counts, world_human_id, 0)
 
     total_bid_volume =
       if(is_integer(currency_raised_wei),
@@ -947,6 +1027,8 @@ defmodule Autolaunch.Launch do
       agent_id: auction.agent_id,
       agent_name: auction.agent_name,
       symbol: auction_symbol(auction, public_id),
+      ens_name: ens_name,
+      ens_attached: is_binary(ens_name) and ens_name != "",
       owner_address: auction.owner_address,
       auction_address: auction.auction_address,
       token_address: auction.token_address,
@@ -982,6 +1064,32 @@ defmodule Autolaunch.Launch do
       sort_score: hottest_score(total_bid_volume, auction.bidders, auction.started_at),
       notes: auction.notes,
       uniswap_url: auction.uniswap_url,
+      world_registered: world_registered,
+      world_human_id: world_human_id,
+      world_network: auction.world_network || "world",
+      world_launch_count: world_launch_count,
+      completion_plan:
+        completion_plan(%{
+          agent_id: auction.agent_id,
+          ens_name: ens_name,
+          world_registered: world_registered,
+          world_human_id: world_human_id,
+          world_network: auction.world_network || "world",
+          token_address: auction.token_address,
+          launch_job_id: source_job_to_job_id(auction.source_job_id),
+          world_launch_count: world_launch_count
+        }),
+      reputation_prompt:
+        reputation_prompt(%{
+          agent_id: auction.agent_id,
+          ens_name: ens_name,
+          world_registered: world_registered,
+          world_human_id: world_human_id,
+          world_network: auction.world_network || "world",
+          token_address: auction.token_address,
+          launch_job_id: source_job_to_job_id(auction.source_job_id),
+          world_launch_count: world_launch_count
+        }),
       your_bid_status: your_bid_status
     }
   end
@@ -993,7 +1101,12 @@ defmodule Autolaunch.Launch do
         nil
 
       auction ->
-        serialize_auction(auction, nil)
+        serialize_auction(
+          auction,
+          nil,
+          identity_index_for_auctions([auction]),
+          world_launch_counts()
+        )
     end
   rescue
     _ -> nil
@@ -1146,6 +1259,7 @@ defmodule Autolaunch.Launch do
       source_job_id: "auc_" <> String.replace_prefix(job.job_id, "job_", ""),
       agent_id: job.agent_id,
       agent_name: job.agent_name || job.agent_id,
+      ens_name: job.ens_name,
       owner_address: job.owner_address,
       auction_address: result.auction_address,
       token_address: result.token_address,
@@ -1160,7 +1274,10 @@ defmodule Autolaunch.Launch do
       progress_percent: 0,
       metrics_updated_at: now,
       notes: job.token_symbol || job.launch_notes,
-      uniswap_url: result.uniswap_url
+      uniswap_url: result.uniswap_url,
+      world_network: job.world_network || "world",
+      world_registered: job.world_registered,
+      world_human_id: job.world_human_id
     }
 
     {:ok, auction} =
@@ -1303,12 +1420,15 @@ defmodule Autolaunch.Launch do
 
   defp serialize_job(job) do
     chain = chain_config(job.chain_id)
+    world_launch_count = world_launch_count(job.world_human_id)
 
     %{
       job_id: job.job_id,
       owner_address: job.owner_address,
       agent_id: job.agent_id,
       agent_name: job.agent_name,
+      ens_name: job.ens_name,
+      ens_attached: is_binary(job.ens_name) and job.ens_name != "",
       token_name: job.token_name,
       token_symbol: job.token_symbol,
       treasury_address: job.treasury_address,
@@ -1333,10 +1453,36 @@ defmodule Autolaunch.Launch do
       official_pool_id: job.official_pool_id,
       tx_hash: job.tx_hash,
       uniswap_url: job.uniswap_url,
+      world_registered: job.world_registered,
+      world_human_id: job.world_human_id,
+      world_network: job.world_network || "world",
+      world_launch_count: world_launch_count,
       started_at: iso(job.started_at),
       finished_at: iso(job.finished_at),
       created_at: iso(job.inserted_at),
       updated_at: iso(job.updated_at),
+      completion_plan:
+        completion_plan(%{
+          agent_id: job.agent_id,
+          ens_name: job.ens_name,
+          world_registered: job.world_registered,
+          world_human_id: job.world_human_id,
+          world_network: job.world_network || "world",
+          token_address: job.token_address,
+          launch_job_id: job.job_id,
+          world_launch_count: world_launch_count
+        }),
+      reputation_prompt:
+        reputation_prompt(%{
+          agent_id: job.agent_id,
+          ens_name: job.ens_name,
+          world_registered: job.world_registered,
+          world_human_id: job.world_human_id,
+          world_network: job.world_network || "world",
+          token_address: job.token_address,
+          launch_job_id: job.job_id,
+          world_launch_count: world_launch_count
+        }),
       command_summary: %{
         binary: job.deploy_binary,
         script_target: job.script_target,
@@ -1350,6 +1496,196 @@ defmodule Autolaunch.Launch do
       }
     }
   end
+
+  defp identity_index_for_auctions(auctions) do
+    auctions
+    |> Enum.map(& &1.agent_id)
+    |> Enum.reject(&blank?/1)
+    |> ERC8004.get_identities_by_agent_ids()
+  end
+
+  defp live_ens_name(%{ens: ens_name}, _auction) when is_binary(ens_name) and ens_name != "",
+    do: ens_name
+
+  defp live_ens_name(_identity, %Auction{ens_name: ens_name})
+       when is_binary(ens_name) and ens_name != "", do: ens_name
+
+  defp live_ens_name(_identity, _auction), do: nil
+
+  defp completion_plan(attrs) do
+    ens_name = Map.get(attrs, :ens_name)
+    world_registered = truthy?(Map.get(attrs, :world_registered))
+    world_human_id = Map.get(attrs, :world_human_id)
+    token_address = Map.get(attrs, :token_address)
+    launch_job_id = Map.get(attrs, :launch_job_id)
+    world_launch_count = Map.get(attrs, :world_launch_count, 0)
+    world_network = Map.get(attrs, :world_network, "world")
+
+    %{
+      ens: %{
+        attached: is_binary(ens_name) and ens_name != "",
+        ens_name: ens_name,
+        action_url: ens_link_path(Map.get(attrs, :agent_id), ens_name),
+        note:
+          if(is_binary(ens_name) and ens_name != "",
+            do: "ENS link already present on the creator identity.",
+            else: "Finish the ENS link so the creator identity advertises a public name."
+          )
+      },
+      agentbook: %{
+        attached: world_registered and is_binary(world_human_id) and world_human_id != "",
+        human_id: world_human_id,
+        network: world_network,
+        launch_count: world_launch_count,
+        action_url: agentbook_path(launch_job_id, token_address),
+        note:
+          cond do
+            world_registered and is_binary(world_human_id) and world_human_id != "" ->
+              "World AgentBook proof is attached."
+
+            is_binary(token_address) and token_address != "" ->
+              "A human must finish the World AgentBook proof for this launched token."
+
+            true ->
+              "World AgentBook proof becomes available after the token address exists."
+          end
+      }
+    }
+  end
+
+  defp reputation_prompt(attrs) do
+    plan = completion_plan(attrs)
+    ens_attached = get_in(plan, [:ens, :attached])
+    world_attached = get_in(plan, [:agentbook, :attached])
+    world_human_id = get_in(plan, [:agentbook, :human_id])
+    world_launch_count = get_in(plan, [:agentbook, :launch_count]) || 0
+    world_action_url = get_in(plan, [:agentbook, :action_url])
+    world_ready = is_binary(world_action_url) and world_action_url != ""
+
+    %{
+      title: "Improve agent token reputation",
+      optional: true,
+      prompt:
+        "To improve agent token reputation, you can optionally link an ENS name and/or connect to a human's World ID.",
+      warning:
+        "You can skip this, though the token launch may be less trusted until these links are added.",
+      skip_label: "Skip for now",
+      instructions: [
+        if(ens_attached,
+          do: "ENS is already linked for the creator identity.",
+          else: "Link an ENS name so the creator identity advertises a public name."
+        ),
+        cond do
+          world_attached ->
+            "A human-backed World ID is already attached to this token."
+
+          world_ready ->
+            "Ask the human behind this token to complete the World AgentBook proof."
+
+          true ->
+            "After launch creates the token address, ask the human behind this token to complete the World AgentBook proof."
+        end
+      ],
+      actions: [
+        %{
+          key: "ens",
+          label: if(ens_attached, do: "Review ENS link", else: "Link ENS name"),
+          status: if(ens_attached, do: "complete", else: "available"),
+          completed: ens_attached,
+          action_url: get_in(plan, [:ens, :action_url]),
+          note: get_in(plan, [:ens, :note])
+        },
+        %{
+          key: "world",
+          label: if(world_attached, do: "Review World ID", else: "Connect World ID"),
+          status:
+            cond do
+              world_attached -> "complete"
+              world_ready -> "available"
+              true -> "pending"
+            end,
+          completed: world_attached,
+          action_url: world_action_url,
+          note:
+            world_note(
+              get_in(plan, [:agentbook, :note]),
+              world_human_id,
+              world_launch_count
+            )
+        }
+      ]
+    }
+  end
+
+  defp ens_link_path(nil, _ens_name), do: nil
+
+  defp ens_link_path(agent_id, ens_name) do
+    query =
+      %{"identity_id" => agent_id}
+      |> maybe_put_query("ens_name", ens_name)
+
+    "/ens-link?" <> URI.encode_query(query)
+  end
+
+  defp agentbook_path(_launch_job_id, token_address) when token_address in [nil, ""], do: nil
+
+  defp agentbook_path(launch_job_id, token_address) do
+    query =
+      %{"agent_address" => token_address, "network" => "world"}
+      |> maybe_put_query("launch_job_id", launch_job_id)
+
+    "/agentbook?" <> URI.encode_query(query)
+  end
+
+  defp maybe_put_query(query, _key, nil), do: query
+  defp maybe_put_query(query, _key, ""), do: query
+  defp maybe_put_query(query, key, value), do: Map.put(query, key, value)
+
+  defp world_note(base_note, human_id, launch_count) do
+    cond do
+      is_binary(human_id) and human_id != "" and launch_count > 0 ->
+        "#{base_note} This human ID has launched #{launch_count} token#{if(launch_count == 1, do: "", else: "s")} through autolaunch."
+
+      is_binary(human_id) and human_id != "" ->
+        "#{base_note} Human ID: #{human_id}."
+
+      true ->
+        base_note
+    end
+  end
+
+  defp world_launch_counts do
+    Repo.all(
+      from auction in Auction,
+        where:
+          auction.world_registered == true and not is_nil(auction.world_human_id) and
+            auction.world_human_id != "",
+        group_by: auction.world_human_id,
+        select: {auction.world_human_id, count(auction.id)}
+    )
+    |> Map.new()
+  rescue
+    _ -> %{}
+  end
+
+  defp world_launch_count(nil), do: 0
+  defp world_launch_count(""), do: 0
+
+  defp world_launch_count(human_id) do
+    Repo.one(
+      from auction in Auction,
+        where: auction.world_registered == true and auction.world_human_id == ^human_id,
+        select: count(auction.id)
+    ) || 0
+  rescue
+    _ -> 0
+  end
+
+  defp launch_job_auction_id("job_" <> rest), do: "auc_" <> rest
+  defp launch_job_auction_id(job_id), do: job_id
+
+  defp source_job_to_job_id("auc_" <> rest), do: "job_" <> rest
+  defp source_job_to_job_id(_source_job_id), do: nil
 
   defp ensure_authenticated_human(%HumanUser{privy_user_id: privy_user_id})
        when is_binary(privy_user_id), do: :ok
