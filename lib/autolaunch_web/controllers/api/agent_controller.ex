@@ -1,0 +1,59 @@
+defmodule AutolaunchWeb.Api.AgentController do
+  use AutolaunchWeb, :controller
+
+  alias Autolaunch.Launch
+  alias AutolaunchWeb.ApiError
+
+  def index(conn, params) do
+    current_human = conn.assigns[:current_human]
+
+    agents =
+      Launch.list_agents(current_human)
+      |> maybe_filter_launchable(Map.get(params, "launchable"))
+
+    json(conn, %{ok: true, items: agents})
+  end
+
+  def show(conn, %{"id" => id}) do
+    current_human = conn.assigns[:current_human]
+
+    case Launch.get_agent(current_human, id) do
+      nil -> ApiError.render(conn, :not_found, "agent_not_found", "Agent not found")
+      agent -> json(conn, %{ok: true, agent: agent})
+    end
+  end
+
+  def readiness(conn, %{"id" => id}) do
+    current_human = conn.assigns[:current_human]
+
+    case Launch.launch_readiness_for_agent(current_human, id) do
+      nil ->
+        ApiError.render(conn, :not_found, "readiness_not_found", "Agent readiness not found")
+
+      readiness ->
+        agent = Launch.get_agent(current_human, id)
+
+        json(conn, %{
+          ok: true,
+          agent_id: id,
+          agent_name: agent && agent.name,
+          launch_eligible: readiness.ready_to_launch,
+          launch_blockers: launch_blockers(readiness),
+          existing_token: agent && agent.existing_token,
+          supported_chains: (agent && agent.supported_chains) || [],
+          readiness: readiness
+        })
+    end
+  end
+
+  defp maybe_filter_launchable(agents, value) when value in ["true", "1"],
+    do: Enum.filter(agents, &(&1.state == "eligible"))
+
+  defp maybe_filter_launchable(agents, _value), do: agents
+
+  defp launch_blockers(readiness) do
+    readiness.checks
+    |> Enum.reject(& &1.passed)
+    |> Enum.map(& &1.message)
+  end
+end

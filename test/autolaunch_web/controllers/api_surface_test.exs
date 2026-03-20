@@ -1,0 +1,49 @@
+defmodule AutolaunchWeb.ApiSurfaceTest do
+  use AutolaunchWeb.ConnCase, async: true
+
+  test "root redirects to launch", %{conn: conn} do
+    conn = get(conn, "/")
+    assert redirected_to(conn) == "/launch"
+  end
+
+  test "auction index returns JSON", %{conn: conn} do
+    conn = get(conn, "/api/auctions")
+
+    assert %{"ok" => true, "items" => items} = json_response(conn, 200)
+    assert is_list(items)
+  end
+
+  test "launch preview requires auth", %{conn: conn} do
+    conn =
+      post(conn, "/api/launch/preview", %{
+        "agent_id" => "ag_research",
+        "token_name" => "Agent Coin",
+        "token_symbol" => "AGENT",
+        "chain_id" => "1",
+        "treasury_address" => "0x0000000000000000000000000000000000000001"
+      })
+
+    assert %{"ok" => false, "error" => %{"code" => "auth_required"}} = json_response(conn, 401)
+  end
+
+  test "siwa nonce rejects invalid chain ids", %{conn: conn} do
+    conn =
+      post(conn, "/v1/agent/siwa/nonce", %{
+        "walletAddress" => "0x0000000000000000000000000000000000000001",
+        "chainId" => "10"
+      })
+
+    assert %{"ok" => false, "error" => %{"code" => "invalid_chain_id"}} = json_response(conn, 422)
+  end
+
+  test "ens link planner requires auth", %{conn: conn} do
+    conn =
+      post(conn, "/api/ens/link/plan", %{
+        "ens_name" => "vitalik.eth",
+        "chain_id" => "1",
+        "agent_id" => "42"
+      })
+
+    assert %{"ok" => false, "error" => %{"code" => "auth_required"}} = json_response(conn, 401)
+  end
+end

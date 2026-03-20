@@ -1,0 +1,301 @@
+defmodule Autolaunch.Agentbook do
+  @moduledoc false
+
+  import Ecto.Query, warn: false
+
+  alias AgentWorld.Error
+  alias Autolaunch.Agentbook.Session
+  alias Autolaunch.Repo
+
+  def create_session(attrs) when is_map(attrs) do
+    with {:ok, created} <- registration_module().create_session(attrs),
+         {:ok, session} <- persist_created_session(created) do
+      {:ok, serialize_session(session)}
+    end
+  end
+
+  def get_session(session_id) when is_binary(session_id) do
+    case Repo.get(Session, session_id) do
+      nil -> nil
+      session -> serialize_session(session)
+    end
+  end
+
+  def submit_session(session_id, attrs) when is_binary(session_id) and is_map(attrs) do
+    with %Session{} = session <- Repo.get(Session, session_id),
+         {:ok, updated} <- submit_session_payload(session, attrs),
+         {:ok, persisted} <- persist_updated_session(session, updated) do
+      {:ok, serialize_session(persisted)}
+    else
+      nil -> {:error, :session_not_found}
+      {:error, _} = error -> error
+    end
+  end
+
+  def store_connector_uri(session_id, connector_uri)
+      when is_binary(session_id) and is_binary(connector_uri) do
+    with %Session{} = session <- Repo.get(Session, session_id),
+         {:ok, updated} <-
+           session
+           |> Session.update_changeset(%{
+             connector_uri: connector_uri,
+             deep_link_uri: connector_uri
+           })
+           |> Repo.update() do
+      {:ok, serialize_session(updated)}
+    else
+      nil -> {:error, :session_not_found}
+      {:error, changeset} -> {:error, changeset}
+    end
+  end
+
+  def fail_session(session_id, message) when is_binary(session_id) do
+    with %Session{} = session <- Repo.get(Session, session_id),
+         {:ok, updated} <-
+           session
+           |> Session.update_changeset(%{status: "failed", error_text: to_string(message)})
+           |> Repo.update() do
+      {:ok, serialize_session(updated)}
+    else
+      nil -> {:error, :session_not_found}
+      {:error, changeset} -> {:error, changeset}
+    end
+  end
+
+  def lookup_human(attrs) when is_map(attrs) do
+    with {:ok, agent_address} <- required_address(Map.get(attrs, "agent_address") || Map.get(attrs, :agent_address)),
+         {:ok, network} <- required_network(Map.get(attrs, "network") || Map.get(attrs, :network)),
+         {:ok, network_config} <- agent_book_module().resolve_network(network, attrs),
+         {:ok, human_id} <- agent_book_module().lookup_human(agent_address, network, attrs) do
+      {:ok,
+       %{
+         registered: not is_nil(human_id),
+         human_id: human_id,
+         agent_address: String.downcase(agent_address),
+         network: network_config.id,
+         chain_id: network_config.chain_id,
+         contract_address: network_config.contract_address
+       }}
+    end
+  end
+
+  def verify_header(attrs) when is_map(attrs) do
+    with {:ok, header} <- required_text(Map.get(attrs, "header") || Map.get(attrs, :header), :header_required),
+         {:ok, resource_uri} <-
+           required_text(Map.get(attrs, "resource_uri") || Map.get(attrs, :resource_uri), :resource_uri_required),
+         {:ok, payload} <- AgentWorld.parse_agentkit_header(header),
+         {:ok, _valid} <- AgentWorld.validate_agentkit_message(payload, resource_uri, %{}),
+         {:ok, verified} <- AgentWorld.verify_agentkit_signature(payload, %{}) do
+      {:ok,
+       %{
+         valid: true,
+         payload: payload,
+         recovered_address: verified.address
+       }}
+    end
+  end
+
+  def list_recent_sessions(limit \\ 8) do
+    Repo.all(from session in Session, order_by: [desc: session.inserted_at], limit: ^limit)
+    |> Enum.map(&serialize_session/1)
+  end
+
+  defp persist_created_session(created) do
+    %Session{}
+    |> Session.create_changeset(%{
+      session_id: created.session_id,
+      agent_address: created.agent_address,
+      network: created.network,
+      chain_id: created.chain_id,
+      contract_address: created.contract_address,
+      relay_url: created.relay_url,
+      nonce: created.nonce,
+      app_id: created.app_id,
+      action: created.action,
+      rp_id: created.rp_id,
+      signal: created.signal,
+      rp_context: created.rp_context,
+      allow_legacy_proofs: created.allow_legacy_proofs,
+      preset: created.preset,
+      connector_uri: created.connector_uri,
+      deep_link_uri: created.deep_link_uri,
+      proof_payload: created.proof_payload,
+      tx_request: serialize_tx_request(created[:tx_request]),
+      status: Atom.to_string(created.status),
+      tx_hash: created.tx_hash,
+      error_text: created.error_text,
+      expires_at: created.expires_at
+    })
+    |> Repo.insert()
+  end
+
+  defp submit_session_payload(session, %{"tx_hash" => tx_hash}) when is_binary(tx_hash) and tx_hash != "" do
+    registration_module().register_transaction(tx_hash, to_world_session(session))
+  end
+
+  defp submit_session_payload(session, %{tx_hash: tx_hash}) when is_binary(tx_hash) and tx_hash != "" do
+    registration_module().register_transaction(tx_hash, to_world_session(session))
+  end
+
+  defp submit_session_payload(session, attrs) do
+    proof_payload = Map.get(attrs, "proof") || Map.get(attrs, :proof) || attrs
+    options = %{submission: submission_mode(attrs)}
+
+    case registration_module().submit_proof(to_world_session(session), proof_payload, options) do
+      {:ok, updated} ->
+        {:ok, updated}
+
+      {:error, %Error{} = error} ->
+        session
+        |> Session.update_changeset(%{status: "failed", error_text: Exception.message(error)})
+        |> Repo.update()
+
+        {:error, error}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp submission_mode(attrs) do
+    value = Map.get(attrs, "submission") || Map.get(attrs, :submission)
+    if value in ["manual", :manual], do: :manual, else: :auto
+  end
+
+  defp persist_updated_session(session, updated) do
+    session
+    |> Session.update_changeset(%{
+      status: status_string(updated.status),
+      proof_payload: updated[:proof_payload] || updated["proof_payload"] || session.proof_payload,
+      tx_request:
+        serialize_tx_request(updated[:tx_request] || updated["tx_request"]) || session.tx_request,
+      tx_hash: updated[:tx_hash] || updated["tx_hash"] || session.tx_hash,
+      error_text: updated[:error_text] || updated["error_text"],
+      connector_uri: session.connector_uri,
+      deep_link_uri: session.deep_link_uri
+    })
+    |> Repo.update()
+  end
+
+  defp serialize_session(%Session{} = session) do
+    %{
+      session_id: session.session_id,
+      status: session.status,
+      agent_address: session.agent_address,
+      network: session.network,
+      chain_id: session.chain_id,
+      contract_address: session.contract_address,
+      nonce: session.nonce,
+      relay_url: session.relay_url,
+      connector_uri: session.connector_uri,
+      deep_link_uri: session.deep_link_uri,
+      tx_hash: session.tx_hash,
+      error_text: session.error_text,
+      expires_at: session.expires_at && DateTime.to_iso8601(session.expires_at),
+      proof_payload: session.proof_payload,
+      tx_request: session.tx_request,
+      frontend_request: %{
+        app_id: session.app_id,
+        action: session.action,
+        rp_context: session.rp_context,
+        allow_legacy_proofs: session.allow_legacy_proofs,
+        preset: session.preset,
+        signal: session.signal
+      }
+    }
+  end
+
+  defp to_world_session(%Session{} = session) do
+    %{
+      session_id: session.session_id,
+      status: status_atom(session.status),
+      agent_address: session.agent_address,
+      network: session.network,
+      chain_id: session.chain_id,
+      contract_address: session.contract_address,
+      relay_url: session.relay_url,
+      nonce: session.nonce,
+      app_id: session.app_id,
+      action: session.action,
+      rp_id: session.rp_id,
+      signal: session.signal,
+      rp_context: session.rp_context,
+      allow_legacy_proofs: session.allow_legacy_proofs,
+      preset: session.preset,
+      connector_uri: session.connector_uri,
+      deep_link_uri: session.deep_link_uri,
+      expires_at: session.expires_at,
+      proof_payload: session.proof_payload,
+      tx_request: session.tx_request,
+      tx_hash: session.tx_hash,
+      error_text: session.error_text
+    }
+  end
+
+  defp serialize_tx_request(nil), do: nil
+
+  defp serialize_tx_request(%AgentWorld.TxRequest{} = request) do
+    %{
+      to: request.to,
+      data: request.data,
+      value: request.value,
+      chain_id: request.chain_id,
+      description: request.description
+    }
+  end
+
+  defp serialize_tx_request(value) when is_map(value), do: value
+
+  defp status_string(value) when is_atom(value), do: Atom.to_string(value)
+  defp status_string(value) when is_binary(value), do: value
+  defp status_string(_value), do: "failed"
+
+  defp status_atom(value) when is_binary(value) do
+    case value do
+      "pending" -> :pending
+      "proof_ready" -> :proof_ready
+      "registered" -> :registered
+      "failed" -> :failed
+      _ -> :pending
+    end
+  end
+
+  defp required_address(value) when is_binary(value) do
+    trimmed = String.trim(value)
+
+    if Regex.match?(~r/^0x[0-9a-fA-F]{40}$/, trimmed) do
+      {:ok, trimmed}
+    else
+      {:error, :invalid_agent_address}
+    end
+  end
+
+  defp required_address(_value), do: {:error, :invalid_agent_address}
+
+  defp required_network(value) when is_binary(value) do
+    trimmed = String.trim(value)
+    if trimmed in ["world", "base", "base-sepolia"], do: {:ok, trimmed}, else: {:error, :invalid_network}
+  end
+
+  defp required_network(value) when is_atom(value), do: value |> Atom.to_string() |> required_network()
+  defp required_network(_value), do: {:error, :invalid_network}
+
+  defp required_text(value, _reason) when is_binary(value) do
+    case String.trim(value) do
+      "" -> {:error, :invalid_request}
+      trimmed -> {:ok, trimmed}
+    end
+  end
+
+  defp required_text(_value, _reason), do: {:error, :invalid_request}
+
+  defp registration_module do
+    Application.get_env(:autolaunch, :agentbook, [])
+    |> Keyword.get(:registration_module, AgentWorld.Registration)
+  end
+
+  defp agent_book_module do
+    Application.get_env(:autolaunch, :agentbook, [])
+    |> Keyword.get(:agent_book_module, AgentWorld.AgentBook)
+  end
+end
