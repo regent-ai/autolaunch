@@ -86,7 +86,7 @@ export const LaunchForm: Hook = {
 
         const chainId = parseSupportedChainId(submitButton.dataset.chainId)
         if (!chainId) {
-          throw new Error("Launch chain is invalid. Refresh and choose Ethereum mainnet or Sepolia again.")
+          throw new Error("Launch chain is invalid for this environment. Refresh and try again.")
         }
         const nonceEndpoint = submitButton.dataset.nonceEndpoint || "/v1/agent/siwa/nonce"
         const launchEndpoint = submitButton.dataset.launchEndpoint || "/api/launch/jobs"

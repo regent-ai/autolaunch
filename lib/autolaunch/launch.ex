@@ -19,11 +19,10 @@ defmodule Autolaunch.Launch do
   @eligibility_check_keys ~w(ownerOrOperatorAuthorized noPriorSuccessfulLaunch)
   @fee_split %{
     headline:
-      "2% trade fee -> 1% launch treasury + 1% Regent multisig (0x9fa152B0EAdbFe9A7c5C0a8e1D11784f22669a3e).",
+      "2% trade fee -> 1% official agent revenue accounting + 1% Regent/protocol accounting.",
     trade_fee_bps: 200,
-    treasury_bps: 100,
-    regent_multisig_bps: 100,
-    regent_multisig_address: "0x9fa152b0eadbfe9a7c5c0a8e1d11784f22669a3e"
+    agent_revenue_bps: 100,
+    protocol_bps: 100
   }
   @chain_configs %{
     1 => %{
@@ -148,8 +147,19 @@ defmodule Autolaunch.Launch do
            required_text(Map.get(attrs, "token_name"), 80, :token_name_required),
          {:ok, token_symbol} <-
            required_text(Map.get(attrs, "token_symbol"), 16, :token_symbol_required),
-         {:ok, treasury_address} <- required_address(Map.get(attrs, "treasury_address")),
-         {:ok, chain} <- normalize_launch_chain(attrs),
+         {:ok, recovery_safe_address} <-
+           required_address(Map.get(attrs, "recovery_safe_address")),
+         {:ok, auction_proceeds_recipient} <-
+           required_address(Map.get(attrs, "auction_proceeds_recipient")),
+         {:ok, ethereum_revenue_treasury} <-
+           required_address(Map.get(attrs, "ethereum_revenue_treasury")),
+         {:ok, base_revenue_treasury} <-
+           required_address(Map.get(attrs, "base_revenue_treasury")),
+         {:ok, tempo_revenue_treasury} <-
+           required_address(Map.get(attrs, "tempo_revenue_treasury")),
+         {:ok, base_emission_recipient} <-
+           required_address(Map.get(attrs, "base_emission_recipient")),
+         {:ok, chain} <- normalize_launch_chain(),
          total_supply = normalize_total_supply(Map.get(attrs, "total_supply")),
          launch_notes = normalize_optional_text(Map.get(attrs, "launch_notes"), 1_000) do
       preview = %{
@@ -161,7 +171,12 @@ defmodule Autolaunch.Launch do
           chain_id: chain.id,
           chain_family: chain.family,
           chain_label: chain.label,
-          treasury_address: treasury_address,
+          recovery_safe_address: recovery_safe_address,
+          auction_proceeds_recipient: auction_proceeds_recipient,
+          ethereum_revenue_treasury: ethereum_revenue_treasury,
+          base_revenue_treasury: base_revenue_treasury,
+          tempo_revenue_treasury: tempo_revenue_treasury,
+          base_emission_recipient: base_emission_recipient,
           total_supply: total_supply
         },
         economics: fee_split_summary(),
@@ -169,12 +184,13 @@ defmodule Autolaunch.Launch do
         launch_blockers: [],
         permanence_notes: [
           "One ERC-8004 identity can launch at most one Agent Coin.",
-          "Treasury and fee split become part of the auction surface immediately after launch."
+          "Recovery Safe, auction proceeds, and revenue routing are locked into the launch configuration you sign.",
+          "Authorized revenue is normalized into USDC and published on 72-hour epochs."
         ],
         next_steps: [
           "Sign the SIWA message with a linked wallet that controls this ERC-8004 identity.",
-          "Queue deploy job.",
-          "Wait for the auction page to go live."
+          "Queue the Ethereum launch deployment.",
+          "Wait for the 72-hour auction surface to go live."
         ],
         launch_notes: launch_notes,
         completion_plan:
@@ -218,7 +234,7 @@ defmodule Autolaunch.Launch do
            required_text(Map.get(attrs, "signature"), 4_000, :signature_required),
          {:ok, nonce} <- required_text(Map.get(attrs, "nonce"), 255, :nonce_required),
          :ok <- ensure_wallet_matches_human(human, wallet_address),
-         {:ok, chain_id} <- normalize_chain_id(Map.get(attrs, "chain_id")),
+         {:ok, chain_id} <- launch_chain_id(),
          :ok <- ensure_chain_id_matches_preview(chain_id, preview.token.chain_id),
          {:ok, _verification} <-
            Siwa.verify_wallet_signature(%{
@@ -242,7 +258,12 @@ defmodule Autolaunch.Launch do
         ens_name: agent.ens,
         token_name: preview.token.name,
         token_symbol: preview.token.symbol,
-        treasury_address: preview.token.treasury_address,
+        recovery_safe_address: preview.token.recovery_safe_address,
+        auction_proceeds_recipient: preview.token.auction_proceeds_recipient,
+        ethereum_revenue_treasury: preview.token.ethereum_revenue_treasury,
+        base_revenue_treasury: preview.token.base_revenue_treasury,
+        tempo_revenue_treasury: preview.token.tempo_revenue_treasury,
+        base_emission_recipient: preview.token.base_emission_recipient,
         network: preview.token.chain,
         chain_id: chain_id,
         broadcast: broadcast,
@@ -251,7 +272,6 @@ defmodule Autolaunch.Launch do
         launch_notes: preview.launch_notes,
         total_supply: preview.token.total_supply,
         lifecycle_run_id: agent.lifecycle_run_id,
-        vesting_beneficiary: preview.token.treasury_address,
         message: message,
         siwa_nonce: nonce,
         siwa_signature: signature,
@@ -260,7 +280,8 @@ defmodule Autolaunch.Launch do
         script_target: deploy_script_target(),
         deploy_workdir: deploy_workdir(),
         deploy_binary: deploy_binary(),
-        rpc_host: deploy_rpc_host(chain_id)
+        rpc_host: deploy_rpc_host(chain_id),
+        epoch_seconds: 259_200
       }
 
       {:ok, job} =
@@ -599,8 +620,13 @@ defmodule Autolaunch.Launch do
                 auction_address: result.auction_address,
                 token_address: result.token_address,
                 hook_address: result.hook_address,
-                fee_vault_address: result.fee_vault_address,
-                official_pool_id: result.official_pool_id,
+                registry_address: result.registry_address,
+                rights_hub_address: result.rights_hub_address,
+                ethereum_vault_address: result.ethereum_vault_address,
+                base_vault_address: result.base_vault_address,
+                tempo_vault_address: result.tempo_vault_address,
+                regent_emissions_distributor_address:
+                  result.regent_emissions_distributor_address,
                 tx_hash: result.tx_hash,
                 uniswap_url: result.uniswap_url,
                 stdout_tail: result.stdout_tail,
@@ -613,8 +639,9 @@ defmodule Autolaunch.Launch do
               token_address: auction.token_address,
               metadata: %{
                 "hook_address" => result.hook_address,
-                "fee_vault_address" => result.fee_vault_address,
-                "official_pool_id" => result.official_pool_id
+                "registry_address" => result.registry_address,
+                "rights_hub_address" => result.rights_hub_address,
+                "ethereum_vault_address" => result.ethereum_vault_address
               },
               launch_tx_hash: result.tx_hash,
               completed_at: DateTime.utc_now()
@@ -1208,7 +1235,7 @@ defmodule Autolaunch.Launch do
       lifecycle_run_id: job.lifecycle_run_id,
       chain_id: job.chain_id,
       total_supply: job.total_supply,
-      vesting_beneficiary: job.vesting_beneficiary,
+      vesting_beneficiary: job.auction_proceeds_recipient,
       beneficiary_confirmed_at: now,
       vesting_start_at: now,
       vesting_end_at: DateTime.add(now, 365 * 24 * 60 * 60, :second),
@@ -1267,7 +1294,7 @@ defmodule Autolaunch.Launch do
       chain_id: job.chain_id,
       status: "active",
       started_at: now,
-      ends_at: DateTime.add(now, 36 * 60 * 60, :second),
+      ends_at: DateTime.add(now, job.epoch_seconds || 259_200, :second),
       bidders: 0,
       raised_currency: "0 ETH",
       target_currency: "150 ETH",
@@ -1306,20 +1333,26 @@ defmodule Autolaunch.Launch do
     auction_address = "0x" <> suffix
     token_address = "0x" <> String.reverse(suffix)
     hook_address = "0x" <> String.duplicate("b", 40)
-    fee_vault_address = "0x" <> String.duplicate("c", 40)
-    official_pool_id = "0x" <> String.duplicate("d", 64)
+    registry_address = "0x" <> String.duplicate("c", 40)
+    rights_hub_address = "0x" <> String.duplicate("d", 40)
+    ethereum_vault_address = "0x" <> String.duplicate("e", 40)
+    zero_address = "0x" <> String.duplicate("0", 40)
 
     {:ok,
      %{
        auction_address: auction_address,
        token_address: token_address,
        hook_address: hook_address,
-       fee_vault_address: fee_vault_address,
-       official_pool_id: official_pool_id,
+       registry_address: registry_address,
+       rights_hub_address: rights_hub_address,
+       ethereum_vault_address: ethereum_vault_address,
+       base_vault_address: zero_address,
+       tempo_vault_address: zero_address,
+       regent_emissions_distributor_address: zero_address,
        tx_hash: "0x" <> String.duplicate("a", 64),
        uniswap_url: to_uniswap_url(job.chain_id, token_address),
        stdout_tail:
-         "CCA_RESULT_JSON:{\"auctionAddress\":\"#{auction_address}\",\"tokenAddress\":\"#{token_address}\",\"hookAddress\":\"#{hook_address}\",\"feeVaultAddress\":\"#{fee_vault_address}\",\"poolId\":\"#{official_pool_id}\",\"txHash\":\"0x#{String.duplicate("a", 64)}\"}",
+         "CCA_RESULT_JSON:{\"auctionAddress\":\"#{auction_address}\",\"tokenAddress\":\"#{token_address}\",\"hookAddress\":\"#{hook_address}\",\"registryAddress\":\"#{registry_address}\",\"rightsHubAddress\":\"#{rights_hub_address}\",\"ethereumVaultAddress\":\"#{ethereum_vault_address}\",\"baseVaultAddress\":\"#{zero_address}\",\"tempoVaultAddress\":\"#{zero_address}\",\"regentEmissionsDistributorAddress\":\"#{zero_address}\",\"auctionProceedsRecipient\":\"#{job.auction_proceeds_recipient}\",\"agentRevenueTreasury\":\"#{job.ethereum_revenue_treasury}\",\"baseEmissionRecipient\":\"#{job.base_emission_recipient}\",\"txHash\":\"0x#{String.duplicate("a", 64)}\"}",
        stderr_tail: ""
      }}
   end
@@ -1381,8 +1414,13 @@ defmodule Autolaunch.Launch do
       auction_address = normalize_address(Map.get(parsed, "auctionAddress"))
       token_address = normalize_address(Map.get(parsed, "tokenAddress"))
       hook_address = normalize_address(Map.get(parsed, "hookAddress"))
-      fee_vault_address = normalize_address(Map.get(parsed, "feeVaultAddress"))
-      official_pool_id = normalize_pool_id(Map.get(parsed, "poolId"))
+      registry_address = normalize_address(Map.get(parsed, "registryAddress"))
+      rights_hub_address = normalize_address(Map.get(parsed, "rightsHubAddress"))
+      ethereum_vault_address = normalize_address(Map.get(parsed, "ethereumVaultAddress"))
+      base_vault_address = normalize_address(Map.get(parsed, "baseVaultAddress"))
+      tempo_vault_address = normalize_address(Map.get(parsed, "tempoVaultAddress"))
+      regent_emissions_distributor_address =
+        normalize_address(Map.get(parsed, "regentEmissionsDistributorAddress"))
       tx_hash = Map.get(parsed, "txHash")
 
       if blank?(auction_address) do
@@ -1394,8 +1432,12 @@ defmodule Autolaunch.Launch do
            auction_address: auction_address,
            token_address: token_address,
            hook_address: hook_address,
-           fee_vault_address: fee_vault_address,
-           official_pool_id: official_pool_id,
+           registry_address: registry_address,
+           rights_hub_address: rights_hub_address,
+           ethereum_vault_address: ethereum_vault_address,
+           base_vault_address: base_vault_address,
+           tempo_vault_address: tempo_vault_address,
+           regent_emissions_distributor_address: regent_emissions_distributor_address,
            tx_hash: tx_hash,
            uniswap_url: to_uniswap_url(job.chain_id, token_address),
            stdout_tail: trim_tail(output),
@@ -1431,7 +1473,12 @@ defmodule Autolaunch.Launch do
       ens_attached: is_binary(job.ens_name) and job.ens_name != "",
       token_name: job.token_name,
       token_symbol: job.token_symbol,
-      treasury_address: job.treasury_address,
+      recovery_safe_address: job.recovery_safe_address,
+      auction_proceeds_recipient: job.auction_proceeds_recipient,
+      ethereum_revenue_treasury: job.ethereum_revenue_treasury,
+      base_revenue_treasury: job.base_revenue_treasury,
+      tempo_revenue_treasury: job.tempo_revenue_treasury,
+      base_emission_recipient: job.base_emission_recipient,
       network: job.network,
       chain_id: job.chain_id,
       chain_family: if(chain, do: chain.family, else: nil),
@@ -1445,12 +1492,16 @@ defmodule Autolaunch.Launch do
       nonce: job.siwa_nonce,
       issued_at: iso(job.issued_at),
       lifecycle_run_id: job.lifecycle_run_id,
-      vesting_beneficiary: job.vesting_beneficiary,
+      epoch_seconds: job.epoch_seconds || 259_200,
       auction_address: job.auction_address,
       token_address: job.token_address,
       hook_address: job.hook_address,
-      fee_vault_address: job.fee_vault_address,
-      official_pool_id: job.official_pool_id,
+      registry_address: job.registry_address,
+      rights_hub_address: job.rights_hub_address,
+      ethereum_vault_address: job.ethereum_vault_address,
+      base_vault_address: job.base_vault_address,
+      tempo_vault_address: job.tempo_vault_address,
+      regent_emissions_distributor_address: job.regent_emissions_distributor_address,
       tx_hash: job.tx_hash,
       uniswap_url: job.uniswap_url,
       world_registered: job.world_registered,
@@ -1700,11 +1751,15 @@ defmodule Autolaunch.Launch do
       else: {:error, :wallet_mismatch}
   end
 
-  defp normalize_launch_chain(attrs) do
-    with {:ok, chain_id} <- normalize_chain_id(Map.get(attrs, "chain_id")),
+  defp normalize_launch_chain do
+    with {:ok, chain_id} <- launch_chain_id(),
          {:ok, config} <- fetch_chain_config(chain_id) do
       {:ok, config}
     end
+  end
+
+  defp launch_chain_id do
+    normalize_chain_id(Keyword.get(launch_config(), :chain_id, 1))
   end
 
   defp deploy_binary do
@@ -1783,12 +1838,20 @@ defmodule Autolaunch.Launch do
       {"AUTOLAUNCH_TOKEN_NAME", job.token_name || ""},
       {"AUTOLAUNCH_TOKEN_SYMBOL", job.token_symbol || ""},
       {"AUTOLAUNCH_TOTAL_SUPPLY", job.total_supply},
-      {"AUTOLAUNCH_TREASURY_ADDRESS", job.treasury_address || ""},
+      {"AUTOLAUNCH_RECOVERY_SAFE_ADDRESS", job.recovery_safe_address || ""},
+      {"AUTOLAUNCH_AUCTION_PROCEEDS_RECIPIENT", job.auction_proceeds_recipient || ""},
+      {"AUTOLAUNCH_ETHEREUM_REVENUE_TREASURY", job.ethereum_revenue_treasury || ""},
+      {"AUTOLAUNCH_BASE_REVENUE_TREASURY", job.base_revenue_treasury || ""},
+      {"AUTOLAUNCH_TEMPO_REVENUE_TREASURY", job.tempo_revenue_treasury || ""},
+      {"AUTOLAUNCH_BASE_EMISSION_RECIPIENT", job.base_emission_recipient || ""},
       {"AUTOLAUNCH_LIFECYCLE_RUN_ID", job.lifecycle_run_id || ""},
       {"AUTOLAUNCH_LAUNCH_NOTES", job.launch_notes || ""},
       {"AUTOLAUNCH_NETWORK", job.network},
       {"AUTOLAUNCH_CHAIN_ID", Integer.to_string(job.chain_id)},
+      {"AUTOLAUNCH_EPOCH_GENESIS_TS", Integer.to_string(deploy_epoch_genesis_ts())},
       {"REGENT_MULTISIG_ADDRESS", deploy_regent_multisig_address()},
+      {"ETHEREUM_USDC_ADDRESS", deploy_ethereum_usdc_address(job.chain_id)},
+      {"REGENT_EMISSIONS_DISTRIBUTOR_ADDRESS", deploy_regent_emissions_distributor_address()},
       {"FACTORY_ADDRESS", deploy_factory_address(job.chain_id)},
       {"UNISWAP_V4_POOL_MANAGER", deploy_pool_manager_address(job.chain_id)}
     ]
@@ -1831,18 +1894,6 @@ defmodule Autolaunch.Launch do
       [] -> nil
     end
   end
-
-  defp normalize_pool_id(value) when is_binary(value) do
-    trimmed = String.trim(value)
-
-    if Regex.match?(~r/^0x[0-9a-fA-F]{64}$/, trimmed) do
-      String.downcase(trimmed)
-    else
-      nil
-    end
-  end
-
-  defp normalize_pool_id(_value), do: nil
 
   defp normalize_chain_id(value) when is_integer(value) do
     if value in [1, 11_155_111], do: {:ok, value}, else: {:error, :invalid_chain_id}
@@ -1980,6 +2031,24 @@ defmodule Autolaunch.Launch do
     )
   end
 
+  defp deploy_ethereum_usdc_address(chain_id) do
+    case chain_id do
+      1 -> Keyword.get(launch_config(), :eth_mainnet_usdc_address, "")
+      11_155_111 -> Keyword.get(launch_config(), :eth_sepolia_usdc_address, "")
+      _ -> ""
+    end
+  end
+
+  defp deploy_regent_emissions_distributor_address do
+    Keyword.get(launch_config(), :regent_emissions_distributor_address, "")
+  end
+
+  defp deploy_epoch_genesis_ts do
+    :autolaunch
+    |> Application.get_env(:publisher, [])
+    |> Keyword.get(:epoch_genesis_ts, 1_700_000_000)
+  end
+
   defp deploy_env_error(chain_id) do
     with {:ok, chain} <- fetch_chain_config(chain_id) do
       cond do
@@ -1988,6 +2057,9 @@ defmodule Autolaunch.Launch do
 
         blank?(deploy_factory_address(chain_id)) ->
           "Missing #{chain.label} CCA factory address."
+
+        blank?(deploy_ethereum_usdc_address(chain_id)) ->
+          "Missing #{chain.label} USDC address."
 
         true ->
           nil

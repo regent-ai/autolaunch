@@ -36,7 +36,7 @@ defmodule AutolaunchWeb.SurfaceLiveTest do
     def fee_split_summary do
       %{
         headline:
-          "2% trade fee -> 1% launch treasury + 1% Regent multisig (0x9fa152B0EAdbFe9A7c5C0a8e1D11784f22669a3e)."
+          "2% trade fee -> 1% official agent revenue accounting + 1% Regent/protocol accounting."
       }
     end
 
@@ -62,7 +62,12 @@ defmodule AutolaunchWeb.SurfaceLiveTest do
            name: "Atlas Coin",
            symbol: "ATLAS",
            chain_label: "Ethereum Mainnet",
-           treasury_address: "0x1111111111111111111111111111111111111111"
+           recovery_safe_address: "0x1111111111111111111111111111111111111111",
+           auction_proceeds_recipient: "0x1111111111111111111111111111111111111111",
+           ethereum_revenue_treasury: "0x1111111111111111111111111111111111111111",
+           base_revenue_treasury: "0x1111111111111111111111111111111111111111",
+           tempo_revenue_treasury: "0x1111111111111111111111111111111111111111",
+           base_emission_recipient: "0x1111111111111111111111111111111111111111"
          },
          next_steps: [
            "Sign the SIWA message with a linked wallet that controls this ERC-8004 identity.",
@@ -180,13 +185,17 @@ defmodule AutolaunchWeb.SurfaceLiveTest do
 
     view
     |> form("form", %{
-      "launch" => %{
-        "token_name" => "Atlas Coin",
-        "token_symbol" => "ATLAS",
-        "chain_id" => "1",
-        "treasury_address" => "0x1111111111111111111111111111111111111111"
-      }
-    })
+        "launch" => %{
+          "token_name" => "Atlas Coin",
+          "token_symbol" => "ATLAS",
+          "recovery_safe_address" => "0x1111111111111111111111111111111111111111",
+          "auction_proceeds_recipient" => "0x1111111111111111111111111111111111111111",
+          "ethereum_revenue_treasury" => "0x1111111111111111111111111111111111111111",
+          "base_revenue_treasury" => "0x1111111111111111111111111111111111111111",
+          "tempo_revenue_treasury" => "0x1111111111111111111111111111111111111111",
+          "base_emission_recipient" => "0x1111111111111111111111111111111111111111"
+        }
+      })
     |> render_change()
 
     view

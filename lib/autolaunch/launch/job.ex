@@ -12,7 +12,12 @@ defmodule Autolaunch.Launch.Job do
     field :ens_name, :string
     field :token_name, :string
     field :token_symbol, :string
-    field :treasury_address, :string
+    field :recovery_safe_address, :string
+    field :auction_proceeds_recipient, :string
+    field :ethereum_revenue_treasury, :string
+    field :base_revenue_treasury, :string
+    field :tempo_revenue_treasury, :string
+    field :base_emission_recipient, :string
     field :network, :string, default: "ethereum-mainnet"
     field :chain_id, :integer, default: 1
     field :broadcast, :boolean, default: true
@@ -22,7 +27,6 @@ defmodule Autolaunch.Launch.Job do
     field :launch_notes, :string
     field :total_supply, :string
     field :lifecycle_run_id, :string
-    field :vesting_beneficiary, :string
     field :message, :string
     field :siwa_nonce, :string
     field :siwa_signature, :string
@@ -35,12 +39,17 @@ defmodule Autolaunch.Launch.Job do
     field :auction_address, :string
     field :token_address, :string
     field :hook_address, :string
-    field :fee_vault_address, :string
-    field :official_pool_id, :string
+    field :registry_address, :string
+    field :rights_hub_address, :string
+    field :ethereum_vault_address, :string
+    field :base_vault_address, :string
+    field :tempo_vault_address, :string
+    field :regent_emissions_distributor_address, :string
     field :tx_hash, :string
     field :uniswap_url, :string
     field :stdout_tail, :string
     field :stderr_tail, :string
+    field :epoch_seconds, :integer, default: 259_200
     field :world_network, :string, default: "world"
     field :world_registered, :boolean, default: false
     field :world_human_id, :string
@@ -61,7 +70,12 @@ defmodule Autolaunch.Launch.Job do
       :ens_name,
       :token_name,
       :token_symbol,
-      :treasury_address,
+      :recovery_safe_address,
+      :auction_proceeds_recipient,
+      :ethereum_revenue_treasury,
+      :base_revenue_treasury,
+      :tempo_revenue_treasury,
+      :base_emission_recipient,
       :network,
       :chain_id,
       :broadcast,
@@ -70,7 +84,6 @@ defmodule Autolaunch.Launch.Job do
       :launch_notes,
       :total_supply,
       :lifecycle_run_id,
-      :vesting_beneficiary,
       :message,
       :siwa_nonce,
       :siwa_signature,
@@ -87,13 +100,17 @@ defmodule Autolaunch.Launch.Job do
       :agent_id,
       :token_name,
       :token_symbol,
-      :treasury_address,
+      :recovery_safe_address,
+      :auction_proceeds_recipient,
+      :ethereum_revenue_treasury,
+      :base_revenue_treasury,
+      :tempo_revenue_treasury,
+      :base_emission_recipient,
       :network,
       :chain_id,
       :status,
       :step,
       :total_supply,
-      :vesting_beneficiary,
       :message,
       :siwa_nonce,
       :siwa_signature,
@@ -109,8 +126,12 @@ defmodule Autolaunch.Launch.Job do
       :auction_address,
       :token_address,
       :hook_address,
-      :fee_vault_address,
-      :official_pool_id,
+      :registry_address,
+      :rights_hub_address,
+      :ethereum_vault_address,
+      :base_vault_address,
+      :tempo_vault_address,
+      :regent_emissions_distributor_address,
       :tx_hash,
       :uniswap_url,
       :stdout_tail,

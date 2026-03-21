@@ -6,6 +6,17 @@ defmodule Autolaunch.LaunchTest do
   alias Autolaunch.Launch
   alias Autolaunch.Repo
 
+  defp launch_recipients do
+    %{
+      recovery_safe_address: "0x1111111111111111111111111111111111111111",
+      auction_proceeds_recipient: "0x1111111111111111111111111111111111111111",
+      ethereum_revenue_treasury: "0x1111111111111111111111111111111111111111",
+      base_revenue_treasury: "0x1111111111111111111111111111111111111111",
+      tempo_revenue_treasury: "0x1111111111111111111111111111111111111111",
+      base_emission_recipient: "0x1111111111111111111111111111111111111111"
+    }
+  end
+
   test "repo-backed auctions fail closed when none exist" do
     assert Launch.list_auctions() == []
   end
@@ -80,18 +91,17 @@ defmodule Autolaunch.LaunchTest do
         agent_id: "1:42",
         token_name: "Atlas Coin",
         token_symbol: "ATLAS",
-        treasury_address: "0x1111111111111111111111111111111111111111",
         network: "ethereum-mainnet",
         chain_id: 1,
         status: "ready",
         step: "ready",
         total_supply: "1000",
-        vesting_beneficiary: "0x1111111111111111111111111111111111111111",
         message: "signed",
         siwa_nonce: "nonce-1",
         siwa_signature: "sig",
         issued_at: now
-      })
+      }
+      |> Map.merge(launch_recipients()))
       |> Repo.insert()
 
     {:ok, _auction} =
@@ -137,18 +147,17 @@ defmodule Autolaunch.LaunchTest do
         ens_name: "atlas.eth",
         token_name: "Atlas Coin",
         token_symbol: "ATLAS",
-        treasury_address: "0x1111111111111111111111111111111111111111",
         network: "ethereum-mainnet",
         chain_id: 1,
         status: "queued",
         step: "queued",
         total_supply: "1000",
-        vesting_beneficiary: "0x1111111111111111111111111111111111111111",
         message: "signed",
         siwa_nonce: "nonce-1",
         siwa_signature: "sig",
         issued_at: now
-      })
+      }
+      |> Map.merge(launch_recipients()))
       |> Repo.insert()
 
     Repo.get!(Job, "job_prompt")

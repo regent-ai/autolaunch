@@ -15,7 +15,6 @@ defmodule AutolaunchWeb.LaunchLive do
      |> assign(:page_title, "Launch")
      |> assign(:active_view, "launch")
      |> assign(:agents, agents)
-     |> assign(:chain_options, launch_module().chain_options())
      |> assign(:selected_agent_id, nil)
      |> assign(:selected_agent, nil)
      |> assign(:readiness, nil)
@@ -154,8 +153,8 @@ defmodule AutolaunchWeb.LaunchLive do
 
         <div class="al-stat-grid">
           <.stat_card title="Eligible agents" value={Integer.to_string(@eligible_count)} hint="Owner or operator access" />
-          <.stat_card title="Fee split" value="2% total" hint="1% treasury + 1% Regent multisig" />
-          <.stat_card title="Write path" value="Privy + SIWA" hint="Human identity plus wallet proof" />
+          <.stat_card title="Fee split" value="2% total" hint="1% agent revenue + 1% Regent/protocol" />
+          <.stat_card title="Write path" value="Privy + SIWA" hint="Safe-first launch approval" />
         </div>
       </section>
 
@@ -268,7 +267,7 @@ defmodule AutolaunchWeb.LaunchLive do
             <div class="al-section-head">
               <div>
                 <p class="al-kicker">Step 2</p>
-                <h3>Configure token basics</h3>
+                <h3>Configure launch routing</h3>
               </div>
             </div>
 
@@ -285,23 +284,56 @@ defmodule AutolaunchWeb.LaunchLive do
                   <input type="text" name="launch[token_symbol]" value={@form["token_symbol"]} placeholder="AGENT-N" />
                 </label>
                 <label>
-                  <span>Chain</span>
-                  <select name="launch[chain_id]">
-                    <option
-                      :for={chain <- @chain_options}
-                      value={chain.id}
-                      selected={to_string(chain.id) == to_string(@form["chain_id"])}
-                    >
-                      {chain.label}
-                    </option>
-                  </select>
-                </label>
-                <label>
-                  <span>Treasury address</span>
+                  <span>Recovery Safe (Ethereum)</span>
                   <input
                     type="text"
-                    name="launch[treasury_address]"
-                    value={@form["treasury_address"]}
+                    name="launch[recovery_safe_address]"
+                    value={@form["recovery_safe_address"]}
+                    placeholder="0x..."
+                  />
+                </label>
+                <label>
+                  <span>Auction proceeds recipient</span>
+                  <input
+                    type="text"
+                    name="launch[auction_proceeds_recipient]"
+                    value={@form["auction_proceeds_recipient"]}
+                    placeholder="0x..."
+                  />
+                </label>
+                <label>
+                  <span>Ethereum revenue treasury</span>
+                  <input
+                    type="text"
+                    name="launch[ethereum_revenue_treasury]"
+                    value={@form["ethereum_revenue_treasury"]}
+                    placeholder="0x..."
+                  />
+                </label>
+                <label>
+                  <span>Base revenue treasury</span>
+                  <input
+                    type="text"
+                    name="launch[base_revenue_treasury]"
+                    value={@form["base_revenue_treasury"]}
+                    placeholder="0x..."
+                  />
+                </label>
+                <label>
+                  <span>Tempo revenue treasury</span>
+                  <input
+                    type="text"
+                    name="launch[tempo_revenue_treasury]"
+                    value={@form["tempo_revenue_treasury"]}
+                    placeholder="0x..."
+                  />
+                </label>
+                <label>
+                  <span>Base emission recipient</span>
+                  <input
+                    type="text"
+                    name="launch[base_emission_recipient]"
+                    value={@form["base_emission_recipient"]}
                     placeholder="0x..."
                   />
                 </label>
@@ -319,7 +351,10 @@ defmodule AutolaunchWeb.LaunchLive do
 
             <div class="al-inline-banner">
               <strong>{@fee_split.headline}</strong>
-              <p>One token per agent. The treasury address is locked into the launch configuration you sign.</p>
+              <p>
+                Launch runs on Ethereum. Authorized revenue is normalized into USDC, published on
+                72-hour epochs, and the unstaked share routes to the configured agent treasury.
+              </p>
             </div>
 
             <div class="al-action-row">
@@ -341,7 +376,12 @@ defmodule AutolaunchWeb.LaunchLive do
               <input type="hidden" name="launch[token_name]" value={@form["token_name"]} />
               <input type="hidden" name="launch[token_symbol]" value={@form["token_symbol"]} />
               <input type="hidden" name="launch[chain_id]" value={@form["chain_id"]} />
-              <input type="hidden" name="launch[treasury_address]" value={@form["treasury_address"]} />
+              <input type="hidden" name="launch[recovery_safe_address]" value={@form["recovery_safe_address"]} />
+              <input type="hidden" name="launch[auction_proceeds_recipient]" value={@form["auction_proceeds_recipient"]} />
+              <input type="hidden" name="launch[ethereum_revenue_treasury]" value={@form["ethereum_revenue_treasury"]} />
+              <input type="hidden" name="launch[base_revenue_treasury]" value={@form["base_revenue_treasury"]} />
+              <input type="hidden" name="launch[tempo_revenue_treasury]" value={@form["tempo_revenue_treasury"]} />
+              <input type="hidden" name="launch[base_emission_recipient]" value={@form["base_emission_recipient"]} />
               <input type="hidden" name="launch[total_supply]" value={@form["total_supply"]} />
               <textarea class="hidden" name="launch[launch_notes]"><%= @form["launch_notes"] %></textarea>
 
@@ -357,9 +397,14 @@ defmodule AutolaunchWeb.LaunchLive do
                   <p>{@preview && @preview.token.symbol}</p>
                 </div>
                 <div class="al-review-card">
-                  <span>Chain</span>
+                  <span>Launch chain</span>
                   <strong>{@preview && @preview.token.chain_label}</strong>
-                  <p>Treasury {@preview && short_address(@preview.token.treasury_address)}</p>
+                  <p>Recovery Safe {@preview && short_address(@preview.token.recovery_safe_address)}</p>
+                </div>
+                <div class="al-review-card">
+                  <span>Revenue routing</span>
+                  <strong>ETH {@preview && short_address(@preview.token.ethereum_revenue_treasury)}</strong>
+                  <p>Base emissions {@preview && short_address(@preview.token.base_emission_recipient)}</p>
                 </div>
               </div>
 
@@ -502,7 +547,7 @@ defmodule AutolaunchWeb.LaunchLive do
                   <p class="al-kicker">Timeline</p>
                   <ul class="al-compact-list">
                     <li>Queued for launch orchestration.</li>
-                    <li>Waiting for deploy script and auction address.</li>
+                    <li>Waiting for the deploy script to return registry, rights hub, and vault addresses.</li>
                     <li :if={@current_job.auction}>Auction page becomes available after deployment.</li>
                   </ul>
                 </article>
@@ -528,21 +573,24 @@ defmodule AutolaunchWeb.LaunchLive do
 
                 <article
                   :if={
-                    @current_job.job.hook_address || @current_job.job.fee_vault_address ||
-                      @current_job.job.official_pool_id
+                    @current_job.job.hook_address || @current_job.job.registry_address ||
+                      @current_job.job.rights_hub_address || @current_job.job.ethereum_vault_address
                   }
                   class="al-note-card"
                 >
-                  <p class="al-kicker">Fee routing</p>
+                  <p class="al-kicker">Revenue routing</p>
                   <ul class="al-compact-list">
                     <li :if={@current_job.job.hook_address}>
                       Hook: <strong>{@current_job.job.hook_address}</strong>
                     </li>
-                    <li :if={@current_job.job.fee_vault_address}>
-                      Fee vault: <strong>{@current_job.job.fee_vault_address}</strong>
+                    <li :if={@current_job.job.registry_address}>
+                      Agent registry: <strong>{@current_job.job.registry_address}</strong>
                     </li>
-                    <li :if={@current_job.job.official_pool_id}>
-                      Pool id: <strong>{@current_job.job.official_pool_id}</strong>
+                    <li :if={@current_job.job.rights_hub_address}>
+                      Rights hub: <strong>{@current_job.job.rights_hub_address}</strong>
+                    </li>
+                    <li :if={@current_job.job.ethereum_vault_address}>
+                      Ethereum vault: <strong>{@current_job.job.ethereum_vault_address}</strong>
                     </li>
                   </ul>
                 </article>
@@ -603,8 +651,13 @@ defmodule AutolaunchWeb.LaunchLive do
       "agent_id" => nil,
       "token_name" => "",
       "token_symbol" => "",
-      "chain_id" => "1",
-      "treasury_address" => "",
+      "chain_id" => Integer.to_string(default_chain_id()),
+      "recovery_safe_address" => "",
+      "auction_proceeds_recipient" => "",
+      "ethereum_revenue_treasury" => "",
+      "base_revenue_treasury" => "",
+      "tempo_revenue_treasury" => "",
+      "base_emission_recipient" => "",
       "total_supply" => "100000000000000000000000000000",
       "launch_notes" => ""
     }
@@ -612,7 +665,12 @@ defmodule AutolaunchWeb.LaunchLive do
 
   defp default_form(current_human) do
     default_form(nil)
-    |> Map.put("treasury_address", current_human.wallet_address || "")
+    |> Map.put("recovery_safe_address", current_human.wallet_address || "")
+    |> Map.put("auction_proceeds_recipient", current_human.wallet_address || "")
+    |> Map.put("ethereum_revenue_treasury", current_human.wallet_address || "")
+    |> Map.put("base_revenue_treasury", current_human.wallet_address || "")
+    |> Map.put("tempo_revenue_treasury", current_human.wallet_address || "")
+    |> Map.put("base_emission_recipient", current_human.wallet_address || "")
   end
 
   defp max_available_step(socket) do
@@ -636,10 +694,10 @@ defmodule AutolaunchWeb.LaunchLive do
 
   defp preview_error(:token_name_required), do: "Token name is required."
   defp preview_error(:token_symbol_required), do: "Token symbol is required."
-  defp preview_error(:invalid_wallet_address), do: "Treasury address must be a valid EVM address."
+  defp preview_error(:invalid_wallet_address), do: "Each launch recipient must be a valid EVM address."
 
   defp preview_error(:invalid_chain_id),
-    do: "Select Ethereum mainnet or Ethereum Sepolia."
+    do: "Launch network is fixed by environment."
 
   defp preview_error(:agent_not_found), do: "Select an eligible agent first."
   defp preview_error(_reason), do: "Launch preview could not be prepared."
@@ -698,4 +756,10 @@ defmodule AutolaunchWeb.LaunchLive do
   defp reputation_action_cta(%{key: "world", completed: true}), do: "Review World proof"
   defp reputation_action_cta(%{key: "world"}), do: "Open World proof"
   defp reputation_action_cta(_action), do: "Open"
+
+  defp default_chain_id do
+    :autolaunch
+    |> Application.get_env(:launch, [])
+    |> Keyword.get(:chain_id, 1)
+  end
 end

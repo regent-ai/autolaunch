@@ -29,11 +29,18 @@ Standalone Phoenix LiveView app for `autolaunch.sh`, ported from Regent's legacy
 - `ETH_SEPOLIA_RPC_URL`
 - `ETH_MAINNET_FACTORY_ADDRESS` or `ETH_FACTORY_ADDRESS`
 - `ETH_MAINNET_UNISWAP_V4_POOL_MANAGER` or `ETH_UNISWAP_V4_POOL_MANAGER`
-- `REGENT_MULTISIG_ADDRESS` (optional; defaults to `0x9fa152B0EAdbFe9A7c5C0a8e1D11784f22669a3e`)
+- `ETH_MAINNET_USDC_ADDRESS`
+- `ETH_SEPOLIA_USDC_ADDRESS`
+- `REGENT_EMISSIONS_DISTRIBUTOR_ADDRESS`
 - `AUTOLAUNCH_DEPLOY_WORKDIR`
 - `AUTOLAUNCH_DEPLOY_BINARY`
 - `AUTOLAUNCH_DEPLOY_SCRIPT_TARGET`
 - `AUTOLAUNCH_DEPLOY_ACCOUNT` or `AUTOLAUNCH_DEPLOY_PRIVATE_KEY`
+- `AUTOLAUNCH_CHAIN_ID`
+- `AUTOLAUNCH_EPOCH_GENESIS_TS`
+- `AUTOLAUNCH_EPOCH_SECONDS`
+- `AUTOLAUNCH_PUBLISHER_ENABLED`
+- `AUTOLAUNCH_PUBLISHER_INTERVAL_MS`
 - `WORLD_ID_APP_ID`
 - `WORLD_ID_ACTION`
 - `WORLD_ID_RP_ID`
@@ -84,6 +91,11 @@ Standalone Phoenix LiveView app for `autolaunch.sh`, ported from Regent's legacy
 - This app uses LiveView as the source of truth for page state.
 - TypeScript is limited to Privy browser auth, wallet signing, and motion hooks.
 - The canonical CLI lives in [`regent-cli`](/Users/sean/Documents/regent/techtree/regent-cli) as `regent autolaunch ...`.
-- Launches are Ethereum-only: mainnet (`1`) and Sepolia (`11155111`).
-- The launch contracts are not defined in this repo. The canonical Solidity sources for the CCA deploy flow, Uniswap fee hook, fee vault, and fee registry live in [`monorepo/contracts`](/Users/sean/Documents/regent/monorepo/contracts).
+- Public launches are Ethereum-only. The user does not choose a chain in the launch form. `AUTOLAUNCH_CHAIN_ID` decides whether the environment is mainnet (`1`) or Sepolia (`11155111`).
+- The launch worker expects the hard-cut `CCA_RESULT_JSON` payload with registry, rights hub, vault, and Base emissions addresses. It no longer reads the old fee-vault and pool-id payload.
+- Launch jobs now collect a recovery Safe, auction proceeds recipient, Ethereum revenue treasury, Base revenue treasury, Tempo revenue treasury, and Base emission recipient.
+- Revenue and emissions use fixed 72-hour epochs (`259200` seconds) from `AUTOLAUNCH_EPOCH_GENESIS_TS`.
+- The publisher worker is a separate background path. It stores epoch roots, revenue snapshots, and REGENT epoch records in app tables and is enabled with `AUTOLAUNCH_PUBLISHER_ENABLED=true`.
+- Tempo is present in the data model as a reserved routing seam only. It is not active in the v0.1 publisher flow.
+- The launch contracts are not defined in this repo. The canonical Solidity sources for the CCA deploy flow, hook ingress, revenue rights hub, revenue vaults, registry, and Base emissions distributor live in [`monorepo/contracts`](/Users/sean/Documents/regent/monorepo/contracts).
 - The launch worker is real-deploy by default; mock deploy is opt-in with `AUTOLAUNCH_MOCK_DEPLOY=true`.

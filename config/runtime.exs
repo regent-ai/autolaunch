@@ -103,6 +103,10 @@ config :autolaunch, :launch,
       "ETH_SEPOLIA_UNISWAP_V4_POOL_MANAGER",
       env_or_dotenv.("ETHEREUM_SEPOLIA_UNISWAP_V4_POOL_MANAGER", "")
     ),
+  eth_mainnet_usdc_address:
+    env_or_dotenv.("ETH_MAINNET_USDC_ADDRESS", env_or_dotenv.("ETHEREUM_USDC_ADDRESS", "")),
+  eth_sepolia_usdc_address:
+    env_or_dotenv.("ETH_SEPOLIA_USDC_ADDRESS", env_or_dotenv.("ETHEREUM_SEPOLIA_USDC_ADDRESS", "")),
   erc8004_mainnet_subgraph_url:
     env_or_dotenv.(
       "ERC8004_MAINNET_SUBGRAPH_URL",
@@ -115,6 +119,8 @@ config :autolaunch, :launch,
     ),
   regent_multisig_address:
     env_or_dotenv.("REGENT_MULTISIG_ADDRESS", "0x9fa152B0EAdbFe9A7c5C0a8e1D11784f22669a3e"),
+  regent_emissions_distributor_address:
+    env_or_dotenv.("REGENT_EMISSIONS_DISTRIBUTOR_ADDRESS", ""),
   deploy_account: env_or_dotenv.("AUTOLAUNCH_DEPLOY_ACCOUNT", ""),
   deploy_password: env_or_dotenv.("AUTOLAUNCH_DEPLOY_PASSWORD", ""),
   deploy_private_key: env_or_dotenv.("AUTOLAUNCH_DEPLOY_PRIVATE_KEY", ""),
@@ -124,6 +130,13 @@ config :autolaunch, :launch,
       "true",
       "TRUE"
     ]
+
+config :autolaunch, :publisher,
+  enabled: env_or_dotenv.("AUTOLAUNCH_PUBLISHER_ENABLED", "false") in ["1", "true", "TRUE"],
+  interval_ms: String.to_integer(env_or_dotenv.("AUTOLAUNCH_PUBLISHER_INTERVAL_MS", "300000")),
+  epoch_seconds: String.to_integer(env_or_dotenv.("AUTOLAUNCH_EPOCH_SECONDS", "259200")),
+  epoch_genesis_ts:
+    String.to_integer(env_or_dotenv.("AUTOLAUNCH_EPOCH_GENESIS_TS", "1700000000"))
 
 config :agent_world, :world_id,
   app_id: env_or_dotenv.("WORLD_ID_APP_ID", ""),

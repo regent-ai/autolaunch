@@ -10,6 +10,7 @@ defmodule Autolaunch.Application do
       {DNSCluster, query: Application.get_env(:autolaunch, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Autolaunch.PubSub},
       {Task.Supervisor, name: Autolaunch.TaskSupervisor},
+      Autolaunch.Publisher.Worker,
       AutolaunchWeb.Endpoint
     ]
 
