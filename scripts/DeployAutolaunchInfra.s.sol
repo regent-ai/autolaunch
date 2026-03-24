@@ -6,8 +6,6 @@ import {console2} from "forge-std/console2.sol";
 
 import {SubjectRegistry} from "src/revenue/SubjectRegistry.sol";
 import {RevenueShareFactory} from "src/revenue/RevenueShareFactory.sol";
-import {RevenueIngressRouter} from "src/revenue/RevenueIngressRouter.sol";
-import {RevenueIngressFactory} from "src/revenue/RevenueIngressFactory.sol";
 
 contract DeployAutolaunchInfraScript is Script {
     struct ScriptConfig {
@@ -17,20 +15,13 @@ contract DeployAutolaunchInfraScript is Script {
 
     function deployFromEnv()
         external
-        returns (
-            SubjectRegistry subjectRegistry,
-            RevenueShareFactory revenueShareFactory,
-            RevenueIngressRouter revenueIngressRouter,
-            RevenueIngressFactory revenueIngressFactory
-        )
+        returns (SubjectRegistry subjectRegistry, RevenueShareFactory revenueShareFactory)
     {
         ScriptConfig memory cfg = _loadConfig();
 
         vm.startBroadcast();
         subjectRegistry = new SubjectRegistry(cfg.owner);
         revenueShareFactory = new RevenueShareFactory(cfg.owner, cfg.usdc, subjectRegistry);
-        revenueIngressRouter = new RevenueIngressRouter(cfg.owner, cfg.usdc, subjectRegistry);
-        revenueIngressFactory = new RevenueIngressFactory(cfg.owner);
         subjectRegistry.transferOwnership(address(revenueShareFactory));
         vm.stopBroadcast();
 
@@ -40,10 +31,6 @@ contract DeployAutolaunchInfraScript is Script {
                 vm.toString(address(subjectRegistry)),
                 "\",\"revenueShareFactoryAddress\":\"",
                 vm.toString(address(revenueShareFactory)),
-                "\",\"revenueIngressRouterAddress\":\"",
-                vm.toString(address(revenueIngressRouter)),
-                "\",\"revenueIngressFactoryAddress\":\"",
-                vm.toString(address(revenueIngressFactory)),
                 "\",\"usdcAddress\":\"",
                 vm.toString(cfg.usdc),
                 "\",\"owner\":\"",

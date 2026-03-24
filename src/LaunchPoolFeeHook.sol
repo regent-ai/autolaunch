@@ -155,8 +155,12 @@ contract LaunchPoolFeeHook is Owned, IHooks {
             feeData.exactInput
         );
 
-        poolManagerContract.take(Currency.wrap(feeData.feeCurrency), address(vaultContract), feeData.totalFee);
-        vaultContract.recordAccrual(poolId, feeData.feeCurrency, feeData.treasuryFee, feeData.regentFee);
+        poolManagerContract.take(
+            Currency.wrap(feeData.feeCurrency), address(vaultContract), feeData.totalFee
+        );
+        vaultContract.recordAccrual(
+            poolId, feeData.feeCurrency, feeData.treasuryFee, feeData.regentFee
+        );
 
         return (IHooks.afterSwap.selector, feeData.totalFee.toInt128());
     }
@@ -188,8 +192,9 @@ contract LaunchPoolFeeHook is Owned, IHooks {
         BalanceDelta delta,
         address quoteToken
     ) internal pure returns (SwapFeeComputation memory feeData) {
-        int128 quoteAmount =
-            Currency.unwrap(key.currency0) == quoteToken ? delta.amount0() : delta.amount1();
+        int128 quoteAmount = Currency.unwrap(key.currency0) == quoteToken
+            ? delta.amount0()
+            : delta.amount1();
 
         if (quoteAmount < 0) quoteAmount = -quoteAmount;
 

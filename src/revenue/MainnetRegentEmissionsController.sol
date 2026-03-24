@@ -24,7 +24,8 @@ interface ISubjectRegistryMinimal {
 }
 
 interface IRevenueShareSplitterProtocolMinimal {
-    function withdrawProtocolReserve(address rewardToken, uint256 amount, address recipient) external;
+    function withdrawProtocolReserve(address rewardToken, uint256 amount, address recipient)
+        external;
 }
 
 interface ILaunchFeeVaultRegentMinimal {
@@ -84,7 +85,9 @@ contract MainnetRegentEmissionsController is Owned {
     event RoleSet(bytes32 indexed role, address indexed account, bool enabled);
     event PausedSet(bool paused);
     event UsdcTreasurySet(address indexed treasury);
-    event LaunchUsdcRouteSet(bytes32 indexed subjectId, address indexed vault, bytes32 indexed poolId, bool enabled);
+    event LaunchUsdcRouteSet(
+        bytes32 indexed subjectId, address indexed vault, bytes32 indexed poolId, bool enabled
+    );
     event RevenueCredited(
         uint32 indexed epoch,
         bytes32 indexed subjectId,
@@ -93,18 +96,13 @@ contract MainnetRegentEmissionsController is Owned {
         bytes32 sourceRef,
         bytes32 creditId
     );
-    event EpochPublished(
-        uint32 indexed epoch,
-        uint256 totalRecognizedUsdc,
-        uint256 emissionAmount
-    );
+    event EpochPublished(uint32 indexed epoch, uint256 totalRecognizedUsdc, uint256 emissionAmount);
     event Claimed(
-        uint32 indexed epoch,
-        bytes32 indexed subjectId,
-        address indexed recipient,
-        uint256 amount
+        uint32 indexed epoch, bytes32 indexed subjectId, address indexed recipient, uint256 amount
     );
-    event RecipientSnapshotted(uint32 indexed epoch, bytes32 indexed subjectId, address indexed recipient);
+    event RecipientSnapshotted(
+        uint32 indexed epoch, bytes32 indexed subjectId, address indexed recipient
+    );
     event UsdcSwept(address indexed recipient, uint256 amount);
 
     modifier onlyRole(bytes32 role) {
@@ -192,7 +190,8 @@ contract MainnetRegentEmissionsController is Owned {
         _requireSubjectManagerOrOwner(subjectId, msg.sender);
         require(vault != address(0), "VAULT_ZERO");
 
-        launchUsdcRoutes[subjectId] = LaunchUsdcRoute({vault: vault, poolId: poolId, enabled: enabled});
+        launchUsdcRoutes[subjectId] =
+            LaunchUsdcRoute({vault: vault, poolId: poolId, enabled: enabled});
         emit LaunchUsdcRouteSet(subjectId, vault, poolId, enabled);
     }
 
@@ -218,18 +217,20 @@ contract MainnetRegentEmissionsController is Owned {
 
     /// @notice Pull USDC-only protocol reserve from the subject's splitter and credit it.
     /// @dev This contract must be the splitter's protocolRecipient (or owner).
-    function pullSplitterUsdc(
-        bytes32 subjectId,
-        uint256 amount,
-        bytes32 sourceRef
-    ) external whenNotPaused nonReentrant returns (uint32 epoch, uint256 received) {
+    function pullSplitterUsdc(bytes32 subjectId, uint256 amount, bytes32 sourceRef)
+        external
+        whenNotPaused
+        nonReentrant
+        returns (uint32 epoch, uint256 received)
+    {
         require(amount != 0, "AMOUNT_ZERO");
 
         ISubjectRegistryMinimal.SubjectConfig memory cfg = _requireKnownSubject(subjectId);
         require(cfg.splitter != address(0), "SPLITTER_ZERO");
 
         uint256 beforeBalance = _balanceOf(usdc, address(this));
-        IRevenueShareSplitterProtocolMinimal(cfg.splitter).withdrawProtocolReserve(usdc, amount, address(this));
+        IRevenueShareSplitterProtocolMinimal(cfg.splitter)
+            .withdrawProtocolReserve(usdc, amount, address(this));
         uint256 afterBalance = _balanceOf(usdc, address(this));
         received = afterBalance - beforeBalance;
         require(received != 0, "NOTHING_RECEIVED");
@@ -239,11 +240,12 @@ contract MainnetRegentEmissionsController is Owned {
 
     /// @notice Pull USDC hook-side Regent accrual from the configured launch fee vault and credit it.
     /// @dev This contract must be the pool's regentRecipient in LaunchFeeRegistry.
-    function pullLaunchVaultUsdc(
-        bytes32 subjectId,
-        uint256 amount,
-        bytes32 sourceRef
-    ) external whenNotPaused nonReentrant returns (uint32 epoch, uint256 received) {
+    function pullLaunchVaultUsdc(bytes32 subjectId, uint256 amount, bytes32 sourceRef)
+        external
+        whenNotPaused
+        nonReentrant
+        returns (uint32 epoch, uint256 received)
+    {
         require(amount != 0, "AMOUNT_ZERO");
 
         LaunchUsdcRoute memory route = launchUsdcRoutes[subjectId];
@@ -253,12 +255,8 @@ contract MainnetRegentEmissionsController is Owned {
         _requireKnownSubject(subjectId);
 
         uint256 beforeBalance = _balanceOf(usdc, address(this));
-        ILaunchFeeVaultRegentMinimal(route.vault).withdrawRegentShare(
-            route.poolId,
-            usdc,
-            amount,
-            address(this)
-        );
+        ILaunchFeeVaultRegentMinimal(route.vault)
+            .withdrawRegentShare(route.poolId, usdc, amount, address(this));
         uint256 afterBalance = _balanceOf(usdc, address(this));
         received = afterBalance - beforeBalance;
         require(received != 0, "NOTHING_RECEIVED");
@@ -289,7 +287,11 @@ contract MainnetRegentEmissionsController is Owned {
         emit EpochPublished(epoch, uint256(data.totalRecognizedUsdc), emissionAmount);
     }
 
-    function previewClaimable(uint32 epoch, bytes32 subjectId) public view returns (uint256 amount) {
+    function previewClaimable(uint32 epoch, bytes32 subjectId)
+        public
+        view
+        returns (uint256 amount)
+    {
         EpochData memory data = epochs[epoch];
         if (!data.published || subjectClaimed[epoch][subjectId]) {
             return 0;
@@ -301,9 +303,7 @@ contract MainnetRegentEmissionsController is Owned {
         }
 
         amount = FullMath.mulDiv(
-            uint256(data.emissionAmount),
-            subjectRevenue,
-            uint256(data.totalRecognizedUsdc)
+            uint256(data.emissionAmount), subjectRevenue, uint256(data.totalRecognizedUsdc)
         );
     }
 

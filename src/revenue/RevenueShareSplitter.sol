@@ -167,12 +167,12 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter {
         _recordRevenue(received, sourceTag, sourceRef);
     }
 
-    function pullTreasuryShareFromLaunchVault(address vault, bytes32 poolId, uint256 amount, bytes32 sourceRef)
-        external
-        whenNotPaused
-        nonReentrant
-        returns (uint256 received)
-    {
+    function pullTreasuryShareFromLaunchVault(
+        address vault,
+        bytes32 poolId,
+        uint256 amount,
+        bytes32 sourceRef
+    ) external whenNotPaused nonReentrant returns (uint256 received) {
         require(vault != address(0), "VAULT_ZERO");
         require(amount != 0, "AMOUNT_ZERO");
 
@@ -243,6 +243,19 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter {
         whenNotPaused
         nonReentrant
     {
+        _withdrawProtocolReserveUsdc(amount, recipient);
+    }
+
+    function withdrawProtocolReserve(address rewardToken, uint256 amount, address recipient)
+        external
+        whenNotPaused
+        nonReentrant
+    {
+        require(rewardToken == usdc, "REWARD_TOKEN_INVALID");
+        _withdrawProtocolReserveUsdc(amount, recipient);
+    }
+
+    function _withdrawProtocolReserveUsdc(uint256 amount, address recipient) internal {
         require(msg.sender == protocolRecipient || msg.sender == owner, "ONLY_PROTOCOL");
         require(recipient != address(0), "RECIPIENT_ZERO");
         require(protocolReserveUsdc >= amount, "PROTOCOL_BALANCE_LOW");
@@ -268,8 +281,9 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter {
 
         uint256 stakeBal = stakedBalance[account];
         if (stakeBal != 0) {
-            storedClaimableUsdc[account] +=
-                FullMath.mulDiv(stakeBal, currentAcc - priorAcc, ACC_PRECISION);
+            storedClaimableUsdc[
+                account
+            ] += FullMath.mulDiv(stakeBal, currentAcc - priorAcc, ACC_PRECISION);
         }
         rewardDebtUsdc[account] = currentAcc;
     }
@@ -292,8 +306,9 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter {
         uint256 stakerEntitlement =
             net == 0 || totalStaked == 0 ? 0 : FullMath.mulDiv(net, totalStaked, supply);
         uint256 treasuryPortion = net - stakerEntitlement;
-        uint256 creditedByAccumulator =
-            deltaAcc == 0 || totalStaked == 0 ? 0 : FullMath.mulDiv(deltaAcc, totalStaked, ACC_PRECISION);
+        uint256 creditedByAccumulator = deltaAcc == 0 || totalStaked == 0
+            ? 0
+            : FullMath.mulDiv(deltaAcc, totalStaked, ACC_PRECISION);
 
         treasuryResidualUsdc += treasuryPortion;
         protocolReserveUsdc += protocolAmount;

@@ -49,7 +49,9 @@ contract LaunchFeeVault is Owned {
 
         LaunchFeeRegistry.PoolConfig memory config = registryContract.getPoolConfig(poolId);
         require(config.hookEnabled, "HOOK_DISABLED");
-        require(currency == config.launchToken || currency == config.quoteToken, "CURRENCY_MISMATCH");
+        require(
+            currency == config.launchToken || currency == config.quoteToken, "CURRENCY_MISMATCH"
+        );
 
         treasuryAccrued[poolId][currency] += treasuryAmount;
         regentAccrued[poolId][currency] += regentAmount;
@@ -74,9 +76,12 @@ contract LaunchFeeVault is Owned {
         currency.safeTransfer(recipient, amount);
     }
 
-    function withdrawRegentShare(bytes32 poolId, address currency, uint256 amount, address recipient)
-        external
-    {
+    function withdrawRegentShare(
+        bytes32 poolId,
+        address currency,
+        uint256 amount,
+        address recipient
+    ) external {
         require(recipient != address(0), "RECIPIENT_ZERO");
         require(msg.sender == registryContract.regentRecipient(poolId), "ONLY_REGENT_RECIPIENT");
 

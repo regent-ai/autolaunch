@@ -11,6 +11,7 @@ contract RevenueShareFactory is Owned {
 
     mapping(address => address) public splitterOfStakeToken;
     mapping(bytes32 => address) public splitterOfSubject;
+    mapping(address => bool) public authorizedCreators;
 
     event SplitterDeployed(
         bytes32 indexed subjectId,
@@ -21,12 +22,24 @@ contract RevenueShareFactory is Owned {
         address protocolRecipient,
         string label
     );
+    event AuthorizedCreatorSet(address indexed account, bool enabled);
 
     constructor(address owner_, address usdc_, SubjectRegistry subjectRegistry_) Owned(owner_) {
         require(usdc_ != address(0), "USDC_ZERO");
         require(address(subjectRegistry_) != address(0), "REGISTRY_ZERO");
         usdc = usdc_;
         subjectRegistry = subjectRegistry_;
+    }
+
+    modifier onlyAuthorizedCreator() {
+        require(msg.sender == owner || authorizedCreators[msg.sender], "ONLY_AUTHORIZED_CREATOR");
+        _;
+    }
+
+    function setAuthorizedCreator(address account, bool enabled) external onlyOwner {
+        require(account != address(0), "ACCOUNT_ZERO");
+        authorizedCreators[account] = enabled;
+        emit AuthorizedCreatorSet(account, enabled);
     }
 
     function createSubjectSplitter(
@@ -43,7 +56,7 @@ contract RevenueShareFactory is Owned {
         uint256 identityChainId,
         address identityRegistry,
         uint256 identityAgentId
-    ) external returns (address splitter) {
+    ) external onlyAuthorizedCreator returns (address splitter) {
         require(subjectId != bytes32(0), "SUBJECT_ZERO");
         require(stakeToken != address(0), "STAKE_TOKEN_ZERO");
         require(splitterOfStakeToken[stakeToken] == address(0), "SPLITTER_EXISTS_FOR_TOKEN");
@@ -72,7 +85,9 @@ contract RevenueShareFactory is Owned {
             subjectRegistry.setEmissionRecipient(subjectId, emissionChainId, emissionRecipient);
         }
         if (identityChainId != 0 && identityRegistry != address(0) && identityAgentId != 0) {
-            subjectRegistry.linkIdentity(subjectId, identityChainId, identityRegistry, identityAgentId);
+            subjectRegistry.linkIdentity(
+                subjectId, identityChainId, identityRegistry, identityAgentId
+            );
         }
 
         emit SplitterDeployed(

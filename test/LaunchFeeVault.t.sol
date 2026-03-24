@@ -17,6 +17,15 @@ import {MockHookPoolManager} from "test/mocks/MockHookPoolManager.sol";
 contract LaunchFeeVaultTest is Test {
     uint24 internal constant POOL_FEE = 0;
     int24 internal constant TICK_SPACING = 60;
+    address internal constant OWNER = address(0xA11CE);
+    address internal constant TREASURY = address(0x7EAD);
+    address internal constant REGENT_MULTISIG = address(0x9FA1);
+    address internal constant TRADER = address(0xB0B);
+    address internal constant PRIMARY_LAUNCH_TOKEN = address(0x1001);
+    address internal constant NATIVE_QUOTE_TOKEN = address(0);
+    address internal constant SECONDARY_LAUNCH_TOKEN = address(0x2002);
+    uint256 internal constant SWAP_AMOUNT = 100e18;
+    uint256 internal constant ACCRUED_SHARE = 1e18;
 
     LaunchFeeRegistry internal registry;
     LaunchFeeVault internal vault;
@@ -25,105 +34,100 @@ contract LaunchFeeVaultTest is Test {
     MockHookPoolManager internal poolManager;
     MintableERC20Mock internal quoteToken;
 
-    address internal owner = address(0xA11CE);
-    address internal treasury = address(0x7EAD);
-    address internal regentMultisig = address(0x9FA1);
-    address internal trader = address(0xB0B);
     bytes32 internal poolId;
     PoolKey internal poolKey;
 
     function setUp() external {
-        vm.startPrank(owner);
-        registry = new LaunchFeeRegistry(owner);
-        vault = new LaunchFeeVault(owner, address(registry));
+        vm.startPrank(OWNER);
+        registry = new LaunchFeeRegistry(OWNER);
+        vault = new LaunchFeeVault(OWNER, address(registry));
         hookDeployer = new MockHookDeployer();
         poolManager = new MockHookPoolManager();
-        hook = hookDeployer.deploy(owner, address(poolManager), address(registry), address(vault));
+        hook = hookDeployer.deploy(OWNER, address(poolManager), address(registry), address(vault));
         vault.setHook(address(hook));
         quoteToken = new MintableERC20Mock("Quote", "Q");
-        poolId = registry.registerPool(
-            LaunchFeeRegistry.PoolRegistration({
-                launchToken: address(0x1001),
-                quoteToken: address(quoteToken),
-                treasury: treasury,
-                regentRecipient: regentMultisig,
-                poolFee: POOL_FEE,
-                tickSpacing: TICK_SPACING,
-                poolManager: address(poolManager),
-                hook: address(hook)
-            })
-        );
+        poolId = _registerPool(PRIMARY_LAUNCH_TOKEN, address(quoteToken));
         vm.stopPrank();
 
-        poolKey = PoolKey({
-            currency0: Currency.wrap(address(0x1001)),
-            currency1: Currency.wrap(address(quoteToken)),
-            fee: POOL_FEE,
-            tickSpacing: TICK_SPACING,
-            hooks: IHooks(address(hook))
-        });
+        poolKey = _poolKey(PRIMARY_LAUNCH_TOKEN, address(quoteToken));
 
         quoteToken.mint(address(poolManager), 1000e18);
-        poolManager.simulateSwap(
-            address(hook),
-            trader,
+        _simulateSwap(
             poolKey,
-            SwapParams({zeroForOne: true, amountSpecified: -100e18, sqrtPriceLimitX96: 0}),
-            -100e18,
-            100e18
+            true,
+            -int256(SWAP_AMOUNT),
+            -int128(int256(SWAP_AMOUNT)),
+            int128(int256(SWAP_AMOUNT))
         );
     }
 
     function testTreasuryAndRegentSharesAreTrackedSeparately() external view {
-        assertEq(vault.treasuryAccrued(poolId, address(quoteToken)), 1e18);
-        assertEq(vault.regentAccrued(poolId, address(quoteToken)), 1e18);
+        assertEq(vault.treasuryAccrued(poolId, address(quoteToken)), ACCRUED_SHARE);
+        assertEq(vault.regentAccrued(poolId, address(quoteToken)), ACCRUED_SHARE);
     }
 
     function testRegentShareWithdrawalIsAccessControlled() external {
         vm.expectRevert("ONLY_REGENT_RECIPIENT");
-        vault.withdrawRegentShare(poolId, address(quoteToken), 1e18, regentMultisig);
+        vault.withdrawRegentShare(poolId, address(quoteToken), ACCRUED_SHARE, REGENT_MULTISIG);
 
-        vm.prank(regentMultisig);
-        vault.withdrawRegentShare(poolId, address(quoteToken), 1e18, regentMultisig);
+        vm.prank(REGENT_MULTISIG);
+        vault.withdrawRegentShare(poolId, address(quoteToken), ACCRUED_SHARE, REGENT_MULTISIG);
 
-        assertEq(quoteToken.balanceOf(regentMultisig), 1e18);
+        assertEq(quoteToken.balanceOf(REGENT_MULTISIG), ACCRUED_SHARE);
         assertEq(vault.regentAccrued(poolId, address(quoteToken)), 0);
     }
 
     function testRejectsNativeQuotedPools() external {
-        vm.startPrank(owner);
-        bytes32 nativePoolId = registry.registerPool(
+        vm.startPrank(OWNER);
+        vm.expectRevert("QUOTE_TOKEN_ZERO");
+        _registerPool(SECONDARY_LAUNCH_TOKEN, NATIVE_QUOTE_TOKEN);
+        vm.stopPrank();
+    }
+
+    function _registerPool(address launchToken, address quoteTokenAddress)
+        internal
+        returns (bytes32)
+    {
+        return registry.registerPool(
             LaunchFeeRegistry.PoolRegistration({
-                launchToken: address(0x2002),
-                quoteToken: address(0),
-                treasury: treasury,
-                regentRecipient: regentMultisig,
+                launchToken: launchToken,
+                quoteToken: quoteTokenAddress,
+                treasury: TREASURY,
+                regentRecipient: REGENT_MULTISIG,
                 poolFee: POOL_FEE,
                 tickSpacing: TICK_SPACING,
                 poolManager: address(poolManager),
                 hook: address(hook)
             })
         );
-        vm.stopPrank();
+    }
 
-        PoolKey memory nativePoolKey = PoolKey({
-            currency0: Currency.wrap(address(0)),
-            currency1: Currency.wrap(address(0x2002)),
+    function _poolKey(address currency0, address currency1) internal view returns (PoolKey memory) {
+        return PoolKey({
+            currency0: Currency.wrap(currency0),
+            currency1: Currency.wrap(currency1),
             fee: POOL_FEE,
             tickSpacing: TICK_SPACING,
             hooks: IHooks(address(hook))
         });
+    }
 
-        vm.expectRevert("QUOTE_TOKEN_ZERO");
+    function _simulateSwap(
+        PoolKey memory key,
+        bool zeroForOne,
+        int256 amountSpecified,
+        int128 amount0,
+        int128 amount1
+    ) internal {
         poolManager.simulateSwap(
             address(hook),
-            trader,
-            nativePoolKey,
-            SwapParams({zeroForOne: true, amountSpecified: 100e18, sqrtPriceLimitX96: 0}),
-            100e18,
-            -100e18
+            TRADER,
+            key,
+            SwapParams({
+                zeroForOne: zeroForOne, amountSpecified: amountSpecified, sqrtPriceLimitX96: 0
+            }),
+            amount0,
+            amount1
         );
-        assertEq(vault.treasuryAccrued(nativePoolId, address(0)), 0);
-        assertEq(vault.regentAccrued(nativePoolId, address(0)), 0);
     }
 }

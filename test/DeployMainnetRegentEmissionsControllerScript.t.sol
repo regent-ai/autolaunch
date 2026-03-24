@@ -11,6 +11,12 @@ import {SimpleMintableERC20} from "src/SimpleMintableERC20.sol";
 import {SubjectRegistry} from "src/revenue/SubjectRegistry.sol";
 
 contract DeployMainnetRegentEmissionsControllerScriptTest is Test {
+    address internal constant USDC_TREASURY = address(0xCAFE);
+    address internal constant OWNER = address(0xBEEF);
+    uint256 internal constant GENESIS_TS = 1_700_000_000;
+    uint256 internal constant EPOCH_LENGTH = 259_200;
+    uint256 internal constant LOCAL_CHAIN_ID = 1;
+
     DeployMainnetRegentEmissionsControllerScript internal script;
     SimpleMintableERC20 internal regent;
     SimpleMintableERC20 internal usdc;
@@ -25,11 +31,11 @@ contract DeployMainnetRegentEmissionsControllerScriptTest is Test {
         vm.setEnv("REGENT_TOKEN_ADDRESS", vm.toString(address(regent)));
         vm.setEnv("ETH_MAINNET_USDC_ADDRESS", vm.toString(address(usdc)));
         vm.setEnv("SUBJECT_REGISTRY_ADDRESS", vm.toString(address(subjectRegistry)));
-        vm.setEnv("REGENT_USDC_TREASURY", vm.toString(address(0xCAFE)));
-        vm.setEnv("REGENT_EMISSIONS_OWNER", vm.toString(address(0xBEEF)));
-        vm.setEnv("REVENUE_EPOCH_GENESIS_TS", "1700000000");
-        vm.setEnv("REVENUE_EPOCH_LENGTH", "259200");
-        vm.setEnv("REGENT_EMISSIONS_CHAIN_ID", "1");
+        vm.setEnv("REGENT_USDC_TREASURY", vm.toString(USDC_TREASURY));
+        vm.setEnv("REGENT_EMISSIONS_OWNER", vm.toString(OWNER));
+        vm.setEnv("REVENUE_EPOCH_GENESIS_TS", vm.toString(GENESIS_TS));
+        vm.setEnv("REVENUE_EPOCH_LENGTH", vm.toString(EPOCH_LENGTH));
+        vm.setEnv("REGENT_EMISSIONS_CHAIN_ID", vm.toString(LOCAL_CHAIN_ID));
     }
 
     function testDeployFromEnvCreatesMainnetController() external {
@@ -38,13 +44,13 @@ contract DeployMainnetRegentEmissionsControllerScriptTest is Test {
         assertEq(address(controller.regent()), address(regent));
         assertEq(address(controller.usdc()), address(usdc));
         assertEq(address(controller.subjectRegistry()), address(subjectRegistry));
-        assertEq(controller.usdcTreasury(), address(0xCAFE));
-        assertEq(controller.genesisTs(), 1_700_000_000);
-        assertEq(controller.epochLength(), 259_200);
-        assertEq(controller.localChainId(), 1);
-        assertEq(controller.owner(), address(0xBEEF));
-        assertTrue(controller.hasRole(controller.CREDIT_ROLE(), address(0xBEEF)));
-        assertTrue(controller.hasRole(controller.EPOCH_PUBLISHER_ROLE(), address(0xBEEF)));
-        assertTrue(controller.hasRole(controller.PAUSER_ROLE(), address(0xBEEF)));
+        assertEq(controller.usdcTreasury(), USDC_TREASURY);
+        assertEq(controller.genesisTs(), GENESIS_TS);
+        assertEq(controller.epochLength(), EPOCH_LENGTH);
+        assertEq(controller.localChainId(), LOCAL_CHAIN_ID);
+        assertEq(controller.owner(), OWNER);
+        assertTrue(controller.hasRole(controller.CREDIT_ROLE(), OWNER));
+        assertTrue(controller.hasRole(controller.EPOCH_PUBLISHER_ROLE(), OWNER));
+        assertTrue(controller.hasRole(controller.PAUSER_ROLE(), OWNER));
     }
 }

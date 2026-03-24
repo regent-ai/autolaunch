@@ -55,6 +55,7 @@ contract LaunchFeeRegistry is Owned {
         returns (bytes32 poolId)
     {
         require(registration.launchToken != address(0), "TOKEN_ZERO");
+        require(registration.quoteToken != address(0), "QUOTE_TOKEN_ZERO");
         require(registration.treasury != address(0), "TREASURY_ZERO");
         require(registration.regentRecipient != address(0), "REGENT_RECIPIENT_ZERO");
         require(registration.poolFee <= 1_000_000, "POOL_FEE_INVALID");
@@ -67,12 +68,12 @@ contract LaunchFeeRegistry is Owned {
 
         poolId = PoolId.unwrap(
             PoolKey({
-                currency0: currency0,
-                currency1: currency1,
-                fee: registration.poolFee,
-                tickSpacing: registration.tickSpacing,
-                hooks: IHooks(registration.hook)
-            }).toId()
+                    currency0: currency0,
+                    currency1: currency1,
+                    fee: registration.poolFee,
+                    tickSpacing: registration.tickSpacing,
+                    hooks: IHooks(registration.hook)
+                }).toId()
         );
 
         PoolConfig storage existing = poolConfigs[poolId];
@@ -138,12 +139,12 @@ contract LaunchFeeRegistry is Owned {
         (Currency currency0, Currency currency1) = _sortCurrencies(launchToken, quoteToken_);
         return PoolId.unwrap(
             PoolKey({
-                currency0: currency0,
-                currency1: currency1,
-                fee: poolFee,
-                tickSpacing: tickSpacing,
-                hooks: IHooks(hook)
-            }).toId()
+                    currency0: currency0,
+                    currency1: currency1,
+                    fee: poolFee,
+                    tickSpacing: tickSpacing,
+                    hooks: IHooks(hook)
+                }).toId()
         );
     }
 

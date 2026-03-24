@@ -23,15 +23,6 @@ Autolaunch has one launch stack and one ongoing revenue stack.
 - `RevenueShareSplitter`
 - `MainnetRegentEmissionsController`
 
-## Optional or legacy rails
-
-- `RevenueIngressRouter`
-- `RevenueIngressAccount`
-- `RevenueIngressFactory`
-- `RegentEmissionsDistributorV2`
-
-These are still in the package, but they are not the main story the rest of the system should be built around.
-
 ## System diagram
 
 ```mermaid
@@ -54,8 +45,6 @@ flowchart TD
 
     SPLITTER --> EMISSIONS["MainnetRegentEmissionsController"]
     SUBJECT --> EMISSIONS
-
-    INGRESS["Optional ingress accounts / router"] -. optional .-> SPLITTER
 ```
 
 ## Launch flow
@@ -65,8 +54,7 @@ flowchart TD
 3. It deploys the launch fee registry, fee vault, and fee hook.
 4. It creates the subject revsplit through `RevenueShareFactory`.
 5. It registers the subject in `SubjectRegistry`.
-6. It creates the default ingress account.
-7. It returns the whole result set through `CCA_RESULT_JSON:`.
+6. It returns the whole result set through `CCA_RESULT_JSON:`.
 
 ## Fee flow
 

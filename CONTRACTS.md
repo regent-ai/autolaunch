@@ -10,7 +10,7 @@ This package now covers the full Autolaunch contract system, from launch through
   - the launched agent token with the fixed 100 billion supply convention used by the launch flow
 - `LaunchDeploymentController`
   - assembles the launch stack in one call
-  - deploys the token, auction, fee plumbing, subject splitter, and default ingress account
+  - deploys the token, auction, fee plumbing, and subject splitter
 - `LaunchFeeRegistry`
   - records the official pool configuration and recipients for each launch pool
 - `LaunchFeeVault`
@@ -32,15 +32,6 @@ This package now covers the full Autolaunch contract system, from launch through
   - only mainnet USDC that reaches this contract counts as recognized revenue
 - `MainnetRegentEmissionsController`
   - mainnet emissions rail for recognized onchain USDC revenue
-
-## Optional or legacy rails kept in source
-
-- `RevenueIngressRouter`
-- `RevenueIngressAccount`
-- `RevenueIngressFactory`
-- `RegentEmissionsDistributorV2`
-
-These remain available, but they are not the main architecture story.
 
 ## External dependencies
 
@@ -65,7 +56,6 @@ These remain available, but they are not the main architecture story.
 - fee registry
 - subject registry link
 - revenue share splitter
-- default ingress account
 
 ## Routing rules for the wider project
 

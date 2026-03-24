@@ -23,9 +23,7 @@ This package now tests the full Autolaunch contract stack in one Foundry project
 
 - `test/RevenueShareSplitter.t.sol`
 - `test/MainnetRegentEmissionsController.t.sol`
-- `test/RegentEmissionsDistributorV2.t.sol`
 - `test/DeployMainnetRegentEmissionsControllerScript.t.sol`
-- `test/DeployRegentEmissionsDistributorScript.t.sol`
 
 ## Recommended commands
 
@@ -49,7 +47,6 @@ Run revenue / emissions tests only:
 ```bash
 forge test --match-contract RevenueShareSplitterTest
 forge test --match-contract MainnetRegentEmissionsControllerTest
-forge test --match-contract RegentEmissionsDistributorV2Test
 ```
 
 ## What acceptance looks like
@@ -59,10 +56,9 @@ forge test --match-contract RegentEmissionsDistributorV2Test
   - token
   - auction
   - fee hook
-  - fee vault
-  - fee registry
-  - subject splitter
-  - default ingress account
+- fee vault
+- fee registry
+- subject splitter
 - launch-side tests confirm:
   - USDC quote-token wiring
   - 1% subject lane + 1% Regent lane
@@ -76,5 +72,3 @@ The main architecture story to protect is:
 - launch stack and revenue stack live in one package
 - only mainnet USDC that reaches the revsplit counts as recognized revenue
 - the mainnet emissions controller is the active emissions rail
-
-Ingress contracts and `RegentEmissionsDistributorV2` remain tested, but they are not the core design center.

@@ -5,6 +5,7 @@ import {Script} from "forge-std/Script.sol";
 import {console2} from "forge-std/console2.sol";
 
 import {LaunchDeploymentController} from "src/LaunchDeploymentController.sol";
+import {RevenueShareFactory} from "src/revenue/RevenueShareFactory.sol";
 
 contract ExampleCCADeploymentScript is Script {
     struct ScriptConfig {
@@ -12,8 +13,6 @@ contract ExampleCCADeploymentScript is Script {
         address auctionProceedsRecipient;
         address agentRevenueTreasury;
         address revenueShareFactory;
-        address revenueIngressFactory;
-        address revenueIngressRouter;
         address identityRegistry;
         address factoryAddress;
         address poolManager;
@@ -83,7 +82,8 @@ contract ExampleCCADeploymentScript is Script {
         address emissionRecipient = _envAddressOr(
             "AUTOLAUNCH_EMISSION_RECIPIENT",
             _envAddressOr(
-                "AUTOLAUNCH_BASE_EMISSION_RECIPIENT", _envAddressOr("EMISSION_RECIPIENT", recoverySafe)
+                "AUTOLAUNCH_BASE_EMISSION_RECIPIENT",
+                _envAddressOr("EMISSION_RECIPIENT", recoverySafe)
             )
         );
         require(emissionRecipient != address(0), "EMISSION_RECIPIENT_ZERO");
@@ -120,12 +120,6 @@ contract ExampleCCADeploymentScript is Script {
 
         address revenueShareFactory = vm.envAddress("REVENUE_SHARE_FACTORY_ADDRESS");
         require(revenueShareFactory != address(0), "REVENUE_SHARE_FACTORY_ZERO");
-
-        address revenueIngressFactory = vm.envAddress("REVENUE_INGRESS_FACTORY_ADDRESS");
-        require(revenueIngressFactory != address(0), "REVENUE_INGRESS_FACTORY_ZERO");
-
-        address revenueIngressRouter = vm.envAddress("REVENUE_INGRESS_ROUTER_ADDRESS");
-        require(revenueIngressRouter != address(0), "REVENUE_INGRESS_ROUTER_ZERO");
 
         address factoryAddress = vm.envOr("FACTORY_ADDRESS", _defaultFactoryForChain(block.chainid));
         require(factoryAddress != address(0), "FACTORY_ZERO");
@@ -174,8 +168,6 @@ contract ExampleCCADeploymentScript is Script {
         cfg.auctionProceedsRecipient = auctionProceedsRecipient;
         cfg.agentRevenueTreasury = agentRevenueTreasury;
         cfg.revenueShareFactory = revenueShareFactory;
-        cfg.revenueIngressFactory = revenueIngressFactory;
-        cfg.revenueIngressRouter = revenueIngressRouter;
         cfg.identityRegistry = identityRegistry;
         cfg.factoryAddress = factoryAddress;
         cfg.poolManager = poolManager;
@@ -202,7 +194,10 @@ contract ExampleCCADeploymentScript is Script {
         cfg.subjectLabel = subjectLabel;
     }
 
-    function deployFromEnv() external returns (LaunchDeploymentController.DeploymentResult memory result) {
+    function deployFromEnv()
+        external
+        returns (LaunchDeploymentController.DeploymentResult memory result)
+    {
         return _deployFromEnv();
     }
 
@@ -213,14 +208,13 @@ contract ExampleCCADeploymentScript is Script {
         ScriptConfig memory cfg = _loadConfig();
 
         LaunchDeploymentController controller = new LaunchDeploymentController();
+        RevenueShareFactory(cfg.revenueShareFactory).setAuthorizedCreator(address(controller), true);
         result = controller.deploy(
             LaunchDeploymentController.DeploymentConfig({
                 recoverySafe: cfg.recoverySafe,
                 auctionProceedsRecipient: cfg.auctionProceedsRecipient,
                 agentRevenueTreasury: cfg.agentRevenueTreasury,
                 revenueShareFactory: cfg.revenueShareFactory,
-                revenueIngressFactory: cfg.revenueIngressFactory,
-                revenueIngressRouter: cfg.revenueIngressRouter,
                 identityRegistry: cfg.identityRegistry,
                 factoryAddress: cfg.factoryAddress,
                 poolManager: cfg.poolManager,
@@ -247,6 +241,8 @@ contract ExampleCCADeploymentScript is Script {
                 subjectLabel: cfg.subjectLabel
             })
         );
+        RevenueShareFactory(cfg.revenueShareFactory)
+            .setAuthorizedCreator(address(controller), false);
     }
 
     function run() external {
@@ -266,7 +262,6 @@ contract ExampleCCADeploymentScript is Script {
         console2.log("Launch fee vault deployed to:", result.feeVaultAddress);
         console2.log("Subject registry used:", result.subjectRegistryAddress);
         console2.log("Revenue share splitter deployed to:", result.revenueShareSplitterAddress);
-        console2.log("Default ingress deployed to:", result.defaultIngressAddress);
         console2.log(
             string.concat(
                 "CCA_RESULT_JSON:{\"factoryAddress\":\"",
@@ -287,10 +282,6 @@ contract ExampleCCADeploymentScript is Script {
                 vm.toString(result.subjectId),
                 "\",\"revenueShareSplitterAddress\":\"",
                 vm.toString(result.revenueShareSplitterAddress),
-                "\",\"defaultIngressAddress\":\"",
-                vm.toString(result.defaultIngressAddress),
-                "\",\"revenueIngressRouterAddress\":\"",
-                vm.toString(result.revenueIngressRouterAddress),
                 "\",\"poolId\":\"",
                 vm.toString(result.poolId),
                 "\"}"
@@ -344,7 +335,11 @@ contract ExampleCCADeploymentScript is Script {
         }
     }
 
-    function _slice(bytes memory data, uint256 start, uint256 end) internal pure returns (bytes memory out) {
+    function _slice(bytes memory data, uint256 start, uint256 end)
+        internal
+        pure
+        returns (bytes memory out)
+    {
         out = new bytes(end - start);
         for (uint256 i; i < out.length; ++i) {
             out[i] = data[start + i];

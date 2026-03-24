@@ -33,7 +33,9 @@ contract SubjectRegistry is Owned, ISubjectRegistry {
         string label
     );
     event SubjectManagerSet(bytes32 indexed subjectId, address indexed account, bool enabled);
-    event EmissionRecipientSet(bytes32 indexed subjectId, uint256 indexed chainId, address recipient);
+    event EmissionRecipientSet(
+        bytes32 indexed subjectId, uint256 indexed chainId, address recipient
+    );
     event IdentityLinked(
         bytes32 indexed subjectId,
         bytes32 indexed identityHash,
@@ -147,7 +149,9 @@ contract SubjectRegistry is Owned, ISubjectRegistry {
 
         if (previous == bytes32(0)) {
             subjectOfIdentityHash[identityHash] = subjectId;
-            identityLinks[subjectId].push(IdentityLink({chainId: chainId, registry: registry, agentId: agentId}));
+            identityLinks[subjectId].push(
+                IdentityLink({chainId: chainId, registry: registry, agentId: agentId})
+            );
             emit IdentityLinked(subjectId, identityHash, chainId, registry, agentId);
         }
     }
@@ -209,7 +213,8 @@ contract SubjectRegistry is Owned, ISubjectRegistry {
             return false;
         }
 
-        return account == owner || subjectManagers[subjectId][account] || account == cfg.treasurySafe;
+        return
+            account == owner || subjectManagers[subjectId][account] || account == cfg.treasurySafe;
     }
 
     function identityLinkCount(bytes32 subjectId) external view returns (uint256) {
@@ -217,7 +222,11 @@ contract SubjectRegistry is Owned, ISubjectRegistry {
         return identityLinks[subjectId].length;
     }
 
-    function identityLinkAt(bytes32 subjectId, uint256 index) external view returns (IdentityLink memory) {
+    function identityLinkAt(bytes32 subjectId, uint256 index)
+        external
+        view
+        returns (IdentityLink memory)
+    {
         _subjectStorage(subjectId);
         return identityLinks[subjectId][index];
     }

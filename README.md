@@ -22,22 +22,11 @@ It now contains the full launch stack and the revenue / emissions stack in one p
 - Only mainnet USDC that reaches the subject revsplit counts as recognized revenue.
 - The mainnet emissions controller is the active emissions rail for that recognized onchain state.
 
-## Optional or legacy rails kept in source
-
-- `src/revenue/RevenueIngressRouter.sol`
-- `src/revenue/RevenueIngressAccount.sol`
-- `src/revenue/RevenueIngressFactory.sol`
-- `src/revenue/RegentEmissionsDistributorV2.sol`
-
-These remain in the package for optional flows, testing, and transition support, but they are not the core architecture story.
-
 ## Deployment helpers
 
 - `scripts/DeployAutolaunchInfra.s.sol`
 - `scripts/ExampleCCADeploymentScript.s.sol`
 - `scripts/DeployMainnetRegentEmissionsController.s.sol`
-- `scripts/DeployRegentEmissionsDistributor.s.sol`
-- `scripts/DeploySimpleMintableERC20.s.sol`
 
 Important script output markers stay unchanged:
 
@@ -59,9 +48,7 @@ Revenue / emissions tests:
 
 - `test/RevenueShareSplitter.t.sol`
 - `test/MainnetRegentEmissionsController.t.sol`
-- `test/RegentEmissionsDistributorV2.t.sol`
 - `test/DeployMainnetRegentEmissionsControllerScript.t.sol`
-- `test/DeployRegentEmissionsDistributorScript.t.sol`
 
 ## Working here
 
@@ -82,4 +69,3 @@ forge test
 - `CONTRACTS.md`
 - `docs/ARCHITECTURE_GUIDE.md`
 - `docs/FOUNDRY_TESTING_GUIDE.md`
-- `REVENUE_SHARE_SPLITTER_SPEC.md`

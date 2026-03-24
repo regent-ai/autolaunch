@@ -3,7 +3,9 @@ pragma solidity ^0.8.26;
 
 import {AgentLaunchToken} from "src/AgentLaunchToken.sol";
 import {AuctionParameters} from "src/cca/interfaces/IContinuousClearingAuction.sol";
-import {IContinuousClearingAuctionFactory} from "src/cca/interfaces/IContinuousClearingAuctionFactory.sol";
+import {
+    IContinuousClearingAuctionFactory
+} from "src/cca/interfaces/IContinuousClearingAuctionFactory.sol";
 import {IDistributionContract} from "src/cca/interfaces/external/IDistributionContract.sol";
 import {AuctionStepsBuilder} from "src/cca/libraries/AuctionStepsBuilder.sol";
 import {LaunchFeeRegistry} from "src/LaunchFeeRegistry.sol";
@@ -12,22 +14,20 @@ import {LaunchPoolFeeHook} from "src/LaunchPoolFeeHook.sol";
 import {Hooks} from "@uniswap/v4-core/src/libraries/Hooks.sol";
 import {HookMiner} from "src/libraries/HookMiner.sol";
 import {RevenueShareFactory} from "src/revenue/RevenueShareFactory.sol";
-import {RevenueIngressFactory} from "src/revenue/RevenueIngressFactory.sol";
 import {SubjectRegistry} from "src/revenue/SubjectRegistry.sol";
 
 contract LaunchDeploymentController {
     using AuctionStepsBuilder for bytes;
 
     uint256 internal constant MPS_TOTAL = 10_000_000;
-    bytes32 internal constant DEFAULT_INGRESS_LABEL = keccak256("mainnet_usdc_ingress");
+    uint256 internal constant BPS_DENOMINATOR = 10_000;
+    uint256 internal constant PUBLIC_SALE_BPS = 1000;
 
     struct DeploymentConfig {
         address recoverySafe;
         address auctionProceedsRecipient;
         address agentRevenueTreasury;
         address revenueShareFactory;
-        address revenueIngressFactory;
-        address revenueIngressRouter;
         address identityRegistry;
         address factoryAddress;
         address poolManager;
@@ -62,8 +62,6 @@ contract LaunchDeploymentController {
         address launchFeeRegistryAddress;
         address subjectRegistryAddress;
         address revenueShareSplitterAddress;
-        address defaultIngressAddress;
-        address revenueIngressRouterAddress;
         bytes32 subjectId;
         bytes32 poolId;
     }
@@ -73,8 +71,6 @@ contract LaunchDeploymentController {
         require(cfg.auctionProceedsRecipient != address(0), "AUCTION_RECIPIENT_ZERO");
         require(cfg.agentRevenueTreasury != address(0), "AGENT_TREASURY_ZERO");
         require(cfg.revenueShareFactory != address(0), "REVENUE_SHARE_FACTORY_ZERO");
-        require(cfg.revenueIngressFactory != address(0), "REVENUE_INGRESS_FACTORY_ZERO");
-        require(cfg.revenueIngressRouter != address(0), "REVENUE_INGRESS_ROUTER_ZERO");
         require(cfg.identityRegistry != address(0), "IDENTITY_REGISTRY_ZERO");
         require(cfg.factoryAddress != address(0), "FACTORY_ZERO");
         require(cfg.poolManager != address(0), "POOL_MANAGER_ZERO");
@@ -101,13 +97,17 @@ contract LaunchDeploymentController {
             "STEP_BLOCK_DELTA_MISMATCH"
         );
 
-        address effectiveRegentRecipient =
-            cfg.mainnetEmissionsController != address(0) ? cfg.mainnetEmissionsController : cfg.regentRecipient;
+        address effectiveRegentRecipient = cfg.mainnetEmissionsController != address(0)
+            ? cfg.mainnetEmissionsController
+            : cfg.regentRecipient;
         require(effectiveRegentRecipient != address(0), "REGENT_RECIPIENT_ZERO");
 
-        AgentLaunchToken token = new AgentLaunchToken(
-            cfg.tokenName, cfg.tokenSymbol, cfg.totalSupply, address(this)
-        );
+        uint256 publicSaleAmount = cfg.totalSupply * PUBLIC_SALE_BPS / BPS_DENOMINATOR;
+        require(publicSaleAmount != 0, "PUBLIC_SALE_ZERO");
+        uint256 retainedAmount = cfg.totalSupply - publicSaleAmount;
+
+        AgentLaunchToken token =
+            new AgentLaunchToken(cfg.tokenName, cfg.tokenSymbol, cfg.totalSupply, address(this));
 
         bytes memory auctionStepsData = AuctionStepsBuilder.init();
         for (uint256 i; i < stepCount; ++i) {
@@ -115,7 +115,7 @@ contract LaunchDeploymentController {
         }
 
         AuctionParameters memory parameters = AuctionParameters({
-            currency: address(0),
+            currency: cfg.usdcToken,
             tokensRecipient: cfg.recoverySafe,
             fundsRecipient: cfg.auctionProceedsRecipient,
             startBlock: cfg.startBlock,
@@ -129,10 +129,16 @@ contract LaunchDeploymentController {
         });
 
         IDistributionContract auction = IContinuousClearingAuctionFactory(cfg.factoryAddress)
-            .initializeDistribution(address(token), cfg.totalSupply, abi.encode(parameters), bytes32(0));
+            .initializeDistribution(
+                address(token), publicSaleAmount, abi.encode(parameters), bytes32(0)
+            );
 
-        bool transferred = token.transfer(address(auction), cfg.totalSupply);
-        require(transferred, "TOKEN_TRANSFER_FAILED");
+        bool transferred = token.transfer(address(auction), publicSaleAmount);
+        require(transferred, "AUCTION_TRANSFER_FAILED");
+        if (retainedAmount != 0) {
+            bool retainedTransferred = token.transfer(cfg.recoverySafe, retainedAmount);
+            require(retainedTransferred, "RETAINED_TRANSFER_FAILED");
+        }
         auction.onTokensReceived();
 
         bytes32 subjectId = keccak256(abi.encode(block.chainid, address(token)));
@@ -152,16 +158,6 @@ contract LaunchDeploymentController {
                 cfg.identityRegistry,
                 cfg.identityAgentId
             );
-
-        bytes32 defaultIngressId = keccak256(abi.encode(subjectId, DEFAULT_INGRESS_LABEL));
-        bytes32 defaultIngressSalt = keccak256(abi.encode(subjectId, defaultIngressId));
-        address defaultIngress = RevenueIngressFactory(cfg.revenueIngressFactory).createIngressAccount(
-            revenueShareSplitter,
-            cfg.usdcToken,
-            cfg.recoverySafe,
-            defaultIngressId,
-            defaultIngressSalt
-        );
 
         LaunchFeeRegistry launchFeeRegistry = new LaunchFeeRegistry(address(this));
         LaunchFeeVault vault = new LaunchFeeVault(address(this), address(launchFeeRegistry));
@@ -200,10 +196,10 @@ contract LaunchDeploymentController {
             hookAddress: address(hook),
             feeVaultAddress: address(vault),
             launchFeeRegistryAddress: address(launchFeeRegistry),
-            subjectRegistryAddress: address(SubjectRegistry(RevenueShareFactory(cfg.revenueShareFactory).subjectRegistry())),
+            subjectRegistryAddress: address(
+                SubjectRegistry(RevenueShareFactory(cfg.revenueShareFactory).subjectRegistry())
+            ),
             revenueShareSplitterAddress: revenueShareSplitter,
-            defaultIngressAddress: defaultIngress,
-            revenueIngressRouterAddress: cfg.revenueIngressRouter,
             subjectId: subjectId,
             poolId: poolId
         });
