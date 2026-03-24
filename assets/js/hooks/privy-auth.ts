@@ -10,19 +10,29 @@ type PrivyUser = {
   linked_accounts?: Array<{ type?: string; address?: string }>
 } | null
 
+const SESSION_ENDPOINT = "/api/auth/privy/session"
+
+function linkedAccounts(user: PrivyUser): Array<{ type?: string; address?: string }> {
+  return user?.linked_accounts ?? []
+}
+
 function walletForUser(user: PrivyUser): string | null {
-  const wallet = user?.linked_accounts?.find((account) => account?.address)
+  const wallet = linkedAccounts(user).find((account) => account?.address)
   return wallet?.address || null
 }
 
 function walletsForUser(user: PrivyUser): string[] {
-  return (user?.linked_accounts || [])
+  return linkedAccounts(user)
     .map((account) => account?.address?.trim())
     .filter((address): address is string => Boolean(address))
 }
 
 function labelForUser(user: PrivyUser): string {
   return user?.email?.address || user?.id || "connected"
+}
+
+function csrfHeaders(csrfToken: string): Record<string, string> {
+  return csrfToken ? { "x-csrf-token": csrfToken } : {}
 }
 
 export const PrivyAuth: Hook = {
@@ -43,13 +53,13 @@ export const PrivyAuth: Hook = {
       const token = await privy.getAccessToken()
       if (!token) return false
 
-      const response = await fetch("/api/auth/privy/session", {
+      const response = await fetch(SESSION_ENDPOINT, {
         method: "POST",
         headers: {
           accept: "application/json",
           "content-type": "application/json",
           authorization: `Bearer ${token}`,
-          ...(csrfToken ? { "x-csrf-token": csrfToken } : {}),
+          ...csrfHeaders(csrfToken),
         },
         credentials: "same-origin",
         body: JSON.stringify({
@@ -63,11 +73,11 @@ export const PrivyAuth: Hook = {
     }
 
     const clearSession = async () => {
-      await fetch("/api/auth/privy/session", {
+      await fetch(SESSION_ENDPOINT, {
         method: "DELETE",
         headers: {
           accept: "application/json",
-          ...(csrfToken ? { "x-csrf-token": csrfToken } : {}),
+          ...csrfHeaders(csrfToken),
         },
         credentials: "same-origin",
       })

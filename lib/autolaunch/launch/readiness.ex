@@ -28,8 +28,8 @@ defmodule Autolaunch.Launch.Readiness do
     beneficiary_confirmed = Map.get(args, :beneficiary_confirmed) == true
 
     try do
-      health_window_hours = 24
-      health_cutoff = DateTime.add(DateTime.utc_now(), -(health_window_hours * 60 * 60), :second)
+      now = DateTime.utc_now()
+      health_cutoff = DateTime.add(now, -(24 * 60 * 60), :second)
 
       regentbot_match =
         Repo.exists?(
@@ -89,7 +89,7 @@ defmodule Autolaunch.Launch.Readiness do
           from stake in TokenLaunchStake,
             where:
               stake.owner_address == ^owner_address and stake.status == "active" and
-                stake.unlock_at >= ^DateTime.utc_now(),
+                stake.unlock_at >= ^now,
             order_by: [desc: stake.unlock_at],
             limit: 1
         )
@@ -261,15 +261,23 @@ defmodule Autolaunch.Launch.Readiness do
   end
 
   defp normalize_address(value) when is_binary(value) do
-    value = String.trim(value)
-    if value == "", do: nil, else: String.downcase(value)
+    value
+    |> String.trim()
+    |> case do
+      "" -> nil
+      trimmed -> String.downcase(trimmed)
+    end
   end
 
   defp normalize_address(_value), do: nil
 
   defp normalize_optional_text(value, max_length) when is_binary(value) do
-    value = String.trim(value)
-    if value == "", do: nil, else: String.slice(value, 0, max_length)
+    value
+    |> String.trim()
+    |> case do
+      "" -> nil
+      trimmed -> String.slice(trimmed, 0, max_length)
+    end
   end
 
   defp normalize_optional_text(_value, _max_length), do: nil

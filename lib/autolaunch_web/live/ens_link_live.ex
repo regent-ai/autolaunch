@@ -15,7 +15,7 @@ defmodule AutolaunchWeb.EnsLinkLive do
      |> assign(:page_title, "ENS Link")
      |> assign(:active_view, "ens")
      |> assign(:identities, identities)
-     |> assign(:selected_identity_id, selected_identity && selected_identity.agent_id)
+     |> assign(:selected_identity_id, selected_identity_id(selected_identity))
      |> assign(:selected_identity, selected_identity)
      |> assign(:form, form)
      |> assign(:prepared, nil)}
@@ -27,7 +27,7 @@ defmodule AutolaunchWeb.EnsLinkLive do
 
     {:noreply,
      socket
-     |> assign(:selected_identity_id, selected_identity && selected_identity.agent_id)
+     |> assign(:selected_identity_id, selected_identity_id(selected_identity))
      |> assign(:selected_identity, selected_identity)
      |> assign(:form, form)
      |> assign(:prepared, nil)}
@@ -373,12 +373,9 @@ defmodule AutolaunchWeb.EnsLinkLive do
     Enum.find(identities, &(&1.state in ["eligible", "wallet_bound"])) || List.first(identities)
   end
 
-  defp default_form(nil, params),
-    do: %{"ens_name" => Map.get(params, "ens_name", ""), "include_reverse" => false}
-
   defp default_form(identity, params) do
     %{
-      "ens_name" => Map.get(params, "ens_name") || identity.ens || "",
+      "ens_name" => Map.get(params, "ens_name") || default_ens_name(identity),
       "include_reverse" => false
     }
   end
@@ -389,19 +386,22 @@ defmodule AutolaunchWeb.EnsLinkLive do
     Enum.find(identities, &(&1.agent_id == requested_identity_id)) || default_identity(identities)
   end
 
+  defp selected_identity_id(nil), do: nil
+  defp selected_identity_id(identity), do: identity.agent_id
+
+  defp default_ens_name(nil), do: ""
+  defp default_ens_name(identity), do: identity.ens || ""
+
   defp normalize_checkbox(form) do
     Map.put(form, "include_reverse", truthy?(form["include_reverse"]))
   end
 
   defp prepare_bidirectional(socket) do
-    with true <- not is_nil(socket.assigns.current_human) or {:error, "Sign in with Privy first."},
-         %{} = identity <-
-           socket.assigns.selected_identity || {:error, "Choose an ERC-8004 identity first."},
-         ens_name when is_binary(ens_name) and ens_name != "" <-
-           String.trim(socket.assigns.form["ens_name"] || "") ||
-             {:error, "Enter an ENS name first."},
+    with {:ok, current_human} <- ensure_current_human(socket.assigns.current_human),
+         {:ok, identity} <- ensure_selected_identity(socket.assigns.selected_identity),
+         {:ok, ens_name} <- ens_name_from_form(socket.assigns.form),
          {:ok, prepared} <-
-           ens_link_module().prepare_bidirectional_link(socket.assigns.current_human, %{
+           ens_link_module().prepare_bidirectional_link(current_human, %{
              "identity_id" => identity.agent_id,
              "ens_name" => ens_name,
              "include_reverse" => truthy?(socket.assigns.form["include_reverse"])
@@ -411,9 +411,19 @@ defmodule AutolaunchWeb.EnsLinkLive do
       {:error, message} when is_binary(message) -> {:error, message}
       {:error, %Error{} = error} -> {:error, Exception.message(error)}
       {:error, reason} -> {:error, inspect(reason)}
-      false -> {:error, "Sign in with Privy first."}
+    end
+  end
+
+  defp ensure_current_human(nil), do: {:error, "Sign in with Privy first."}
+  defp ensure_current_human(current_human), do: {:ok, current_human}
+
+  defp ensure_selected_identity(nil), do: {:error, "Choose an ERC-8004 identity first."}
+  defp ensure_selected_identity(identity), do: {:ok, identity}
+
+  defp ens_name_from_form(form) do
+    case String.trim(form["ens_name"] || "") do
       "" -> {:error, "Enter an ENS name first."}
-      nil -> {:error, "Choose an ERC-8004 identity first."}
+      ens_name -> {:ok, ens_name}
     end
   end
 

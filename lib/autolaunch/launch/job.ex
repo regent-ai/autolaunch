@@ -41,6 +41,9 @@ defmodule Autolaunch.Launch.Job do
     field :subject_registry_address, :string
     field :subject_id, :string
     field :revenue_share_splitter_address, :string
+    field :default_ingress_address, :string
+    field :revenue_ingress_router_address, :string
+    field :pool_id, :string
     field :tx_hash, :string
     field :uniswap_url, :string
     field :stdout_tail, :string
@@ -120,6 +123,9 @@ defmodule Autolaunch.Launch.Job do
       :subject_registry_address,
       :subject_id,
       :revenue_share_splitter_address,
+      :default_ingress_address,
+      :revenue_ingress_router_address,
+      :pool_id,
       :tx_hash,
       :uniswap_url,
       :stdout_tail,

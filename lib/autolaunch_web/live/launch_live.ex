@@ -107,7 +107,7 @@ defmodule AutolaunchWeb.LaunchLive do
         if launch_module().terminal_status?(job.status) do
           flash =
             case job.status do
-              "ready" -> put_flash(socket, :info, "Launch is live.")
+              "ready" -> put_flash(socket, :info, "Launch stack is live.")
               _ -> put_flash(socket, :error, job.error_message || "Launch job failed.")
             end
 
@@ -138,11 +138,11 @@ defmodule AutolaunchWeb.LaunchLive do
       <section id="launch-hero" class="al-hero al-launch-hero al-panel" phx-hook="MissionMotion">
         <div class="al-launch-copy">
           <p class="al-kicker">Autolaunch</p>
-          <h2>Launch the stable Agent Coin flow from one guided surface.</h2>
+          <h2>Launch the Agent Coin flow from one operator-grade surface.</h2>
           <p class="al-subcopy">
             Autolaunch sells 10% of a fixed 100 billion Agent Coin supply in a Continuous Clearing
             Auction on Ethereum mainnet. Bids settle in USDC, and recognized revenue only counts
-            after mainnet USDC reaches the revsplit that feeds staking and onchain emissions.
+            after mainnet USDC reaches the revenue share splitter that feeds staking and onchain emissions.
           </p>
 
           <div class="al-hero-actions">
@@ -153,7 +153,7 @@ defmodule AutolaunchWeb.LaunchLive do
             >
               Copy `regent autolaunch launch preview ...` example
             </button>
-            <a class="al-cta-link" href="https://github.com/regent-ai/monorepo" target="_blank" rel="noreferrer">Star on Github</a>
+            <a class="al-cta-link" href="https://github.com/regent-ai/monorepo" target="_blank" rel="noreferrer">Star on GitHub</a>
             <a class="al-cta-link al-cta-link--quiet" href="#launch-wizard">Jump to wizard</a>
           </div>
 
@@ -209,10 +209,10 @@ defmodule AutolaunchWeb.LaunchLive do
       >
         <div class="al-onboard-summary">
           <p class="al-kicker">Before you launch</p>
-          <h3>The first pass should feel short, not mysterious.</h3>
+          <h3>The first pass should feel short, direct, and easy to verify.</h3>
           <p class="al-subcopy">
             Connect the right wallet, confirm where revenue should route, then sign once. The
-            optional trust step stays out of the way until the launch is already queued.
+            optional trust check stays out of the way until the launch is already queued.
           </p>
         </div>
 
@@ -231,8 +231,8 @@ defmodule AutolaunchWeb.LaunchLive do
             <strong>Confirm the fixed sale and revenue routing before you sign.</strong>
             <p>
               The wizard pre-fills addresses from your connected wallet. The sale size stays fixed
-              at 10% of a 100 billion supply, and only mainnet USDC that reaches the revsplit is
-              counted for staking and emissions.
+              at 10% of a 100 billion supply, and only mainnet USDC that reaches the revenue share splitter is
+              counted for staking and emissions through the revenue share splitter.
             </p>
           </article>
 
@@ -240,26 +240,26 @@ defmodule AutolaunchWeb.LaunchLive do
             <p class="al-onboard-mark">03</p>
             <strong>Expect one signature, one queue, then a live auction page.</strong>
             <p>
-              After the deploy script returns the launch, fee, subject, and revsplit addresses, the
-              auction shows up in the listing flow automatically.
+              After the deploy script returns the launch stack, the auction shows up in the listing
+              flow automatically.
             </p>
           </article>
         </div>
       </section>
 
-      <section id="launch-wizard" class="al-wizard-layout">
+      <section id="launch-wizard" class="al-wizard-layout" phx-hook="MissionMotion">
         <article class="al-panel al-main-panel">
           <div class="al-step-intro">
             Five short stages: choose the identity, confirm the fixed sale and routing, sign the
-            launch, optionally finish trust setup, then watch the queue turn into a live auction.
+            launch, optionally finish the trust check, then watch the queue turn into a live auction.
           </div>
 
           <div class="al-step-row">
             <.step_chip index={1} label="Choose agent" active={@step == 1} complete={@step > 1} />
             <.step_chip index={2} label="Configure token" active={@step == 2} complete={@step > 2} />
             <.step_chip index={3} label="Review and sign" active={@step == 3} complete={@step > 3} />
-            <.step_chip index={4} label="Optional trust" active={@step == 4} complete={@step > 4} />
-            <.step_chip index={5} label="Launch status" active={@step == 5} complete={false} />
+            <.step_chip index={4} label="Optional trust check" active={@step == 4} complete={@step > 4} />
+            <.step_chip index={5} label="Deployment status" active={@step == 5} complete={false} />
           </div>
 
           <%= if @step == 1 do %>
@@ -416,7 +416,7 @@ defmodule AutolaunchWeb.LaunchLive do
               <strong>{@fee_split.headline}</strong>
               <p>
                 Launch runs on Ethereum mainnet only. Supply is fixed at 100 billion, the auction
-                sells 10%, and recognized revenue means mainnet USDC that reaches the revsplit
+                sells 10%, and recognized revenue means mainnet USDC that reaches the revenue share splitter
                 before the onchain emissions controller finalizes epochs.
               </p>
             </div>
@@ -469,7 +469,7 @@ defmodule AutolaunchWeb.LaunchLive do
                 <div class="al-review-card">
                   <span>Revenue routing</span>
                   <strong>USDC treasury {@preview && short_address(@preview.token.ethereum_revenue_treasury)}</strong>
-                  <p>Mainnet USDC only counts after it reaches the revsplit.</p>
+                  <p>Mainnet USDC only counts after it reaches the revenue share splitter.</p>
                 </div>
               </div>
 
@@ -489,7 +489,7 @@ defmodule AutolaunchWeb.LaunchLive do
               </div>
 
               <article :if={@preview && @preview.reputation_prompt} class="al-note-card">
-                <p class="al-kicker">Optional trust step</p>
+                <p class="al-kicker">Optional trust check</p>
                 <strong>{@preview.reputation_prompt.prompt}</strong>
                 <p>{@preview.reputation_prompt.warning}</p>
                 <ul class="al-compact-list">
@@ -521,7 +521,7 @@ defmodule AutolaunchWeb.LaunchLive do
             <div class="al-section-head">
               <div>
                 <p class="al-kicker">Step 4</p>
-                <h3>Optional reputation step</h3>
+                <h3>Optional trust check</h3>
               </div>
             </div>
 
@@ -557,7 +557,7 @@ defmodule AutolaunchWeb.LaunchLive do
                 </article>
 
                 <article :if={@current_job} class="al-note-card">
-                  <p class="al-kicker">Launch job</p>
+                  <p class="al-kicker">Deployment job</p>
                   <ul class="al-compact-list">
                     <li>Status: <strong>{@current_job.job.status}</strong></li>
                     <li>Step: <strong>{@current_job.job.step}</strong></li>
@@ -612,7 +612,7 @@ defmodule AutolaunchWeb.LaunchLive do
                   <p class="al-kicker">Timeline</p>
                   <ul class="al-compact-list">
                     <li>Queued for launch orchestration.</li>
-                    <li>Waiting for the deploy script to return the launch, fee, subject, and revsplit addresses.</li>
+                    <li>Waiting for the deploy script to return the launch stack and routing addresses.</li>
                     <li :if={@current_job.auction}>Auction page becomes available after deployment.</li>
                     <li :if={@current_job.job.status == "ready"}>Bought tokens still need to be staked before they earn revenue.</li>
                   </ul>
@@ -633,27 +633,36 @@ defmodule AutolaunchWeb.LaunchLive do
                   <p class="al-kicker">Trust follow-up</p>
                   <p>{@current_job.job.reputation_prompt.warning}</p>
                   <button type="button" class="al-network-badge" phx-click="go_to_step" phx-value-step="4">
-                    Open optional trust step
+                    Open trust check
                   </button>
                 </article>
 
                 <article
                   :if={
                     @current_job.job.hook_address || @current_job.job.launch_fee_registry_address ||
-                      @current_job.job.revenue_share_splitter_address
+                      @current_job.job.launch_fee_vault_address || @current_job.job.default_ingress_address ||
+                      @current_job.job.revenue_ingress_router_address || @current_job.job.subject_registry_address ||
+                      @current_job.job.subject_id || @current_job.job.revenue_share_splitter_address ||
+                      @current_job.job.pool_id
                   }
                   class="al-note-card"
                 >
-                  <p class="al-kicker">Revenue routing</p>
+                  <p class="al-kicker">Launch stack</p>
                   <ul class="al-compact-list">
                     <li :if={@current_job.job.hook_address}>
-                      Hook: <strong>{@current_job.job.hook_address}</strong>
+                      Fee hook: <strong>{@current_job.job.hook_address}</strong>
                     </li>
                     <li :if={@current_job.job.launch_fee_registry_address}>
-                      Launch fee registry: <strong>{@current_job.job.launch_fee_registry_address}</strong>
+                      Fee registry: <strong>{@current_job.job.launch_fee_registry_address}</strong>
                     </li>
                     <li :if={@current_job.job.launch_fee_vault_address}>
-                      Launch fee vault: <strong>{@current_job.job.launch_fee_vault_address}</strong>
+                      Fee vault: <strong>{@current_job.job.launch_fee_vault_address}</strong>
+                    </li>
+                    <li :if={@current_job.job.default_ingress_address}>
+                      Default ingress: <strong>{@current_job.job.default_ingress_address}</strong>
+                    </li>
+                    <li :if={@current_job.job.revenue_ingress_router_address}>
+                      Revenue ingress router: <strong>{@current_job.job.revenue_ingress_router_address}</strong>
                     </li>
                     <li :if={@current_job.job.subject_registry_address}>
                       Subject registry: <strong>{@current_job.job.subject_registry_address}</strong>
@@ -662,7 +671,10 @@ defmodule AutolaunchWeb.LaunchLive do
                       Subject ID: <strong>{@current_job.job.subject_id}</strong>
                     </li>
                     <li :if={@current_job.job.revenue_share_splitter_address}>
-                      Revenue splitter: <strong>{@current_job.job.revenue_share_splitter_address}</strong>
+                      Revenue share splitter: <strong>{@current_job.job.revenue_share_splitter_address}</strong>
+                    </li>
+                    <li :if={@current_job.job.pool_id}>
+                      Pool ID: <strong>{@current_job.job.pool_id}</strong>
                     </li>
                   </ul>
                 </article>
@@ -820,8 +832,8 @@ defmodule AutolaunchWeb.LaunchLive do
 
   defp reputation_action_cta(%{key: "ens", completed: true}), do: "Review ENS planner"
   defp reputation_action_cta(%{key: "ens"}), do: "Open ENS planner"
-  defp reputation_action_cta(%{key: "world", completed: true}), do: "Review World proof"
-  defp reputation_action_cta(%{key: "world"}), do: "Open World proof"
+  defp reputation_action_cta(%{key: "world", completed: true}), do: "Review trust check"
+  defp reputation_action_cta(%{key: "world"}), do: "Open trust check"
   defp reputation_action_cta(_action), do: "Open"
 
   defp launch_hero_command do

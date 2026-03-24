@@ -71,9 +71,9 @@ defmodule AutolaunchWeb.PositionsLive do
       <section id="positions-hero" class="al-hero al-panel" phx-hook="MissionMotion">
         <div>
           <p class="al-kicker">Positions</p>
-          <h2>Returning users should not have to rediscover whether they were displaced.</h2>
+          <h2>Returning users should not have to rediscover where each bid stands.</h2>
           <p class="al-subcopy">
-            Every bid is labeled against the current clearing price so the next action is obvious.
+            Every bid is labeled against the current clearing price and lifecycle state so the next action is obvious.
           </p>
         </div>
 
@@ -85,10 +85,10 @@ defmodule AutolaunchWeb.PositionsLive do
         </div>
       </section>
 
-      <%= if is_nil(@current_human) do %>
+        <%= if is_nil(@current_human) do %>
         <.empty_state
           title="Sign in to inspect your bids."
-          body="Positions are tied to the Privy-backed human session and wallet binding."
+          body="Positions are tied to the Privy-backed session and wallet binding."
         />
       <% else %>
         <section class="al-panel al-filter-panel">
@@ -97,24 +97,28 @@ defmodule AutolaunchWeb.PositionsLive do
               <span>Status</span>
               <select name="filters[status]">
                 <option value="" selected={@filters["status"] == ""}>All</option>
-                <option value="active" selected={@filters["status"] == "active"}>Active</option>
-                <option value="borderline" selected={@filters["status"] == "borderline"}>Borderline</option>
-                <option value="inactive" selected={@filters["status"] == "inactive"}>Inactive</option>
-                <option value="claimable" selected={@filters["status"] == "claimable"}>Claimable</option>
-                <option value="exited" selected={@filters["status"] == "exited"}>Exited</option>
-              </select>
-            </label>
-          </form>
-        </section>
+              <option value="active" selected={@filters["status"] == "active"}>Active</option>
+              <option value="ending-soon" selected={@filters["status"] == "ending-soon"}>Ending soon</option>
+              <option value="borderline" selected={@filters["status"] == "borderline"}>Borderline</option>
+              <option value="inactive" selected={@filters["status"] == "inactive"}>Inactive</option>
+              <option value="claimable" selected={@filters["status"] == "claimable"}>Claimable</option>
+              <option value="pending-claim" selected={@filters["status"] == "pending-claim"}>Pending claim</option>
+              <option value="claimed" selected={@filters["status"] == "claimed"}>Claimed</option>
+              <option value="exited" selected={@filters["status"] == "exited"}>Exited</option>
+              <option value="settled" selected={@filters["status"] == "settled"}>Settled</option>
+            </select>
+          </label>
+        </form>
+      </section>
 
         <%= if @positions == [] do %>
           <.empty_state
             title="No bids match the current filter."
-            body="Place a bid from an auction detail page or clear the status filter."
+            body="Place a bid from an auction detail page or clear the status filter to see every state."
           />
         <% else %>
           <section class="al-position-list">
-            <article :for={position <- @positions} class="al-panel al-position-card">
+            <article :for={position <- @positions} id={"position-card-#{position.bid_id}"} class="al-panel al-position-card" phx-hook="MissionMotion">
               <div class="al-agent-card-head">
                 <div>
                   <p class="al-kicker">{position.chain}</p>
@@ -175,6 +179,7 @@ defmodule AutolaunchWeb.PositionsLive do
   defp load_positions(current_human, filters), do: Launch.list_positions(current_human, filters)
 
   defp status_copy("active"), do: "Active — receiving tokens at the current clearing price."
+  defp status_copy("ending-soon"), do: "Ending soon — the auction is near the finish line."
   defp status_copy("borderline"), do: "Borderline — one move away from inactive."
 
   defp status_copy("inactive"),
@@ -183,7 +188,11 @@ defmodule AutolaunchWeb.PositionsLive do
   defp status_copy("claimable"),
     do: "Claimable — the bid is exited and purchased tokens can be claimed."
 
+  defp status_copy("pending-claim"),
+    do: "Pending claim — the auction has settled, but the claim still needs to be completed."
+
   defp status_copy("exited"), do: "Exited — this bid is no longer participating."
   defp status_copy("claimed"), do: "Claimed — purchased tokens have already been withdrawn."
+  defp status_copy("settled"), do: "Settled — the auction outcome is finalized."
   defp status_copy(_status), do: "Monitor this position from the auction detail page."
 end

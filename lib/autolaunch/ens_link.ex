@@ -105,35 +105,32 @@ defmodule Autolaunch.EnsLink do
 
   defp resolve_signer_address(%HumanUser{} = human, attrs) do
     requested = Map.get(attrs, "signer_address") || Map.get(attrs, :signer_address)
+    linked_addresses = linked_wallet_addresses(human)
 
     signer =
       case normalize_address(requested) do
-        nil -> List.first(linked_wallet_addresses(human))
+        nil -> List.first(linked_addresses)
         value -> value
       end
 
-    if signer in linked_wallet_addresses(human) do
+    if signer in linked_addresses do
       {:ok, signer}
     else
       {:error, :signer_not_linked}
     end
   end
 
-  defp chain_rpc_url(1) do
-    case Keyword.get(launch_config(), :eth_mainnet_rpc_url, "") do
-      value when is_binary(value) and value != "" -> {:ok, value}
-      _ -> {:error, :rpc_not_configured}
-    end
-  end
-
-  defp chain_rpc_url(11_155_111) do
-    case Keyword.get(launch_config(), :eth_sepolia_rpc_url, "") do
-      value when is_binary(value) and value != "" -> {:ok, value}
-      _ -> {:error, :rpc_not_configured}
-    end
-  end
+  defp chain_rpc_url(1), do: configured_rpc_url(:eth_mainnet_rpc_url)
+  defp chain_rpc_url(11_155_111), do: configured_rpc_url(:eth_sepolia_rpc_url)
 
   defp chain_rpc_url(_chain_id), do: {:error, :invalid_chain_id}
+
+  defp configured_rpc_url(key) do
+    case Keyword.get(launch_config(), key, "") do
+      value when is_binary(value) and value != "" -> {:ok, value}
+      _ -> {:error, :rpc_not_configured}
+    end
+  end
 
   defp provided_or_chain_rpc_url(attrs, chain_id) do
     case Map.get(attrs, "rpc_url") || Map.get(attrs, :rpc_url) do
@@ -177,14 +174,16 @@ defmodule Autolaunch.EnsLink do
   defp required_chain_id(_value), do: {:error, :invalid_chain_id}
 
   defp linked_wallet_addresses(%HumanUser{} = human) do
-    [human.wallet_address | human.wallet_addresses || []]
+    [human.wallet_address | List.wrap(human.wallet_addresses)]
     |> Enum.map(&normalize_address/1)
     |> Enum.reject(&is_nil/1)
     |> Enum.uniq()
   end
 
   defp normalize_address(value) when is_binary(value) do
-    case String.trim(value) do
+    value
+    |> String.trim()
+    |> case do
       "" -> nil
       trimmed -> String.downcase(trimmed)
     end

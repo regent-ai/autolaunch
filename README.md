@@ -68,7 +68,7 @@ The launch path is Ethereum mainnet only.
 
 Autolaunch expects the hard-cut `CCA_RESULT_JSON` payload from the configured deployment script. The revenue and emissions contract source of truth lives in the shared contracts repo under [`contracts/autolaunch`](../contracts/autolaunch).
 
-The app does not own launch-side contract ABIs for the new stable stack. Until the missing launch-side contracts land in the shared contract repo, the launch controller, fee registry, fee vault, fee hook, and revsplit addresses are treated as deploy-script outputs that the app stores and displays.
+The app does not own the contract source of truth. The launch controller, fee registry, fee vault, fee hook, subject registry, revsplit, and ingress addresses are produced by the deploy script, then stored and displayed by the app.
 
 Important launch rules:
 

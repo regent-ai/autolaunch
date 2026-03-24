@@ -97,7 +97,7 @@ defmodule AutolaunchWeb.AuctionLive do
             <p class="al-kicker">Auction detail</p>
             <h2>{@auction.agent_name}</h2>
             <p class="al-subcopy">
-              This page is built around the estimator because CCA behavior is not intuitive without a live quote.
+              This page is built around the estimator because CCA behavior is easier to trust with a live quote.
             </p>
           </div>
 
@@ -108,7 +108,7 @@ defmodule AutolaunchWeb.AuctionLive do
             <.stat_card
               title="Your status"
               value={human_position_status(@latest_position)}
-              hint="Active / Borderline / Inactive / Claimable"
+              hint="Active, borderline, inactive, claimable, pending claim, claimed, exited, ending soon, settled"
             />
             <.stat_card
               title="ENS"
@@ -116,19 +116,19 @@ defmodule AutolaunchWeb.AuctionLive do
               hint="Creator identity"
             />
             <.stat_card
-              title="World"
-              value={if @auction.world_registered, do: "Attached", else: "Pending"}
-              hint="Human-backed AgentBook"
+              title="Trust"
+              value={if @auction.world_registered, do: "Checked", else: "Pending"}
+              hint="Creator trust record"
             />
           </div>
         </section>
 
         <section class="al-detail-layout">
-          <article class="al-panel al-card">
+          <article id="auction-trust-card" class="al-panel al-card" phx-hook="MissionMotion">
             <div class="al-section-head">
               <div>
                 <p class="al-kicker">Creator completion</p>
-                <h3>Identity and human-proof status</h3>
+                <h3>Identity and trust status</h3>
               </div>
             </div>
 
@@ -144,18 +144,18 @@ defmodule AutolaunchWeb.AuctionLive do
               </article>
 
               <article class="al-note-card">
-                <span>World AgentBook</span>
-                <strong>{if @auction.world_registered, do: "Attached", else: "Needs human"}</strong>
+                <span>Trust record</span>
+                <strong>{if @auction.world_registered, do: "Checked", else: "Needs check"}</strong>
                 <p>
                   {if @auction.world_registered,
                     do: "Human ID #{@auction.world_human_id} has launched #{@auction.world_launch_count} tokens through autolaunch.",
-                    else: "A human still needs to finish the World proof for this token."}
+                    else: "A trust check still needs to be completed for this token."}
                 </p>
               </article>
             </div>
           </article>
 
-          <article class="al-panel al-card">
+          <article id="auction-bid-composer" class="al-panel al-card" phx-hook="MissionMotion">
             <div class="al-section-head">
               <div>
                 <p class="al-kicker">Bid composer</p>
@@ -219,11 +219,11 @@ defmodule AutolaunchWeb.AuctionLive do
             </div>
           </article>
 
-          <article class="al-panel al-card">
+          <article id="auction-estimator-card" class="al-panel al-card" phx-hook="MissionMotion">
             <div class="al-section-head">
               <div>
                 <p class="al-kicker">Live estimator</p>
-                <h3>What do I get if nothing else changes?</h3>
+                <h3>What changes if nothing else moves?</h3>
               </div>
             </div>
 
@@ -267,7 +267,7 @@ defmodule AutolaunchWeb.AuctionLive do
         </section>
 
         <section class="al-detail-layout">
-          <article class="al-panel al-card">
+          <article id="auction-position-card" class="al-panel al-card" phx-hook="MissionMotion">
             <div class="al-section-head">
               <div>
                 <p class="al-kicker">Your position</p>
@@ -296,9 +296,9 @@ defmodule AutolaunchWeb.AuctionLive do
                     <.stat_card title="Inactive above" value={position.inactive_above_price} />
                   </div>
 
-                  <p class="al-inline-note">{position.next_action_label}</p>
+              <p class="al-inline-note">{position.next_action_label}</p>
 
-                  <div class="al-action-row">
+              <div class="al-action-row">
                     <.wallet_tx_button
                       :if={position.tx_actions.exit}
                       id={"auction-exit-#{position.bid_id}"}
@@ -328,7 +328,7 @@ defmodule AutolaunchWeb.AuctionLive do
             <% end %>
           </article>
 
-          <article class="al-panel al-card">
+          <article id="auction-model-card" class="al-panel al-card" phx-hook="MissionMotion">
             <div class="al-section-head">
               <div>
                 <p class="al-kicker">How this works</p>
@@ -346,7 +346,7 @@ defmodule AutolaunchWeb.AuctionLive do
       <% else %>
         <.empty_state
           title="Auction not found."
-          body="The requested auction could not be loaded from the local launch surface."
+          body="The requested auction could not be loaded from the local launch view."
           action_label="Back to auctions"
           action_href={~p"/auctions"}
         />

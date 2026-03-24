@@ -1,4 +1,4 @@
-defmodule AutolaunchWeb.ApiSurfaceTest do
+defmodule AutolaunchWeb.ApiRoutesTest do
   use AutolaunchWeb.ConnCase, async: true
 
   test "root serves the public guide", %{conn: conn} do

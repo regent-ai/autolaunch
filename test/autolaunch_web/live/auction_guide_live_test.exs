@@ -7,7 +7,7 @@ defmodule AutolaunchWeb.AuctionGuideLiveTest do
     {:ok, _view, html} = live(conn, "/")
 
     assert html =~ "How autolaunch auctions work."
-    assert html =~ "Each auction sells 10% of an agent&#39;s lifetime revenue tokens."
+    assert html =~ "Each auction sells 10% of an agent&#39;s revenue token supply."
     assert html =~ "USDC on Ethereum mainnet"
     assert html =~ "Stake required"
     assert html =~ "The auction in order"

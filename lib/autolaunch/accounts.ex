@@ -24,19 +24,21 @@ defmodule Autolaunch.Accounts do
 
   defp upsert_fields(attrs, now) do
     attrs
-    |> Enum.reduce([updated_at: now], fn
-      {"wallet_address", value}, acc -> [{:wallet_address, normalize_address(value)} | acc]
-      {:wallet_address, value}, acc -> [{:wallet_address, normalize_address(value)} | acc]
-      {"wallet_addresses", value}, acc -> [{:wallet_addresses, normalize_addresses(value)} | acc]
-      {:wallet_addresses, value}, acc -> [{:wallet_addresses, normalize_addresses(value)} | acc]
-      {"display_name", value}, acc -> [{:display_name, value} | acc]
-      {:display_name, value}, acc -> [{:display_name, value} | acc]
-      {"role", value}, acc -> [{:role, value} | acc]
-      {:role, value}, acc -> [{:role, value} | acc]
-      _, acc -> acc
+    |> Enum.reduce([updated_at: now], fn {key, value}, acc ->
+      case normalize_attr_key(key) do
+        "wallet_address" -> [{:wallet_address, normalize_address(value)} | acc]
+        "wallet_addresses" -> [{:wallet_addresses, normalize_addresses(value)} | acc]
+        "display_name" -> [{:display_name, value} | acc]
+        "role" -> [{:role, value} | acc]
+        _ -> acc
+      end
     end)
     |> Enum.reverse()
   end
+
+  defp normalize_attr_key(key) when is_atom(key), do: Atom.to_string(key)
+  defp normalize_attr_key(key) when is_binary(key), do: key
+  defp normalize_attr_key(_key), do: nil
 
   defp normalize_address(value) when is_binary(value), do: String.downcase(String.trim(value))
   defp normalize_address(_value), do: nil

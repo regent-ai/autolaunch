@@ -6,12 +6,13 @@ import topbar from "../vendor/topbar"
 
 import { hooks } from "./hooks/index"
 
-const csrfToken =
-  (document.querySelector("meta[name='csrf-token']") as HTMLMetaElement | null)?.content || ""
+function readCsrfToken(): string {
+  return document.querySelector<HTMLMetaElement>("meta[name='csrf-token']")?.content?.trim() ?? ""
+}
 
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
-  params: { _csrf_token: csrfToken },
+  params: { _csrf_token: readCsrfToken() },
   hooks,
 })
 
@@ -21,4 +22,5 @@ window.addEventListener("phx:page-loading-stop", () => topbar.hide())
 
 liveSocket.connect()
 
-;(window as Window & { liveSocket?: unknown }).liveSocket = liveSocket
+const globalWindow = window as Window & { liveSocket?: unknown }
+globalWindow.liveSocket = liveSocket

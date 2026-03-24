@@ -7,7 +7,7 @@ defmodule AutolaunchWeb.AgentbookLive do
 
     {:ok,
      socket
-     |> assign(:page_title, "Human Proof")
+     |> assign(:page_title, "Trust Check")
      |> assign(:active_view, "agentbook")
      |> assign(:register_form, register_form)
      |> assign(:lookup_form, lookup_form)
@@ -126,10 +126,10 @@ defmodule AutolaunchWeb.AgentbookLive do
     <.shell current_human={@current_human} active_view={@active_view}>
       <section id="agentbook-hero" class="al-hero al-panel" phx-hook="MissionMotion">
         <div>
-          <p class="al-kicker">World ID + AgentBook</p>
-          <h2>Register an agent wallet to a human-backed World ID proof.</h2>
+          <p class="al-kicker">Trust check + AgentBook</p>
+          <h2>Register an agent wallet to a trust-backed World ID check.</h2>
           <p class="al-subcopy">
-            This public flow creates a World App request, waits for proof completion, then either uses the configured relay or falls back to a normal wallet transaction.
+            This public flow creates a World App request, waits for the trust check to complete, then either uses the configured relay or falls back to a normal wallet transaction.
           </p>
         </div>
 
@@ -146,7 +146,7 @@ defmodule AutolaunchWeb.AgentbookLive do
           <div class="al-section-head">
             <div>
               <p class="al-kicker">Register agent wallet</p>
-              <h3>Create a World App verification request</h3>
+              <h3>Create a World App trust request</h3>
             </div>
           </div>
 
@@ -183,7 +183,7 @@ defmodule AutolaunchWeb.AgentbookLive do
             <div :if={@launch_job_id} class="al-inline-banner">
               <strong>Launch follow-up</strong>
               <p>
-                This registration will be written back to launch job <code>{@launch_job_id}</code> so listings can show the attached human identity and launch count.
+                This registration will be written back to launch job <code>{@launch_job_id}</code> so listings can show the attached trust record and launch count.
               </p>
             </div>
 

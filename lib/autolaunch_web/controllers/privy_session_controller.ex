@@ -37,8 +37,10 @@ defmodule AutolaunchWeb.PrivySessionController do
   defp fetch_bearer_token(conn) do
     case get_req_header(conn, "authorization") do
       ["Bearer " <> token] ->
-        normalized = String.trim(token)
-        if normalized == "", do: {:error, :invalid_authorization_header}, else: {:ok, normalized}
+        case String.trim(token) do
+          "" -> {:error, :invalid_authorization_header}
+          normalized -> {:ok, normalized}
+        end
 
       _ ->
         {:error, :invalid_authorization_header}
@@ -61,19 +63,21 @@ defmodule AutolaunchWeb.PrivySessionController do
 
   defp normalize_wallet_addresses(values) when is_list(values) do
     values
-    |> Enum.map(fn
-      value when is_binary(value) ->
-        case String.trim(value) do
-          "" -> nil
-          trimmed -> String.downcase(trimmed)
-        end
-
-      _ ->
-        nil
-    end)
+    |> Enum.map(&normalize_wallet_address/1)
     |> Enum.reject(&is_nil/1)
     |> Enum.uniq()
   end
 
   defp normalize_wallet_addresses(_values), do: nil
+
+  defp normalize_wallet_address(value) when is_binary(value) do
+    value
+    |> String.trim()
+    |> case do
+      "" -> nil
+      trimmed -> String.downcase(trimmed)
+    end
+  end
+
+  defp normalize_wallet_address(_value), do: nil
 end

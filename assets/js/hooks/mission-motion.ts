@@ -4,84 +4,200 @@ import { animate, stagger } from "../../vendor/anime.esm.js"
 
 interface MotionRoot extends HTMLElement {
   _missionMotionClick?: (event: Event) => void
+  _missionMotionInput?: (event: Event) => void
 }
 
 interface CopyButton extends HTMLElement {
-  _copyResetTimer?: number
+  _missionMotionUpdateTimer?: number
+}
+
+const UPDATE_TARGET_SELECTOR =
+  ".al-stat-card, .al-auction-tile, .al-position-card, .al-review-card, .al-note-card, .al-inline-banner, .al-step-chip"
+
+function reducedMotion(): boolean {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches
+}
+
+function pulse(element: HTMLElement, duration = 560): void {
+  element.classList.add("is-updated")
+
+  animate(element, {
+    scale: [0.985, 1],
+    translateY: [2, 0],
+    duration,
+    ease: "outExpo",
+  })
+
+  window.setTimeout(() => {
+    element.classList.remove("is-updated")
+  }, duration + 160)
+}
+
+function motionSignature(target: HTMLElement): string {
+  if (target instanceof HTMLInputElement) {
+    return [
+      target.value,
+      target.checked ? "checked" : "unchecked",
+      target.disabled ? "disabled" : "enabled",
+    ].join("|")
+  }
+
+  if (target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement) {
+    return [target.value, target.disabled ? "disabled" : "enabled"].join("|")
+  }
+
+  return target.textContent?.replace(/\s+/g, " ").trim() || ""
+}
+
+function animateIntro(root: MotionRoot): void {
+  const directChildren = Array.from(root.children).filter(
+    (child): child is HTMLElement => child instanceof HTMLElement,
+  )
+  const selectors =
+    root.id === "launch-onboard"
+      ? ".al-onboard-summary > *, .al-onboard-card"
+      : root.id === "launch-wizard"
+        ? ".al-step-chip, .al-main-panel, .al-side-panel"
+        : root.id === "launch-hero" || root.id === "auction-detail-hero" || root.id === "auctions-hero" || root.id === "positions-hero"
+          ? ":scope > *"
+          : ""
+
+  const targets =
+    selectors === ""
+      ? directChildren
+      : Array.from(root.querySelectorAll<HTMLElement>(selectors)).filter(
+          (target) => target instanceof HTMLElement,
+        )
+
+  if (targets.length === 0) return
+
+  if (reducedMotion()) {
+    for (const target of targets) {
+      target.style.opacity = "1"
+      target.style.transform = "none"
+    }
+
+    return
+  }
+
+  animate(targets, {
+    opacity: [0, 1],
+    translateY: [root.id === "launch-wizard" ? 16 : 24, 0],
+    delay: stagger(root.id === "launch-wizard" ? 50 : 80),
+    duration: root.id === "launch-wizard" ? 560 : 660,
+    ease: "outExpo",
+  })
+
+  if (root.id === "launch-hero" || root.id === "auction-detail-hero" || root.id === "auctions-hero" || root.id === "positions-hero") {
+    animate(root.querySelectorAll<HTMLElement>(".al-stat-card"), {
+      opacity: [0, 1],
+      translateY: [18, 0],
+      delay: stagger(70),
+      duration: 560,
+      ease: "outExpo",
+    })
+  }
+}
+
+function syncChangeFeedback(root: MotionRoot): void {
+  const targets = Array.from(root.querySelectorAll<HTMLElement>(UPDATE_TARGET_SELECTOR))
+
+  for (const target of targets) {
+    const previous = target.dataset.motionSignature
+    const next = motionSignature(target)
+
+    if (previous && previous !== next) {
+      pulse(target)
+    }
+
+    target.dataset.motionSignature = next
+  }
+}
+
+function addFieldFeedback(root: MotionRoot): void {
+  root._missionMotionInput = (event: Event) => {
+    const target = event.target as HTMLElement | null
+    if (!target) return
+
+    const field = target.closest<HTMLElement>("input, select, textarea")
+    if (!field || !root.contains(field)) return
+
+    field.classList.add("is-updated")
+    pulse(field, 420)
+  }
+
+  root.addEventListener("input", root._missionMotionInput)
+  root.addEventListener("change", root._missionMotionInput)
+}
+
+function addCopyFeedback(root: MotionRoot): void {
+  root._missionMotionClick = (event: Event) => {
+    const target = event.target as HTMLElement | null
+    if (!target) return
+
+    const copyButton = target.closest<HTMLElement>("[data-copy-value]")
+    if (copyButton) {
+      const button = copyButton as CopyButton
+      const value = copyButton.dataset.copyValue || ""
+      if (value) {
+        void navigator.clipboard.writeText(value)
+      }
+
+      const originalLabel = button.dataset.copyLabel || button.textContent?.trim() || "Copy"
+
+      button.dataset.copyLabel = originalLabel
+      button.dataset.copyState = "copied"
+      button.textContent = "Copied"
+      pulse(button, 260)
+
+      if (button._missionMotionUpdateTimer) {
+        window.clearTimeout(button._missionMotionUpdateTimer)
+      }
+
+      button._missionMotionUpdateTimer = window.setTimeout(() => {
+        button.dataset.copyState = "idle"
+        button.textContent = originalLabel
+        button.classList.remove("is-updated")
+      }, 1400)
+
+      return
+    }
+
+    const themeButton = target.closest<HTMLElement>("[data-theme-action='toggle']")
+    if (!themeButton) return
+
+    const current = document.documentElement.getAttribute("data-theme") || "dawn"
+    const next = current === "dawn" ? "midnight" : "dawn"
+    window.dispatchEvent(new CustomEvent("autolaunch:set-theme", { detail: { theme: next } }))
+  }
+
+  root.addEventListener("click", root._missionMotionClick)
 }
 
 export const MissionMotion: Hook = {
   mounted() {
     const root = this.el as MotionRoot
-    const heroTargets = root.matches(".al-hero, .al-detail-hero") ? root : root.querySelectorAll(".al-hero, .al-detail-hero")
-    const cardTargets = root.querySelectorAll(".al-panel, .al-agent-card, .al-auction-tile, .al-position-card")
+    addCopyFeedback(root)
+    addFieldFeedback(root)
+    animateIntro(root)
+    syncChangeFeedback(root)
+  },
 
-    animate(heroTargets, {
-      opacity: [0, 1],
-      translateY: [24, 0],
-      duration: 640,
-      ease: "outExpo",
-    })
-
-    animate(cardTargets, {
-      opacity: [0, 1],
-      translateY: [28, 0],
-      delay: stagger(90),
-      duration: 700,
-      ease: "outExpo",
-    })
-
-    root._missionMotionClick = (event: Event) => {
-      const target = event.target as HTMLElement | null
-      if (!target) return
-
-      const copyButton = target.closest<HTMLElement>("[data-copy-value]")
-      if (copyButton) {
-        const value = copyButton.dataset.copyValue || ""
-        if (value) {
-          void navigator.clipboard.writeText(value)
-        }
-
-        const button = copyButton as CopyButton
-        const originalLabel = button.dataset.copyLabel || button.textContent?.trim() || "Copy"
-
-        button.dataset.copyLabel = originalLabel
-        button.dataset.copyState = "copied"
-        button.textContent = "Copied"
-
-        animate(button, {
-          scale: [0.98, 1],
-          duration: 220,
-          ease: "outExpo",
-        })
-
-        if (button._copyResetTimer) {
-          window.clearTimeout(button._copyResetTimer)
-        }
-
-        button._copyResetTimer = window.setTimeout(() => {
-          button.dataset.copyState = "idle"
-          button.textContent = originalLabel
-        }, 1400)
-
-        return
-      }
-
-      const themeButton = target.closest<HTMLElement>("[data-theme-action='toggle']")
-      if (!themeButton) return
-
-      const current = document.documentElement.getAttribute("data-theme") || "dawn"
-      const next = current === "dawn" ? "midnight" : "dawn"
-      window.dispatchEvent(new CustomEvent("autolaunch:set-theme", { detail: { theme: next } }))
-    }
-
-    root.addEventListener("click", root._missionMotionClick)
+  updated() {
+    const root = this.el as MotionRoot
+    syncChangeFeedback(root)
   },
 
   destroyed() {
     const root = this.el as MotionRoot
+
     if (root._missionMotionClick) {
       root.removeEventListener("click", root._missionMotionClick)
+    }
+
+    if (root._missionMotionInput) {
+      root.removeEventListener("input", root._missionMotionInput)
+      root.removeEventListener("change", root._missionMotionInput)
     }
   },
 }

@@ -1145,6 +1145,23 @@ textarea {
 .al-note-card,
 .al-inline-banner,
 .al-muted-box,
+.al-check-item,
+.al-agent-card,
+.al-auction-tile,
+.al-position-card,
+.al-step-chip {
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    background 180ms ease;
+}
+
+.al-stat-card,
+.al-review-card,
+.al-note-card,
+.al-inline-banner,
+.al-muted-box,
 .al-check-item {
   padding: 0.95rem;
 }
@@ -1211,6 +1228,27 @@ textarea {
 
 .al-step-chip.is-complete {
   border-color: rgba(21, 128, 61, 0.3);
+}
+
+.al-stat-card.is-updated,
+.al-review-card.is-updated,
+.al-note-card.is-updated,
+.al-inline-banner.is-updated,
+.al-muted-box.is-updated,
+.al-check-item.is-updated,
+.al-agent-card.is-updated,
+.al-auction-tile.is-updated,
+.al-position-card.is-updated,
+.al-step-chip.is-updated {
+  border-color: rgba(15, 118, 110, 0.34);
+  box-shadow: 0 18px 34px -28px rgba(15, 118, 110, 0.42);
+}
+
+.al-form input.is-updated,
+.al-form select.is-updated,
+.al-form textarea.is-updated {
+  border-color: rgba(15, 118, 110, 0.42);
+  box-shadow: 0 0 0 0.18rem rgba(15, 118, 110, 0.12);
 }
 
 [data-copy-value][data-copy-state="copied"] {

@@ -125,7 +125,7 @@ defmodule AutolaunchWeb.Api.LaunchController do
 
   defp client_ip(conn) do
     case get_req_header(conn, "x-forwarded-for") do
-      [value | _] -> value |> String.split(",") |> hd() |> String.trim()
+      [value | _] -> value |> String.split(",", parts: 2) |> hd() |> String.trim()
       _ -> conn.remote_ip |> :inet.ntoa() |> to_string()
     end
   end

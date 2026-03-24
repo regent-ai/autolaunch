@@ -33,6 +33,14 @@ function buildSiwaMessage(args: {
   ].join("\n")
 }
 
+function readCsrfToken(): string {
+  return document.querySelector<HTMLMetaElement>("meta[name='csrf-token']")?.content?.trim() ?? ""
+}
+
+function firstRequestedAccount(result: unknown): string {
+  return Array.isArray(result) ? String(result[0] ?? "") : ""
+}
+
 function readForm(root: HTMLElement): Record<string, string | boolean> {
   const fields = Array.from(root.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("input[name], textarea[name]"))
 
@@ -72,16 +80,15 @@ export const LaunchForm: Hook = {
       this.pushEvent("launch_submitting", {})
 
       try {
-        const accountResult = await ethereum.request({ method: "eth_requestAccounts" })
-        const walletAddress = Array.isArray(accountResult) ? String(accountResult[0] || "") : ""
+        const walletAddress = firstRequestedAccount(await ethereum.request({ method: "eth_requestAccounts" }))
         if (!walletAddress) throw new Error("Wallet connection was cancelled.")
 
-        const chainId = parseLaunchChainId(submitButton.dataset.launchChainId)
+        const { launchChainId, nonceEndpoint = "/v1/agent/siwa/nonce", launchEndpoint = "/api/launch/jobs" } =
+          submitButton.dataset
+        const chainId = parseLaunchChainId(launchChainId)
         if (!chainId) {
           throw new Error("Launch network is unavailable. Refresh and try again.")
         }
-        const nonceEndpoint = submitButton.dataset.nonceEndpoint || "/v1/agent/siwa/nonce"
-        const launchEndpoint = submitButton.dataset.launchEndpoint || "/api/launch/jobs"
         const issuedAt = new Date().toISOString()
 
         const nonceResponse = await fetch(nonceEndpoint, {
@@ -114,9 +121,7 @@ export const LaunchForm: Hook = {
           params: [message, walletAddress],
         })) as string
 
-        const csrfToken =
-          document.querySelector<HTMLMetaElement>("meta[name='csrf-token']")?.content?.trim() || ""
-
+        const csrfToken = readCsrfToken()
         const form = readForm(this.el)
         const response = await fetch(launchEndpoint, {
           method: "POST",

@@ -24,7 +24,7 @@ const POLL_INTERVAL_MS = 2_000
 const MAX_POLLS = 45
 
 function csrfToken(): string {
-  return document.querySelector<HTMLMetaElement>("meta[name='csrf-token']")?.content?.trim() || ""
+  return document.querySelector<HTMLMetaElement>("meta[name='csrf-token']")?.content?.trim() ?? ""
 }
 
 function parseJsonAttr(value: string | undefined): Record<string, unknown> {
@@ -40,6 +40,14 @@ function parseJsonAttr(value: string | undefined): Record<string, unknown> {
 
 function hexChainId(chainId: number): string {
   return `0x${chainId.toString(16)}`
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms))
+}
+
+function firstRequestedAccount(result: unknown): string {
+  return Array.isArray(result) ? String(result[0] ?? "") : ""
 }
 
 async function ensureWalletChain(ethereum: EthereumProvider, chainId: number): Promise<void> {
@@ -79,7 +87,7 @@ async function registerConfirmedTx(
     }
 
     if (response.status === 202 || payload.error?.code === "transaction_pending") {
-      await new Promise((resolve) => window.setTimeout(resolve, POLL_INTERVAL_MS))
+      await sleep(POLL_INTERVAL_MS)
       continue
     }
 
@@ -101,14 +109,14 @@ async function waitForReceipt(ethereum: EthereumProvider, txHash: string): Promi
     })) as TransactionReceipt | null
 
     if (!receipt) {
-      await new Promise((resolve) => window.setTimeout(resolve, POLL_INTERVAL_MS))
+      await sleep(POLL_INTERVAL_MS)
       continue
     }
 
     if (receipt.status === "0x1") return
     if (receipt.status === "0x0") throw new Error("Transaction reverted onchain.")
 
-    await new Promise((resolve) => window.setTimeout(resolve, POLL_INTERVAL_MS))
+    await sleep(POLL_INTERVAL_MS)
   }
 
   throw new Error("Timed out waiting for chain confirmation.")
@@ -145,8 +153,7 @@ export const WalletTxButton: Hook = {
       hook.pushEvent("wallet_tx_started", { message: pendingMessage })
 
       try {
-        const accountResult = await ethereum.request({ method: "eth_requestAccounts" })
-        const from = Array.isArray(accountResult) ? String(accountResult[0] || "") : ""
+        const from = firstRequestedAccount(await ethereum.request({ method: "eth_requestAccounts" }))
         if (!from) throw new Error("Wallet connection was cancelled.")
 
         await ensureWalletChain(ethereum, chainId)

@@ -31,16 +31,16 @@ defmodule AutolaunchWeb.Api.AgentController do
         ApiError.render(conn, :not_found, "readiness_not_found", "Agent readiness not found")
 
       readiness ->
-        agent = Launch.get_agent(current_human, id)
+        agent = Launch.get_agent(current_human, id) || %{}
 
         json(conn, %{
           ok: true,
           agent_id: id,
-          agent_name: agent && agent.name,
+          agent_name: Map.get(agent, :name),
           launch_eligible: readiness.ready_to_launch,
           launch_blockers: launch_blockers(readiness),
-          existing_token: agent && agent.existing_token,
-          supported_chains: (agent && agent.supported_chains) || [],
+          existing_token: Map.get(agent, :existing_token),
+          supported_chains: Map.get(agent, :supported_chains, []),
           readiness: readiness
         })
     end

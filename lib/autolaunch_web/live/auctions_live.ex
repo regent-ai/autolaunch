@@ -61,8 +61,8 @@ defmodule AutolaunchWeb.AuctionsLive do
           <p class="al-kicker">Auction Market</p>
           <h2>Sort for recent velocity, not stale lifetime volume.</h2>
           <p class="al-subcopy">
-            Hottest is weighted toward recent bid velocity and recent volume so the market feels alive.
-            Detail pages carry the deeper estimator and active/inactive thresholds.
+            Hottest is weighted toward recent bid velocity and recent volume so the market stays current.
+            Detail pages carry the deeper estimator and lifecycle thresholds.
           </p>
 
           <div class="al-hero-actions">
@@ -73,8 +73,8 @@ defmodule AutolaunchWeb.AuctionsLive do
         </div>
 
         <div class="al-stat-grid">
-          <.stat_card title="Active auctions" value={Integer.to_string(@active_count)} />
-          <.stat_card title="Expired" value={Integer.to_string(@expired_count)} />
+          <.stat_card title="Live auctions" value={Integer.to_string(@active_count)} />
+          <.stat_card title="Settling" value={Integer.to_string(@expired_count)} />
           <.stat_card title="Your markets" value={Integer.to_string(@mine_count)} hint="Requires sign-in" />
         </div>
       </section>
@@ -90,14 +90,21 @@ defmodule AutolaunchWeb.AuctionsLive do
             </select>
           </label>
 
-          <label>
-            <span>Status</span>
-            <select name="filters[status]">
-              <option value="" selected={@filters["status"] == ""}>All</option>
-              <option value="active" selected={@filters["status"] == "active"}>Active</option>
-              <option value="expired" selected={@filters["status"] == "expired"}>Expired</option>
-            </select>
-          </label>
+            <label>
+              <span>Status</span>
+              <select name="filters[status]">
+                <option value="" selected={@filters["status"] == ""}>All</option>
+                <option value="active" selected={@filters["status"] == "active"}>Active</option>
+                <option value="ending-soon" selected={@filters["status"] == "ending-soon"}>Ending soon</option>
+                <option value="borderline" selected={@filters["status"] == "borderline"}>Borderline</option>
+                <option value="inactive" selected={@filters["status"] == "inactive"}>Inactive</option>
+                <option value="claimable" selected={@filters["status"] == "claimable"}>Claimable</option>
+                <option value="pending-claim" selected={@filters["status"] == "pending-claim"}>Pending claim</option>
+                <option value="claimed" selected={@filters["status"] == "claimed"}>Claimed</option>
+                <option value="exited" selected={@filters["status"] == "exited"}>Exited</option>
+                <option value="settled" selected={@filters["status"] == "settled"}>Settled</option>
+              </select>
+            </label>
 
           <label>
             <span>Chain</span>
@@ -123,12 +130,12 @@ defmodule AutolaunchWeb.AuctionsLive do
       <%= if @auctions == [] do %>
         <.empty_state
           title="No auctions match the current filter."
-          body="Relax the filters or wait for the next launch queue to settle into a live market."
+          body="Relax the filters or wait for the next launch queue to fill the market."
         />
       <% else %>
         <section class="al-auction-grid">
           <%= for auction <- @auctions do %>
-            <article class="al-panel al-auction-tile">
+            <article id={"auction-tile-#{auction.id}"} class="al-panel al-auction-tile" phx-hook="MissionMotion">
               <div class="al-auction-card-head">
                 <div>
                   <p class="al-kicker">{auction.agent_id}</p>
@@ -156,7 +163,7 @@ defmodule AutolaunchWeb.AuctionsLive do
                   ENS {if auction.ens_attached, do: "linked", else: "pending"}
                 </span>
                 <span class="al-network-badge">
-                  World {if auction.world_registered, do: "attached", else: "pending"}
+                  Trust {if auction.world_registered, do: "checked", else: "pending"}
                 </span>
               </div>
 
@@ -185,18 +192,18 @@ defmodule AutolaunchWeb.AuctionsLive do
          ens_attached: true
        })
        when count > 0 do
-    "ENS is linked, World proof is attached, and this human has launched #{count} tokens through autolaunch."
+    "ENS is linked, the trust check is complete, and this operator has launched #{count} tokens through autolaunch."
   end
 
   defp listing_completion_copy(%{world_registered: true, ens_attached: true}),
-    do: "ENS is linked and World proof is attached."
+    do: "ENS is linked and the trust check is complete."
 
   defp listing_completion_copy(%{world_registered: true}),
-    do: "World proof is attached. ENS still needs to be linked on the creator identity."
+    do: "The trust check is complete. ENS still needs to be linked on the creator identity."
 
   defp listing_completion_copy(%{ens_attached: true}),
-    do: "ENS is linked. World proof still needs a human to finish registration."
+    do: "ENS is linked. The trust check still needs to be completed."
 
   defp listing_completion_copy(_auction),
-    do: "Both the ENS link and the World proof are still open follow-up steps."
+    do: "Both the ENS link and the trust check are still open follow-up steps."
 end

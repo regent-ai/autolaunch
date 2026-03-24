@@ -25,7 +25,7 @@ defmodule Autolaunch.Application do
   defp enforce_siwa_runtime_guard! do
     runtime_env = Application.get_env(:autolaunch, :runtime_env, :dev)
     siwa_cfg = Application.get_env(:autolaunch, :siwa, [])
-    skip_http_verify? = Keyword.get(siwa_cfg, :skip_http_verify, false) == true
+    skip_http_verify? = Keyword.get(siwa_cfg, :skip_http_verify, false)
 
     if skip_http_verify? and runtime_env != :test do
       raise """

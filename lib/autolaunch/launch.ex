@@ -81,9 +81,9 @@ defmodule Autolaunch.Launch do
   end
 
   def chain_options do
-    @supported_chain_ids
-    |> Enum.map(&chain_config!/1)
-    |> Enum.map(fn config ->
+    Enum.map(@supported_chain_ids, fn chain_id ->
+      config = chain_config!(chain_id)
+
       %{
         id: config.id,
         key: config.key,
@@ -174,7 +174,7 @@ defmodule Autolaunch.Launch do
         next_steps: [
           "Sign the SIWA message with a linked wallet that controls this ERC-8004 identity.",
           "Queue the Ethereum mainnet launch deployment.",
-          "Wait for the deploy script to return the launch, fee, subject, and revsplit addresses.",
+          "Wait for the deploy script to return the auction, fee hook, subject registry, revenue splitter, and ingress addresses.",
           "Wait for the auction page, then stake claimed tokens to earn revenue."
         ],
         launch_notes: launch_notes,
@@ -286,15 +286,12 @@ defmodule Autolaunch.Launch do
         nil
 
       %Job{} = job ->
-        if owner_address && normalize_address(owner_address) != job.owner_address do
+        normalized_owner_address = normalize_address(owner_address)
+
+        if normalized_owner_address && normalized_owner_address != job.owner_address do
           {:error, :forbidden}
         else
-          auction =
-            if is_binary(job.auction_address) and job.auction_address != "" do
-              get_auction_by_address(job.network, job.auction_address, nil)
-            end
-
-          %{job: serialize_job(job), auction: auction}
+          %{job: serialize_job(job), auction: maybe_load_job_auction(job)}
         end
     end
   rescue
@@ -605,6 +602,9 @@ defmodule Autolaunch.Launch do
                 subject_registry_address: result.subject_registry_address,
                 subject_id: result.subject_id,
                 revenue_share_splitter_address: result.revenue_share_splitter_address,
+                default_ingress_address: result.default_ingress_address,
+                revenue_ingress_router_address: result.revenue_ingress_router_address,
+                pool_id: result.pool_id,
                 tx_hash: result.tx_hash,
                 uniswap_url: result.uniswap_url,
                 stdout_tail: result.stdout_tail,
@@ -621,7 +621,10 @@ defmodule Autolaunch.Launch do
                 "launch_fee_vault_address" => result.launch_fee_vault_address,
                 "subject_registry_address" => result.subject_registry_address,
                 "subject_id" => result.subject_id,
-                "revenue_share_splitter_address" => result.revenue_share_splitter_address
+                "revenue_share_splitter_address" => result.revenue_share_splitter_address,
+                "default_ingress_address" => result.default_ingress_address,
+                "revenue_ingress_router_address" => result.revenue_ingress_router_address,
+                "pool_id" => result.pool_id
               },
               launch_tx_hash: result.tx_hash,
               completed_at: DateTime.utc_now()
@@ -1318,6 +1321,8 @@ defmodule Autolaunch.Launch do
     subject_registry_address = "0x" <> String.duplicate("d", 40)
     subject_id = "0x" <> String.duplicate("1", 64)
     revenue_share_splitter_address = "0x" <> String.duplicate("6", 40)
+    default_ingress_address = "0x" <> String.duplicate("7", 40)
+    revenue_ingress_router_address = "0x" <> String.duplicate("8", 40)
     pool_id = "0x" <> String.duplicate("f", 64)
 
     {:ok,
@@ -1330,10 +1335,13 @@ defmodule Autolaunch.Launch do
        subject_registry_address: subject_registry_address,
        subject_id: subject_id,
        revenue_share_splitter_address: revenue_share_splitter_address,
+       default_ingress_address: default_ingress_address,
+       revenue_ingress_router_address: revenue_ingress_router_address,
+       pool_id: pool_id,
        tx_hash: "0x" <> String.duplicate("a", 64),
        uniswap_url: to_uniswap_url(job.chain_id, token_address),
        stdout_tail:
-         "CCA_RESULT_JSON:{\"factoryAddress\":\"#{deploy_factory_address(job.chain_id)}\",\"auctionAddress\":\"#{auction_address}\",\"tokenAddress\":\"#{token_address}\",\"hookAddress\":\"#{hook_address}\",\"launchFeeRegistryAddress\":\"#{launch_fee_registry_address}\",\"feeVaultAddress\":\"#{launch_fee_vault_address}\",\"subjectRegistryAddress\":\"#{subject_registry_address}\",\"subjectId\":\"#{subject_id}\",\"revenueShareSplitterAddress\":\"#{revenue_share_splitter_address}\",\"poolId\":\"#{pool_id}\"}",
+         "CCA_RESULT_JSON:{\"factoryAddress\":\"#{deploy_factory_address(job.chain_id)}\",\"auctionAddress\":\"#{auction_address}\",\"tokenAddress\":\"#{token_address}\",\"hookAddress\":\"#{hook_address}\",\"launchFeeRegistryAddress\":\"#{launch_fee_registry_address}\",\"feeVaultAddress\":\"#{launch_fee_vault_address}\",\"subjectRegistryAddress\":\"#{subject_registry_address}\",\"subjectId\":\"#{subject_id}\",\"revenueShareSplitterAddress\":\"#{revenue_share_splitter_address}\",\"defaultIngressAddress\":\"#{default_ingress_address}\",\"revenueIngressRouterAddress\":\"#{revenue_ingress_router_address}\",\"poolId\":\"#{pool_id}\"}",
        stderr_tail: ""
      }}
   end
@@ -1391,41 +1399,45 @@ defmodule Autolaunch.Launch do
     with true <- String.contains?(output, marker),
          [_prefix, json_line | _] <- String.split(output, marker, parts: 2),
          [line | _] <- String.split(json_line, ~r/\r?\n/, trim: true),
-         {:ok, parsed} <- Jason.decode(String.trim(line)) do
-      auction_address = normalize_address(Map.get(parsed, "auctionAddress"))
-      token_address = normalize_address(Map.get(parsed, "tokenAddress"))
-      hook_address = normalize_address(Map.get(parsed, "hookAddress"))
-      launch_fee_registry_address = normalize_address(Map.get(parsed, "launchFeeRegistryAddress"))
-      launch_fee_vault_address = normalize_address(Map.get(parsed, "feeVaultAddress"))
-      subject_registry_address = normalize_address(Map.get(parsed, "subjectRegistryAddress"))
-      subject_id = Map.get(parsed, "subjectId")
-
-      revenue_share_splitter_address =
-        normalize_address(Map.get(parsed, "revenueShareSplitterAddress"))
-
-      tx_hash = Map.get(parsed, "txHash")
-
-      if blank?(auction_address) do
-        {:error, "Deployment output did not include auctionAddress.",
-         %{stdout_tail: trim_tail(output), stderr_tail: ""}}
-      else
-        {:ok,
-         %{
-           auction_address: auction_address,
-           token_address: token_address,
-           hook_address: hook_address,
-           launch_fee_registry_address: launch_fee_registry_address,
-           launch_fee_vault_address: launch_fee_vault_address,
-           subject_registry_address: subject_registry_address,
-           subject_id: subject_id,
-           revenue_share_splitter_address: revenue_share_splitter_address,
-           tx_hash: tx_hash,
-           uniswap_url: to_uniswap_url(job.chain_id, token_address),
-           stdout_tail: trim_tail(output),
-           stderr_tail: ""
-         }}
-      end
+         {:ok, parsed} <- Jason.decode(String.trim(line)),
+         {:ok, auction_address} <- required_launch_output_address(parsed, "auctionAddress"),
+         {:ok, token_address} <- required_launch_output_address(parsed, "tokenAddress"),
+         {:ok, hook_address} <- required_launch_output_address(parsed, "hookAddress"),
+         {:ok, launch_fee_registry_address} <-
+           required_launch_output_address(parsed, "launchFeeRegistryAddress"),
+         {:ok, launch_fee_vault_address} <-
+           required_launch_output_address(parsed, "feeVaultAddress"),
+         {:ok, subject_registry_address} <-
+           required_launch_output_address(parsed, "subjectRegistryAddress"),
+         {:ok, subject_id} <- required_launch_output_hex(parsed, "subjectId", 64),
+         {:ok, revenue_share_splitter_address} <-
+           required_launch_output_address(parsed, "revenueShareSplitterAddress"),
+         {:ok, default_ingress_address} <-
+           required_launch_output_address(parsed, "defaultIngressAddress"),
+         {:ok, pool_id} <- required_launch_output_hex(parsed, "poolId", 64) do
+      {:ok,
+       %{
+         auction_address: auction_address,
+         token_address: token_address,
+         hook_address: hook_address,
+         launch_fee_registry_address: launch_fee_registry_address,
+         launch_fee_vault_address: launch_fee_vault_address,
+         subject_registry_address: subject_registry_address,
+         subject_id: subject_id,
+         revenue_share_splitter_address: revenue_share_splitter_address,
+         default_ingress_address: default_ingress_address,
+         revenue_ingress_router_address:
+           optional_launch_output_address(parsed, "revenueIngressRouterAddress"),
+         pool_id: pool_id,
+         tx_hash: Map.get(parsed, "txHash"),
+         uniswap_url: to_uniswap_url(job.chain_id, token_address),
+         stdout_tail: trim_tail(output),
+         stderr_tail: ""
+       }}
     else
+      {:error, message} ->
+        {:error, message, %{stdout_tail: trim_tail(output), stderr_tail: ""}}
+
       _ ->
         {:error, "Deployment output missing deterministic marker #{marker}.",
          %{stdout_tail: trim_tail(output), stderr_tail: ""}}
@@ -1478,6 +1490,9 @@ defmodule Autolaunch.Launch do
       subject_registry_address: job.subject_registry_address,
       subject_id: job.subject_id,
       revenue_share_splitter_address: job.revenue_share_splitter_address,
+      default_ingress_address: job.default_ingress_address,
+      revenue_ingress_router_address: job.revenue_ingress_router_address,
+      pool_id: job.pool_id,
       tx_hash: job.tx_hash,
       uniswap_url: job.uniswap_url,
       world_registered: job.world_registered,
@@ -1855,7 +1870,7 @@ defmodule Autolaunch.Launch do
   defp normalize_address(_value), do: nil
 
   defp linked_wallet_addresses(%HumanUser{} = human) do
-    [human.wallet_address | human.wallet_addresses || []]
+    [human.wallet_address | List.wrap(human.wallet_addresses)]
     |> Enum.map(&normalize_address/1)
     |> Enum.reject(&is_nil/1)
     |> Enum.uniq()
@@ -1863,12 +1878,8 @@ defmodule Autolaunch.Launch do
 
   defp linked_wallet_addresses(_human), do: []
 
-  defp primary_wallet_address(%HumanUser{} = human) do
-    case linked_wallet_addresses(human) do
-      [wallet | _rest] -> wallet
-      [] -> nil
-    end
-  end
+  defp primary_wallet_address(%HumanUser{} = human),
+    do: human |> linked_wallet_addresses() |> List.first()
 
   defp normalize_chain_id(value) when is_integer(value) do
     if value == 1, do: {:ok, value}, else: {:error, :invalid_chain_id}
@@ -1883,15 +1894,15 @@ defmodule Autolaunch.Launch do
 
   defp normalize_chain_id(_value), do: {:error, :invalid_chain_id}
 
-  defp normalize_total_supply(value) when is_binary(value) do
-    if String.trim(value) == "", do: @agent_launch_total_supply, else: @agent_launch_total_supply
-  end
-
   defp normalize_total_supply(_value), do: @agent_launch_total_supply
 
   defp required_text(value, max_length, error_atom) when is_binary(value) do
-    value = String.trim(value)
-    if value == "", do: {:error, error_atom}, else: {:ok, String.slice(value, 0, max_length)}
+    value
+    |> String.trim()
+    |> case do
+      "" -> {:error, error_atom}
+      trimmed -> {:ok, String.slice(trimmed, 0, max_length)}
+    end
   end
 
   defp required_text(_value, _max_length, error_atom), do: {:error, error_atom}
@@ -1933,8 +1944,12 @@ defmodule Autolaunch.Launch do
   defp required_tx_hash(_value), do: {:error, :invalid_transaction_hash}
 
   defp normalize_optional_text(value, max_length) when is_binary(value) do
-    value = String.trim(value)
-    if value == "", do: nil, else: String.slice(value, 0, max_length)
+    value
+    |> String.trim()
+    |> case do
+      "" -> nil
+      trimmed -> String.slice(trimmed, 0, max_length)
+    end
   end
 
   defp normalize_optional_text(_value, _max_length), do: nil
@@ -1951,6 +1966,34 @@ defmodule Autolaunch.Launch do
   defp trim_tail(output) when is_binary(output) do
     String.slice(output, max(String.length(output) - 20_000, 0), 20_000)
   end
+
+  defp required_launch_output_address(parsed, key) do
+    case normalize_address(Map.get(parsed, key)) do
+      value when is_binary(value) -> {:ok, value}
+      _ -> {:error, "Deployment output did not include #{key}."}
+    end
+  end
+
+  defp optional_launch_output_address(parsed, key) do
+    case normalize_address(Map.get(parsed, key)) do
+      "0x0000000000000000000000000000000000000000" -> nil
+      value -> value
+    end
+  end
+
+  defp required_launch_output_hex(parsed, key, bytes) do
+    case Map.get(parsed, key) do
+      "0x" <> value = hex when byte_size(value) == bytes -> {:ok, String.downcase(hex)}
+      _ -> {:error, "Deployment output did not include #{key}."}
+    end
+  end
+
+  defp maybe_load_job_auction(%Job{auction_address: address, network: network})
+       when is_binary(address) and address != "" do
+    get_auction_by_address(network, address, nil)
+  end
+
+  defp maybe_load_job_auction(_job), do: nil
 
   defp blank?(value), do: value in [nil, ""]
 

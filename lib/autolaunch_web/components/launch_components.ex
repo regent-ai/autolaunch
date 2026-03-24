@@ -21,7 +21,7 @@ defmodule AutolaunchWeb.LaunchComponents do
           <p class="al-kicker">Regent CCA</p>
           <div>
             <h1>autolaunch.sh</h1>
-            <p>Guided launches for humans. Deterministic routes for auctions and positions.</p>
+            <p>Guided launches for operators. Deterministic routes for auctions, positions, and trust checks.</p>
           </div>
         </div>
 
@@ -30,7 +30,7 @@ defmodule AutolaunchWeb.LaunchComponents do
             How It Works
           </.nav_link>
           <.nav_link active={@active_view == "launch"} navigate={~p"/launch"}>Launch</.nav_link>
-          <.nav_link active={@active_view == "agentbook"} navigate={~p"/agentbook"}>Human Proof</.nav_link>
+          <.nav_link active={@active_view == "agentbook"} navigate={~p"/agentbook"}>Trust Check</.nav_link>
           <.nav_link active={@active_view == "ens"} navigate={~p"/ens-link"}>ENS Link</.nav_link>
           <.nav_link active={@active_view == "auctions"} navigate={~p"/auctions"}>Auctions</.nav_link>
           <.nav_link active={@active_view == "positions"} navigate={~p"/positions"}>Positions</.nav_link>
@@ -192,10 +192,14 @@ defmodule AutolaunchWeb.LaunchComponents do
   end
 
   defp status_class(status) when status in ["ready", "active", "claimable"], do: "is-ready"
-  defp status_class(status) when status in ["queued", "running", "borderline"], do: "is-warn"
 
-  defp status_class(status) when status in ["inactive", "failed", "expired", "settled"],
-    do: "is-danger"
+  defp status_class(status)
+       when status in ["queued", "running", "borderline", "ending-soon", "pending-claim"],
+       do: "is-warn"
+
+  defp status_class(status)
+       when status in ["inactive", "failed", "expired", "settled", "claimed", "exited"],
+       do: "is-danger"
 
   defp status_class(_status), do: "is-muted"
 
@@ -211,12 +215,20 @@ defmodule AutolaunchWeb.LaunchComponents do
   end
 
   defp humanize_state(status) do
-    status
-    |> to_string()
-    |> String.replace("-", " ")
-    |> String.replace("_", " ")
-    |> String.split()
-    |> Enum.map_join(" ", &String.capitalize/1)
+    case to_string(status) do
+      "ending-soon" ->
+        "Ending soon"
+
+      "pending-claim" ->
+        "Pending claim"
+
+      other ->
+        other
+        |> String.replace("-", " ")
+        |> String.replace("_", " ")
+        |> String.split()
+        |> Enum.map_join(" ", &String.capitalize/1)
+    end
   end
 
   defp privy_app_id do

@@ -1,4 +1,4 @@
-defmodule AutolaunchWeb.SurfaceLiveTest do
+defmodule AutolaunchWeb.LaunchPagesTest do
   use AutolaunchWeb.ConnCase, async: false
 
   import Phoenix.LiveViewTest
@@ -191,14 +191,14 @@ defmodule AutolaunchWeb.SurfaceLiveTest do
     |> element("button[phx-click='prepare_review']")
     |> render_click()
 
-    assert render(view) =~ "Optional trust step"
+    assert render(view) =~ "Optional trust check"
 
     assert render(view) =~
              "The next screen gives the links and lets you skip this without blocking launch."
 
     html = render_hook(view, "launch_queued", %{"job_id" => "job_queued"})
 
-    assert html =~ "Optional reputation step"
+    assert html =~ "Optional trust check"
     assert html =~ "To improve agent token reputation, you can optionally link an ENS name"
     assert html =~ "Skip for now"
     assert html =~ "Open ENS planner"

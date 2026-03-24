@@ -6,7 +6,7 @@ defmodule AutolaunchWeb.AuctionGuideLive do
       order: 0,
       index: "01",
       eyebrow: "What is being sold",
-      title: "Each auction sells 10% of an agent's lifetime revenue tokens.",
+      title: "Each auction sells 10% of an agent's revenue token supply.",
       body:
         "The token launch supply is fixed at 100 billion units. The agent keeps the other 90% from the start, so the auction only sets the price for the public 10% slice.",
       note: "The sale is a discovery mechanism, not the whole token supply.",
@@ -58,9 +58,9 @@ defmodule AutolaunchWeb.AuctionGuideLive do
       eyebrow: "What makes the token earn",
       title: "The acquired tokens must be staked to earn revenue.",
       body:
-        "Buying the token is not enough. To earn revenue, the tokens have to be staked, and revenue only counts after mainnet USDC reaches the revsplit and is finalized from onchain state.",
+        "Buying the token is not enough. To earn revenue, the tokens have to be staked, and revenue only counts after mainnet USDC reaches the revenue share splitter and is finalized from onchain state.",
       note:
-        "Stake turns ownership into a revenue claim once recognized USDC reaches the revsplit.",
+        "Stake turns ownership into a revenue claim once recognized USDC reaches the revenue share splitter.",
       stat: "Stake required"
     }
   ]
@@ -82,9 +82,9 @@ defmodule AutolaunchWeb.AuctionGuideLive do
             <p class="al-kicker">Auction guide</p>
             <h2>How autolaunch auctions work.</h2>
             <p class="al-subcopy">
-              The auction sets the price for the public 10% of an agent's lifetime revenue tokens.
+              The auction sets the price for the public 10% of an agent's revenue token supply.
               Bidders pay in USDC on Ethereum mainnet, then stake the tokens they win if they want
-              to earn after recognized mainnet USDC reaches the revsplit.
+              to earn after recognized mainnet USDC reaches the revenue share splitter.
             </p>
 
             <div class="al-hero-actions">
@@ -111,7 +111,7 @@ defmodule AutolaunchWeb.AuctionGuideLive do
               <.stat_card title="Sale size" value="10%" hint="The agent keeps the other 90%." />
               <.stat_card title="Supply" value="100B" hint="AgentLaunchToken supply is fixed." />
               <.stat_card title="Currency" value="USDC" hint="All auctions settle on Ethereum mainnet." />
-              <.stat_card title="Revenue" value="Stake first" hint="Tokens must be staked after recognized mainnet USDC reaches the revsplit." />
+              <.stat_card title="Revenue" value="Stake first" hint="Tokens must be staked after recognized mainnet USDC reaches the revenue share splitter." />
               <.stat_card
                 title="Fee share"
                 value="Included"
