@@ -1,16 +1,22 @@
 # Autolaunch Contracts Overview
 
-This package now covers the full Autolaunch contract system, from launch through ongoing revenue recognition and emissions.
+This package now covers the full Autolaunch contract system, from launch through ongoing revenue recognition.
 
 ## Core contracts
 
 ### Launch-side stack
 
-- `AgentLaunchToken`
-  - the launched agent token with the fixed 100 billion supply convention used by the launch flow
 - `LaunchDeploymentController`
   - assembles the launch stack in one call
-  - deploys the token, auction, fee plumbing, and subject splitter
+  - deploys the token, strategy-owned auction, vesting wallet, fee plumbing, subject splitter, and default ingress
+- `AgentTokenVestingWallet`
+  - holds the 85% retained launch allocation on a timestamp vesting schedule
+- `RegentLBPStrategy`
+  - owns the 15% launch-side token supply
+  - creates the auction
+  - migrates the LP slice and later sweeps leftovers
+- `RegentLBPStrategyFactory`
+  - creates the per-launch Regent strategy instance
 - `LaunchFeeRegistry`
   - records the official pool configuration and recipients for each launch pool
 - `LaunchFeeVault`
@@ -20,18 +26,20 @@ This package now covers the full Autolaunch contract system, from launch through
   - 1% goes to the subject revenue lane
   - 1% goes to the Regent side
 
-### Revenue / emissions stack
+### Revenue stack
 
 - `SubjectRegistry`
   - canonical record for each launched subject
-  - links the stake token, splitter, treasury safe, linked identities, and emission recipient
+  - links the stake token, splitter, treasury safe, and linked identities
 - `RevenueShareFactory`
   - deploys the revsplit for a subject and provisions the subject record
+- `RevenueIngressFactory`
+  - deploys the canonical per-subject USDC receiving addresses
+- `RevenueIngressAccount`
+  - receives raw USDC and sweeps it into splitter accounting
 - `RevenueShareSplitter`
   - canonical revsplit and staking contract for the launched token
   - only mainnet USDC that reaches this contract counts as recognized revenue
-- `MainnetRegentEmissionsController`
-  - mainnet emissions rail for recognized onchain USDC revenue
 
 ## External dependencies
 
@@ -43,19 +51,21 @@ This package now covers the full Autolaunch contract system, from launch through
 ## Deployment flow
 
 1. Deploy shared Autolaunch infra with `DeployAutolaunchInfra.s.sol`.
-2. Deploy the mainnet emissions controller with `DeployMainnetRegentEmissionsController.s.sol` when needed.
-3. Run `ExampleCCADeploymentScript.s.sol` to create a launch.
-4. The launch script returns the full stack through `CCA_RESULT_JSON:`.
+2. Run `ExampleCCADeploymentScript.s.sol` to create a launch.
+3. The launch script returns the full stack through `CCA_RESULT_JSON:`.
 
 ## What the launch script creates
 
 - agent token
+- vesting wallet
+- Regent strategy
 - auction
 - fee hook
 - fee vault
 - fee registry
 - subject registry link
 - revenue share splitter
+- default ingress
 
 ## Routing rules for the wider project
 

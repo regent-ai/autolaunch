@@ -8,52 +8,59 @@ Autolaunch has one launch stack and one ongoing revenue stack.
 
 - The launch stack creates the token, auction, pool fee plumbing, and subject wiring.
 - The revenue stack recognizes only mainnet USDC that reaches the subject revsplit.
-- The mainnet emissions controller is the emissions rail tied to that recognized onchain state.
+- The Regent-side fee lane is a plain treasury payout, not a rewards rail.
 
 ## Core contracts
 
 - external CCA factory
-- `AgentLaunchToken`
 - `LaunchDeploymentController`
+- `AgentTokenVestingWallet`
+- `RegentLBPStrategy`
+- `RegentLBPStrategyFactory`
 - `LaunchFeeRegistry`
 - `LaunchFeeVault`
 - `LaunchPoolFeeHook`
 - `SubjectRegistry`
 - `RevenueShareFactory`
+- `RevenueIngressFactory`
+- `RevenueIngressAccount`
 - `RevenueShareSplitter`
-- `MainnetRegentEmissionsController`
 
 ## System diagram
 
 ```mermaid
 flowchart TD
     CCA["External CCA Factory"] --> CTRL["LaunchDeploymentController"]
-    CTRL --> TOKEN["AgentLaunchToken"]
-    CTRL --> AUCTION["CCA Auction"]
+    CTRL --> TOKEN["Factory Token"]
+    CTRL --> VEST["AgentTokenVestingWallet"]
+    CTRL --> STRAT["RegentLBPStrategy"]
+    STRAT --> AUCTION["CCA Auction"]
     CTRL --> REG["LaunchFeeRegistry"]
     CTRL --> VAULT["LaunchFeeVault"]
     CTRL --> HOOK["LaunchPoolFeeHook"]
     CTRL --> FACTORY["RevenueShareFactory"]
+    CTRL --> INGRESS_FACTORY["RevenueIngressFactory"]
 
     FACTORY --> SUBJECT["SubjectRegistry"]
     FACTORY --> SPLITTER["RevenueShareSplitter"]
+    INGRESS_FACTORY --> INGRESS["RevenueIngressAccount"]
+    INGRESS --> SPLITTER
+    STRAT --> VEST
 
     HOOK --> VAULT
     REG --> HOOK
     REG --> VAULT
     VAULT --> SPLITTER
 
-    SPLITTER --> EMISSIONS["MainnetRegentEmissionsController"]
-    SUBJECT --> EMISSIONS
 ```
 
 ## Launch flow
 
-1. `LaunchDeploymentController` creates the agent token.
-2. It initializes the CCA auction through the external factory.
-3. It deploys the launch fee registry, fee vault, and fee hook.
-4. It creates the subject revsplit through `RevenueShareFactory`.
-5. It registers the subject in `SubjectRegistry`.
+1. `LaunchDeploymentController` creates the launch token through the configured token factory.
+2. It splits supply into 10% auction, 5% LP reserve, and 85% vesting.
+3. It deploys the vesting wallet, strategy, fee registry, fee vault, and fee hook.
+4. The strategy creates the CCA auction and keeps the reserve allocation.
+5. The controller creates the subject revsplit and the default ingress address.
 6. It returns the whole result set through `CCA_RESULT_JSON:`.
 
 ## Fee flow
@@ -74,12 +81,9 @@ The active rule is simple:
 
 That keeps one canonical accounting point and avoids cross-chain or offchain revenue bookkeeping inside the protocol core.
 
-## Emissions role
-
-`MainnetRegentEmissionsController` is the main emissions contract in the active architecture. It sits on top of the recognized onchain USDC path and is the intended mainnet emissions rail.
-
 ## What is not part of the active story anymore
 
 - the old rights-hub plus vault split
 - the old per-launch agent registry shape
+- REGENT reward accounting contracts
 - building new Autolaunch work in `monorepo/contracts`

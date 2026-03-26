@@ -6,11 +6,12 @@ This package now tests the full Autolaunch contract stack in one Foundry project
 
 ### Launch-side tests
 
-- `test/AgentLaunchToken.t.sol`
-  - proves plain transfer behavior for the launch token
 - `test/LaunchDeploymentController.t.sol`
-  - proves the deployment controller wires the launch token, auction, fee stack, subject registry, revsplit, and default ingress together
-  - includes the mainnet emissions controller override case
+  - proves the deployment controller wires the factory-created token, strategy-owned auction, fee stack, subject registry, revsplit, vesting wallet, and default ingress together
+- `test/RegentLBPStrategy.t.sol`
+  - proves the strategy creates the auction, splits migrated USDC, and sweeps leftovers
+- `test/RegentLBPStrategyFactory.t.sol`
+  - proves the factory creates the strategy with the expected config
 - `test/LaunchFeeVault.t.sol`
   - proves the treasury and Regent fee lanes are tracked separately
   - proves withdrawal permissions and native-quote rejection
@@ -19,11 +20,11 @@ This package now tests the full Autolaunch contract stack in one Foundry project
 - `test/ExampleCCADeploymentScript.t.sol`
   - proves the launch script reads env inputs correctly and returns the full launch stack
 
-### Revenue / emissions tests
+### Revenue tests
 
+- `test/RevenueIngressAccount.t.sol`
+- `test/RevenueIngressFactory.t.sol`
 - `test/RevenueShareSplitter.t.sol`
-- `test/MainnetRegentEmissionsController.t.sol`
-- `test/DeployMainnetRegentEmissionsControllerScript.t.sol`
 
 ## Recommended commands
 
@@ -39,14 +40,14 @@ Run launch-side tests only:
 ```bash
 forge test --match-contract Launch
 forge test --match-contract ExampleCCADeploymentScriptTest
-forge test --match-contract AgentLaunchTokenTest
+forge test --match-contract RegentLBPStrategyTest
 ```
 
-Run revenue / emissions tests only:
+Run revenue tests only:
 
 ```bash
 forge test --match-contract RevenueShareSplitterTest
-forge test --match-contract MainnetRegentEmissionsControllerTest
+forge test --match-contract RevenueIngressAccountTest
 ```
 
 ## What acceptance looks like
@@ -54,16 +55,19 @@ forge test --match-contract MainnetRegentEmissionsControllerTest
 - the full suite passes inside `contracts/`
 - the launch script can deploy:
   - token
+  - strategy
+  - vesting wallet
   - auction
   - fee hook
-- fee vault
-- fee registry
-- subject splitter
+  - fee vault
+  - fee registry
+  - subject splitter
+  - default ingress
 - launch-side tests confirm:
   - USDC quote-token wiring
   - 1% subject lane + 1% Regent lane
   - subject creation and identity linking
-  - mainnet emissions controller override behavior
+  - default ingress creation and linkage
 
 ## Active test posture
 
@@ -71,4 +75,4 @@ The main architecture story to protect is:
 
 - launch stack and revenue stack live in one package
 - only mainnet USDC that reaches the revsplit counts as recognized revenue
-- the mainnet emissions controller is the active emissions rail
+- there is no REGENT reward-accounting contract in the active path

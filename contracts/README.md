@@ -2,53 +2,55 @@
 
 This Foundry project is the canonical home for all Autolaunch Solidity work.
 
-It now contains the full launch stack and the revenue / emissions stack in one place.
+It now contains the full launch stack plus the ongoing revsplit and ingress contracts in one place.
 
 ## Active core architecture
 
 - External CCA factory with USDC quote token
-- `src/AgentLaunchToken.sol`
 - `src/LaunchDeploymentController.sol`
+- `src/AgentTokenVestingWallet.sol`
+- `src/RegentLBPStrategy.sol`
+- `src/RegentLBPStrategyFactory.sol`
 - `src/LaunchFeeRegistry.sol`
 - `src/LaunchFeeVault.sol`
 - `src/LaunchPoolFeeHook.sol`
 - `src/revenue/SubjectRegistry.sol`
 - `src/revenue/RevenueShareFactory.sol`
+- `src/revenue/RevenueIngressFactory.sol`
+- `src/revenue/RevenueIngressAccount.sol`
 - `src/revenue/RevenueShareSplitter.sol`
-- `src/revenue/MainnetRegentEmissionsController.sol`
 
 ## Product rule
 
 - Only mainnet USDC that reaches the subject revsplit counts as recognized revenue.
-- The mainnet emissions controller is the active emissions rail for that recognized onchain state.
+- The Regent-side fee lane is a plain treasury payout. There is no REGENT reward-accounting contract in the active path.
 
 ## Deployment helpers
 
 - `scripts/DeployAutolaunchInfra.s.sol`
 - `scripts/ExampleCCADeploymentScript.s.sol`
-- `scripts/DeployMainnetRegentEmissionsController.s.sol`
 
 Important script output markers stay unchanged:
 
 - `AUTOLAUNCH_INFRA_RESULT_JSON:`
 - `CCA_RESULT_JSON:`
-- `MAINNET_REGENT_EMISSIONS_RESULT_JSON:`
 
 ## Test coverage
 
 Launch-side tests:
 
-- `test/AgentLaunchToken.t.sol`
 - `test/LaunchDeploymentController.t.sol`
+- `test/RegentLBPStrategy.t.sol`
+- `test/RegentLBPStrategyFactory.t.sol`
 - `test/LaunchFeeVault.t.sol`
 - `test/LaunchPoolFeeHook.t.sol`
 - `test/ExampleCCADeploymentScript.t.sol`
 
-Revenue / emissions tests:
+Revenue tests:
 
+- `test/RevenueIngressAccount.t.sol`
+- `test/RevenueIngressFactory.t.sol`
 - `test/RevenueShareSplitter.t.sol`
-- `test/MainnetRegentEmissionsController.t.sol`
-- `test/DeployMainnetRegentEmissionsControllerScript.t.sol`
 
 ## Working here
 

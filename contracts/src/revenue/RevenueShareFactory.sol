@@ -49,8 +49,6 @@ contract RevenueShareFactory is Owned {
         address protocolRecipient,
         address splitterOwner,
         address treasurySafe,
-        uint256 emissionChainId,
-        address emissionRecipient,
         uint16 protocolSkimBps,
         string calldata label,
         uint256 identityChainId,
@@ -81,9 +79,6 @@ contract RevenueShareFactory is Owned {
         splitterOfSubject[subjectId] = splitter;
 
         subjectRegistry.createSubject(subjectId, stakeToken, splitter, treasurySafe, true, label);
-        if (emissionChainId != 0 && emissionRecipient != address(0)) {
-            subjectRegistry.setEmissionRecipient(subjectId, emissionChainId, emissionRecipient);
-        }
         if (identityChainId != 0 && identityRegistry != address(0) && identityAgentId != 0) {
             subjectRegistry.linkIdentity(
                 subjectId, identityChainId, identityRegistry, identityAgentId

@@ -14,7 +14,6 @@ contract SubjectRegistry is Owned, ISubjectRegistry {
     mapping(bytes32 => SubjectConfig) private subjects;
     mapping(address => bytes32) public override subjectOfStakeToken;
     mapping(bytes32 => mapping(address => bool)) public subjectManagers;
-    mapping(bytes32 => mapping(uint256 => address)) private emissionRecipients;
     mapping(bytes32 => IdentityLink[]) private identityLinks;
     mapping(bytes32 => bytes32) public subjectOfIdentityHash;
 
@@ -33,9 +32,6 @@ contract SubjectRegistry is Owned, ISubjectRegistry {
         string label
     );
     event SubjectManagerSet(bytes32 indexed subjectId, address indexed account, bool enabled);
-    event EmissionRecipientSet(
-        bytes32 indexed subjectId, uint256 indexed chainId, address recipient
-    );
     event IdentityLinked(
         bytes32 indexed subjectId,
         bytes32 indexed identityHash,
@@ -122,17 +118,6 @@ contract SubjectRegistry is Owned, ISubjectRegistry {
         emit SubjectManagerSet(subjectId, account, enabled);
     }
 
-    function setEmissionRecipient(bytes32 subjectId, uint256 chainId, address recipient)
-        external
-        onlySubjectManager(subjectId)
-    {
-        require(chainId != 0, "CHAIN_ID_ZERO");
-        require(recipient != address(0), "RECIPIENT_ZERO");
-        _subjectStorage(subjectId);
-        emissionRecipients[subjectId][chainId] = recipient;
-        emit EmissionRecipientSet(subjectId, chainId, recipient);
-    }
-
     function linkIdentity(bytes32 subjectId, uint256 chainId, address registry, uint256 agentId)
         external
         onlySubjectManager(subjectId)
@@ -190,16 +175,6 @@ contract SubjectRegistry is Owned, ISubjectRegistry {
 
     function splitterOfSubject(bytes32 subjectId) external view override returns (address) {
         return _subject(subjectId).splitter;
-    }
-
-    function emissionRecipient(bytes32 subjectId, uint256 chainId)
-        external
-        view
-        override
-        returns (address)
-    {
-        _subjectStorage(subjectId);
-        return emissionRecipients[subjectId][chainId];
     }
 
     function canManageSubject(bytes32 subjectId, address account)

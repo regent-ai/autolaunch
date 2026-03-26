@@ -22,5 +22,3 @@ This is the canonical contracts home for Autolaunch.
 
 - Keep deterministic deployment markers where they already exist:
   - `CCA_RESULT_JSON:`
-  - `MAINNET_REGENT_EMISSIONS_RESULT_JSON:`
-  - `REGENT_EMISSIONS_RESULT_JSON:`

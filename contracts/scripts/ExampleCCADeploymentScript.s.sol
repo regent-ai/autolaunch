@@ -5,34 +5,41 @@ import {Script} from "forge-std/Script.sol";
 import {console2} from "forge-std/console2.sol";
 
 import {LaunchDeploymentController} from "src/LaunchDeploymentController.sol";
+import {RevenueIngressFactory} from "src/revenue/RevenueIngressFactory.sol";
 import {RevenueShareFactory} from "src/revenue/RevenueShareFactory.sol";
 
 contract ExampleCCADeploymentScript is Script {
     struct ScriptConfig {
         address recoverySafe;
-        address auctionProceedsRecipient;
-        address agentRevenueTreasury;
+        address agentTreasurySafe;
         address revenueShareFactory;
+        address revenueIngressFactory;
         address identityRegistry;
-        address factoryAddress;
+        address tokenFactory;
+        address strategyFactory;
+        address auctionInitializerFactory;
         address poolManager;
+        address positionManager;
+        address positionRecipient;
+        address strategyOperator;
         address usdcToken;
         address regentRecipient;
-        address mainnetEmissionsController;
-        address emissionRecipient;
         address validationHook;
         uint256 agentId;
         uint256 totalSupply;
-        uint24 poolFee;
-        int24 poolTickSpacing;
+        uint24 officialPoolFee;
+        int24 officialPoolTickSpacing;
         uint256 auctionTickSpacing;
-        uint24 stepMps;
-        uint40 stepBlockDelta;
         uint64 startBlock;
         uint64 endBlock;
         uint64 claimBlock;
+        uint64 migrationBlock;
+        uint64 sweepBlock;
+        uint64 vestingStartTimestamp;
+        uint64 vestingDurationSeconds;
         uint256 floorPrice;
         uint128 requiredCurrencyRaised;
+        uint128 maxCurrencyAmountForLP;
         uint16 protocolSkimBps;
         string tokenName;
         string tokenSymbol;
@@ -46,12 +53,13 @@ contract ExampleCCADeploymentScript is Script {
 
     uint256 internal constant DEFAULT_TOTAL_SUPPLY = 100_000_000_000e18;
     uint256 internal constant DEFAULT_AUCTION_DURATION_BLOCKS = 21_600;
-    uint256 internal constant DEFAULT_STEP_MPS = 100_000;
-    uint256 internal constant DEFAULT_STEP_BLOCK_DELTA = 216;
     uint24 internal constant DEFAULT_POOL_FEE = 0;
     int24 internal constant DEFAULT_POOL_TICK_SPACING = 60;
     uint16 internal constant DEFAULT_PROTOCOL_SKIM_BPS = 100;
-    uint256 internal constant MPS_TOTAL = 10_000_000;
+    uint64 internal constant DEFAULT_CLAIM_BLOCK_OFFSET = 64;
+    uint64 internal constant DEFAULT_MIGRATION_BLOCK_OFFSET = 128;
+    uint64 internal constant DEFAULT_SWEEP_BLOCK_OFFSET = 256;
+    uint64 internal constant DEFAULT_VESTING_DURATION_SECONDS = 365 days;
 
     function _loadConfig() internal view returns (ScriptConfig memory cfg) {
         address recoverySafe = _envAddressOr(
@@ -67,26 +75,20 @@ contract ExampleCCADeploymentScript is Script {
             _parseAgentId(vm.envOr("AUTOLAUNCH_AGENT_ID", vm.envOr("AGENT_ID", string(""))));
         require(agentId > 0, "AGENT_ID_ZERO");
 
-        address auctionProceedsRecipient = _envAddressOr(
-            "AUTOLAUNCH_AUCTION_PROCEEDS_RECIPIENT",
-            _envAddressOr("AUCTION_PROCEEDS_RECIPIENT", recoverySafe)
-        );
-        require(auctionProceedsRecipient != address(0), "AUCTION_RECIPIENT_ZERO");
-
-        address agentRevenueTreasury = _envAddressOr(
+        address agentTreasurySafe = _envAddressOr(
             "AUTOLAUNCH_ETHEREUM_REVENUE_TREASURY",
             _envAddressOr("ETHEREUM_REVENUE_TREASURY", recoverySafe)
         );
-        require(agentRevenueTreasury != address(0), "AGENT_TREASURY_ZERO");
+        require(agentTreasurySafe != address(0), "AGENT_TREASURY_ZERO");
 
-        address emissionRecipient = _envAddressOr(
-            "AUTOLAUNCH_EMISSION_RECIPIENT",
-            _envAddressOr(
-                "AUTOLAUNCH_BASE_EMISSION_RECIPIENT",
-                _envAddressOr("EMISSION_RECIPIENT", recoverySafe)
-            )
+        address positionRecipient = _envAddressOr(
+            "AUTOLAUNCH_AUCTION_PROCEEDS_RECIPIENT",
+            _envAddressOr("POSITION_RECIPIENT", recoverySafe)
         );
-        require(emissionRecipient != address(0), "EMISSION_RECIPIENT_ZERO");
+        require(positionRecipient != address(0), "POSITION_RECIPIENT_ZERO");
+
+        address strategyOperator = _envAddressOr("STRATEGY_OPERATOR", recoverySafe);
+        require(strategyOperator != address(0), "STRATEGY_OPERATOR_ZERO");
 
         uint256 poolFeeRaw = vm.envOr("OFFICIAL_POOL_FEE", uint256(DEFAULT_POOL_FEE));
         require(poolFeeRaw <= 1_000_000, "POOL_FEE_INVALID");
@@ -99,20 +101,7 @@ contract ExampleCCADeploymentScript is Script {
         uint256 auctionDurationBlocks =
             vm.envOr("AUCTION_DURATION_BLOCKS", DEFAULT_AUCTION_DURATION_BLOCKS);
         require(auctionDurationBlocks > 0, "AUCTION_DURATION_ZERO");
-        require(auctionDurationBlocks <= type(uint40).max, "AUCTION_DURATION_TOO_LARGE");
-
-        uint256 stepMpsRaw = vm.envOr("CCA_STEP_MPS", DEFAULT_STEP_MPS);
-        require(stepMpsRaw > 0, "STEP_MPS_ZERO");
-        require(stepMpsRaw <= type(uint24).max, "STEP_MPS_TOO_LARGE");
-
-        uint256 stepBlockDeltaRaw = vm.envOr("CCA_STEP_BLOCK_DELTA", DEFAULT_STEP_BLOCK_DELTA);
-        require(stepBlockDeltaRaw > 0, "STEP_DELTA_ZERO");
-        require(stepBlockDeltaRaw <= type(uint40).max, "STEP_DELTA_TOO_LARGE");
-        require(MPS_TOTAL % stepMpsRaw == 0, "INVALID_STEP_DATA_MPS");
-        require(
-            auctionDurationBlocks == (MPS_TOTAL / stepMpsRaw) * stepBlockDeltaRaw,
-            "AUCTION_DURATION_MISMATCH"
-        );
+        require(auctionDurationBlocks <= type(uint64).max, "AUCTION_DURATION_TOO_LARGE");
         require(block.number <= type(uint64).max, "BLOCK_TOO_LARGE");
         require(
             block.number + auctionDurationBlocks <= type(uint64).max, "AUCTION_END_BLOCK_TOO_LARGE"
@@ -121,12 +110,24 @@ contract ExampleCCADeploymentScript is Script {
         address revenueShareFactory = vm.envAddress("REVENUE_SHARE_FACTORY_ADDRESS");
         require(revenueShareFactory != address(0), "REVENUE_SHARE_FACTORY_ZERO");
 
-        address factoryAddress = vm.envOr("FACTORY_ADDRESS", _defaultFactoryForChain(block.chainid));
-        require(factoryAddress != address(0), "FACTORY_ZERO");
-        require(factoryAddress.code.length > 0, "FACTORY_NOT_DEPLOYED");
+        address revenueIngressFactory = vm.envAddress("REVENUE_INGRESS_FACTORY_ADDRESS");
+        require(revenueIngressFactory != address(0), "REVENUE_INGRESS_FACTORY_ZERO");
+
+        address strategyFactory = vm.envAddress("LBP_STRATEGY_FACTORY_ADDRESS");
+        require(strategyFactory != address(0), "STRATEGY_FACTORY_ZERO");
+
+        address tokenFactory = vm.envAddress("TOKEN_FACTORY_ADDRESS");
+        require(tokenFactory != address(0), "TOKEN_FACTORY_ZERO");
+
+        address auctionInitializerFactory =
+            vm.envOr("FACTORY_ADDRESS", _defaultFactoryForChain(block.chainid));
+        require(auctionInitializerFactory != address(0), "AUCTION_FACTORY_ZERO");
+        require(auctionInitializerFactory.code.length > 0, "AUCTION_FACTORY_NOT_DEPLOYED");
 
         address poolManager = vm.envAddress("UNISWAP_V4_POOL_MANAGER");
         require(poolManager != address(0), "POOL_MANAGER_ZERO");
+
+        address positionManager = _envAddressOr("UNISWAP_V4_POSITION_MANAGER", address(0));
 
         address usdcToken =
             _envAddressOr("ETHEREUM_USDC_ADDRESS", _envAddressOr("USDC_ADDRESS", address(0)));
@@ -140,19 +141,31 @@ contract ExampleCCADeploymentScript is Script {
         address regentRecipient = _envAddressOr("REGENT_MULTISIG_ADDRESS", REGENT_MULTISIG);
         require(regentRecipient != address(0), "REGENT_RECIPIENT_ZERO");
 
-        address mainnetEmissionsController =
-            _envAddressOr("MAINNET_REGENT_EMISSIONS_CONTROLLER_ADDRESS", address(0));
-        if (block.chainid == 1) {
-            require(mainnetEmissionsController != address(0), "MAINNET_EMISSIONS_CONTROLLER_ZERO");
-        }
-
         address validationHook = _envAddressOr("CCA_VALIDATION_HOOK", address(0));
         uint256 auctionTickSpacing = vm.envUint("CCA_TICK_SPACING_Q96");
         uint256 floorPrice = vm.envUint("CCA_FLOOR_PRICE_Q96");
         uint256 requiredCurrencyRaisedRaw = vm.envUint("CCA_REQUIRED_CURRENCY_RAISED");
         require(requiredCurrencyRaisedRaw <= type(uint128).max, "REQUIRED_RAISED_TOO_LARGE");
-        uint256 claimBlockOffset = vm.envOr("CCA_CLAIM_BLOCK_OFFSET", uint256(0));
-        require(claimBlockOffset <= type(uint64).max, "CLAIM_BLOCK_OFFSET_TOO_LARGE");
+
+        uint64 claimBlockOffset = uint64(
+            vm.envOr("CCA_CLAIM_BLOCK_OFFSET", uint256(DEFAULT_CLAIM_BLOCK_OFFSET))
+        );
+        uint64 migrationBlockOffset = uint64(
+            vm.envOr("LBP_MIGRATION_BLOCK_OFFSET", uint256(DEFAULT_MIGRATION_BLOCK_OFFSET))
+        );
+        uint64 sweepBlockOffset =
+            uint64(vm.envOr("LBP_SWEEP_BLOCK_OFFSET", uint256(DEFAULT_SWEEP_BLOCK_OFFSET)));
+
+        uint64 vestingStartTimestamp = uint64(
+            vm.envOr("VESTING_START_TIMESTAMP", uint256(block.timestamp))
+        );
+        uint64 vestingDurationSeconds = uint64(
+            vm.envOr("VESTING_DURATION_SECONDS", uint256(DEFAULT_VESTING_DURATION_SECONDS))
+        );
+
+        uint256 maxCurrencyAmountForLPRaw =
+            vm.envOr("MAX_CURRENCY_AMOUNT_FOR_LP", type(uint128).max);
+        require(maxCurrencyAmountForLPRaw <= type(uint128).max, "MAX_CCY_FOR_LP_TOO_LARGE");
 
         uint256 protocolSkimBpsRaw =
             vm.envOr("PROTOCOL_SKIM_BPS", uint256(DEFAULT_PROTOCOL_SKIM_BPS));
@@ -165,29 +178,35 @@ contract ExampleCCADeploymentScript is Script {
         string memory subjectLabel = vm.envOr("AUTOLAUNCH_SUBJECT_LABEL", tokenName);
 
         cfg.recoverySafe = recoverySafe;
-        cfg.auctionProceedsRecipient = auctionProceedsRecipient;
-        cfg.agentRevenueTreasury = agentRevenueTreasury;
+        cfg.agentTreasurySafe = agentTreasurySafe;
         cfg.revenueShareFactory = revenueShareFactory;
+        cfg.revenueIngressFactory = revenueIngressFactory;
         cfg.identityRegistry = identityRegistry;
-        cfg.factoryAddress = factoryAddress;
+        cfg.tokenFactory = tokenFactory;
+        cfg.strategyFactory = strategyFactory;
+        cfg.auctionInitializerFactory = auctionInitializerFactory;
         cfg.poolManager = poolManager;
+        cfg.positionManager = positionManager;
+        cfg.positionRecipient = positionRecipient;
+        cfg.strategyOperator = strategyOperator;
         cfg.usdcToken = usdcToken;
         cfg.regentRecipient = regentRecipient;
-        cfg.mainnetEmissionsController = mainnetEmissionsController;
-        cfg.emissionRecipient = emissionRecipient;
         cfg.validationHook = validationHook;
         cfg.agentId = agentId;
         cfg.totalSupply = totalSupply;
-        cfg.poolFee = uint24(poolFeeRaw);
-        cfg.poolTickSpacing = int24(poolTickSpacingRaw);
+        cfg.officialPoolFee = uint24(poolFeeRaw);
+        cfg.officialPoolTickSpacing = int24(poolTickSpacingRaw);
         cfg.auctionTickSpacing = auctionTickSpacing;
-        cfg.stepMps = uint24(stepMpsRaw);
-        cfg.stepBlockDelta = uint40(stepBlockDeltaRaw);
         cfg.startBlock = uint64(block.number);
         cfg.endBlock = uint64(block.number + auctionDurationBlocks);
         cfg.claimBlock = uint64(block.number + auctionDurationBlocks + claimBlockOffset);
+        cfg.migrationBlock = cfg.endBlock + migrationBlockOffset;
+        cfg.sweepBlock = cfg.migrationBlock + sweepBlockOffset;
+        cfg.vestingStartTimestamp = vestingStartTimestamp;
+        cfg.vestingDurationSeconds = vestingDurationSeconds;
         cfg.floorPrice = floorPrice;
         cfg.requiredCurrencyRaised = uint128(requiredCurrencyRaisedRaw);
+        cfg.maxCurrencyAmountForLP = uint128(maxCurrencyAmountForLPRaw);
         cfg.protocolSkimBps = uint16(protocolSkimBpsRaw);
         cfg.tokenName = tokenName;
         cfg.tokenSymbol = tokenSymbol;
@@ -209,39 +228,51 @@ contract ExampleCCADeploymentScript is Script {
 
         LaunchDeploymentController controller = new LaunchDeploymentController();
         RevenueShareFactory(cfg.revenueShareFactory).setAuthorizedCreator(address(controller), true);
+        RevenueIngressFactory(cfg.revenueIngressFactory)
+            .setAuthorizedCreator(address(controller), true);
         result = controller.deploy(
             LaunchDeploymentController.DeploymentConfig({
                 recoverySafe: cfg.recoverySafe,
-                auctionProceedsRecipient: cfg.auctionProceedsRecipient,
-                agentRevenueTreasury: cfg.agentRevenueTreasury,
+                agentTreasurySafe: cfg.agentTreasurySafe,
                 revenueShareFactory: cfg.revenueShareFactory,
+                revenueIngressFactory: cfg.revenueIngressFactory,
                 identityRegistry: cfg.identityRegistry,
-                factoryAddress: cfg.factoryAddress,
+                tokenFactory: cfg.tokenFactory,
+                strategyFactory: cfg.strategyFactory,
+                auctionInitializerFactory: cfg.auctionInitializerFactory,
                 poolManager: cfg.poolManager,
+                positionManager: cfg.positionManager,
+                positionRecipient: cfg.positionRecipient,
+                strategyOperator: cfg.strategyOperator,
                 usdcToken: cfg.usdcToken,
                 regentRecipient: cfg.regentRecipient,
-                mainnetEmissionsController: cfg.mainnetEmissionsController,
-                emissionRecipient: cfg.emissionRecipient,
+                validationHook: cfg.validationHook,
                 identityAgentId: cfg.agentId,
                 totalSupply: cfg.totalSupply,
-                poolFee: cfg.poolFee,
-                poolTickSpacing: cfg.poolTickSpacing,
+                officialPoolFee: cfg.officialPoolFee,
+                officialPoolTickSpacing: cfg.officialPoolTickSpacing,
                 auctionTickSpacing: cfg.auctionTickSpacing,
-                stepMps: cfg.stepMps,
-                stepBlockDelta: cfg.stepBlockDelta,
                 startBlock: cfg.startBlock,
                 endBlock: cfg.endBlock,
                 claimBlock: cfg.claimBlock,
-                validationHook: cfg.validationHook,
+                migrationBlock: cfg.migrationBlock,
+                sweepBlock: cfg.sweepBlock,
+                vestingStartTimestamp: cfg.vestingStartTimestamp,
+                vestingDurationSeconds: cfg.vestingDurationSeconds,
                 floorPrice: cfg.floorPrice,
                 requiredCurrencyRaised: cfg.requiredCurrencyRaised,
+                maxCurrencyAmountForLP: cfg.maxCurrencyAmountForLP,
                 protocolSkimBps: cfg.protocolSkimBps,
                 tokenName: cfg.tokenName,
                 tokenSymbol: cfg.tokenSymbol,
-                subjectLabel: cfg.subjectLabel
+                subjectLabel: cfg.subjectLabel,
+                tokenFactoryData: bytes(""),
+                tokenFactorySalt: bytes32(0)
             })
         );
         RevenueShareFactory(cfg.revenueShareFactory)
+            .setAuthorizedCreator(address(controller), false);
+        RevenueIngressFactory(cfg.revenueIngressFactory)
             .setAuthorizedCreator(address(controller), false);
     }
 
@@ -257,11 +288,14 @@ contract ExampleCCADeploymentScript is Script {
         console2.log("Broadcaster used:", broadcaster);
         console2.log("Token deployed to:", result.tokenAddress);
         console2.log("Auction deployed to:", result.auctionAddress);
+        console2.log("Strategy deployed to:", result.strategyAddress);
+        console2.log("Vesting wallet deployed to:", result.vestingWalletAddress);
         console2.log("Fee hook deployed to:", result.hookAddress);
         console2.log("Launch fee registry deployed to:", result.launchFeeRegistryAddress);
         console2.log("Launch fee vault deployed to:", result.feeVaultAddress);
         console2.log("Subject registry used:", result.subjectRegistryAddress);
         console2.log("Revenue share splitter deployed to:", result.revenueShareSplitterAddress);
+        console2.log("Default ingress deployed to:", result.defaultIngressAddress);
         console2.log(
             string.concat(
                 "CCA_RESULT_JSON:{\"factoryAddress\":\"",
@@ -270,6 +304,10 @@ contract ExampleCCADeploymentScript is Script {
                 vm.toString(result.auctionAddress),
                 "\",\"tokenAddress\":\"",
                 vm.toString(result.tokenAddress),
+                "\",\"strategyAddress\":\"",
+                vm.toString(result.strategyAddress),
+                "\",\"vestingWalletAddress\":\"",
+                vm.toString(result.vestingWalletAddress),
                 "\",\"hookAddress\":\"",
                 vm.toString(result.hookAddress),
                 "\",\"launchFeeRegistryAddress\":\"",
@@ -282,6 +320,8 @@ contract ExampleCCADeploymentScript is Script {
                 vm.toString(result.subjectId),
                 "\",\"revenueShareSplitterAddress\":\"",
                 vm.toString(result.revenueShareSplitterAddress),
+                "\",\"defaultIngressAddress\":\"",
+                vm.toString(result.defaultIngressAddress),
                 "\",\"poolId\":\"",
                 vm.toString(result.poolId),
                 "\"}"
@@ -347,6 +387,6 @@ contract ExampleCCADeploymentScript is Script {
     }
 
     function cfgFactoryAddress() internal view returns (address) {
-        return _loadConfig().factoryAddress;
+        return _loadConfig().auctionInitializerFactory;
     }
 }
