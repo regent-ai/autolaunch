@@ -86,6 +86,10 @@ defmodule AutolaunchWeb.AuctionGuideLive do
 
   def handle_event("regent:node_select", _params, socket), do: {:noreply, socket}
 
+  def handle_event("scene-back", _params, socket) do
+    {:noreply, socket |> assign(:selected_step_index, 0) |> assign_regent_scene()}
+  end
+
   def handle_event("regent:node_hover", _params, socket), do: {:noreply, socket}
   def handle_event("regent:surface_ready", _params, socket), do: {:noreply, socket}
 
@@ -105,13 +109,40 @@ defmodule AutolaunchWeb.AuctionGuideLive do
       <section class="al-regent-shell">
         <.surface
           id="auction-guide-surface"
-          class="rg-regent-theme-autolaunch"
+          class="rg-regent-theme-autolaunch al-terrain-surface"
           scene={@regent_scene}
           scene_version={@regent_scene_version}
-          selected_node_id={@regent_selected_node_id}
+          selected_target_id={@regent_selected_target_id}
           theme="autolaunch"
           camera_distance={24}
         >
+          <:header_strip>
+            <div class="al-terrain-strip">
+              <div class="al-terrain-strip-copy">
+                <p class="al-kicker">Guide strip</p>
+                <div>
+                  <h2>Understand the sale before touching the controls.</h2>
+                  <p class="al-subcopy">The symbolic path is short on purpose. The rules stay plain-English in the chamber and ledger.</p>
+                </div>
+              </div>
+
+              <div class="al-terrain-strip-controls">
+                <button
+                  :if={@selected_step_index > 0}
+                  type="button"
+                  phx-click="scene-back"
+                  class="rg-surface-back"
+                >
+                  <span class="rg-surface-back-icon" aria-hidden="true">←</span>
+                  Back to overview
+                </button>
+                <span class="al-network-badge">Steps {length(@timeline_steps)}</span>
+                <span class="al-network-badge">Current {@selected_step_index + 1}</span>
+                <.link navigate={~p"/auctions"} class="al-ghost">Open live auctions</.link>
+              </div>
+            </div>
+          </:header_strip>
+
           <:chamber>
             <.chamber
               id="auction-guide-chamber"
@@ -304,7 +335,7 @@ defmodule AutolaunchWeb.AuctionGuideLive do
     socket
     |> assign(:regent_scene_version, next_version)
     |> assign(:regent_scene, Map.put(scene, "sceneVersion", next_version))
-    |> assign(:regent_selected_node_id, "guide:step:#{socket.assigns.selected_step_index}")
+    |> assign(:regent_selected_target_id, "guide:step:#{socket.assigns.selected_step_index}")
   end
 
   defp normalize_step_index(value) when is_integer(value), do: value

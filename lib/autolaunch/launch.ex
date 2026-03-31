@@ -14,6 +14,7 @@ defmodule Autolaunch.Launch do
   alias Autolaunch.Launch.Job
   alias Autolaunch.Repo
   alias Autolaunch.Siwa
+  alias Autolaunch.Trust
 
   @terminal_statuses ~w(ready failed blocked)
   @agent_launch_total_supply "100000000000000000000000000000"
@@ -119,6 +120,12 @@ defmodule Autolaunch.Launch do
   end
 
   def get_agent(_human, _agent_id), do: nil
+
+  def controls_agent?(%HumanUser{} = human, agent_id) when is_binary(agent_id) do
+    not is_nil(get_agent(human, agent_id))
+  end
+
+  def controls_agent?(_human, _agent_id), do: false
 
   def launch_readiness_for_agent(nil, _agent_id), do: nil
 
@@ -308,9 +315,10 @@ defmodule Autolaunch.Launch do
 
     identity_index = identity_index_for_auctions(auctions)
     human_launch_counts = world_launch_counts()
+    x_accounts = x_accounts_for_auctions(auctions)
 
     auctions
-    |> Enum.map(&serialize_auction(&1, current_human, identity_index, human_launch_counts))
+    |> Enum.map(&serialize_auction(&1, current_human, identity_index, human_launch_counts, x_accounts))
     |> filter_auctions(filters)
     |> sort_auctions(filters)
   rescue
@@ -334,7 +342,8 @@ defmodule Autolaunch.Launch do
           auction,
           current_human,
           identity_index_for_auctions([auction]),
-          world_launch_counts()
+          world_launch_counts(),
+          x_accounts_for_auctions([auction])
         )
     end
   rescue
@@ -1012,7 +1021,13 @@ defmodule Autolaunch.Launch do
     end
   end
 
-  defp serialize_auction(%Auction{} = auction, current_human, identity_index, human_launch_counts) do
+  defp serialize_auction(
+         %Auction{} = auction,
+         current_human,
+         identity_index,
+         human_launch_counts,
+         x_accounts
+       ) do
     public_id = auction.source_job_id || "auc_#{auction.id}"
     your_bid_status = current_bid_status(public_id, current_human)
     chain = chain_config(auction.chain_id)
@@ -1027,6 +1042,15 @@ defmodule Autolaunch.Launch do
       (auction.world_registered && is_binary(world_human_id)) and world_human_id != ""
 
     world_launch_count = Map.get(human_launch_counts, world_human_id, 0)
+    trust =
+      Trust.compose_summary(auction.agent_id, identity, %{
+        ens_name: ens_name,
+        world_connected: world_registered,
+        world_human_id: world_human_id,
+        world_network: auction.world_network || "world",
+        world_launch_count: world_launch_count,
+        x_account: Map.get(x_accounts, auction.agent_id)
+      })
 
     total_bid_volume =
       if(is_integer(currency_raised_wei),
@@ -1039,8 +1063,6 @@ defmodule Autolaunch.Launch do
       agent_id: auction.agent_id,
       agent_name: auction.agent_name,
       symbol: auction_symbol(auction, public_id),
-      ens_name: ens_name,
-      ens_attached: is_binary(ens_name) and ens_name != "",
       owner_address: auction.owner_address,
       auction_address: auction.auction_address,
       token_address: auction.token_address,
@@ -1076,10 +1098,7 @@ defmodule Autolaunch.Launch do
       sort_score: hottest_score(total_bid_volume, auction.bidders, auction.started_at),
       notes: auction.notes,
       uniswap_url: auction.uniswap_url,
-      world_registered: world_registered,
-      world_human_id: world_human_id,
-      world_network: auction.world_network || "world",
-      world_launch_count: world_launch_count,
+      trust: trust,
       completion_plan:
         completion_plan(%{
           agent_id: auction.agent_id,
@@ -1117,7 +1136,8 @@ defmodule Autolaunch.Launch do
           auction,
           nil,
           identity_index_for_auctions([auction]),
-          world_launch_counts()
+          world_launch_counts(),
+          x_accounts_for_auctions([auction])
         )
     end
   rescue
@@ -1552,6 +1572,12 @@ defmodule Autolaunch.Launch do
     |> Enum.map(& &1.agent_id)
     |> Enum.reject(&blank?/1)
     |> ERC8004.get_identities_by_agent_ids()
+  end
+
+  defp x_accounts_for_auctions(auctions) do
+    auctions
+    |> Enum.map(& &1.agent_id)
+    |> Trust.x_accounts_by_agent_ids()
   end
 
   defp live_ens_name(%{ens: ens_name}, _auction) when is_binary(ens_name) and ens_name != "",

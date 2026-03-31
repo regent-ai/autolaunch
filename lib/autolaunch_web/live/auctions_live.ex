@@ -76,13 +76,61 @@ defmodule AutolaunchWeb.AuctionsLive do
       <section class="al-regent-shell">
         <.surface
           id="auctions-regent-surface"
-          class="rg-regent-theme-autolaunch"
+          class="rg-regent-theme-autolaunch al-terrain-surface"
           scene={@regent_scene}
           scene_version={@regent_scene_version}
-          selected_node_id={@regent_selected_node_id}
+          selected_target_id={@regent_selected_target_id}
           theme="autolaunch"
           camera_distance={24}
         >
+          <:header_strip>
+            <div class="al-terrain-strip">
+              <div class="al-terrain-strip-copy">
+                <p class="al-kicker">Auction market</p>
+                <div>
+                  <h2>Voxel rack for live markets.</h2>
+                  <p class="al-subcopy">
+                    Height shows heat, flatter cells read as settling inventory, and the readable market cards remain below for exact numbers and actions.
+                  </p>
+                </div>
+              </div>
+
+              <div class="al-terrain-strip-controls">
+                <span class="al-network-badge">Sort {@filters["sort"]}</span>
+                <span class="al-network-badge">Status {if @filters["status"] == "", do: "all", else: @filters["status"]}</span>
+                <span class="al-network-badge">Chain {if @filters["chain"] == "", do: "all", else: @filters["chain"]}</span>
+                <span class="al-network-badge">Mine {if @filters["mine_only"], do: "only", else: "all"}</span>
+                <a href="#auctions-filters" class="al-ghost">Adjust filters</a>
+              </div>
+            </div>
+          </:header_strip>
+
+          <:left_rail>
+            <section class="al-market-rail">
+              <p class="al-kicker">Status rail</p>
+              <div class="al-pill-row">
+                <span class="al-network-badge">Live {@active_count}</span>
+                <span class="al-network-badge">Settling {@expired_count}</span>
+              </div>
+              <p class="al-inline-note">
+                The left rail stays market-level: broad status, no irreversible actions.
+              </p>
+            </section>
+          </:left_rail>
+
+          <:right_rail>
+            <section class="al-market-rail">
+              <p class="al-kicker">Activity rail</p>
+              <div class="al-pill-row">
+                <span class="al-network-badge">Your markets {@mine_count}</span>
+                <span class="al-network-badge">Total {length(@auctions)}</span>
+              </div>
+              <p class="al-inline-note">
+                The right rail keeps the human context visible while the terrain stays symbolic.
+              </p>
+            </section>
+          </:right_rail>
+
           <:chamber>
             <.chamber
               id="auctions-regent-chamber"
@@ -148,7 +196,7 @@ defmodule AutolaunchWeb.AuctionsLive do
         </div>
       </section>
 
-      <section class="al-panel al-filter-panel">
+      <section id="auctions-filters" class="al-panel al-filter-panel">
         <form phx-change="filters_changed" class="al-filter-form">
           <label>
             <span>Sort</span>
@@ -289,6 +337,6 @@ defmodule AutolaunchWeb.AuctionsLive do
     socket
     |> assign(:regent_scene_version, next_version)
     |> assign(:regent_scene, Map.put(scene, "sceneVersion", next_version))
-    |> assign(:regent_selected_node_id, "auction:market")
+    |> assign(:regent_selected_target_id, "auction:market")
   end
 end

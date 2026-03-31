@@ -14,6 +14,7 @@ tags:
   - name: prelaunch
   - name: lifecycle
   - name: market
+  - name: trust
   - name: subjects
   - name: ens
   - name: contracts
@@ -444,16 +445,89 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/LooseObject" }
 
+  /api/trust/agents/{id}:
+    get:
+      operationId: getAgentTrust
+      tags: [trust]
+      summary: Read one agent trust summary
+      description: >
+        Returns the canonical nested trust summary for one agent identity. This uses the same
+        `trust.erc8004`, `trust.ens`, `trust.world`, and `trust.x` structure exposed inside
+        auction payloads.
+      security: [{ PrivySessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/AgentId"
+      responses:
+        "200":
+          description: Agent trust summary
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AgentTrustEnvelope" }
+  /api/trust/x/start:
+    post:
+      operationId: startXLink
+      tags: [trust]
+      summary: Start the X-link browser flow
+      description: >
+        Starts the X-link flow for one agent identity and returns a relative `redirect_path`.
+        CLI and web clients should open that path in the browser. They should not implement
+        OAuth or provider handshakes themselves.
+      security: [{ PrivySessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/XLinkStartRequest" }
+      responses:
+        "200":
+          description: X link start payload
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/XLinkStartEnvelope" }
+  /api/trust/x/callback:
+    post:
+      operationId: completeXLink
+      tags: [trust]
+      summary: Save the completed X-link result
+      description: >
+        Completes the browser-owned X-link flow and stores the linked X handle under the agent's
+        trust summary.
+      security: [{ PrivySessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/XLinkCallbackRequest" }
+      responses:
+        "200":
+          description: X link saved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AgentTrustEnvelope" }
+
   /api/auctions:
     get:
       operationId: listAuctions
       tags: [market]
+      parameters:
+        - name: sort
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { type: string }
+        - name: chain
+          in: query
+          schema: { type: string }
+        - name: mine_only
+          in: query
+          schema: { type: boolean }
       responses:
         "200":
           description: Auctions
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/LooseListEnvelope" }
+              schema: { $ref: "#/components/schemas/AuctionListEnvelope" }
   /api/auctions/{id}:
     get:
       operationId: getAuction
@@ -465,7 +539,7 @@ paths:
           description: Auction detail
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/LooseObject" }
+              schema: { $ref: "#/components/schemas/AuctionEnvelope" }
   /api/auctions/{id}/bid_quote:
     post:
       operationId: quoteAuctionBid
@@ -857,6 +931,9 @@ components:
     Address:
       type: string
       pattern: "^0x[a-fA-F0-9]{40}$"
+    DateTime:
+      type: string
+      format: date-time
     LooseObject:
       type: object
       additionalProperties: true
@@ -895,3 +972,235 @@ components:
         data:
           $ref: "#/components/schemas/PreparedAction"
       additionalProperties: true
+    AuctionTrustErc8004:
+      type: object
+      required: [connected, agent_id, token_id, chain_id]
+      properties:
+        connected: { type: boolean, enum: [true] }
+        agent_id: { type: string }
+        token_id: { type: string }
+        chain_id: { type: integer }
+        registry_address:
+          anyOf:
+            - { $ref: "#/components/schemas/Address" }
+            - { type: "null" }
+        web_endpoint:
+          anyOf:
+            - { type: string }
+            - { type: "null" }
+        image_url:
+          anyOf:
+            - { type: string }
+            - { type: "null" }
+      additionalProperties: false
+    AuctionTrustEns:
+      type: object
+      required: [connected, name]
+      properties:
+        connected: { type: boolean }
+        name:
+          anyOf:
+            - { type: string }
+            - { type: "null" }
+      additionalProperties: false
+    AuctionTrustWorld:
+      type: object
+      required: [connected, network, human_id, launch_count]
+      properties:
+        connected: { type: boolean }
+        network: { type: string }
+        human_id:
+          anyOf:
+            - { type: string }
+            - { type: "null" }
+        launch_count: { type: integer, minimum: 0 }
+      additionalProperties: false
+    AuctionTrustX:
+      type: object
+      required: [connected, handle, profile_url, verified_at]
+      properties:
+        connected: { type: boolean }
+        handle:
+          anyOf:
+            - { type: string }
+            - { type: "null" }
+        profile_url:
+          anyOf:
+            - { type: string }
+            - { type: "null" }
+        verified_at:
+          anyOf:
+            - { $ref: "#/components/schemas/DateTime" }
+            - { type: "null" }
+      additionalProperties: false
+    AuctionTrust:
+      type: object
+      description: >
+        Canonical nested trust summary shared by auction payloads and direct trust reads.
+        Do not flatten these fields back into older top-level flags.
+      required: [erc8004, ens, world, x]
+      properties:
+        erc8004: { $ref: "#/components/schemas/AuctionTrustErc8004" }
+        ens: { $ref: "#/components/schemas/AuctionTrustEns" }
+        world: { $ref: "#/components/schemas/AuctionTrustWorld" }
+        x: { $ref: "#/components/schemas/AuctionTrustX" }
+      additionalProperties: false
+    AuctionSummary:
+      type: object
+      required:
+        - id
+        - agent_id
+        - agent_name
+        - symbol
+        - chain
+        - chain_id
+        - status
+        - current_clearing_price
+        - total_bid_volume
+        - bidders
+        - trust
+      properties:
+        id: { type: string }
+        agent_id: { type: string }
+        agent_name: { type: string }
+        symbol: { type: string }
+        owner_address:
+          anyOf:
+            - { $ref: "#/components/schemas/Address" }
+            - { type: "null" }
+        auction_address:
+          anyOf:
+            - { $ref: "#/components/schemas/Address" }
+            - { type: "null" }
+        token_address:
+          anyOf:
+            - { $ref: "#/components/schemas/Address" }
+            - { type: "null" }
+        network: { type: string }
+        chain: { type: string }
+        chain_family:
+          anyOf:
+            - { type: string }
+            - { type: "null" }
+        chain_id: { type: integer }
+        status: { type: string }
+        started_at:
+          anyOf:
+            - { $ref: "#/components/schemas/DateTime" }
+            - { type: "null" }
+        ends_at:
+          anyOf:
+            - { $ref: "#/components/schemas/DateTime" }
+            - { type: "null" }
+        claim_at:
+          anyOf:
+            - { $ref: "#/components/schemas/DateTime" }
+            - { type: "null" }
+        bidders: { type: integer, minimum: 0 }
+        raised_currency:
+          anyOf:
+            - { type: string }
+            - { type: "null" }
+        target_currency:
+          anyOf:
+            - { type: string }
+            - { type: "null" }
+        progress_percent:
+          anyOf:
+            - { type: integer }
+            - { type: "null" }
+        metrics_updated_at:
+          anyOf:
+            - { $ref: "#/components/schemas/DateTime" }
+            - { type: "null" }
+        metrics_source:
+          anyOf:
+            - { type: string }
+            - { type: "null" }
+        quote_mode:
+          anyOf:
+            - { type: string }
+            - { type: "null" }
+        current_clearing_price: { type: string }
+        total_bid_volume: { type: string }
+        sort_score:
+          anyOf:
+            - { type: number }
+            - { type: "null" }
+        notes:
+          anyOf:
+            - { type: string }
+            - { type: "null" }
+        uniswap_url:
+          anyOf:
+            - { type: string }
+            - { type: "null" }
+        trust: { $ref: "#/components/schemas/AuctionTrust" }
+        completion_plan:
+          anyOf:
+            - { type: object, additionalProperties: true }
+            - { type: "null" }
+        reputation_prompt:
+          anyOf:
+            - { type: object, additionalProperties: true }
+            - { type: "null" }
+        your_bid_status:
+          anyOf:
+            - { type: string }
+            - { type: "null" }
+      additionalProperties: true
+    AuctionListEnvelope:
+      type: object
+      description: >
+        Auction list responses use `items`, not the older generic `data` array shape.
+      required: [ok, items, generated_at]
+      properties:
+        ok: { type: boolean, enum: [true] }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AuctionSummary" }
+        generated_at: { $ref: "#/components/schemas/DateTime" }
+      additionalProperties: false
+    AuctionEnvelope:
+      type: object
+      required: [ok, auction]
+      properties:
+        ok: { type: boolean, enum: [true] }
+        auction: { $ref: "#/components/schemas/AuctionSummary" }
+      additionalProperties: false
+    AgentTrustEnvelope:
+      type: object
+      required: [ok, agent_id, trust]
+      properties:
+        ok: { type: boolean, enum: [true] }
+        agent_id: { type: string }
+        trust: { $ref: "#/components/schemas/AuctionTrust" }
+      additionalProperties: false
+    XLinkStartRequest:
+      type: object
+      required: [agent_id]
+      properties:
+        agent_id: { type: string }
+      additionalProperties: false
+    XLinkStartEnvelope:
+      type: object
+      required: [ok, provider, trust_provider, agent_id, redirect_path]
+      properties:
+        ok: { type: boolean, enum: [true] }
+        provider: { type: string, example: twitter }
+        trust_provider: { type: string, example: x }
+        agent_id: { type: string }
+        redirect_path:
+          type: string
+          description: Relative browser path returned by the backend for the X-link flow.
+          example: /trust/x/redirect?token=abc123
+      additionalProperties: false
+    XLinkCallbackRequest:
+      type: object
+      required: [agent_id, handle, profile_url, provider_subject]
+      properties:
+        agent_id: { type: string }
+        handle: { type: string }
+        profile_url: { type: string }
+        provider_subject: { type: string }
+      additionalProperties: false

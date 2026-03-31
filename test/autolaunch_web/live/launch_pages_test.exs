@@ -155,6 +155,8 @@ defmodule AutolaunchWeb.LaunchPagesTest do
   test "launch page renders agent-first copy", %{conn: conn} do
     {:ok, _view, html} = live(conn, "/launch")
 
+    assert html =~ "Launch strip"
+    assert html =~ "Queue the launch without losing the operator context."
     assert html =~ "Choose an eligible agent"
     assert html =~ "ERC-8004"
     assert html =~ "Configure token"
@@ -206,6 +208,33 @@ defmodule AutolaunchWeb.LaunchPagesTest do
     send(view.pid, {:poll_job, "job_queued"})
     polled_html = render(view)
     assert polled_html =~ "href=\"/contracts\""
+  end
+
+  test "launch strip exposes a back button after advancing past the first step", %{conn: conn} do
+    {:ok, human} =
+      Accounts.upsert_human_by_privy_id("did:privy:launch-back", %{
+        "wallet_address" => "0x1111111111111111111111111111111111111111",
+        "wallet_addresses" => ["0x1111111111111111111111111111111111111111"],
+        "display_name" => "Launch Operator"
+      })
+
+    conn = init_test_session(conn, privy_user_id: human.privy_user_id)
+    {:ok, view, _html} = live(conn, "/launch")
+
+    html =
+      view
+      |> element("button[phx-value-agent_id='11155111:42']")
+      |> render_click()
+
+    assert html =~ "Back one step"
+
+    html =
+      view
+      |> element("button[phx-click='scene-back']")
+      |> render_click()
+
+    refute html =~ "Back one step"
+    assert html =~ "Step 1"
   end
 
   test "launch review renders Sepolia signing data and current GitHub target", %{conn: conn} do

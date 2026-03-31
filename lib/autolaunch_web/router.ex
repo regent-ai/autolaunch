@@ -32,6 +32,7 @@ defmodule AutolaunchWeb.Router do
       live "/launch", LaunchLive, :index
       live "/agentbook", AgentbookLive, :index
       live "/ens-link", EnsLinkLive, :index
+      live "/x-link", XLinkLive, :index
       live "/auctions", AuctionsLive, :index
       live "/auctions/:id", AuctionLive, :show
       live "/positions", PositionsLive, :index
@@ -71,6 +72,9 @@ defmodule AutolaunchWeb.Router do
     get "/agents", AgentController, :index
     get "/agents/:id", AgentController, :show
     get "/agents/:id/readiness", AgentController, :readiness
+    get "/trust/agents/:id", TrustController, :show_agent
+    post "/trust/x/start", TrustController, :start_x
+    post "/trust/x/callback", TrustController, :complete_x
 
     get "/subjects/:id", SubjectController, :show
     get "/subjects/:id/ingress", SubjectController, :ingress

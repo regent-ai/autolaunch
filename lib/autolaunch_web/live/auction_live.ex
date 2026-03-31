@@ -78,6 +78,10 @@ defmodule AutolaunchWeb.AuctionLive do
 
   def handle_event("regent:node_select", _params, socket), do: {:noreply, socket}
 
+  def handle_event("scene-back", _params, socket) do
+    {:noreply, socket |> assign(:detail_focus, "detail:bid") |> assign_regent_scene()}
+  end
+
   def handle_event("regent:node_hover", _params, socket), do: {:noreply, socket}
   def handle_event("regent:surface_ready", _params, socket), do: {:noreply, socket}
 
@@ -117,13 +121,40 @@ defmodule AutolaunchWeb.AuctionLive do
         <section class="al-regent-shell">
           <.surface
             id="auction-detail-regent-surface"
-            class="rg-regent-theme-autolaunch"
+            class="rg-regent-theme-autolaunch al-terrain-surface"
             scene={@regent_scene}
             scene_version={@regent_scene_version}
-            selected_node_id={@regent_selected_node_id}
+            selected_target_id={@regent_selected_target_id}
             theme="autolaunch"
             camera_distance={24}
           >
+            <:header_strip>
+              <div class="al-terrain-strip">
+                <div class="al-terrain-strip-copy">
+                  <p class="al-kicker">Detail strip</p>
+                  <div>
+                    <h2>{@auction.agent_name}</h2>
+                    <p class="al-subcopy">The detail terrain stays orienting only. Bids, claims, trust checks, and estimator math remain in the readable cards below.</p>
+                  </div>
+                </div>
+
+                <div class="al-terrain-strip-controls">
+                  <button
+                    :if={@detail_focus != "detail:bid"}
+                    type="button"
+                    phx-click="scene-back"
+                    class="rg-surface-back"
+                  >
+                    <span class="rg-surface-back-icon" aria-hidden="true">←</span>
+                    Back to bid
+                  </button>
+                  <span class="al-network-badge">{@auction.status}</span>
+                  <span class="al-network-badge">{LaunchComponents.time_left_label(@auction.ends_at)}</span>
+                  <span class="al-network-badge">Trust {if @auction.world_registered, do: "checked", else: "pending"}</span>
+                </div>
+              </div>
+            </:header_strip>
+
             <:chamber>
               <.chamber
                 id="auction-detail-regent-chamber"
@@ -498,7 +529,7 @@ defmodule AutolaunchWeb.AuctionLive do
     socket
     |> assign(:regent_scene_version, next_version)
     |> assign(:regent_scene, Map.put(scene, "sceneVersion", next_version))
-    |> assign(:regent_selected_node_id, socket.assigns.detail_focus)
+    |> assign(:regent_selected_target_id, socket.assigns.detail_focus)
   end
 
   defp regent_detail_title("detail:estimate"), do: "Live estimator"

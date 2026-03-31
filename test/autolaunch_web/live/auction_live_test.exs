@@ -112,6 +112,8 @@ defmodule AutolaunchWeb.AuctionLiveTest do
     conn = init_test_session(conn, privy_user_id: human.privy_user_id)
     {:ok, _view, html} = live(conn, "/auctions/auc_1")
 
+    assert html =~ "Detail strip"
+    assert html =~ "The detail terrain stays orienting only."
     assert html =~ "Bid composer"
     assert html =~ "Submit bid from wallet"
     assert html =~ "Claim tokens"
@@ -139,5 +141,29 @@ defmodule AutolaunchWeb.AuctionLiveTest do
 
     refute html =~ "Submit bid from wallet"
     assert html =~ "Privy session required before the wallet transaction can be registered."
+  end
+
+  test "detail strip back returns focus to bid composer", %{conn: conn, human: human} do
+    conn = init_test_session(conn, privy_user_id: human.privy_user_id)
+    {:ok, view, _html} = live(conn, "/auctions/auc_1")
+
+    html =
+      view
+      |> element("#auction-detail-regent-surface-scene")
+      |> render_hook("regent:node_select", %{
+        "target_id" => "detail:trust",
+        "face_id" => "auction",
+        "meta" => %{"panel" => "detail:trust"}
+      })
+
+    assert html =~ "Back to bid"
+
+    html =
+      view
+      |> element("button[phx-click='scene-back']")
+      |> render_click()
+
+    refute html =~ "Back to bid"
+    assert html =~ "Bid composer"
   end
 end

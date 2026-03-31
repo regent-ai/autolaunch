@@ -1,0 +1,149 @@
+version: 1
+product: autolaunch
+command_groups:
+  - name: agentbook
+    interface: http
+    auth_mode: mixed
+    output_envelope: loose-object
+    commands:
+      - agentbook register
+      - agentbook sessions watch
+      - agentbook lookup
+      - agentbook verify-header
+    path_templates:
+      - /api/agentbook/sessions
+      - /api/agentbook/sessions/{id}
+      - /api/agentbook/sessions/{id}/submit
+      - /api/agentbook/lookup
+      - /api/agentbook/verify
+  - name: agents-trust
+    interface: http
+    auth_mode: privy-session
+    output_envelope: loose-object
+    commands:
+      - autolaunch agents list
+      - autolaunch agent <id>
+      - autolaunch agent readiness <id>
+      - autolaunch trust x-link
+    path_templates:
+      - /api/agents
+      - /api/agents/{id}
+      - /api/agents/{id}/readiness
+      - /api/trust/agents/{id}
+      - /api/trust/x/start
+      - /api/trust/x/callback
+  - name: prelaunch-launch
+    interface: mixed
+    auth_mode: mixed
+    output_envelope: launch-envelopes
+    commands:
+      - autolaunch prelaunch wizard
+      - autolaunch prelaunch show
+      - autolaunch prelaunch validate
+      - autolaunch prelaunch publish
+      - autolaunch launch preview
+      - autolaunch launch create
+      - autolaunch launch run
+      - autolaunch launch monitor
+      - autolaunch launch finalize
+      - autolaunch jobs watch
+      - autolaunch vesting status
+      - autolaunch vesting release
+    path_templates:
+      - /api/prelaunch/plans
+      - /api/prelaunch/plans/{id}
+      - /api/prelaunch/plans/{id}/validate
+      - /api/prelaunch/plans/{id}/publish
+      - /api/prelaunch/plans/{id}/launch
+      - /api/prelaunch/assets
+      - /api/prelaunch/plans/{id}/metadata
+      - /api/prelaunch/plans/{id}/metadata-preview
+      - /api/launch/preview
+      - /api/launch/jobs
+      - /api/launch/jobs/{id}
+      - /api/lifecycle/jobs/{id}
+      - /api/lifecycle/jobs/{id}/finalize/prepare
+      - /api/lifecycle/jobs/{id}/finalize/register
+      - /api/lifecycle/jobs/{id}/vesting
+      - /api/contracts/jobs/{id}/{resource}/{action}/prepare
+  - name: markets-subjects
+    interface: http
+    auth_mode: privy-session
+    output_envelope: market-envelopes
+    commands:
+      - autolaunch auctions list
+      - autolaunch auction <id>
+      - autolaunch bids quote
+      - autolaunch bids place
+      - autolaunch bids mine
+      - autolaunch bids exit
+      - autolaunch bids claim
+      - autolaunch subjects show
+      - autolaunch subjects ingress
+      - autolaunch subjects stake
+      - autolaunch subjects unstake
+      - autolaunch subjects claim-usdc
+      - autolaunch subjects sweep-ingress
+    path_templates:
+      - /api/auctions
+      - /api/auctions/{id}
+      - /api/auctions/{id}/bid_quote
+      - /api/auctions/{id}/bids
+      - /api/me/bids
+      - /api/bids/{id}/exit
+      - /api/bids/{id}/claim
+      - /api/subjects/{id}
+      - /api/subjects/{id}/ingress
+      - /api/subjects/{id}/stake
+      - /api/subjects/{id}/unstake
+      - /api/subjects/{id}/claim-usdc
+      - /api/subjects/{id}/ingress/{address}/sweep
+  - name: ens-contracts
+    interface: http
+    auth_mode: privy-session
+    output_envelope: prepared-action-or-status
+    commands:
+      - autolaunch ens plan
+      - autolaunch ens prepare-ensip25
+      - autolaunch ens prepare-erc8004
+      - autolaunch ens prepare-bidirectional
+      - autolaunch contracts admin
+      - autolaunch contracts job
+      - autolaunch contracts subject
+      - autolaunch strategy migrate
+      - autolaunch strategy sweep-token
+      - autolaunch strategy sweep-currency
+      - autolaunch fee-registry show
+      - autolaunch fee-registry set-hook-enabled
+      - autolaunch fee-vault show
+      - autolaunch fee-vault withdraw-treasury
+      - autolaunch fee-vault withdraw-regent
+      - autolaunch splitter show
+      - autolaunch splitter set-paused
+      - autolaunch splitter set-label
+      - autolaunch splitter set-treasury-recipient
+      - autolaunch splitter set-protocol-recipient
+      - autolaunch splitter set-protocol-skim-bps
+      - autolaunch splitter withdraw-treasury-residual
+      - autolaunch splitter withdraw-protocol-reserve
+      - autolaunch splitter reassign-dust
+      - autolaunch ingress create
+      - autolaunch ingress set-default
+      - autolaunch ingress set-label
+      - autolaunch ingress rescue
+      - autolaunch registry show
+      - autolaunch registry set-subject-manager
+      - autolaunch registry link-identity
+      - autolaunch factory revenue-share set-authorized-creator
+      - autolaunch factory revenue-ingress set-authorized-creator
+    path_templates:
+      - /api/ens/link/plan
+      - /api/ens/link/prepare-ensip25
+      - /api/ens/link/prepare-erc8004
+      - /api/ens/link/prepare-bidirectional
+      - /api/contracts/admin
+      - /api/contracts/jobs/{id}
+      - /api/contracts/subjects/{id}
+      - /api/contracts/jobs/{id}/{resource}/{action}/prepare
+      - /api/contracts/subjects/{id}/{resource}/{action}/prepare
+      - /api/contracts/admin/{resource}/{action}/prepare

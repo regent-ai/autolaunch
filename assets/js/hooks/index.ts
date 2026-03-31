@@ -7,6 +7,7 @@ import { LaunchForm } from "./launch-form"
 import { MissionMotion } from "./mission-motion"
 import { PrivyAuth } from "./privy-auth"
 import { WalletTxButton } from "./wallet-tx-button"
+import { XLinkFlow } from "./x-link-flow"
 
 export const hooks: HooksOptions = {
   ...regentHooks,
@@ -16,4 +17,5 @@ export const hooks: HooksOptions = {
   MissionMotion,
   PrivyAuth,
   WalletTxButton,
+  XLinkFlow,
 }

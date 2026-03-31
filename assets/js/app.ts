@@ -1,17 +1,18 @@
 import "phoenix_html"
 
+import { Heerich } from "heerich"
 import { Socket } from "phoenix"
 import { LiveSocket } from "phoenix_live_view"
 import topbar from "../vendor/topbar"
 
-import { installPinnedHeerich } from "../../../packages/regent_ui/assets/js/regent"
+import { installHeerich } from "../../../packages/regent_ui/assets/js/regent"
 import { hooks } from "./hooks/index"
 
 function readCsrfToken(): string {
   return document.querySelector<HTMLMetaElement>("meta[name='csrf-token']")?.content?.trim() ?? ""
 }
 
-installPinnedHeerich()
+installHeerich(Heerich)
 
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,

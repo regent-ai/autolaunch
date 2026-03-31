@@ -93,6 +93,9 @@ defmodule AutolaunchWeb.AuctionsLiveTest do
     conn = init_test_session(conn, privy_user_id: human.privy_user_id)
     {:ok, _view, html} = live(conn, "/auctions")
 
+    assert html =~ "Voxel rack for live markets."
+    assert html =~ "Status rail"
+    assert html =~ "Activity rail"
     assert html =~ "Atlas"
 
     assert html =~

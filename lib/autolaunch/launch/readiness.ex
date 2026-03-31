@@ -11,6 +11,16 @@ defmodule Autolaunch.Launch.Readiness do
   alias Autolaunch.Launch.External.TokenLaunchStake
   alias Autolaunch.Repo
 
+  @blocking_check_keys ~w(
+    ownerAuthorized
+    noPriorSuccessfulLaunch
+    lifecycleCompleted
+    healthyAgentWithin24h
+    stakeLockActive
+    beneficiaryAddressValid
+    beneficiaryConfirmed
+  )
+
   @type result :: %{
           ready_to_launch: boolean(),
           resolved_lifecycle_run_id: String.t() | nil,
@@ -122,7 +132,7 @@ defmodule Autolaunch.Launch.Readiness do
         %{
           key: "xVerified",
           passed: x_verified,
-          message: "A verified X account must be attached to this agent."
+          message: "An X account can be attached later as an optional public trust signal."
         },
         %{
           key: "stakeLockActive",
@@ -141,7 +151,10 @@ defmodule Autolaunch.Launch.Readiness do
         }
       ]
 
-      ready_to_launch = Enum.all?(checks, & &1.passed)
+      ready_to_launch =
+        Enum.all?(checks, fn check ->
+          check.passed or check.key not in @blocking_check_keys
+        end)
       blocking = blocking_error(checks)
 
       %{
@@ -194,7 +207,8 @@ defmodule Autolaunch.Launch.Readiness do
       %{
         key: "xVerified",
         passed: false,
-        message: "X verification can only be confirmed when the shared policy tables are present."
+        message:
+          "X verification is optional public trust metadata and cannot be confirmed here."
       },
       %{
         key: "stakeLockActive",
@@ -238,9 +252,6 @@ defmodule Autolaunch.Launch.Readiness do
 
       Map.has_key?(failed, "healthyAgentWithin24h") ->
         %{status_code: 412, status_message: "Agent health must be green within 24 hours."}
-
-      Map.has_key?(failed, "xVerified") ->
-        %{status_code: 412, status_message: "A verified X account is required."}
 
       Map.has_key?(failed, "stakeLockActive") ->
         %{status_code: 423, status_message: "An active REGENT stake lock is required."}

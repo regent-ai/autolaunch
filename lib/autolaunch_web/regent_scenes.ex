@@ -1,6 +1,8 @@
 defmodule AutolaunchWeb.RegentScenes do
   @moduledoc false
 
+  alias Regent.SceneSpec
+
   def guide(steps, selected_step_index) do
     nodes =
       steps
@@ -11,6 +13,10 @@ defmodule AutolaunchWeb.RegentScenes do
           "geometry" => "cube",
           "sigil" => guide_sigil(step.order),
           "label" => step.eyebrow,
+          "actionLabel" => "Open guide step",
+          "intent" => "scene_action",
+          "groupRole" => "landmark",
+          "historyKey" => "autolaunch:guide:overview",
           "status" => step_status(step.order, selected_step_index),
           "position" => [step.order * 5 - 12, rem(step.order, 2) * 4, div(step.order, 2) * 4],
           "size" => if(step.order == selected_step_index, do: [3, 3, 2], else: [2, 2, 2]),
@@ -35,7 +41,10 @@ defmodule AutolaunchWeb.RegentScenes do
         end)
       end
 
-    base_scene("guide", "Auction guide", "fuse", nodes, conduits)
+    base_scene("guide", "Auction guide", "fuse", nodes, conduits,
+      active_camera_preset: if(selected_step_index > 0, do: "node_focus", else: "overview"),
+      camera_target_id: if(selected_step_index > 0, do: "guide:step:#{selected_step_index}", else: nil)
+    )
   end
 
   def launch(assigns) do
@@ -60,6 +69,9 @@ defmodule AutolaunchWeb.RegentScenes do
             "geometry" => "monolith",
             "sigil" => "gate",
             "label" => selected_agent.name || selected_agent.agent_name || selected_agent.agent_id,
+            "actionLabel" => "Selected launch agent",
+            "intent" => "status_only",
+            "groupRole" => "landmark",
             "status" => "focused",
             "position" => [-8, 1, 0],
             "size" => [2, 4, 2],
@@ -85,7 +97,10 @@ defmodule AutolaunchWeb.RegentScenes do
         }
       end)
 
-    base_scene("launch", "Launch control", "fuse", nodes, conduits)
+    base_scene("launch", "Launch control", "fuse", nodes, conduits,
+      active_camera_preset: launch_camera_preset(current_step, current_job),
+      camera_target_id: launch_camera_target(current_step, current_job)
+    )
   end
 
   def auctions(auctions, filters) do
@@ -96,6 +111,7 @@ defmodule AutolaunchWeb.RegentScenes do
       |> Enum.map(fn {auction, index} ->
         row = div(index, 4)
         column = rem(index, 4)
+        height = auction_cell_height(auction.status, row)
 
         %{
           "id" => "auction:#{auction.id}",
@@ -103,9 +119,15 @@ defmodule AutolaunchWeb.RegentScenes do
           "geometry" => "reliquary",
           "sigil" => auction_sigil(auction.status),
           "label" => auction.agent_name,
+          "actionLabel" => "Open auction detail",
+          "intent" => "navigate",
+          "groupRole" => "landmark",
+          "historyKey" => "autolaunch:auctions:overview",
           "status" => auction_status(auction.status),
-          "position" => [column * 6 - 10, row * 6 + 2, rem(index, 2) * 2],
-          "size" => [2, 2, 2],
+          "position" => [column * 6 - 10, row * 7 + 1, row * 2 + rem(index, 2)],
+          "size" => [3, height, 3],
+          "scale" => auction_cell_scale(auction.status, row),
+          "scaleOrigin" => [0.5, 1, 0.5],
           "meta" => %{
             "auctionId" => auction.id,
             "status" => auction.status
@@ -117,12 +139,17 @@ defmodule AutolaunchWeb.RegentScenes do
       %{
         "id" => "auction:market",
         "kind" => "memory",
-        "geometry" => "cube",
+        "geometry" => "monolith",
         "sigil" => "fuse",
         "label" => "Market lens",
+        "actionLabel" => "Market overview",
+        "intent" => "status_only",
+        "groupRole" => "strip",
         "status" => "active",
-        "position" => [-14, -2, 0],
-        "size" => [3, 3, 2],
+        "position" => [-15, -1, 0],
+        "size" => [3, 5, 2],
+        "scale" => [0.86, 1, 0.86],
+        "scaleOrigin" => [0.5, 1, 0.5],
         "meta" => %{
           "sort" => Map.get(filters, "sort"),
           "status" => Map.get(filters, "status"),
@@ -149,7 +176,8 @@ defmodule AutolaunchWeb.RegentScenes do
     base_scene("auctions", "Auction market", "fuse", nodes, conduits)
   end
 
-  def auction_detail(nil, _latest_position, _detail_focus), do: base_scene("auction", "Auction detail", "seal", [], [])
+  def auction_detail(nil, _latest_position, _detail_focus),
+    do: base_scene("auction", "Auction detail", "seal", [], [])
 
   def auction_detail(auction, latest_position, detail_focus) do
     nodes = [
@@ -163,6 +191,9 @@ defmodule AutolaunchWeb.RegentScenes do
         "geometry" => "monolith",
         "sigil" => auction_sigil(auction.status),
         "label" => auction.agent_name,
+        "actionLabel" => "Auction overview",
+        "intent" => "status_only",
+        "groupRole" => "landmark",
         "status" => "focused",
         "position" => [-10, 2, 0],
         "size" => [2, 4, 2],
@@ -184,26 +215,26 @@ defmodule AutolaunchWeb.RegentScenes do
         }
       end)
 
-    base_scene("auction", "Auction detail", "seal", nodes, conduits)
+    base_scene("auction", "Auction detail", "seal", nodes, conduits,
+      active_camera_preset: if(detail_focus == "detail:bid", do: "overview", else: "node_focus"),
+      camera_target_id: if(detail_focus == "detail:bid", do: nil, else: detail_focus)
+    )
   end
 
-  defp base_scene(face_id, title, sigil, nodes, conduits) do
-    %{
-      "app" => "autolaunch",
-      "theme" => "autolaunch",
-      "activeFace" => face_id,
-      "camera" => %{"type" => "oblique", "angle" => 315, "distance" => 24},
-      "faces" => [
-        %{
-          "id" => face_id,
-          "title" => title,
-          "sigil" => sigil,
-          "orientation" => "front",
-          "nodes" => nodes,
-          "conduits" => conduits
-        }
-      ]
-    }
+  defp base_scene(face_id, title, sigil, nodes, conduits, opts \\ []) do
+    {commands, markers} = assemble_face(nodes, conduits)
+
+    face =
+      SceneSpec.face(face_id, title, sigil, commands, markers,
+        orientation: "front"
+      )
+
+    SceneSpec.scene("autolaunch", "autolaunch", face_id, face,
+      distance: Keyword.get(opts, :distance, 24),
+      camera_presets: market_camera_presets(),
+      active_camera_preset: Keyword.get(opts, :active_camera_preset, "overview"),
+      camera_target_id: Keyword.get(opts, :camera_target_id)
+    )
   end
 
   defp launch_step_node(id, label, sigil, offset, current_step, step_number, job_status \\ nil) do
@@ -221,6 +252,10 @@ defmodule AutolaunchWeb.RegentScenes do
       "geometry" => "cube",
       "sigil" => sigil,
       "label" => label,
+      "actionLabel" => "Open launch step",
+      "intent" => "scene_action",
+      "groupRole" => "landmark",
+      "historyKey" => "autolaunch:launch:step",
       "status" => status,
       "position" => [offset * 6 - 4, offset * 2, 0],
       "size" => if(step_number == current_step, do: [3, 3, 2], else: [2, 2, 2]),
@@ -235,6 +270,10 @@ defmodule AutolaunchWeb.RegentScenes do
       "geometry" => "cube",
       "sigil" => sigil,
       "label" => label,
+      "actionLabel" => "Open detail panel",
+      "intent" => "scene_action",
+      "groupRole" => "chamber-entry",
+      "historyKey" => "autolaunch:auction:detail",
       "status" => if(id == detail_focus, do: "focused", else: "available"),
       "position" => [offset * 5 - 2, offset * 2, 0],
       "size" => if(id == detail_focus, do: [3, 3, 2], else: [2, 2, 2]),
@@ -261,6 +300,210 @@ defmodule AutolaunchWeb.RegentScenes do
   defp auction_status(status) when status in ["inactive", "borderline", "expired"], do: "invalid"
   defp auction_status(_status), do: "available"
 
+  defp auction_cell_height(status, row) when status in ["active", "ending-soon"], do: 3 + row
+  defp auction_cell_height(status, _row) when status in ["claimable", "pending-claim"], do: 2
+  defp auction_cell_height(_status, _row), do: 1
+
+  defp auction_cell_scale(status, row) when status in ["active", "ending-soon"],
+    do: [0.92, 1 - row * 0.04, 0.92]
+
+  defp auction_cell_scale(status, _row) when status in ["claimable", "pending-claim"],
+    do: [0.9, 0.78, 0.9]
+
+  defp auction_cell_scale(status, _row) when status in ["inactive", "borderline", "expired"],
+    do: [0.86, 0.58, 0.86]
+
+  defp auction_cell_scale(_status, _row), do: [0.88, 0.72, 0.88]
+
+  defp market_camera_presets do
+    %{
+      "overview" => %{"type" => "oblique", "angle" => 315, "distance" => 24, "padding" => 42, "zoom" => 1.0},
+      "focus_travel" => %{"type" => "oblique", "angle" => 305, "distance" => 19, "padding" => 24, "zoom" => 2.4},
+      "node_focus" => %{"type" => "oblique", "angle" => 300, "distance" => 17, "padding" => 20, "zoom" => 2.8}
+    }
+  end
+
+  defp launch_camera_preset(current_step, current_job) do
+    cond do
+      current_job -> "overview"
+      current_step > 1 -> "node_focus"
+      true -> "overview"
+    end
+  end
+
+  defp launch_camera_target(current_step, current_job) do
+    if current_job || current_step <= 1, do: nil, else: "launch:step:#{min(current_step, 4)}"
+  end
+
   defp human_position_status(nil), do: "No position"
   defp human_position_status(position), do: Map.get(position, :status, "Position")
+
+  defp assemble_face(nodes, conduits) do
+    nodes_by_id = Map.new(nodes, &{&1["id"], &1})
+    entries = Enum.map(nodes, &node_entry/1)
+
+    commands =
+      Enum.flat_map(entries, & &1.commands) ++
+        Enum.flat_map(conduits, &conduit_commands(&1, nodes_by_id))
+
+    markers = Enum.map(entries, & &1.marker)
+    {commands, markers}
+  end
+
+  defp node_entry(node) do
+    node_id = node["id"]
+    status = node["status"] || "available"
+    position = node["position"] || [0, 0, 0]
+    size = node["size"] || [1, 1, 1]
+    geometry = node["geometry"] || "cube"
+    target_id = node_id
+    hover_cycle = Map.get(node, "hoverCycle")
+    meta = Map.get(node, "meta", %{})
+
+    marker =
+      SceneSpec.marker(target_id,
+        label: node["label"] || node_id,
+        action_label: node["actionLabel"],
+        sigil: node["sigil"],
+        kind: node["kind"],
+        status: status,
+        intent: node["intent"] || "scene_action",
+        back_target_id: node["backTargetId"],
+        history_key: node["historyKey"],
+        group_role: node["groupRole"],
+        click_tone: node["clickTone"],
+        meta: meta,
+        command_id: "#{node_id}:body"
+      )
+
+    intent_style = SceneSpec.intent_style(SceneSpec.node_style(status), node["intent"])
+
+    commands =
+      case geometry do
+        "socket" ->
+          [
+            SceneSpec.add_sphere(
+              "#{node_id}:body",
+              SceneSpec.sphere_center(position, size),
+              SceneSpec.sphere_radius(size),
+              style: intent_style,
+              hover_cycle: hover_cycle,
+              target_id: target_id,
+              scale: node["scale"] || SceneSpec.socket_scale(size, status),
+              scale_origin: node["scaleOrigin"] || [0.5, 1, 0.5]
+            )
+          ]
+
+        "carved_cube" ->
+          [
+            SceneSpec.add_box(
+              "#{node_id}:body",
+              position,
+              size,
+              style: intent_style,
+              hover_cycle: hover_cycle,
+              target_id: target_id
+            ),
+            SceneSpec.remove_box(
+              "#{node_id}:carve",
+              SceneSpec.inset_position(position),
+              SceneSpec.inset_size(size),
+              style: SceneSpec.carved_wall_style(status),
+              target_id: target_id
+            )
+          ]
+
+        "ghost" ->
+          [
+            SceneSpec.add_box(
+              "#{node_id}:body",
+              position,
+              size,
+              style: SceneSpec.ghost_style(),
+              opaque: false,
+              hover_cycle: hover_cycle,
+              target_id: target_id
+            )
+          ]
+
+        "reliquary" ->
+          [
+            SceneSpec.add_box(
+              "#{node_id}:body",
+              position,
+              size,
+              style: intent_style,
+              hover_cycle: hover_cycle,
+              target_id: target_id,
+              scale: node["scale"] || [0.88, 0.92, 0.88],
+              scale_origin: node["scaleOrigin"] || [0.5, 1, 0.5]
+            )
+          ]
+
+        "monolith" ->
+          [
+            SceneSpec.add_box(
+              "#{node_id}:body",
+              position,
+              size,
+              style: intent_style,
+              hover_cycle: hover_cycle,
+              target_id: target_id,
+              scale: node["scale"] || [0.9, 1, 0.9],
+              scale_origin: node["scaleOrigin"] || [0.5, 1, 0.5]
+            )
+          ]
+
+        _ ->
+          [
+            SceneSpec.add_box(
+              "#{node_id}:body",
+              position,
+              size,
+              style: intent_style,
+              opaque: Map.get(node, "opaque"),
+              hover_cycle: hover_cycle,
+              target_id: target_id,
+              scale: SceneSpec.default_scale(node, status),
+              scale_origin: SceneSpec.default_scale_origin(node, status)
+            )
+          ]
+      end
+
+    %{commands: commands, marker: marker}
+  end
+
+  defp conduit_commands(conduit, nodes_by_id) do
+    with from_node when is_map(from_node) <- Map.get(nodes_by_id, conduit["from"]),
+         to_node when is_map(to_node) <- Map.get(nodes_by_id, conduit["to"]) do
+      base =
+        SceneSpec.add_line(
+          "#{conduit["id"]}:line",
+          SceneSpec.anchor(Map.fetch!(from_node, "position"), Map.fetch!(from_node, "size")),
+          SceneSpec.anchor(Map.fetch!(to_node, "position"), Map.fetch!(to_node, "size")),
+          radius: conduit["radius"] || 0.75,
+          shape: conduit["shape"] || "rounded",
+          style: SceneSpec.conduit_style(conduit["state"] || "visible"),
+          hover_cycle: conduit["hoverCycle"]
+        )
+
+      waypoints =
+        conduit
+        |> Map.get("waypoints", [])
+        |> Enum.with_index()
+        |> Enum.map(fn {point, index} ->
+          SceneSpec.add_sphere(
+            "#{conduit["id"]}:waypoint:#{index}",
+            point,
+            0.6,
+            style: SceneSpec.conduit_style(conduit["state"] || "visible"),
+            hover_cycle: conduit["hoverCycle"]
+          )
+        end)
+
+      [base | waypoints]
+    else
+      _ -> []
+    end
+  end
 end

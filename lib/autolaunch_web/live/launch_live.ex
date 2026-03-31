@@ -114,6 +114,19 @@ defmodule AutolaunchWeb.LaunchLive do
 
   def handle_event("regent:node_select", _params, socket), do: {:noreply, socket}
 
+  def handle_event("scene-back", _params, socket) do
+    cond do
+      socket.assigns.current_job ->
+        {:noreply, socket}
+
+      socket.assigns.step > 1 ->
+        {:noreply, socket |> assign(:step, max(socket.assigns.step - 1, 1)) |> assign_regent_scene()}
+
+      true ->
+        {:noreply, socket}
+    end
+  end
+
   def handle_event("regent:node_hover", _params, socket), do: {:noreply, socket}
   def handle_event("regent:surface_ready", _params, socket), do: {:noreply, socket}
 
@@ -172,13 +185,40 @@ defmodule AutolaunchWeb.LaunchLive do
       <section class="al-regent-shell">
         <.surface
           id="launch-regent-surface"
-          class="rg-regent-theme-autolaunch"
+          class="rg-regent-theme-autolaunch al-terrain-surface"
           scene={@regent_scene}
           scene_version={@regent_scene_version}
-          selected_node_id={@regent_selected_node_id}
+          selected_target_id={@regent_selected_target_id}
           theme="autolaunch"
           camera_distance={24}
         >
+          <:header_strip>
+            <div class="al-terrain-strip">
+              <div class="al-terrain-strip-copy">
+                <p class="al-kicker">Launch strip</p>
+                <div>
+                  <h2>Queue the launch without losing the operator context.</h2>
+                  <p class="al-subcopy">The top strip keeps the route state readable while the chamber and wizard handle the actual work.</p>
+                </div>
+              </div>
+
+              <div class="al-terrain-strip-controls">
+                <button
+                  :if={@step > 1 && !@current_job}
+                  type="button"
+                  phx-click="scene-back"
+                  class="rg-surface-back"
+                >
+                  <span class="rg-surface-back-icon" aria-hidden="true">←</span>
+                  Back one step
+                </button>
+                <span class="al-network-badge">Step {@step}</span>
+                <span class="al-network-badge">Eligible {@eligible_count}</span>
+                <span class="al-network-badge">{Presenter.regent_job_status(@current_job)}</span>
+              </div>
+            </div>
+          </:header_strip>
+
           <:chamber>
             <.chamber
               id="launch-regent-chamber"
@@ -875,7 +915,7 @@ defmodule AutolaunchWeb.LaunchLive do
     socket
     |> assign(:regent_scene_version, next_version)
     |> assign(:regent_scene, Map.put(scene, "sceneVersion", next_version))
-    |> assign(:regent_selected_node_id, "launch:step:#{min(socket.assigns.step, 4)}")
+    |> assign(:regent_selected_target_id, "launch:step:#{min(socket.assigns.step, 4)}")
   end
 
   defp launch_module do
