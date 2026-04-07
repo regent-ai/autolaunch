@@ -106,11 +106,12 @@ defmodule AutolaunchWeb.SubjectLiveTest do
     conn = init_test_session(conn, privy_user_id: human.privy_user_id)
     {:ok, _view, html} = live(conn, "/subjects/#{@subject_id}")
 
-    assert html =~ "Stake, claim, and manage Sepolia revenue from one subject view."
+    assert html =~ "See the revenue state, then take the one action that matters most."
     assert html =~ "Your staked tokens"
     assert html =~ "Wallet token balance"
     assert html =~ "Claimable USDC"
-    assert html =~ "Wallet position"
+    assert html =~ "Primary next step"
+    assert html =~ "Other actions"
     assert html =~ "Known USDC intake accounts"
     assert html =~ "Prepare USDC claim"
     assert html =~ "Open advanced contracts console"

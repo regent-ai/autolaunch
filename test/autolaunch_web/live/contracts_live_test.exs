@@ -207,10 +207,10 @@ defmodule AutolaunchWeb.ContractsLiveTest do
         "/contracts?job_id=job_contracts&subject_id=0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
       )
 
-    assert html =~ "Inspect the live launch stack"
+    assert html =~ "Use this only when you need deep inspection"
     assert html =~ "LBP runtime state"
     assert html =~ "Advanced revenue controls"
-    assert html =~ "Prepare-only admin actions"
+    assert html =~ "Advanced operator tool"
   end
 
   test "contracts page prepares transaction payloads", %{conn: conn} do

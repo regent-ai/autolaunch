@@ -27,50 +27,120 @@ defmodule AutolaunchWeb.LaunchComponents do
           <p class="al-kicker">Regent CCA</p>
           <div>
             <h1>autolaunch.sh</h1>
-            <p>Continuous clearing auctions built to help quality teams bootstrap liquidity with healthier market behavior and real price discovery.</p>
+            <p>Launch, bid, and manage revenue from one calmer Sepolia operator surface.</p>
           </div>
         </div>
 
-        <nav class="al-topnav" aria-label="Primary">
-          <.nav_link active={@active_view == "guide"} navigate={~p"/"}>
-            How It Works
-          </.nav_link>
-          <.nav_link active={@active_view == "launch"} navigate={~p"/launch"}>Launch</.nav_link>
-          <.nav_link active={@active_view == "agentbook"} navigate={~p"/agentbook"}>Trust Check</.nav_link>
-          <.nav_link active={@active_view == "ens"} navigate={~p"/ens-link"}>ENS Link</.nav_link>
-          <.nav_link active={@active_view == "auctions"} navigate={~p"/auctions"}>Tokens</.nav_link>
-          <.nav_link active={@active_view == "profile"} navigate={~p"/profile"}>Profile</.nav_link>
-          <.nav_link active={@active_view == "positions"} navigate={~p"/positions"}>Positions</.nav_link>
-          <.nav_link active={@active_view == "contracts"} navigate={~p"/contracts"}>Contracts</.nav_link>
-        </nav>
+        <div class="al-shell-nav">
+          <nav class="al-topnav" aria-label="Primary">
+            <.nav_link active={@active_view == "launch"} navigate={~p"/launch"}>Launch</.nav_link>
+            <.nav_link active={@active_view == "auctions"} navigate={~p"/auctions"}>Auctions</.nav_link>
+            <.nav_link active={@active_view == "positions"} navigate={~p"/positions"}>Positions</.nav_link>
+            <.nav_link active={@active_view == "profile"} navigate={~p"/profile"}>Profile</.nav_link>
+          </nav>
 
-        <div class="al-topbar-actions">
-          <button class="al-theme" type="button" data-theme-action="toggle">Theme</button>
-          <div
-            class="al-auth-chip"
-            id="privy-auth"
-            phx-hook="PrivyAuth"
-            data-privy-app-id={privy_app_id()}
-            data-session-state={if @current_human, do: "present", else: "missing"}
-          >
-            <div>
-              <span class="al-auth-label">Operator</span>
-              <strong data-privy-state>
-                {if @current_human,
-                  do: @current_human.display_name || @current_human.wallet_address || "connected",
-                  else: "guest"}
-              </strong>
+          <div class="al-shell-utility-row">
+            <nav class="al-topnav-secondary" aria-label="Utilities">
+              <.utility_link active={@active_view == "guide"} navigate={~p"/"}>Guide</.utility_link>
+              <.utility_link active={@active_view == "agentbook"} navigate={~p"/agentbook"}>
+                Trust Check
+              </.utility_link>
+              <.utility_link active={@active_view == "ens"} navigate={~p"/ens-link"}>ENS Link</.utility_link>
+              <.utility_link active={@active_view == "contracts"} navigate={~p"/contracts"}>
+                Contracts
+              </.utility_link>
+            </nav>
+
+            <div class="al-topbar-actions">
+              <button class="al-theme" type="button" data-theme-action="toggle">Theme</button>
+              <div
+                class="al-auth-chip"
+                id="privy-auth"
+                phx-hook="PrivyAuth"
+                data-privy-app-id={privy_app_id()}
+                data-session-state={if @current_human, do: "present", else: "missing"}
+              >
+                <div>
+                  <span class="al-auth-label">Operator</span>
+                  <strong data-privy-state>
+                    {if @current_human,
+                      do: @current_human.display_name || @current_human.wallet_address || "connected",
+                      else: "guest"}
+                  </strong>
+                </div>
+                <button type="button" data-privy-action="toggle">
+                  {if @current_human, do: "Logout", else: "Privy Login"}
+                </button>
+              </div>
             </div>
-            <button type="button" data-privy-action="toggle">
-              {if @current_human, do: "Logout", else: "Privy Login"}
-            </button>
           </div>
         </div>
       </header>
 
+      <.welcome_modal />
+
       <main class="al-stage">
         {render_slot(@inner_block)}
       </main>
+    </div>
+    """
+  end
+
+  def welcome_modal(assigns) do
+    ~H"""
+    <div
+      id="autolaunch-welcome-modal"
+      class="modal modal-middle al-welcome-modal"
+      phx-hook="WelcomeModal"
+      phx-update="ignore"
+      hidden
+      aria-hidden="true"
+      data-cookie-name="autolaunch_welcome_seen"
+    >
+      <div
+        class="modal-box al-welcome-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="autolaunch-welcome-title"
+        aria-describedby="autolaunch-welcome-copy"
+      >
+        <button
+          type="button"
+          class="al-welcome-close"
+          aria-label="Dismiss welcome"
+          data-welcome-close
+        >
+          ×
+        </button>
+
+        <div class="al-welcome-hero">
+          <img
+            src={~p"/images/autolaunch-logo-large.png"}
+            alt="Autolaunch"
+            class="al-welcome-logo"
+          />
+          <div>
+            <p class="al-kicker">Welcome to autolaunch.sh</p>
+            <h2 id="autolaunch-welcome-title">The hub for agent companies to begin.</h2>
+          </div>
+        </div>
+
+        <p id="autolaunch-welcome-copy" class="al-welcome-copy">
+          A token auction lets anyone split in the onchain revenue an agent will make. Use the
+          Autolaunch Skill with your Openclaw or Hermes agent to fund its operations as a long-term
+          agent business.
+        </p>
+
+        <div class="al-welcome-actions">
+          <button type="button" class="al-submit" data-welcome-continue>Continue</button>
+        </div>
+
+        <p class="al-welcome-footnote">
+          By continuing, you confirm that you are at least 18 years old and agree to the
+          <.link navigate={~p"/terms"} class="al-inline-link">Terms and Conditions</.link> and
+          <.link navigate={~p"/privacy"} class="al-inline-link">Privacy Policy</.link>.
+        </p>
+      </div>
     </div>
     """
   end
@@ -82,6 +152,18 @@ defmodule AutolaunchWeb.LaunchComponents do
   def nav_link(assigns) do
     ~H"""
     <.link navigate={@navigate} class={["al-nav-link", @active && "is-active"]}>
+      {render_slot(@inner_block)}
+    </.link>
+    """
+  end
+
+  attr :active, :boolean, default: false
+  attr :navigate, :string, required: true
+  slot :inner_block, required: true
+
+  def utility_link(assigns) do
+    ~H"""
+    <.link navigate={@navigate} class={["al-utility-link", @active && "is-active"]}>
       {render_slot(@inner_block)}
     </.link>
     """

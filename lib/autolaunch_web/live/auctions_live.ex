@@ -34,14 +34,14 @@ defmodule AutolaunchWeb.AuctionsLive do
   def render(assigns) do
     ~H"""
     <.shell current_human={@current_human} active_view={@active_view}>
-      <section id="auctions-hero" class="al-hero al-panel al-directory-hero" phx-hook="MissionMotion">
+      <section id="auctions-intro" class="al-panel al-directory-intro" phx-hook="MissionMotion">
         <div class="al-directory-copy">
-          <p class="al-kicker">Active auctions</p>
-          <h2>Use stablecoins to back agents with provable revenue.</h2>
+          <p class="al-kicker">Auctions</p>
+          <h2>Choose an agent, inspect the live price, then open the bid view.</h2>
           <p class="al-subcopy">
-            Every biddable token here is in its live three-day auction window. The auction is
-            designed to feel simple and fair: pick your budget, pick your max price, and let the
-            order run over time instead of trying to win a timing game.
+            The directory is here to help you decide where to look next, not to teach every rule
+            again. Each card answers three questions quickly: is it still biddable, what is the
+            live price, and where do you go next?
           </p>
           <div class="al-hero-actions">
             <.link navigate={~p"/how-auctions-work"} class="al-cta-link">
@@ -53,51 +53,30 @@ defmodule AutolaunchWeb.AuctionsLive do
           </div>
         </div>
 
-        <div class="al-stat-grid">
-          <.stat_card title="Biddable" value={Integer.to_string(@biddable_count)} />
-          <.stat_card title="Live" value={Integer.to_string(@live_count)} />
-          <.stat_card title="Visible" value={Integer.to_string(length(@tokens))} />
-        </div>
-      </section>
-
-      <section id="auctions-facts" class="al-panel al-directory-facts" phx-hook="MissionMotion">
-        <div class="al-section-head">
-          <div>
-            <p class="al-kicker">What to know before you bid</p>
-            <h3>The short, non-crypto-heavy version.</h3>
+        <div class="al-directory-summary">
+          <div class="al-launch-tags" aria-label="Directory summary">
+            <span class="al-launch-tag">Biddable {@biddable_count}</span>
+            <span class="al-launch-tag">Live {@live_count}</span>
+            <span class="al-launch-tag">Visible {length(@tokens)}</span>
           </div>
-        </div>
 
-        <div class="al-directory-facts-grid">
-          <article class="al-directory-fact-card">
-            <span>Minimum raise</span>
-            <strong>Every auction can set a USDC floor that it must reach to graduate.</strong>
-            <p>If the auction ends below that mark, bidders can return their USDC instead of being forced into a weak launch.</p>
-          </article>
-
-          <article class="al-directory-fact-card">
-            <span>How to start</span>
-            <strong>Begin with your budget at the current displayed floor or clearing price.</strong>
-            <p>You may need to update later if demand moves higher and your bid falls out of range.</p>
-          </article>
-
-          <article class="al-directory-fact-card">
-            <span>Why it feels fair</span>
-            <strong>Orders spread over the remaining blocks instead of rewarding one perfect click.</strong>
-            <p>Everyone in the same block gets the same clearing price, which cuts down on sniping and bot timing edges.</p>
-          </article>
-
-          <article class="al-directory-fact-card">
-            <span>Token split</span>
-            <strong>10 billion tokens are auctioned, 5 billion are reserved for LP, and 85 billion vest for 1 year.</strong>
-            <p>That is the current live launch split for the 100 billion token supply.</p>
-          </article>
-
-          <article class="al-directory-fact-card">
-            <span>Where the money goes</span>
-            <strong>Half of auction USDC goes to the Uniswap v4 pool, and half goes to the agent Safe.</strong>
-            <p>The 5 billion LP tokens pair with the LP-side USDC, while the Safe-side USDC is for business operations.</p>
-          </article>
+          <div class="al-note-grid al-directory-points">
+            <article class="al-note-card">
+              <span>Start simple</span>
+              <strong>Budget plus max price</strong>
+              <p>Open the bid view when a token looks interesting.</p>
+            </article>
+            <article class="al-note-card">
+              <span>Minimum raise</span>
+              <strong>Failed launches can return USDC</strong>
+              <p>The return path stays visible after the auction ends.</p>
+            </article>
+            <article class="al-note-card">
+              <span>Live after auction</span>
+              <strong>Finished tokens move to their token page</strong>
+              <p>Once the sale ends, the subject page is the better operator surface.</p>
+            </article>
+          </div>
         </div>
       </section>
 
@@ -132,8 +111,8 @@ defmodule AutolaunchWeb.AuctionsLive do
           body="Switch between Biddable and Live or check back after the next launch finishes its three-day auction window."
         />
       <% else %>
-        <section class="al-token-grid">
-          <article :for={token <- @tokens} id={"auction-tile-#{token.id}"} class="al-panel al-token-card" phx-hook="MissionMotion">
+        <section id="auctions-grid" class="al-token-grid" phx-hook="MissionMotion">
+          <article :for={token <- @tokens} id={"auction-tile-#{token.id}"} class="al-panel al-token-card">
             <div class="al-token-card-head">
               <div>
                 <p class="al-kicker">{token.agent_id}</p>
@@ -151,15 +130,18 @@ defmodule AutolaunchWeb.AuctionsLive do
               <span class="al-launch-tag">Started {format_date(token.started_at)}</span>
             </div>
 
-            <div class="al-stat-grid">
-              <.stat_card title="Price source" value={humanize_price_source(token.price_source)} />
-              <.stat_card title="Auction" value={LaunchComponents.time_left_label(token.ends_at)} />
-              <.stat_card title="Trust" value={trust_summary(token.trust)} />
+            <div class="al-note-grid al-token-card-facts">
+              <article class="al-note-card">
+                <span>Price source</span>
+                <strong>{humanize_price_source(token.price_source)}</strong>
+                <p>{directory_copy(token.phase)}</p>
+              </article>
+              <article class="al-note-card">
+                <span>Auction</span>
+                <strong>{LaunchComponents.time_left_label(token.ends_at)}</strong>
+                <p>Trust summary: {trust_summary(token.trust)}</p>
+              </article>
             </div>
-
-            <p class="al-inline-note">
-              {directory_copy(token.phase)}
-            </p>
 
             <div class="al-action-row">
               <.link navigate={token.detail_url} class="al-submit">

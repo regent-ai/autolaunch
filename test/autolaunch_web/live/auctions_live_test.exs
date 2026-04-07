@@ -97,13 +97,13 @@ defmodule AutolaunchWeb.AuctionsLiveTest do
     conn = init_test_session(conn, privy_user_id: human.privy_user_id)
     {:ok, _view, html} = live(conn, "/auctions")
 
-    assert html =~ "Use stablecoins to back agents with provable revenue."
+    assert html =~ "Choose an agent, inspect the live price, then open the bid view."
     assert html =~ "Biddable"
     assert html =~ "Atlas"
     refute html =~ "Nova"
     assert html =~ "Auction clearing"
-    assert html =~ "The short, non-crypto-heavy version."
-    assert html =~ "Half of auction USDC goes to the Uniswap v4 pool"
+    assert html =~ "Budget plus max price"
+    assert html =~ "Failed launches can return USDC"
   end
 
   test "mode toggle switches from biddable to live tokens", %{conn: conn, human: human} do

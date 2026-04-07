@@ -127,14 +127,15 @@ defmodule AutolaunchWeb.AgentbookLive do
       <section id="agentbook-hero" class="al-hero al-panel" phx-hook="MissionMotion">
         <div>
           <p class="al-kicker">Trust check + AgentBook</p>
-          <h2>Register an agent wallet to a trust-backed World ID check.</h2>
+          <h2>Start a trust check, finish it in World App, then return here for the result.</h2>
           <p class="al-subcopy">
-            This public flow creates a World App request, waits for the trust check to complete, then either uses the configured relay or falls back to a normal wallet transaction.
+            This flow creates the request, waits for proof, and then finishes registration either
+            through the relay or through a normal wallet transaction if sponsorship is unavailable.
           </p>
         </div>
 
         <div class="al-stat-grid">
-          <.stat_card title="Public flow" value="No Privy needed" hint="Works for websites and CLI callers" />
+          <.stat_card title="Public flow" value="No Privy needed" hint="Works for web pages and CLI callers" />
           <.stat_card title="Submission" value="Relay first" hint="Falls back to wallet send when sponsorship is unavailable" />
           <.stat_card title="Networks" value="World + Base" hint="World mainnet, Base mainnet, and Base Sepolia" />
           <.stat_card title="Lookup" value={lookup_label(@lookup_result)} hint="Reads the live AgentBook contract" />

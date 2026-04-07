@@ -188,74 +188,34 @@ defmodule AutolaunchWeb.AuctionLive do
             <p class="al-kicker">Auction detail</p>
             <h2>{@auction.agent_name}</h2>
             <p class="al-subcopy">
-              This page is built around the estimator because the auction is easiest to trust when
-              you can see how a real budget and max price behave block by block.
+              Start with the bid composer. The supporting cards below are there to confirm price,
+              time, minimum raise, and your current position, not to compete with the action area.
             </p>
+
+            <div class="al-launch-tags">
+              <span class="al-launch-tag">{LaunchComponents.time_left_label(@auction.ends_at)}</span>
+              <span class="al-launch-tag">Status {@auction.status}</span>
+              <span class="al-launch-tag">Trust {if @auction.world_registered, do: "checked", else: "pending"}</span>
+            </div>
           </div>
 
           <div class="al-stat-grid">
             <.stat_card title="Clearing price" value={@auction.current_clearing_price} />
             <.stat_card title="Bid volume" value={@auction.total_bid_volume} />
             <.stat_card
-              title="Minimum raise"
-              value={auction_value(@auction, :required_currency_raised, "Unavailable")}
-            />
-            <.stat_card title="Time remaining" value={LaunchComponents.time_left_label(@auction.ends_at)} />
-            <.stat_card
               title="Your status"
               value={human_position_status(@latest_position)}
               hint="Active, borderline, inactive, claimable, pending claim, claimed, exited, ending soon, settled"
             />
-            <.stat_card
-              title="ENS"
-              value={if @auction.ens_attached, do: @auction.ens_name || "Linked", else: "Pending"}
-              hint="Creator identity"
-            />
-            <.stat_card
-              title="Trust"
-              value={if @auction.world_registered, do: "Checked", else: "Pending"}
-              hint="Creator trust record"
-            />
           </div>
         </section>
 
-        <section class="al-detail-layout">
-          <article id="auction-trust-card" class="al-panel al-card" phx-hook="MissionMotion">
-            <div class="al-section-head">
-              <div>
-                <p class="al-kicker">Creator completion</p>
-                <h3>Identity and trust status</h3>
-              </div>
-            </div>
-
-            <div class="al-note-grid">
-              <article class="al-note-card">
-                <span>ENS link</span>
-                <strong>{if @auction.ens_attached, do: "Linked", else: "Needs link"}</strong>
-                <p>
-                  {if @auction.ens_attached,
-                    do: "Creator identity name: #{@auction.ens_name}",
-                    else: "The creator identity still needs an ENS name attached."}
-                </p>
-              </article>
-
-              <article class="al-note-card">
-                <span>Trust record</span>
-                <strong>{if @auction.world_registered, do: "Checked", else: "Needs check"}</strong>
-                <p>
-                  {if @auction.world_registered,
-                    do: "Human ID #{@auction.world_human_id} has launched #{@auction.world_launch_count} tokens through autolaunch.",
-                    else: "A trust check still needs to be completed for this token."}
-                </p>
-              </article>
-            </div>
-          </article>
-
+        <section class="al-auction-primary-layout">
           <article id="auction-bid-composer" class="al-panel al-card" phx-hook="MissionMotion">
             <div class="al-section-head">
               <div>
                 <p class="al-kicker">Bid composer</p>
-                <h3>Bid your real budget and your real max price</h3>
+                <h3>Bid your real budget and your real max price.</h3>
               </div>
               <.status_badge status={@auction.status} />
             </div>
@@ -321,7 +281,7 @@ defmodule AutolaunchWeb.AuctionLive do
             <div class="al-section-head">
               <div>
                 <p class="al-kicker">Live estimator</p>
-                <h3>What changes if nothing else moves?</h3>
+                <h3>If nothing else changes, this is where your bid lands.</h3>
               </div>
             </div>
 
@@ -360,6 +320,13 @@ defmodule AutolaunchWeb.AuctionLive do
               </ul>
             <% else %>
               <p class="al-inline-note">Enter a valid amount and max price to calculate the estimator.</p>
+            <% end %>
+
+            <%= if @positions != [] do %>
+              <div class="al-inline-banner al-auction-position-callout">
+                <strong>Your latest bid</strong>
+                <p>{@latest_position.next_action_label}</p>
+              </div>
             <% end %>
           </article>
         </section>
@@ -408,7 +375,7 @@ defmodule AutolaunchWeb.AuctionLive do
             <div class="al-section-head">
               <div>
                 <p class="al-kicker">Your position</p>
-                <h3>Current bid state</h3>
+                <h3>What you can do from here</h3>
               </div>
             </div>
 
@@ -475,21 +442,56 @@ defmodule AutolaunchWeb.AuctionLive do
               </div>
             <% end %>
           </article>
+        </section>
 
-          <article id="auction-model-card" class="al-panel al-card" phx-hook="MissionMotion">
-            <div class="al-section-head">
+        <section class="al-detail-layout">
+          <details id="auction-trust-card" class="al-panel al-disclosure" phx-hook="MissionMotion">
+            <summary class="al-disclosure-summary">
               <div>
-                <p class="al-kicker">How this works</p>
-                <h3>Why the model is useful</h3>
+                <p class="al-kicker">Creator completion</p>
+                <h3>Identity and trust status</h3>
               </div>
+              <span class="al-network-badge">Secondary</span>
+            </summary>
+
+            <div class="al-note-grid">
+              <article class="al-note-card">
+                <span>ENS link</span>
+                <strong>{if @auction.ens_attached, do: "Linked", else: "Needs link"}</strong>
+                <p>
+                  {if @auction.ens_attached,
+                    do: "Creator identity name: #{@auction.ens_name}",
+                    else: "The creator identity still needs an ENS name attached."}
+                </p>
+              </article>
+
+              <article class="al-note-card">
+                <span>Trust record</span>
+                <strong>{if @auction.world_registered, do: "Checked", else: "Needs check"}</strong>
+                <p>
+                  {if @auction.world_registered,
+                    do: "Human ID #{@auction.world_human_id} has launched #{@auction.world_launch_count} tokens through autolaunch.",
+                    else: "A trust check still needs to be completed for this token."}
+                </p>
+              </article>
             </div>
+          </details>
+
+          <details id="auction-model-card" class="al-panel al-disclosure" phx-hook="MissionMotion">
+            <summary class="al-disclosure-summary">
+              <div>
+                <p class="al-kicker">Auction model</p>
+                <h3>Why the auction behaves this way</h3>
+              </div>
+              <span class="al-network-badge">Secondary</span>
+            </summary>
 
             <ul class="al-compact-list">
               <li>Bid early with your real budget and your real max price instead of waiting for a last-second entry.</li>
               <li>Your max price protects you from overpaying, and everyone in the same block gets the same clearing price.</li>
               <li>With sane auction timing, there is far less room for sniping, bundling, sandwiching, or other speed advantages.</li>
             </ul>
-          </article>
+          </details>
         </section>
       <% else %>
         <.empty_state

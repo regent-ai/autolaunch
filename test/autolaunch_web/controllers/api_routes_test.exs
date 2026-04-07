@@ -5,8 +5,9 @@ defmodule AutolaunchWeb.ApiRoutesTest do
     conn = get(conn, "/")
     html = html_response(conn, 200)
 
-    assert html =~ "Back an agent with USDC, or launch one through your own agent."
-    assert html =~ "Launch a token through your OpenClaw or Hermes Agent."
+    assert html =~ "Pick the job you came here for, then go straight to it."
+    assert html =~ "Back an active auction with USDC."
+    assert html =~ "Launch through the CLI, then return here for the live market."
   end
 
   test "auction index returns JSON", %{conn: conn} do

@@ -53,25 +53,23 @@ defmodule AutolaunchWeb.LaunchLive do
       <section id="launch-cli-hero" class="al-hero al-launch-hero al-panel" phx-hook="MissionMotion">
         <div class="al-launch-copy">
           <p class="al-kicker">CLI-first launch</p>
-          <h2>Launch planning lives in the CLI. The browser stays for review.</h2>
+          <h2>Run the launch from the CLI. Use the site to review what happens next.</h2>
           <p class="al-subcopy">
-            Use one saved plan, one validation pass, and one launch run. The web app still handles
-            auctions, bids, returns, staking, and claims, but the launch itself now follows the
-            same CLI path every time.
+            One plan file feeds validation, publish, launch, monitor, and finalize. The browser
+            stays focused on auctions, token holders, and contract reads after the launch is live.
           </p>
 
           <div class="al-hero-actions">
             <.link navigate={~p"/launch-via-agent"} class="al-cta-link al-cta-link--primary">
               Launch via agent
             </.link>
-            <.link navigate={~p"/auctions"} class="al-ghost">Browse active auctions</.link>
-            <.link navigate={~p"/contracts"} class="al-ghost">Open contract console</.link>
+            <.link navigate={~p"/auctions"} class="al-ghost">Browse auctions</.link>
           </div>
 
           <div class="al-launch-tags" aria-label="Launch summary">
             <span class="al-launch-tag">One saved plan</span>
             <span class="al-launch-tag">Ethereum Sepolia only</span>
-            <span class="al-launch-tag">Minimum raise explicit</span>
+            <span class="al-launch-tag">Browser for review only</span>
           </div>
         </div>
 
@@ -84,12 +82,41 @@ defmodule AutolaunchWeb.LaunchLive do
         />
       </section>
 
-      <section class="al-detail-layout">
+      <section id="launch-cli-steps" class="al-detail-layout" phx-hook="MissionMotion">
         <article id="launch-cli-inputs" class="al-panel al-card" phx-hook="MissionMotion">
           <div class="al-section-head">
             <div>
-              <p class="al-kicker">What the CLI needs</p>
-              <h3>The exact launch inputs</h3>
+              <p class="al-kicker">What this does</p>
+              <h3>One repeatable operator path</h3>
+            </div>
+          </div>
+
+          <div class="al-note-grid">
+            <article class="al-note-card">
+              <span>Save once</span>
+              <strong>Capture the full launch plan in the CLI.</strong>
+              <p>Keep the operator wallet, treasury routing, and metadata in one reviewed plan.</p>
+            </article>
+
+            <article class="al-note-card">
+              <span>Validate once</span>
+              <strong>Check the plan before you publish or deploy.</strong>
+              <p>Minimum raise, routing, and launch settings are reviewed before chain actions start.</p>
+            </article>
+
+            <article class="al-note-card">
+              <span>Run once</span>
+              <strong>Launch, monitor, and finalize from the same thread of work.</strong>
+              <p>The web app picks up after launch for bidding, claims, staking, and revenue reads.</p>
+            </article>
+          </div>
+        </article>
+
+        <article id="launch-cli-needs" class="al-panel al-card" phx-hook="MissionMotion">
+          <div class="al-section-head">
+            <div>
+              <p class="al-kicker">What you need</p>
+              <h3>Review these before you start</h3>
             </div>
           </div>
 
@@ -105,8 +132,8 @@ defmodule AutolaunchWeb.LaunchLive do
         <article id="launch-cli-flow" class="al-panel al-card" phx-hook="MissionMotion">
           <div class="al-section-head">
             <div>
-              <p class="al-kicker">Copy-paste flow</p>
-              <h3>The launch sequence</h3>
+              <p class="al-kicker">What to run</p>
+              <h3>The exact sequence</h3>
             </div>
           </div>
 
@@ -124,43 +151,44 @@ defmodule AutolaunchWeb.LaunchLive do
           </div>
 
           <p class="al-inline-note">
-            The deploy still runs through the backend worker and Foundry script. The CLI just gives
-            operators one consistent review path.
+            The backend worker still executes the Foundry deploy. The CLI just keeps the operator
+            review path consistent from start to finish.
           </p>
         </article>
       </section>
 
-      <section id="launch-cli-tradeoffs" class="al-panel al-directory-facts" phx-hook="MissionMotion">
+      <section id="launch-cli-browser-role" class="al-panel al-directory-facts" phx-hook="MissionMotion">
         <div class="al-section-head">
           <div>
-            <p class="al-kicker">Tradeoffs</p>
-            <h3>Why the cutover happened</h3>
+            <p class="al-kicker">What stays in the browser</p>
+            <h3>Come back here after the launch is live</h3>
           </div>
         </div>
 
         <div class="al-directory-facts-grid">
           <article class="al-directory-fact-card">
-            <span>Operator clarity</span>
-            <strong>The same plan file now feeds validate, publish, and launch.</strong>
-            <p>That cuts down on browser-only state and keeps launch review in one place.</p>
+            <span>Auctions</span>
+            <strong>Track the live sale, update bids, and inspect returns.</strong>
+            <p>Once the token is live, bidders should use the browser instead of the CLI.</p>
           </article>
 
           <article class="al-directory-fact-card">
-            <span>Safer economics review</span>
-            <strong>Minimum raise is explicit before launch.</strong>
-            <p>That makes failed-auction refunds a planned behavior instead of an afterthought.</p>
+            <span>Token holder actions</span>
+            <strong>Claim, stake, unstake, and sweep from the token page.</strong>
+            <p>Revenue management stays visible to token holders without reopening the launch flow.</p>
           </article>
 
           <article class="al-directory-fact-card">
-            <span>Web still matters</span>
-            <strong>The browser remains the place for bidders and token holders.</strong>
-            <p>Auctions, returns, positions, staking, and claims stay available here.</p>
+            <span>Contract reads</span>
+            <strong>Use the advanced console when you need prepared calldata or stack inspection.</strong>
+            <p>The contract view stays available, but it is no longer the first operator stop.</p>
           </article>
         </div>
 
         <div class="al-action-row">
           <.link navigate={~p"/launch-via-agent"} class="al-submit">How to use agents</.link>
           <.link navigate={~p"/auctions"} class="al-ghost">Browse active auctions</.link>
+          <.link navigate={~p"/contracts"} class="al-ghost">Open contract console</.link>
         </div>
       </section>
 

@@ -93,25 +93,23 @@ defmodule AutolaunchWeb.ContractsLive do
       <section id="contracts-hero" class="al-hero al-panel al-contracts-hero" phx-hook="MissionMotion">
         <div>
           <p class="al-kicker">Contracts console</p>
-          <h2>Inspect the live launch stack and prepare operator transactions from one surface.</h2>
+          <h2>Use this only when you need deep inspection or prepared operator calldata.</h2>
           <p class="al-subcopy">
-            The main operator journey now lives in the CLI. This screen stays as the advanced layer
-            for contract reads, deep inspection, and prepared multisig payloads after the guided flow
-            has already told you what to do next.
+            The main operator path lives in the CLI. This screen stays available for stack reads,
+            prepared payloads, and subject-level inspection after the guided flow has already told
+            you what to do.
           </p>
 
           <div class="al-contract-pill-row">
-            <span class="al-launch-tag">Prepare-only admin actions</span>
+            <span class="al-launch-tag">Advanced operator tool</span>
             <span class="al-launch-tag">Job and subject deep links</span>
             <span class="al-launch-tag">Sepolia launch stack reads</span>
           </div>
         </div>
 
         <div class="al-stat-grid">
-          <.stat_card title="Job scope" value={@job_id || "none"} hint="Launch stack context" />
-          <.stat_card title="Subject scope" value={short_hash(@subject_id)} hint="Revenue and registry context" />
+          <.stat_card title="Mode" value="Prepare only" hint="This page exports calldata instead of sending it." />
           <.stat_card title="Prepared tx" value={if(@prepared, do: @prepared.action, else: "none")} hint="Most recent payload" />
-          <.stat_card title="Mode" value="Prepare only" hint="Admin actions export calldata instead of sending it" />
         </div>
       </section>
 

@@ -119,6 +119,7 @@ defmodule AutolaunchWeb.AuctionLiveTest do
     assert html =~ "Submit bid from wallet"
     assert html =~ "Claim tokens"
     assert html =~ "Identity and trust status"
+    assert html =~ "Why the auction behaves this way"
   end
 
   test "aggressive preset updates the form and keeps the submit path visible", %{
@@ -135,6 +136,7 @@ defmodule AutolaunchWeb.AuctionLiveTest do
 
     assert html =~ ~s(value="500.0")
     assert html =~ "Submit bid from wallet"
+    assert html =~ "If nothing else changes"
   end
 
   test "guest view removes the wallet submit path", %{conn: conn} do

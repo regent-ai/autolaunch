@@ -27,6 +27,15 @@ defmodule AutolaunchWeb.PositionsLive do
      |> assign(:positions, load_positions(socket.assigns.current_human, merged))}
   end
 
+  def handle_event("quick_filter", %{"status" => status}, socket) do
+    filters = Map.put(socket.assigns.filters, "status", status)
+
+    {:noreply,
+     socket
+     |> assign(:filters, filters)
+     |> assign(:positions, load_positions(socket.assigns.current_human, filters))}
+  end
+
   def handle_event("wallet_tx_started", %{"message" => message}, socket) do
     {:noreply, Refreshable.wallet_started(socket, message)}
   end
@@ -63,18 +72,17 @@ defmodule AutolaunchWeb.PositionsLive do
       <section id="positions-hero" class="al-hero al-panel" phx-hook="MissionMotion">
         <div>
           <p class="al-kicker">Positions</p>
-          <h2>Returning users should not have to rediscover where each bid stands.</h2>
+          <h2>See what needs attention now, then act from the matching auction.</h2>
           <p class="al-subcopy">
-            Every bid is labeled against the current clearing price and lifecycle state so the next action is obvious.
+            This view is for quick triage. Claimable positions, refund paths, and active bids should
+            be obvious without opening every auction one by one.
           </p>
         </div>
 
         <div class="al-stat-grid">
-          <.stat_card title="Active" value={Integer.to_string(@active_count)} />
-          <.stat_card title="Borderline" value={Integer.to_string(@borderline_count)} />
-          <.stat_card title="Inactive" value={Integer.to_string(@inactive_count)} />
           <.stat_card title="Claimable" value={Integer.to_string(@claimable_count)} />
           <.stat_card title="Returns" value={Integer.to_string(@returnable_count)} />
+          <.stat_card title="Active" value={Integer.to_string(@active_count)} />
         </div>
       </section>
 
@@ -85,9 +93,24 @@ defmodule AutolaunchWeb.PositionsLive do
         />
       <% else %>
         <section class="al-panel al-filter-panel">
+          <div class="al-quick-filter-row" role="group" aria-label="Quick position filters">
+            <button type="button" class={["al-filter", @filters["status"] == "" && "is-active"]} phx-click="quick_filter" phx-value-status="">
+              All
+            </button>
+            <button type="button" class={["al-filter", @filters["status"] == "active" && "is-active"]} phx-click="quick_filter" phx-value-status="active">
+              Active
+            </button>
+            <button type="button" class={["al-filter", @filters["status"] == "claimable" && "is-active"]} phx-click="quick_filter" phx-value-status="claimable">
+              Claimable
+            </button>
+            <button type="button" class={["al-filter", @filters["status"] == "returnable" && "is-active"]} phx-click="quick_filter" phx-value-status="returnable">
+              Returns
+            </button>
+          </div>
+
           <form phx-change="filters_changed" class="al-filter-form">
             <label>
-              <span>Status</span>
+              <span>All statuses</span>
               <select name="filters[status]">
                 <option value="" selected={@filters["status"] == ""}>All</option>
               <option value="active" selected={@filters["status"] == "active"}>Active</option>

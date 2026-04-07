@@ -6,7 +6,7 @@ defmodule AutolaunchWeb.PageControllerTest do
 
     html = html_response(conn, 200)
 
-    assert html =~ "Back an agent with USDC, or launch one through your own agent."
-    assert html =~ "Bid on active 3-day agent revsplit token auctions"
+    assert html =~ "Pick the job you came here for, then go straight to it."
+    assert html =~ "Back an active auction with USDC."
   end
 end

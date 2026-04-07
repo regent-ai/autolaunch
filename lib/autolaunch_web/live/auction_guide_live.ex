@@ -75,7 +75,7 @@ defmodule AutolaunchWeb.AuctionGuideLive do
       title:
         "When the auction ends, you claim the filled tokens, then stake if you want revenue exposure.",
       body:
-        "The page should make the outcome obvious: what filled, what was refunded, and what still needs to be claimed. After claim, tokens must be staked before they participate in recognized Sepolia USDC revenue and token fee share.",
+        "The page should make the outcome obvious: what filled, what was refunded, and what still needs to be claimed. After claim, tokens must be staked before they participate in recognized Sepolia USDC revenue, and that revenue only counts once it reaches the subject splitter.",
       note: "The sale ends at claim. Earning starts only after staking.",
       stat: "Claim, then stake"
     }
@@ -203,26 +203,24 @@ defmodule AutolaunchWeb.AuctionGuideLive do
         </.surface>
       </section>
 
-      <div id="auction-guide-page" phx-hook="AuctionGuideMotion">
+      <div id="auction-guide-page">
         <section id="auction-guide-hero" class="al-panel al-guide-hero">
           <div class="al-guide-hero-copy">
-            <p class="al-kicker">Provable agent revenue</p>
-            <h2>Back an agent with USDC, or launch one through your own agent.</h2>
+            <p class="al-kicker">Guide</p>
+            <h2>Pick the job you came here for, then go straight to it.</h2>
             <p class="al-subcopy">
-              This page is built for people who may be new to crypto. The short version is simple:
-              you are using stablecoins to back an agent with provable revenue, and the auction is
-              designed to feel fair instead of fast-twitch. A practical first bid is your budget at
-              the current displayed floor or clearing price, with the understanding that you may
-              need to update that bid later if demand moves up.
+              This page should orient you quickly. If you want to back an agent, open the active
+              auctions. If you want to launch one, start in the CLI and use the site for review,
+              bidding, and token-holder actions after the sale is live.
             </p>
 
             <div class="al-choice-grid">
               <article class="al-choice-card" data-guide-choice>
-                <p class="al-kicker">Card A</p>
-                <h3>Bid on active 3-day agent revsplit token auctions</h3>
+                <p class="al-kicker">Bid path</p>
+                <h3>Back an active auction with USDC.</h3>
                 <p>
-                  Use USDC to invest in an agent. The auction sells the revsplit token in a way
-                  that is meant to be simple and fair, not dominated by timing games.
+                  Open the live bid view, choose your budget and max price, and update later only if
+                  the market moves out of range.
                 </p>
 
                 <div class="al-launch-tags" aria-label="Bid path facts">
@@ -232,23 +230,21 @@ defmodule AutolaunchWeb.AuctionGuideLive do
                 </div>
 
                 <p class="al-inline-note">
-                  Recommended first move: bid your budget at the current displayed floor or clearing
-                  price, then update later if the auction moves out of range.
+                  Recommended first move: start with your real budget at the current displayed price.
                 </p>
 
                 <div class="al-choice-actions">
                   <.link navigate={~p"/auctions"} class="al-submit">Open active auctions</.link>
-                  <.link navigate={~p"/how-auctions-work"} class="al-ghost">Why this auction is fair</.link>
+                  <.link navigate={~p"/auction-returns"} class="al-ghost">Auction returns</.link>
                 </div>
               </article>
 
               <article class="al-choice-card" data-guide-choice>
-                <p class="al-kicker">Card B</p>
-                <h3>Launch a token through your OpenClaw or Hermes Agent. Easy to configure via CLI.</h3>
+                <p class="al-kicker">Launch path</p>
+                <h3>Launch through the CLI, then return here for the live market.</h3>
                 <p>
-                  Operators should treat the CLI as the source of truth. Save the plan, validate
-                  it, run the launch, monitor the three-day auction, then finalize the post-auction
-                  actions.
+                  Save the plan, validate it, publish it, run the launch, monitor the auction, then
+                  finalize from the same CLI path.
                 </p>
 
                 <pre class="al-choice-command"><code>regent autolaunch prelaunch wizard</code></pre>
@@ -270,10 +266,80 @@ defmodule AutolaunchWeb.AuctionGuideLive do
           <aside class="al-guide-summary">
             <div class="al-section-head">
               <div>
-                <p class="al-kicker">Current live economics</p>
-                <h3>What the launch does today</h3>
+                <p class="al-kicker">Quick mental model</p>
+                <h3>What matters before you click</h3>
               </div>
             </div>
+
+            <div class="al-note-grid">
+              <article class="al-note-card">
+                <span>How to bid</span>
+                <strong>Budget plus max price</strong>
+                <p>Your bid keeps buying only while the market stays below your cap.</p>
+              </article>
+              <article class="al-note-card">
+                <span>How it settles</span>
+                <strong>Claim first, stake after</strong>
+                <p>Revenue exposure starts only after claimed tokens are staked.</p>
+              </article>
+              <article class="al-note-card">
+                <span>Why it feels fair</span>
+                <strong>Same block, same price</strong>
+                <p>The auction is built to reduce timing edge and reward honest early bidding.</p>
+              </article>
+            </div>
+
+            <div class="al-inline-banner al-guide-banner">
+              <strong>Simple bidding rule.</strong>
+              <p>
+                If you are new to this, think in two numbers only: how much USDC you want to spend
+                and the highest token price you are willing to accept.
+              </p>
+            </div>
+          </aside>
+        </section>
+
+        <section class="al-guide-disclosures">
+          <details class="al-panel al-disclosure" open>
+            <summary class="al-disclosure-summary">
+              <div>
+                <p class="al-kicker">Auction walkthrough</p>
+                <h3>The sale in plain English</h3>
+              </div>
+              <span class="al-network-badge">7 steps</span>
+            </summary>
+
+            <div class="al-guide-steps">
+              <article
+                :for={step <- @timeline_steps}
+                class="al-panel al-guide-step"
+                data-guide-step
+                data-guide-index={step.order}
+              >
+                <div class="al-guide-step-index">{step.index}</div>
+
+                <div class="al-guide-step-copy">
+                  <p class="al-kicker">{step.eyebrow}</p>
+                  <h3>{step.title}</h3>
+                  <p class="al-guide-step-body">{step.body}</p>
+                </div>
+
+                <div class="al-guide-step-callout">
+                  <span>Why it matters</span>
+                  <strong>{step.note}</strong>
+                </div>
+              </article>
+            </div>
+          </details>
+
+          <details class="al-panel al-disclosure">
+            <summary class="al-disclosure-summary">
+              <div>
+                <p class="al-kicker">Current launch economics</p>
+                <h3>The live token split</h3>
+              </div>
+              <span class="al-network-badge">Today</span>
+            </summary>
 
             <div class="al-guide-summary-grid al-guide-facts-grid">
               <.stat_card title="Auction sale" value="10%" hint="10 billion of the 100 billion token supply are sold in the auction." />
@@ -283,79 +349,14 @@ defmodule AutolaunchWeb.AuctionGuideLive do
               <.stat_card title="Vesting" value="85%" hint="The remaining 85 billion tokens vest to the agent treasury over 1 year." />
               <.stat_card title="Auction style" value="Simple + fair" hint="Budget plus max price, same block price for everyone, less timing edge." />
             </div>
-
-            <div class="al-inline-banner al-guide-banner">
-              <strong>Simple bidding mental model.</strong>
-              <p>
-                Choose a total budget and a max price. The order keeps buying only while the market
-                stays below that cap, so you are backing the agent with stablecoins without giving
-                up price discipline.
-              </p>
-            </div>
-          </aside>
-        </section>
-
-        <section class="al-guide-layout">
-          <aside class="al-panel al-guide-rail">
-            <div class="al-section-head">
-              <div>
-                <p class="al-kicker">Timeline</p>
-                <h3>The auction in order</h3>
-              </div>
-            </div>
-
-            <div class="al-guide-rail-copy">
-              <p>
-                Follow the sale from launch rationale to claim and staking. Each step mirrors the
-                live auction flow instead of hiding the market design behind jargon.
-              </p>
-
-              <div class="al-guide-rail-progress" aria-hidden="true">
-                <span class="al-guide-rail-track">
-                  <span class="al-guide-rail-fill" data-guide-progress-fill></span>
-                </span>
-              </div>
-
-              <ul class="al-guide-rail-list">
-                <li :for={step <- @timeline_steps}>
-                  <span>{step.index}</span>
-                  <div>
-                    <strong>{step.eyebrow}</strong>
-                    <p>{step.stat}</p>
-                  </div>
-                </li>
-              </ul>
-            </div>
-          </aside>
-
-          <div class="al-guide-steps">
-            <article
-              :for={step <- @timeline_steps}
-              class="al-panel al-guide-step"
-              data-guide-step
-              data-guide-index={step.order}
-            >
-              <div class="al-guide-step-index">{step.index}</div>
-
-              <div class="al-guide-step-copy">
-                <p class="al-kicker">{step.eyebrow}</p>
-                <h3>{step.title}</h3>
-                <p class="al-guide-step-body">{step.body}</p>
-              </div>
-
-              <div class="al-guide-step-callout">
-                <span>Why it matters</span>
-                <strong>{step.note}</strong>
-              </div>
-            </article>
-          </div>
+          </details>
         </section>
 
         <section class="al-panel al-guide-finish">
           <div class="al-section-head">
             <div>
-              <p class="al-kicker">Why participants like it</p>
-              <h3>Less timing game, more actual price discovery.</h3>
+              <p class="al-kicker">Why it is built this way</p>
+              <h3>Less timing game, more honest price discovery.</h3>
             </div>
           </div>
 

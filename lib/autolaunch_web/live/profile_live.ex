@@ -41,9 +41,10 @@ defmodule AutolaunchWeb.ProfileLive do
       <section id="profile-hero" class="al-hero al-panel al-profile-hero" phx-hook="MissionMotion">
         <div>
           <p class="al-kicker">Profile</p>
-          <h2>Your launches above, your staked token exposure below.</h2>
+          <h2>Your launch and staking snapshot, without the extra noise.</h2>
           <p class="al-subcopy">
-            This page is a cached portfolio snapshot. It rebuilds when you log in, and you can force a new lookup from here without waiting on every page render.
+            This is a cached portfolio read. Use it to confirm what you launched, what is staked,
+            and what needs attention before you jump into a token page.
           </p>
         </div>
 
@@ -79,42 +80,55 @@ defmodule AutolaunchWeb.ProfileLive do
           </button>
         </section>
 
-        <section :if={(@snapshot.launched_tokens || []) != []} id="profile-launched" class="al-panel al-profile-section" phx-hook="MissionMotion">
-          <div class="al-section-head">
-            <div>
-              <p class="al-kicker">Launched Tokens</p>
-              <h3>Tokens launched from your linked wallets.</h3>
+        <section id="profile-sections" class="al-profile-stack" phx-hook="MissionMotion">
+          <section :if={(@snapshot.launched_tokens || []) != []} id="profile-launched" class="al-panel al-profile-section">
+            <div class="al-section-head">
+              <div>
+                <p class="al-kicker">Launched Tokens</p>
+                <h3>Tokens launched from your linked wallets.</h3>
+              </div>
             </div>
-          </div>
 
-          <div class="al-table-shell">
-            <table class="al-table">
-              <thead>
-                <tr>
-                  <th>Token</th>
-                  <th>Phase</th>
-                  <th>Price</th>
-                  <th>Market cap</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr :for={token <- @snapshot.launched_tokens}>
-                  <td>
-                    <strong>{token.agent_name}</strong>
-                    <p class="al-inline-note">{token.symbol}</p>
-                  </td>
-                  <td>{String.capitalize(token.phase)}</td>
-                  <td>{display_money(token.current_price_usdc)}</td>
-                  <td>{display_money(token.implied_market_cap_usdc)}</td>
-                  <td><.link navigate={token.detail_url} class="al-ghost">Open</.link></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
+            <div class="al-table-shell al-desktop-only">
+              <table class="al-table">
+                <thead>
+                  <tr>
+                    <th>Token</th>
+                    <th>Phase</th>
+                    <th>Price</th>
+                    <th>Market cap</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr :for={token <- @snapshot.launched_tokens}>
+                    <td>
+                      <strong>{token.agent_name}</strong>
+                      <p class="al-inline-note">{token.symbol}</p>
+                    </td>
+                    <td>{String.capitalize(token.phase)}</td>
+                    <td>{display_money(token.current_price_usdc)}</td>
+                    <td>{display_money(token.implied_market_cap_usdc)}</td>
+                    <td><.link navigate={token.detail_url} class="al-ghost">Open</.link></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
 
-        <section id="profile-staked" class="al-panel al-profile-section" phx-hook="MissionMotion">
+            <div class="al-mobile-card-list al-mobile-only">
+              <article :for={token <- @snapshot.launched_tokens} class="al-note-card al-mobile-summary-card">
+                <span>{token.symbol}</span>
+                <strong>{token.agent_name}</strong>
+                <p>{String.capitalize(token.phase)} • {display_money(token.current_price_usdc)}</p>
+                <p>Market cap {display_money(token.implied_market_cap_usdc)}</p>
+                <div class="al-action-row">
+                  <.link navigate={token.detail_url} class="al-ghost">Open</.link>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <section id="profile-staked" class="al-panel al-profile-section">
           <div class="al-section-head">
             <div>
               <p class="al-kicker">Staked Tokens</p>
@@ -128,7 +142,7 @@ defmodule AutolaunchWeb.ProfileLive do
               body="Stake from a token detail page after launch if you want your portfolio to show ongoing token exposure and claimable USDC."
             />
           <% else %>
-            <div class="al-table-shell">
+            <div class="al-table-shell al-desktop-only">
               <table class="al-table">
                 <thead>
                   <tr>
@@ -155,7 +169,20 @@ defmodule AutolaunchWeb.ProfileLive do
                 </tbody>
               </table>
             </div>
+
+            <div class="al-mobile-card-list al-mobile-only">
+              <article :for={token <- @snapshot.staked_tokens} class="al-note-card al-mobile-summary-card">
+                <span>{token.symbol}</span>
+                <strong>{token.agent_name}</strong>
+                <p>{token.staked_token_amount} staked • {display_money(token.claimable_usdc)} claimable</p>
+                <p>Stake value {display_money(token.staked_usdc_value)} • Market cap {display_money(token.implied_market_cap_usdc)}</p>
+                <div class="al-action-row">
+                  <.link navigate={token.detail_url} class="al-submit">Manage</.link>
+                </div>
+              </article>
+            </div>
           <% end %>
+          </section>
         </section>
       <% end %>
 

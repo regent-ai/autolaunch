@@ -155,12 +155,12 @@ defmodule AutolaunchWeb.LaunchPagesTest do
   test "launch page renders the CLI-first review page", %{conn: conn} do
     {:ok, _view, html} = live(conn, "/launch")
 
-    assert html =~ "Launch planning lives in the CLI. The browser stays for review."
+    assert html =~ "Run the launch from the CLI. Use the site to review what happens next."
     assert html =~ "regent autolaunch prelaunch wizard"
     assert html =~ "Launch via agent"
-    assert html =~ "What the CLI needs"
-    assert html =~ "ERC-8004"
-    assert html =~ "Minimum raise is explicit before launch."
+    assert html =~ "What you need"
+    assert html =~ "What to run"
+    assert html =~ "Browser for review only"
   end
 
   test "launch via agent page explains the CLI-first path", %{conn: conn} do
@@ -185,11 +185,11 @@ defmodule AutolaunchWeb.LaunchPagesTest do
     conn = init_test_session(conn, privy_user_id: human.privy_user_id)
     {:ok, _view, html} = live(conn, "/launch")
 
-    assert html =~ "The launch sequence"
+    assert html =~ "The exact sequence"
     assert html =~ "regent autolaunch launch run --plan"
     assert html =~ "regent autolaunch launch finalize --job"
     assert html =~ "Starter command"
-    assert html =~ "Browse active auctions"
+    assert html =~ "Browse auctions"
   end
 
   test "launch page keeps the browser role focused on review rather than launch creation", %{
@@ -205,8 +205,8 @@ defmodule AutolaunchWeb.LaunchPagesTest do
     conn = init_test_session(conn, privy_user_id: human.privy_user_id)
     {:ok, _view, html} = live(conn, "/launch")
 
-    assert html =~ "The browser remains the place for bidders and token holders."
-    assert html =~ "Auctions, returns, positions, staking, and claims stay available here."
+    assert html =~ "Come back here after the launch is live"
+    assert html =~ "Claim, stake, unstake, and sweep from the token page."
     refute html =~ "Choose an eligible agent"
     refute html =~ "Queue deploy job."
   end
@@ -227,15 +227,15 @@ defmodule AutolaunchWeb.LaunchPagesTest do
     assert html =~ "regent autolaunch prelaunch validate --plan"
     assert html =~ "regent autolaunch prelaunch publish --plan"
     assert html =~ "regent autolaunch launch monitor --job"
-    assert html =~ "Foundry script"
+    assert html =~ "Foundry deploy"
     refute html =~ "Prepare review"
   end
 
   test "auctions page renders token directory copy", %{conn: conn} do
     {:ok, _view, html} = live(conn, "/auctions")
 
-    assert html =~ "Active auctions"
-    assert html =~ "Use stablecoins to back agents with provable revenue."
+    assert html =~ "Choose an agent, inspect the live price, then open the bid view."
+    assert html =~ "Biddable 0"
     assert html =~ "No tokens match this directory view yet."
   end
 
@@ -243,5 +243,18 @@ defmodule AutolaunchWeb.LaunchPagesTest do
     {:ok, _view, html} = live(conn, "/positions")
 
     assert html =~ "Sign in to inspect your bids."
+  end
+
+  test "shell keeps four primary destinations and a secondary utility row", %{conn: conn} do
+    {:ok, _view, html} = live(conn, "/launch")
+
+    assert html =~ ~s(aria-label="Primary")
+    assert html =~ "Launch"
+    assert html =~ "Auctions"
+    assert html =~ "Positions"
+    assert html =~ "Profile"
+    assert html =~ "Guide"
+    assert html =~ "Trust Check"
+    assert html =~ "Contracts"
   end
 end
