@@ -25,6 +25,7 @@ For agent-facing onboarding, start with [`SKILL.md`](SKILL.md) and [`docs/autola
 - `regent autolaunch vesting status`
 
 For an operator-facing deployment and launch sequence, use [`docs/operator_runbook.md`](docs/operator_runbook.md).
+The canonical product rules live in [`docs/product_invariants.md`](docs/product_invariants.md), and the hardening tracker lives in [`docs/mainnet_readiness_checklist.md`](docs/mainnet_readiness_checklist.md).
 
 ## Humans
 
@@ -46,6 +47,7 @@ mix assets.build
 mix assets.deploy
 mix autolaunch.doctor
 AUTOLAUNCH_MOCK_DEPLOY=true mix autolaunch.smoke
+mix autolaunch.verify_deploy --job <job-id>
 ```
 
 If you need the launch docs that explain the public auction flow, start with [`AUTOLAUNCH_AUCTIONS_GUIDE.md`](AUTOLAUNCH_AUCTIONS_GUIDE.md).
@@ -132,6 +134,8 @@ The full environment list lives in [.env.example](.env.example). For local work,
 
 The launch path is Ethereum Sepolia only.
 
+If product copy, launch docs, or contract docs disagree about the active rules, use [`docs/product_invariants.md`](docs/product_invariants.md) as the source of truth and update the other surface.
+
 ### REGENT Staking Rail
 
 Autolaunch now also exposes a separate Base-mainnet rail for Regent Labs itself.
@@ -171,7 +175,7 @@ Important launch rules:
 - Every auction is denominated in USDC on Ethereum Sepolia
 - Buyers set a total budget and a max price, and the order runs across the remaining blocks like a TWAP
 - Each block clears at the highest price where demand exceeds supply, and no one pays above their stated max price
-- Launch buyers must stake the claimed tokens to earn revenue and token-fee share
+- Launch buyers must stake the claimed tokens to earn recognized Sepolia USDC revenue once it reaches the revsplit
 - Mock deploy is opt-in through `AUTOLAUNCH_MOCK_DEPLOY=true`
 - Recognized revenue is Sepolia USDC only, and it only counts once it reaches the revsplit
 - The fee hook is the launch-side fee lane, while the revsplit is the ongoing revenue-rights lane
@@ -192,9 +196,10 @@ mix assets.build
 mix assets.deploy
 mix autolaunch.doctor
 AUTOLAUNCH_MOCK_DEPLOY=true mix autolaunch.smoke
+mix autolaunch.verify_deploy --job <job-id>
 ```
 
-`mix autolaunch.doctor` is the blocking release gate for database reachability, Sepolia launch config, SIWA, and deploy dependencies. `mix autolaunch.smoke` is the synthetic in-repo launch-to-subject smoke. It does not replace browser auth or live chain checks.
+`mix autolaunch.doctor` is the blocking release gate for database reachability, Sepolia launch config, SIWA, and deploy dependencies. `mix autolaunch.smoke` is the synthetic in-repo launch-to-subject smoke. `mix autolaunch.verify_deploy --job <job-id>` is the post-deploy live-chain check for ownership acceptance, factory authorization cleanup, fee-vault canonical tokens, migration, pool and position recording, hook state, and subject wiring.
 
 Doctor checks map directly to product breakage:
 

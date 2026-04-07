@@ -18,9 +18,13 @@ If you remember only one thing, remember this:
 - shared infrastructure is deployed once
 - a launch stack is deployed once per token
 
+If another document disagrees about the product rules, use `docs/product_invariants.md` as the source of truth and update the drifted surface.
+
 ## The main files
 
 - App overview: [/Users/sean/Documents/regent/autolaunch/README.md](README.md)
+- Canonical product rules: [/Users/sean/Documents/regent/autolaunch/docs/product_invariants.md](product_invariants.md)
+- Mainnet hardening checklist: [/Users/sean/Documents/regent/autolaunch/docs/mainnet_readiness_checklist.md](mainnet_readiness_checklist.md)
 - Contract overview: [/Users/sean/Documents/regent/autolaunch/contracts/README.md](../contracts/README.md)
 - Contract architecture: [/Users/sean/Documents/regent/autolaunch/contracts/docs/ARCHITECTURE_GUIDE.md](../contracts/docs/ARCHITECTURE_GUIDE.md)
 - Shared infra script: [/Users/sean/Documents/regent/autolaunch/contracts/scripts/DeployAutolaunchInfra.s.sol](../contracts/scripts/DeployAutolaunchInfra.s.sol)
@@ -110,11 +114,14 @@ The app-side validation steps are:
 ```bash
 mix autolaunch.doctor
 AUTOLAUNCH_MOCK_DEPLOY=true mix autolaunch.smoke
+mix autolaunch.verify_deploy --job <job-id>
 ```
 
 Use `doctor` to confirm the environment.
 
 Use `smoke` to prove the app can carry a synthetic launch through to a readable subject.
+
+Use `verify_deploy` immediately after a real launch is marked ready. It checks the live contracts for the post-deploy invariants that matter most: controller resolution from the deploy receipt, controller authorization cleanup in the shared factories, accepted ownership on the fee contracts, fee-vault canonical tokens, completed migration, recorded pool and position ids, hook-enabled state, and subject plus ingress wiring.
 
 ## Phase 3: Deploy one launch stack
 
@@ -183,6 +190,8 @@ That result includes the important addresses the app needs to track the launch:
 - default ingress
 - pool id
 
+The fee registry, fee vault, and fee hook now use a two-step ownership handoff. The deployment sets the recovery Safe as the pending owner. Treat those transfers as incomplete until the Safe accepts ownership.
+
 ### What to verify after launch deploy
 
 Do not treat the launch as complete until you verify:
@@ -193,6 +202,8 @@ Do not treat the launch as complete until you verify:
 4. The subject page is live.
 5. The subject has a default ingress address.
 6. The revenue splitter and subject id exist.
+7. The fee registry, fee vault, and fee hook show the recovery Safe as pending owner.
+8. The recovery Safe has accepted ownership if you need those admin controls immediately.
 
 ## Phase 4: Auction goes live
 
