@@ -5,6 +5,7 @@ defmodule Autolaunch.Contracts.Abi do
 
   @selectors %{
     owner: "0x8da5cb5b",
+    pending_owner: "0xe30c3978",
     auction_address: "0x5476ea9e",
     migrated: "0x2c678c64",
     migrated_pool_id: "0x5bf380d3",
@@ -29,6 +30,8 @@ defmodule Autolaunch.Contracts.Abi do
     treasury_accrued: "0x4e3df84b",
     regent_accrued: "0x738b0afd",
     hook: "0x7f5a7c7b",
+    canonical_launch_token: "0xb960e81e",
+    canonical_quote_token: "0x8c21305d",
     get_subject: "0xc67716c7",
     can_manage_subject: "0x41c2ab07",
     identity_link_count: "0xbdbaea96",
@@ -53,7 +56,7 @@ defmodule Autolaunch.Contracts.Abi do
     set_authorized_creator: "0xe1434f4e",
     create_ingress_account: "0x8a3dc13f",
     set_default_ingress: "0xdf4a422e",
-    rescue_token: "0xf8a67a62",
+    rescue_unsupported_token: "0x032876d3",
     set_subject_manager: "0x459ae32e",
     link_identity: "0xd0a58cd9",
     set_hook: "0x3dfd3873",

@@ -2,6 +2,8 @@
 
 This guide describes the full Autolaunch system that now lives in the local `contracts/` workspace.
 
+The canonical product rules live in `/Users/sean/Documents/regent/autolaunch/docs/product_invariants.md`. If this guide drifts from that file, update this guide.
+
 ## Core idea
 
 Autolaunch has one launch stack and one ongoing revenue stack.

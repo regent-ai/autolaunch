@@ -3,6 +3,7 @@ pragma solidity ^0.8.26;
 
 import {AuctionParameters} from "src/cca/interfaces/IContinuousClearingAuction.sol";
 import {IDistributionContract} from "src/cca/interfaces/external/IDistributionContract.sol";
+import {Owned} from "src/auth/Owned.sol";
 import {LaunchFeeRegistry} from "src/LaunchFeeRegistry.sol";
 import {LaunchFeeVault} from "src/LaunchFeeVault.sol";
 import {LaunchPoolFeeHook} from "src/LaunchPoolFeeHook.sol";
@@ -17,7 +18,7 @@ import {RegentLBPStrategyFactory} from "src/RegentLBPStrategyFactory.sol";
 import {ITokenFactory} from "src/interfaces/ITokenFactory.sol";
 import {IDistributionStrategy} from "src/interfaces/IDistributionStrategy.sol";
 
-contract LaunchDeploymentController {
+contract LaunchDeploymentController is Owned {
     uint256 internal constant BPS_DENOMINATOR = 10_000;
     uint256 internal constant MPS_TOTAL = 10_000_000;
     uint16 internal constant PUBLIC_SALE_BPS = 1000;
@@ -80,7 +81,30 @@ contract LaunchDeploymentController {
         bytes32 poolId;
     }
 
-    function deploy(DeploymentConfig memory cfg) external returns (DeploymentResult memory result) {
+    event LaunchStackDeployed(
+        address indexed deployer,
+        bytes32 indexed subjectId,
+        address indexed tokenAddress,
+        address auctionAddress,
+        address strategyAddress,
+        address vestingWalletAddress,
+        address hookAddress,
+        address feeVaultAddress,
+        address launchFeeRegistryAddress,
+        address subjectRegistryAddress,
+        address revenueShareSplitterAddress,
+        address defaultIngressAddress,
+        bytes32 poolId,
+        address recoverySafe
+    );
+
+    constructor() Owned(msg.sender) {}
+
+    function deploy(DeploymentConfig memory cfg)
+        external
+        onlyOwner
+        returns (DeploymentResult memory result)
+    {
         require(cfg.recoverySafe != address(0), "RECOVERY_SAFE_ZERO");
         require(cfg.agentTreasurySafe != address(0), "AGENT_TREASURY_ZERO");
         require(cfg.revenueShareFactory != address(0), "REVENUE_SHARE_FACTORY_ZERO");
@@ -255,6 +279,7 @@ contract LaunchDeploymentController {
                 hook: address(hook)
             })
         );
+        feeVault.setCanonicalTokens(token, cfg.usdcToken);
 
         launchFeeRegistry.transferOwnership(cfg.recoverySafe);
         feeVault.transferOwnership(cfg.recoverySafe);
@@ -276,6 +301,23 @@ contract LaunchDeploymentController {
             subjectId: subjectId,
             poolId: poolId
         });
+
+        emit LaunchStackDeployed(
+            msg.sender,
+            result.subjectId,
+            result.tokenAddress,
+            result.auctionAddress,
+            result.strategyAddress,
+            result.vestingWalletAddress,
+            result.hookAddress,
+            result.feeVaultAddress,
+            result.launchFeeRegistryAddress,
+            result.subjectRegistryAddress,
+            result.revenueShareSplitterAddress,
+            result.defaultIngressAddress,
+            result.poolId,
+            cfg.recoverySafe
+        );
     }
 }
 

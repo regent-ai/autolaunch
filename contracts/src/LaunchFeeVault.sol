@@ -11,6 +11,8 @@ contract LaunchFeeVault is Owned, ILaunchFeeVaultMinimal {
 
     LaunchFeeRegistry public immutable registryContract;
     address public hook;
+    address public canonicalLaunchToken;
+    address public canonicalQuoteToken;
 
     mapping(bytes32 => mapping(address => uint256)) public treasuryAccrued;
     mapping(bytes32 => mapping(address => uint256)) public regentAccrued;
@@ -28,6 +30,7 @@ contract LaunchFeeVault is Owned, ILaunchFeeVaultMinimal {
     event RegentShareWithdrawn(
         bytes32 indexed poolId, address indexed currency, address indexed recipient, uint256 amount
     );
+    event CanonicalTokensSet(address indexed launchToken, address indexed quoteToken);
 
     constructor(address owner_, address registry_) Owned(owner_) {
         require(registry_ != address(0), "REGISTRY_ZERO");
@@ -38,6 +41,17 @@ contract LaunchFeeVault is Owned, ILaunchFeeVaultMinimal {
         require(hook_ != address(0), "HOOK_ZERO");
         hook = hook_;
         emit HookSet(hook_);
+    }
+
+    function setCanonicalTokens(address launchToken_, address quoteToken_) external onlyOwner {
+        require(launchToken_ != address(0), "TOKEN_ZERO");
+        require(quoteToken_ != address(0), "QUOTE_TOKEN_ZERO");
+        require(launchToken_ != quoteToken_, "POOL_CURRENCIES_EQUAL");
+        require(canonicalLaunchToken == address(0), "CANONICAL_TOKENS_ALREADY_SET");
+
+        canonicalLaunchToken = launchToken_;
+        canonicalQuoteToken = quoteToken_;
+        emit CanonicalTokensSet(launchToken_, quoteToken_);
     }
 
     function recordAccrual(
@@ -97,5 +111,11 @@ contract LaunchFeeVault is Owned, ILaunchFeeVaultMinimal {
         currency.safeTransfer(recipient, amount);
     }
 
-    receive() external payable {}
+    receive() external payable {
+        revert("ETH_NOT_ACCEPTED");
+    }
+
+    function _isProtectedToken(address token) internal view override returns (bool) {
+        return token == canonicalLaunchToken || token == canonicalQuoteToken;
+    }
 }

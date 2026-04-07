@@ -352,6 +352,22 @@ contract RevenueShareSplitterTest is Test {
         assertEq(splitter.previewClaimableUSDC(ALICE), 0);
     }
 
+    function testOwnerCanRescueUnsupportedAssetsButNotCanonicalOnes() external {
+        MintableBurnableERC20Mock junk = new MintableBurnableERC20Mock("Junk", "JUNK", 18);
+        junk.mint(address(splitter), 3e18);
+        vm.deal(address(splitter), 1 ether);
+
+        splitter.rescueUnsupportedToken(address(junk), 3e18, TREASURY);
+        splitter.rescueNative(PROTOCOL_TREASURY);
+
+        assertEq(junk.balanceOf(TREASURY), 3e18);
+        assertEq(address(splitter).balance, 0);
+        assertEq(address(PROTOCOL_TREASURY).balance, 1 ether);
+
+        vm.expectRevert("PROTECTED_TOKEN");
+        splitter.rescueUnsupportedToken(address(usdc), 1, TREASURY);
+    }
+
     function testZeroDepositReverts() external {
         vm.expectRevert("AMOUNT_ZERO");
         splitter.depositUSDC(0, bytes32("direct"), bytes32("zero"));

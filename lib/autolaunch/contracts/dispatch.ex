@@ -318,7 +318,7 @@ defmodule Autolaunch.Contracts.Dispatch do
       ActionParams.prepare_tx(
         subject.chain_id,
         ingress,
-        Abi.encode_call(:rescue_token, [
+        Abi.encode_call(:rescue_unsupported_token, [
           {:address, token},
           {:uint256, amount},
           {:address, recipient}

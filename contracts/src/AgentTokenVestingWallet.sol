@@ -16,12 +16,19 @@ contract AgentTokenVestingWallet {
     uint256 private _reentrancyGuard = 1;
 
     event LaunchTokenReleased(address indexed beneficiary, uint256 amount);
+    event NativeRescued(address indexed recipient, uint256 amount);
+    event UnsupportedTokenRescued(address indexed token, uint256 amount, address indexed recipient);
 
     modifier nonReentrant() {
         require(_reentrancyGuard == 1, "REENTRANT");
         _reentrancyGuard = 2;
         _;
         _reentrancyGuard = 1;
+    }
+
+    modifier onlyBeneficiary() {
+        require(msg.sender == beneficiary, "ONLY_BENEFICIARY");
+        _;
     }
 
     constructor(
@@ -53,6 +60,30 @@ contract AgentTokenVestingWallet {
         launchToken.safeTransfer(beneficiary, amount);
 
         emit LaunchTokenReleased(beneficiary, amount);
+    }
+
+    function rescueNative(address recipient) external onlyBeneficiary nonReentrant {
+        require(recipient != address(0), "RECIPIENT_ZERO");
+
+        uint256 amount = address(this).balance;
+        require(amount != 0, "NOTHING_TO_RESCUE");
+
+        address(0).safeTransfer(recipient, amount);
+        emit NativeRescued(recipient, amount);
+    }
+
+    function rescueUnsupportedToken(address token, uint256 amount, address recipient)
+        external
+        onlyBeneficiary
+        nonReentrant
+    {
+        require(token != address(0), "TOKEN_ZERO");
+        require(token != launchToken, "PROTECTED_TOKEN");
+        require(amount != 0, "AMOUNT_ZERO");
+        require(recipient != address(0), "RECIPIENT_ZERO");
+
+        token.safeTransfer(recipient, amount);
+        emit UnsupportedTokenRescued(token, amount, recipient);
     }
 
     function _currentTime() internal view returns (uint256 timestamp) {

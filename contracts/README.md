@@ -4,6 +4,8 @@ This Foundry project is the canonical home for all Autolaunch Solidity work.
 
 It now contains the full launch stack plus the ongoing revsplit and ingress contracts in one place.
 
+The canonical product rules live in `/Users/sean/Documents/regent/autolaunch/docs/product_invariants.md`.
+
 ## Active core architecture
 
 - External CCA factory with USDC quote token

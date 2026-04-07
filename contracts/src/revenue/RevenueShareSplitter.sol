@@ -408,6 +408,10 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter {
         }
     }
 
+    function _isProtectedToken(address token) internal view override returns (bool) {
+        return token == usdc || token == stakeToken;
+    }
+
     function _sync(address account) internal {
         _settleStakeTokenEmissions();
 

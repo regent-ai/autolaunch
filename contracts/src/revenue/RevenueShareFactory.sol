@@ -36,6 +36,10 @@ contract RevenueShareFactory is Owned {
         _;
     }
 
+    function acceptSubjectRegistryOwnership() external {
+        subjectRegistry.acceptOwnership();
+    }
+
     function setAuthorizedCreator(address account, bool enabled) external onlyOwner {
         require(account != address(0), "ACCOUNT_ZERO");
         authorizedCreators[account] = enabled;

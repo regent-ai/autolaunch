@@ -71,12 +71,19 @@ contract RegentLBPStrategy is IDistributionContract {
     );
     event TokensSweptToVesting(address indexed vestingWallet, uint256 amount);
     event CurrencySweptToTreasury(address indexed treasury, uint256 amount);
+    event NativeRescued(address indexed recipient, uint256 amount);
+    event UnsupportedTokenRescued(address indexed token, uint256 amount, address indexed recipient);
 
     modifier nonReentrant() {
         require(_reentrancyGuard == 1, "REENTRANT");
         _reentrancyGuard = 2;
         _;
         _reentrancyGuard = 1;
+    }
+
+    modifier onlyTreasury() {
+        require(msg.sender == agentTreasurySafe, "ONLY_TREASURY");
+        _;
     }
 
     constructor(
@@ -257,6 +264,7 @@ contract RegentLBPStrategy is IDistributionContract {
     function sweepToken() external nonReentrant {
         require(msg.sender == operator, "NOT_OPERATOR");
         require(block.number >= sweepBlock, "SWEEP_NOT_ALLOWED");
+        require(migrated, "MIGRATION_REQUIRED");
 
         uint256 tokenBalance = IERC20SupplyMinimal(token).balanceOf(address(this));
         require(tokenBalance != 0, "NOTHING_TO_SWEEP");
@@ -269,6 +277,7 @@ contract RegentLBPStrategy is IDistributionContract {
     function sweepCurrency() external nonReentrant {
         require(msg.sender == operator, "NOT_OPERATOR");
         require(block.number >= sweepBlock, "SWEEP_NOT_ALLOWED");
+        require(migrated, "MIGRATION_REQUIRED");
 
         uint256 currencyBalance = IERC20SupplyMinimal(usdc).balanceOf(address(this));
         require(currencyBalance != 0, "NOTHING_TO_SWEEP");
@@ -276,6 +285,30 @@ contract RegentLBPStrategy is IDistributionContract {
         usdc.safeTransfer(agentTreasurySafe, currencyBalance);
 
         emit CurrencySweptToTreasury(agentTreasurySafe, currencyBalance);
+    }
+
+    function rescueNative(address recipient) external onlyTreasury nonReentrant {
+        require(recipient != address(0), "RECIPIENT_ZERO");
+
+        uint256 amount = address(this).balance;
+        require(amount != 0, "NOTHING_TO_RESCUE");
+
+        address(0).safeTransfer(recipient, amount);
+        emit NativeRescued(recipient, amount);
+    }
+
+    function rescueUnsupportedToken(address token_, uint256 amount, address recipient)
+        external
+        onlyTreasury
+        nonReentrant
+    {
+        require(token_ != address(0), "TOKEN_ZERO");
+        require(token_ != token && token_ != usdc, "PROTECTED_TOKEN");
+        require(amount != 0, "AMOUNT_ZERO");
+        require(recipient != address(0), "RECIPIENT_ZERO");
+
+        token_.safeTransfer(recipient, amount);
+        emit UnsupportedTokenRescued(token_, amount, recipient);
     }
 
     function _poolKey() internal view returns (PoolKey memory poolKey) {

@@ -29,6 +29,7 @@ contract RevenueIngressAccountTest is Test {
         subjectRegistry = new SubjectRegistry(address(this));
         revenueShareFactory = new RevenueShareFactory(address(this), address(usdc), subjectRegistry);
         subjectRegistry.transferOwnership(address(revenueShareFactory));
+        revenueShareFactory.acceptSubjectRegistryOwnership();
 
         address splitterAddress = revenueShareFactory.createSubjectSplitter(
             SUBJECT_ID,
@@ -68,9 +69,25 @@ contract RevenueIngressAccountTest is Test {
         other.mint(address(ingress), 55e18);
 
         vm.prank(TREASURY_SAFE);
-        ingress.rescueToken(address(other), 55e18, address(0x5555));
+        ingress.rescueUnsupportedToken(address(other), 55e18, address(0x5555));
 
         assertEq(other.balanceOf(address(0x5555)), 55e18);
+    }
+
+    function testOwnerCanRescueForcedEth() external {
+        vm.deal(address(ingress), 1 ether);
+
+        vm.prank(TREASURY_SAFE);
+        ingress.rescueNative(address(0x7777));
+
+        assertEq(address(ingress).balance, 0);
+        assertEq(address(0x7777).balance, 1 ether);
+    }
+
+    function testRescueBlocksUsdc() external {
+        vm.prank(TREASURY_SAFE);
+        vm.expectRevert("PROTECTED_TOKEN");
+        ingress.rescueUnsupportedToken(address(usdc), 1, TREASURY_SAFE);
     }
 
     function testSecondSweepRevertsWhenNothingRemains() external {

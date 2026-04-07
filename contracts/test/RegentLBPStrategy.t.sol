@@ -395,6 +395,40 @@ contract RegentLBPStrategyTest is Test {
         failingStrategy.migrate();
     }
 
+    function testSweepsRequireMigrationToFinish() external {
+        strategy.onTokensReceived();
+        token.mint(address(strategy), 12e18);
+        usdc.mint(address(strategy), 11e18);
+
+        vm.roll(303);
+        vm.prank(OPERATOR);
+        vm.expectRevert("MIGRATION_REQUIRED");
+        strategy.sweepCurrency();
+
+        vm.prank(OPERATOR);
+        vm.expectRevert("MIGRATION_REQUIRED");
+        strategy.sweepToken();
+    }
+
+    function testTreasuryCanRescueUnsupportedAssetsButNotCanonicalOnes() external {
+        MintableERC20Mock junk = new MintableERC20Mock("Junk", "JUNK");
+        junk.mint(address(strategy), 7e18);
+        vm.deal(address(strategy), 1 ether);
+
+        vm.startPrank(AGENT_TREASURY);
+        strategy.rescueUnsupportedToken(address(junk), 7e18, address(0x4444));
+        strategy.rescueNative(address(0x5555));
+        vm.stopPrank();
+
+        assertEq(junk.balanceOf(address(0x4444)), 7e18);
+        assertEq(address(strategy).balance, 0);
+        assertEq(address(0x5555).balance, 1 ether);
+
+        vm.prank(AGENT_TREASURY);
+        vm.expectRevert("PROTECTED_TOKEN");
+        strategy.rescueUnsupportedToken(address(usdc), 1, AGENT_TREASURY);
+    }
+
     function _expectedPoolKey() internal view returns (PoolKey memory poolKey) {
         Currency tokenCurrency = Currency.wrap(address(token));
         Currency usdcCurrency = Currency.wrap(address(usdc));

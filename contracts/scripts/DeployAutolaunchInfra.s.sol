@@ -50,6 +50,7 @@ contract DeployAutolaunchInfraScript is Script {
             new RevenueIngressFactory(cfg.usdc, address(subjectRegistry), cfg.owner);
         strategyFactory = new RegentLBPStrategyFactory();
         subjectRegistry.transferOwnership(address(revenueShareFactory));
+        revenueShareFactory.acceptSubjectRegistryOwnership();
         vm.stopBroadcast();
     }
 

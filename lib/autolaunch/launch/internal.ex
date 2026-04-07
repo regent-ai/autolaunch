@@ -180,13 +180,13 @@ defmodule Autolaunch.Launch.Internal do
           "One ERC-8004 identity can launch at most one Agent Coin.",
           "AgentLaunchToken supply is fixed at 100 billion from launch.",
           "Recovery Safe, auction proceeds, and the Ethereum treasury safe are locked into the launch configuration you sign.",
-          "Only Sepolia USDC that reaches the revsplit counts as recognized protocol revenue."
+          "Only Sepolia USDC that reaches the revsplit counts as recognized subject revenue."
         ],
         next_steps: [
           "Sign the SIWA message with a linked wallet that controls this ERC-8004 identity.",
           "Queue the Ethereum Sepolia launch deployment.",
           "Wait for the deploy script to return the strategy, vesting wallet, fee hook, subject registry, revenue splitter, and ingress addresses.",
-          "Wait for the auction page, then stake claimed tokens to earn revenue."
+          "Wait for the auction page, then stake claimed tokens to earn recognized Sepolia USDC revenue."
         ],
         launch_notes: launch_notes,
         completion_plan:

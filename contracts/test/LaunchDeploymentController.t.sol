@@ -2,10 +2,12 @@
 pragma solidity ^0.8.26;
 
 import {Test} from "forge-std/Test.sol";
+import {Vm} from "forge-std/Vm.sol";
 
 import {AuctionParameters} from "src/cca/interfaces/IContinuousClearingAuction.sol";
 import {LaunchDeploymentController} from "src/LaunchDeploymentController.sol";
 import {LaunchFeeRegistry} from "src/LaunchFeeRegistry.sol";
+import {LaunchFeeVault} from "src/LaunchFeeVault.sol";
 import {RegentLBPStrategy} from "src/RegentLBPStrategy.sol";
 import {RegentLBPStrategyFactory} from "src/RegentLBPStrategyFactory.sol";
 import {RevenueIngressFactory} from "src/revenue/RevenueIngressFactory.sol";
@@ -29,6 +31,10 @@ contract LaunchDeploymentControllerTest is Test {
     uint96 internal constant IDENTITY_AGENT_ID = 42;
     uint256 internal constant TOTAL_SUPPLY = 1_000_000_000e18;
     uint256 internal constant AUCTION_TICK_SPACING = 79_228_162_514_264_334_008_320;
+    bytes32 internal constant LAUNCH_STACK_DEPLOYED_TOPIC0 =
+        keccak256(
+            "LaunchStackDeployed(address,bytes32,address,address,address,address,address,address,address,address,address,address,bytes32,address)"
+        );
 
     LaunchDeploymentController internal controller;
     MockContinuousClearingAuctionFactory internal auctionFactory;
@@ -52,6 +58,7 @@ contract LaunchDeploymentControllerTest is Test {
         revenueIngressFactory =
             new RevenueIngressFactory(address(usdc), address(subjectRegistry), address(this));
         subjectRegistry.transferOwnership(address(revenueShareFactory));
+        revenueShareFactory.acceptSubjectRegistryOwnership();
         revenueShareFactory.setAuthorizedCreator(address(controller), true);
         revenueIngressFactory.setAuthorizedCreator(address(controller), true);
     }
@@ -78,6 +85,12 @@ contract LaunchDeploymentControllerTest is Test {
 
         vm.expectRevert("MAX_CCY_FOR_LP_ZERO");
         controller.deploy(cfg);
+    }
+
+    function testRejectsUnauthorizedDeployCaller() external {
+        vm.prank(address(0xBAD));
+        vm.expectRevert("ONLY_OWNER");
+        controller.deploy(defaultConfig());
     }
 
     function testDeploysModelBLaunchStack() external {
@@ -120,12 +133,18 @@ contract LaunchDeploymentControllerTest is Test {
         assertEq(poolConfig.treasury, result.revenueShareSplitterAddress);
         assertEq(poolConfig.quoteToken, address(usdc));
         assertEq(poolConfig.regentRecipient, REGENT_RECIPIENT);
+        assertEq(registry.owner(), address(controller));
+        assertEq(registry.pendingOwner(), RECOVERY_SAFE);
 
         RevenueShareSplitter splitter = RevenueShareSplitter(result.revenueShareSplitterAddress);
         assertEq(splitter.stakeToken(), result.tokenAddress);
         assertEq(splitter.usdc(), address(usdc));
         assertEq(splitter.treasuryRecipient(), AGENT_TREASURY_SAFE);
         assertEq(splitter.protocolRecipient(), REGENT_RECIPIENT);
+
+        LaunchFeeVault feeVault = LaunchFeeVault(payable(result.feeVaultAddress));
+        assertEq(feeVault.canonicalLaunchToken(), result.tokenAddress);
+        assertEq(feeVault.canonicalQuoteToken(), address(usdc));
 
         SubjectRegistry.SubjectConfig memory subject = subjectRegistry.getSubject(result.subjectId);
         assertEq(subject.stakeToken, result.tokenAddress);
@@ -146,6 +165,71 @@ contract LaunchDeploymentControllerTest is Test {
             ingressFactory.defaultIngressOfSubject(result.subjectId), result.defaultIngressAddress
         );
         assertEq(ingressFactory.ingressAccountCount(result.subjectId), 1);
+    }
+
+    function testEmitsLaunchStackDeployedEvent() external {
+        vm.recordLogs();
+        LaunchDeploymentController.DeploymentResult memory result =
+            controller.deploy(defaultConfig());
+
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        bool found;
+
+        for (uint256 i = 0; i < entries.length; i++) {
+            if (
+                entries[i].emitter == address(controller) && entries[i].topics.length == 4
+                    && entries[i].topics[0] == LAUNCH_STACK_DEPLOYED_TOPIC0
+            ) {
+                found = true;
+                assertEq(address(uint160(uint256(entries[i].topics[1]))), address(this));
+                assertEq(entries[i].topics[2], result.subjectId);
+                assertEq(address(uint160(uint256(entries[i].topics[3]))), result.tokenAddress);
+
+                (
+                    address auctionAddress,
+                    address strategyAddress,
+                    address vestingWalletAddress,
+                    address hookAddress,
+                    address feeVaultAddress,
+                    address launchFeeRegistryAddress,
+                    address subjectRegistryAddress,
+                    address revenueShareSplitterAddress,
+                    address defaultIngressAddress,
+                    bytes32 poolId,
+                    address recoverySafe
+                ) = abi.decode(
+                    entries[i].data,
+                    (
+                        address,
+                        address,
+                        address,
+                        address,
+                        address,
+                        address,
+                        address,
+                        address,
+                        address,
+                        bytes32,
+                        address
+                    )
+                );
+
+                assertEq(auctionAddress, result.auctionAddress);
+                assertEq(strategyAddress, result.strategyAddress);
+                assertEq(vestingWalletAddress, result.vestingWalletAddress);
+                assertEq(hookAddress, result.hookAddress);
+                assertEq(feeVaultAddress, result.feeVaultAddress);
+                assertEq(launchFeeRegistryAddress, result.launchFeeRegistryAddress);
+                assertEq(subjectRegistryAddress, result.subjectRegistryAddress);
+                assertEq(revenueShareSplitterAddress, result.revenueShareSplitterAddress);
+                assertEq(defaultIngressAddress, result.defaultIngressAddress);
+                assertEq(poolId, result.poolId);
+                assertEq(recoverySafe, RECOVERY_SAFE);
+                break;
+            }
+        }
+
+        assertTrue(found);
     }
 
     function defaultConfig()

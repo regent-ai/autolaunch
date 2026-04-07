@@ -29,6 +29,7 @@ contract RevenueShareFactoryTest is Test {
 
         vm.prank(OWNER);
         subjectRegistry.transferOwnership(address(factory));
+        factory.acceptSubjectRegistryOwnership();
     }
 
     function testRejectsUnauthorizedSplitterCreation() external {

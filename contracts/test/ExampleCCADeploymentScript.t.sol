@@ -56,6 +56,7 @@ contract ExampleCCADeploymentScriptTest is Test {
         strategyFactory = new RegentLBPStrategyFactory();
         tokenFactory = new MockTokenFactory();
         subjectRegistry.transferOwnership(address(revenueShareFactory));
+        revenueShareFactory.acceptSubjectRegistryOwnership();
 
         _setEnvAddress("AUTOLAUNCH_RECOVERY_SAFE_ADDRESS", RECOVERY_SAFE);
         _setEnvAddress("AUTOLAUNCH_AUCTION_PROCEEDS_RECIPIENT", POSITION_RECIPIENT);

@@ -338,6 +338,25 @@ contract RegentRevenueStakingTest is Test {
         assertEq(claimed, 0);
     }
 
+    function testOwnerCanRescueUnsupportedAssetsButNotCanonicalOnes() external {
+        MintableBurnableERC20Mock junk = new MintableBurnableERC20Mock("Junk", "JUNK", 18);
+        junk.mint(address(staking), 4 * REGENT);
+        vm.deal(address(staking), 1 ether);
+
+        vm.startPrank(OWNER);
+        staking.rescueUnsupportedToken(address(junk), 4 * REGENT, address(0x4444));
+        staking.rescueNative(address(0x5555));
+        vm.stopPrank();
+
+        assertEq(junk.balanceOf(address(0x4444)), 4 * REGENT);
+        assertEq(address(staking).balance, 0);
+        assertEq(address(0x5555).balance, 1 ether);
+
+        vm.prank(OWNER);
+        vm.expectRevert("PROTECTED_TOKEN");
+        staking.rescueUnsupportedToken(address(usdc), 1, TREASURY);
+    }
+
     function _stake(address account, uint256 amount) internal {
         vm.startPrank(account);
         regent.approve(address(staking), type(uint256).max);

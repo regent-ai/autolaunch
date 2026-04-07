@@ -27,6 +27,7 @@ contract RevenueIngressFactoryTest is Test {
         ingressFactory =
             new RevenueIngressFactory(address(usdc), address(subjectRegistry), address(this));
         subjectRegistry.transferOwnership(address(revenueShareFactory));
+        revenueShareFactory.acceptSubjectRegistryOwnership();
 
         revenueShareFactory.createSubjectSplitter(
             SUBJECT_ID,

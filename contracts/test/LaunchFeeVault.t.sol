@@ -47,6 +47,7 @@ contract LaunchFeeVaultTest is Test {
         vault.setHook(address(hook));
         quoteToken = new MintableERC20Mock("Quote", "Q");
         poolId = _registerPool(PRIMARY_LAUNCH_TOKEN, address(quoteToken));
+        vault.setCanonicalTokens(PRIMARY_LAUNCH_TOKEN, address(quoteToken));
         vm.stopPrank();
 
         poolKey = _poolKey(PRIMARY_LAUNCH_TOKEN, address(quoteToken));
@@ -82,6 +83,39 @@ contract LaunchFeeVaultTest is Test {
         vm.expectRevert("QUOTE_TOKEN_ZERO");
         _registerPool(SECONDARY_LAUNCH_TOKEN, NATIVE_QUOTE_TOKEN);
         vm.stopPrank();
+    }
+
+    function testRejectsNativeEthDeposits() external {
+        vm.deal(address(this), 1 ether);
+
+        (bool success,) = payable(address(vault)).call{value: 1 ether}("");
+
+        assertFalse(success);
+        assertEq(address(vault).balance, 0);
+    }
+
+    function testOwnerCanRescueForcedEth() external {
+        vm.deal(address(vault), 1 ether);
+
+        vm.prank(OWNER);
+        vault.rescueNative(address(0x7777));
+
+        assertEq(address(vault).balance, 0);
+        assertEq(address(0x7777).balance, 1 ether);
+    }
+
+    function testOwnerCanRescueUnsupportedTokenButNotCanonicalTokens() external {
+        MintableERC20Mock junk = new MintableERC20Mock("Junk", "JUNK");
+        junk.mint(address(vault), 25e18);
+
+        vm.prank(OWNER);
+        vault.rescueUnsupportedToken(address(junk), 25e18, address(0x8888));
+
+        assertEq(junk.balanceOf(address(0x8888)), 25e18);
+
+        vm.prank(OWNER);
+        vm.expectRevert("PROTECTED_TOKEN");
+        vault.rescueUnsupportedToken(address(quoteToken), 1, address(0x8888));
     }
 
     function _registerPool(address launchToken, address quoteTokenAddress)
