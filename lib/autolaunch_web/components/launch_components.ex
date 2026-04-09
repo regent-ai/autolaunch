@@ -69,7 +69,7 @@ defmodule AutolaunchWeb.LaunchComponents do
                   </strong>
                 </div>
                 <button type="button" data-privy-action="toggle">
-                  {if @current_human, do: "Logout", else: "Privy Login"}
+                  {if @current_human, do: "Disconnect wallet", else: "Connect wallet"}
                 </button>
               </div>
             </div>
@@ -310,16 +310,18 @@ defmodule AutolaunchWeb.LaunchComponents do
   def time_left_label(nil), do: "Unknown"
 
   def time_left_label(iso) when is_binary(iso) do
-    with {:ok, datetime, _offset} <- DateTime.from_iso8601(iso) do
-      diff = DateTime.diff(datetime, DateTime.utc_now(), :second)
+    case DateTime.from_iso8601(iso) do
+      {:ok, datetime, _offset} ->
+        diff = DateTime.diff(datetime, DateTime.utc_now(), :second)
 
-      cond do
-        diff <= 0 -> "Ended"
-        diff >= 86_400 -> "#{div(diff, 86_400)}d #{rem(div(diff, 3_600), 24)}h"
-        true -> "#{div(diff, 3_600)}h #{rem(div(diff, 60), 60)}m"
-      end
-    else
-      _ -> "Unknown"
+        cond do
+          diff <= 0 -> "Ended"
+          diff >= 86_400 -> "#{div(diff, 86_400)}d #{rem(div(diff, 3_600), 24)}h"
+          true -> "#{div(diff, 3_600)}h #{rem(div(diff, 60), 60)}m"
+        end
+
+      _ ->
+        "Unknown"
     end
   end
 

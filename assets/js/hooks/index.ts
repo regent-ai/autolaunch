@@ -4,6 +4,7 @@ import { hooks as regentHooks } from "../../../../packages/regent_ui/assets/js/r
 import { AgentBookFlow } from "./agentbook-flow"
 import { MissionMotion } from "./mission-motion"
 import { PrivyAuth } from "./privy-auth"
+import { PrivyXmtpRoom } from "./privy-xmtp-room"
 import { ShellChrome } from "./shell-chrome"
 import { WelcomeModal } from "./welcome-modal"
 import { WalletTxButton } from "./wallet-tx-button"
@@ -14,6 +15,7 @@ export const hooks: HooksOptions = {
   AgentBookFlow,
   MissionMotion,
   PrivyAuth,
+  PrivyXmtpRoom,
   ShellChrome,
   WelcomeModal,
   WalletTxButton,

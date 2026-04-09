@@ -4,9 +4,9 @@ defmodule Autolaunch.RevenueTest do
   alias Autolaunch.Accounts.HumanUser
   alias Autolaunch.Launch.Job
   alias Autolaunch.Repo
+  alias Autolaunch.Revenue
   alias Autolaunch.Revenue.Abi
   alias Autolaunch.Revenue.SubjectActionRegistration
-  alias Autolaunch.Revenue
 
   @subject_id "0x" <> String.duplicate("1a", 32)
   @splitter "0x9999999999999999999999999999999999999999"
@@ -61,9 +61,7 @@ defmodule Autolaunch.RevenueTest do
         agent_id: "11155111:42",
         token_name: "Atlas Coin",
         token_symbol: "ATLAS",
-        recovery_safe_address: @wallet,
-        auction_proceeds_recipient: @wallet,
-        ethereum_revenue_treasury: @wallet,
+        agent_safe_address: @wallet,
         network: "ethereum-sepolia",
         chain_id: 11_155_111,
         status: "ready",

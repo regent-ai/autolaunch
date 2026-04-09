@@ -17,9 +17,9 @@ defmodule AutolaunchWeb.LaunchLive do
     },
     %{
       title: "Treasury routing",
-      value: "Recovery safe, auction proceeds recipient, and Ethereum revenue treasury",
+      value: "One Agent Safe for treasury, vesting, and contract ownership",
       body:
-        "These addresses are part of the signed launch configuration, so double-check them before you run the launch."
+        "This Safe is part of the signed launch configuration, so confirm it carefully before you run the launch."
     },
     %{
       title: "Hosted metadata",
@@ -95,7 +95,7 @@ defmodule AutolaunchWeb.LaunchLive do
             <article class="al-note-card">
               <span>Save once</span>
               <strong>Capture the full launch plan in the CLI.</strong>
-              <p>Keep the operator wallet, treasury routing, and metadata in one reviewed plan.</p>
+              <p>Keep the operator wallet, Agent Safe, and metadata in one reviewed plan.</p>
             </article>
 
             <article class="al-note-card">

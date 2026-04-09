@@ -21,6 +21,14 @@ config :autolaunch, :launch,
   allow_unverified_owner: false,
   deploy_script_target: ""
 
+config :autolaunch, Autolaunch.Xmtp,
+  room_key: "autolaunch_wire",
+  agent_private_key: nil,
+  moderator_wallets: [],
+  room_capacity: 200,
+  presence_timeout_ms: :timer.minutes(2),
+  presence_check_interval_ms: :timer.seconds(30)
+
 config :autolaunch, :regent_staking,
   chain_id: 8_453,
   chain_label: "Base",

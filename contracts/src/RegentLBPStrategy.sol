@@ -31,7 +31,7 @@ contract RegentLBPStrategy is IDistributionContract {
     address public immutable usdc;
     address public immutable auctionInitializerFactory;
     address public immutable officialPoolHook;
-    address public immutable agentTreasurySafe;
+    address public immutable agentSafe;
     address public immutable vestingWallet;
     address public immutable operator;
     address public immutable positionRecipient;
@@ -82,7 +82,7 @@ contract RegentLBPStrategy is IDistributionContract {
     }
 
     modifier onlyTreasury() {
-        require(msg.sender == agentTreasurySafe, "ONLY_TREASURY");
+        require(msg.sender == agentSafe, "ONLY_TREASURY");
         _;
     }
 
@@ -92,7 +92,7 @@ contract RegentLBPStrategy is IDistributionContract {
         address auctionInitializerFactory_,
         AuctionParameters memory auctionParameters_,
         address officialPoolHook_,
-        address agentTreasurySafe_,
+        address agentSafe_,
         address vestingWallet_,
         address operator_,
         address positionRecipient_,
@@ -113,7 +113,7 @@ contract RegentLBPStrategy is IDistributionContract {
         require(usdc_ != address(0), "USDC_ZERO");
         require(auctionInitializerFactory_ != address(0), "AUCTION_FACTORY_ZERO");
         require(officialPoolHook_ != address(0), "HOOK_ZERO");
-        require(agentTreasurySafe_ != address(0), "TREASURY_ZERO");
+        require(agentSafe_ != address(0), "AGENT_SAFE_ZERO");
         require(vestingWallet_ != address(0), "VESTING_ZERO");
         require(operator_ != address(0), "OPERATOR_ZERO");
         require(positionRecipient_ != address(0), "POSITION_RECIPIENT_ZERO");
@@ -144,7 +144,7 @@ contract RegentLBPStrategy is IDistributionContract {
         usdc = usdc_;
         auctionInitializerFactory = auctionInitializerFactory_;
         officialPoolHook = officialPoolHook_;
-        agentTreasurySafe = agentTreasurySafe_;
+        agentSafe = agentSafe_;
         vestingWallet = vestingWallet_;
         operator = operator_;
         positionRecipient = positionRecipient_;
@@ -282,9 +282,9 @@ contract RegentLBPStrategy is IDistributionContract {
         uint256 currencyBalance = IERC20SupplyMinimal(usdc).balanceOf(address(this));
         require(currencyBalance != 0, "NOTHING_TO_SWEEP");
 
-        usdc.safeTransfer(agentTreasurySafe, currencyBalance);
+        usdc.safeTransfer(agentSafe, currencyBalance);
 
-        emit CurrencySweptToTreasury(agentTreasurySafe, currencyBalance);
+        emit CurrencySweptToTreasury(agentSafe, currencyBalance);
     }
 
     function rescueNative(address recipient) external onlyTreasury nonReentrant {

@@ -45,6 +45,39 @@ defmodule Autolaunch.Contracts.Dispatch do
     )
   end
 
+  def build_job_action(job, "vesting", "propose_beneficiary_rotation", attrs) do
+    with {:ok, beneficiary} <- ActionParams.address_param(attrs, "beneficiary") do
+      ActionParams.prepare_tx(
+        job.chain_id,
+        job.vesting_wallet_address,
+        Abi.encode_call(:propose_beneficiary_rotation, [{:address, beneficiary}]),
+        "vesting",
+        "propose_beneficiary_rotation",
+        %{beneficiary: beneficiary}
+      )
+    end
+  end
+
+  def build_job_action(job, "vesting", "cancel_beneficiary_rotation", _attrs) do
+    ActionParams.prepare_tx(
+      job.chain_id,
+      job.vesting_wallet_address,
+      Abi.encode_call(:cancel_beneficiary_rotation),
+      "vesting",
+      "cancel_beneficiary_rotation"
+    )
+  end
+
+  def build_job_action(job, "vesting", "execute_beneficiary_rotation", _attrs) do
+    ActionParams.prepare_tx(
+      job.chain_id,
+      job.vesting_wallet_address,
+      Abi.encode_call(:execute_beneficiary_rotation),
+      "vesting",
+      "execute_beneficiary_rotation"
+    )
+  end
+
   def build_job_action(job, "fee_registry", "set_hook_enabled", attrs) do
     with {:ok, enabled} <- ActionParams.boolean_param(attrs, "enabled") do
       ActionParams.prepare_tx(
@@ -143,7 +176,7 @@ defmodule Autolaunch.Contracts.Dispatch do
         subject,
         _registry,
         "splitter",
-        "set_treasury_recipient",
+        "propose_treasury_recipient_rotation",
         attrs,
         _config
       ) do
@@ -151,12 +184,46 @@ defmodule Autolaunch.Contracts.Dispatch do
       ActionParams.prepare_tx(
         subject.chain_id,
         subject.splitter_address,
-        Abi.encode_call(:set_treasury_recipient, [{:address, recipient}]),
+        Abi.encode_call(:propose_treasury_recipient_rotation, [{:address, recipient}]),
         "splitter",
-        "set_treasury_recipient",
+        "propose_treasury_recipient_rotation",
         %{recipient: recipient}
       )
     end
+  end
+
+  def build_subject_action(
+        subject,
+        _registry,
+        "splitter",
+        "cancel_treasury_recipient_rotation",
+        _attrs,
+        _config
+      ) do
+    ActionParams.prepare_tx(
+      subject.chain_id,
+      subject.splitter_address,
+      Abi.encode_call(:cancel_treasury_recipient_rotation),
+      "splitter",
+      "cancel_treasury_recipient_rotation"
+    )
+  end
+
+  def build_subject_action(
+        subject,
+        _registry,
+        "splitter",
+        "execute_treasury_recipient_rotation",
+        _attrs,
+        _config
+      ) do
+    ActionParams.prepare_tx(
+      subject.chain_id,
+      subject.splitter_address,
+      Abi.encode_call(:execute_treasury_recipient_rotation),
+      "splitter",
+      "execute_treasury_recipient_rotation"
+    )
   end
 
   def build_subject_action(
@@ -203,22 +270,18 @@ defmodule Autolaunch.Contracts.Dispatch do
         subject,
         _registry,
         "splitter",
-        "withdraw_treasury_residual",
+        "sweep_treasury_residual",
         attrs,
         _config
       ) do
-    with {:ok, amount} <- ActionParams.uint_param(attrs, "amount"),
-         {:ok, recipient} <- ActionParams.address_param(attrs, "recipient") do
+    with {:ok, amount} <- ActionParams.uint_param(attrs, "amount") do
       ActionParams.prepare_tx(
         subject.chain_id,
         subject.splitter_address,
-        Abi.encode_call(:withdraw_treasury_residual_usdc, [
-          {:uint256, amount},
-          {:address, recipient}
-        ]),
+        Abi.encode_call(:sweep_treasury_residual_usdc, [{:uint256, amount}]),
         "splitter",
-        "withdraw_treasury_residual",
-        %{amount: Integer.to_string(amount), recipient: recipient}
+        "sweep_treasury_residual",
+        %{amount: Integer.to_string(amount)}
       )
     end
   end
@@ -227,22 +290,18 @@ defmodule Autolaunch.Contracts.Dispatch do
         subject,
         _registry,
         "splitter",
-        "withdraw_protocol_reserve",
+        "sweep_protocol_reserve",
         attrs,
         _config
       ) do
-    with {:ok, amount} <- ActionParams.uint_param(attrs, "amount"),
-         {:ok, recipient} <- ActionParams.address_param(attrs, "recipient") do
+    with {:ok, amount} <- ActionParams.uint_param(attrs, "amount") do
       ActionParams.prepare_tx(
         subject.chain_id,
         subject.splitter_address,
-        Abi.encode_call(:withdraw_protocol_reserve_usdc, [
-          {:uint256, amount},
-          {:address, recipient}
-        ]),
+        Abi.encode_call(:sweep_protocol_reserve_usdc, [{:uint256, amount}]),
         "splitter",
-        "withdraw_protocol_reserve",
-        %{amount: Integer.to_string(amount), recipient: recipient}
+        "sweep_protocol_reserve",
+        %{amount: Integer.to_string(amount)}
       )
     end
   end
@@ -388,6 +447,42 @@ defmodule Autolaunch.Contracts.Dispatch do
           identity_agent_id: agent_id
         }
       )
+    end
+  end
+
+  def build_subject_action(subject, registry, "registry", "rotate_safe", attrs, _config) do
+    with {:ok, new_safe} <- ActionParams.address_param(attrs, "new_safe"),
+         %{
+           splitter: splitter,
+           treasury_safe: current_safe,
+           active: active,
+           label: label
+         } <- registry.subject_config,
+         true <- (is_binary(splitter) and splitter != "") || {:error, :subject_config_unavailable},
+         true <-
+           (is_binary(current_safe) and current_safe != "") ||
+             {:error, :subject_config_unavailable},
+         false <-
+           String.downcase(new_safe) == String.downcase(current_safe) ||
+             {:error, :safe_rotation_noop} do
+      ActionParams.prepare_tx(
+        subject.chain_id,
+        registry.address,
+        Abi.encode_call(:update_subject, [
+          {:bytes32, subject.subject_id},
+          {:address, splitter},
+          {:address, new_safe},
+          {:bool, active},
+          {:string, label || ""}
+        ]),
+        "registry",
+        "rotate_safe",
+        %{new_safe: new_safe}
+      )
+    else
+      nil -> {:error, :subject_config_unavailable}
+      false -> {:error, :subject_config_unavailable}
+      {:error, _} = error -> error
     end
   end
 

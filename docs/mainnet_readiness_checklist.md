@@ -19,7 +19,7 @@ Status key:
 ## Operational wiring
 
 - [x] Preserve the shared-infra ownership handoff from `SubjectRegistry` to `RevenueShareFactory` under the new two-step model.
-- [x] Expose or document the acceptance step for any pending post-launch ownership handoffs to the recovery safe.
+- [x] Expose or document the acceptance step for any pending post-launch ownership handoffs to the Agent Safe.
 
 ## Product-story consistency
 

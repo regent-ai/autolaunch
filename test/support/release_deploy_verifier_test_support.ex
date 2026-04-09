@@ -16,7 +16,7 @@ defmodule Autolaunch.ReleaseDeployVerifierTestSupport do
   def address(:controller), do: "0x2222222222222222222222222222222222222222"
   def address(:revenue_share_factory), do: "0x3333333333333333333333333333333333333333"
   def address(:revenue_ingress_factory), do: "0x4444444444444444444444444444444444444444"
-  def address(:recovery_safe), do: "0x5555555555555555555555555555555555555555"
+  def address(:agent_safe), do: "0x5555555555555555555555555555555555555555"
   def address(:fee_registry), do: "0x6666666666666666666666666666666666666666"
   def address(:fee_vault), do: "0x7777777777777777777777777777777777777777"
   def address(:hook), do: "0x8888888888888888888888888888888888888888"
@@ -51,9 +51,7 @@ defmodule Autolaunch.ReleaseDeployVerifierTestSupport do
         agent_id: "11155111:4242",
         token_name: "Atlas Coin",
         token_symbol: "ATLAS",
-        recovery_safe_address: address(:recovery_safe),
-        auction_proceeds_recipient: address(:recovery_safe),
-        ethereum_revenue_treasury: address(:recovery_safe),
+        agent_safe_address: address(:agent_safe),
         network: "ethereum-sepolia",
         chain_id: chain_id(),
         status: "ready",
@@ -88,6 +86,8 @@ defmodule Autolaunch.ReleaseDeployVerifierTestSupport do
   end
 
   defmodule Rpc do
+    @moduledoc false
+
     alias Autolaunch.Contracts.Abi
     alias Autolaunch.ReleaseDeployVerifierTestSupport, as: Support
 
@@ -105,7 +105,7 @@ defmodule Autolaunch.ReleaseDeployVerifierTestSupport do
           Support.address(:hook)
         ] and
             selector == Abi.selector(:owner) ->
-          {:ok, encode_address_result(Support.address(:recovery_safe))}
+          {:ok, encode_address_result(Support.address(:agent_safe))}
 
         address == Support.address(:fee_vault) and selector == Abi.selector(:pending_owner) ->
           {:ok, encode_address_result(pending_owner_for_fee_vault())}
@@ -218,7 +218,7 @@ defmodule Autolaunch.ReleaseDeployVerifierTestSupport do
       words = [
         encode_address_word(Support.address(:launch_token)),
         encode_address_word(Support.address(:splitter)),
-        encode_address_word(Support.address(:recovery_safe)),
+        encode_address_word(Support.address(:agent_safe)),
         encode_uint_word(1),
         encode_uint_word(160)
       ]

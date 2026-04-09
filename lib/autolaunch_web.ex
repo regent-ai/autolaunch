@@ -60,8 +60,8 @@ defmodule AutolaunchWeb do
       import AutolaunchWeb.CoreComponents
       import AutolaunchWeb.LaunchComponents
 
-      alias Phoenix.LiveView.JS
       alias AutolaunchWeb.Layouts
+      alias Phoenix.LiveView.JS
 
       unquote(verified_routes())
     end

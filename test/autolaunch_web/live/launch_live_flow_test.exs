@@ -6,9 +6,7 @@ defmodule AutolaunchWeb.LaunchLiveFlowTest do
   test "default_form mirrors the connected wallet into the operator addresses" do
     form = Flow.default_form(%{wallet_address: "0x1111111111111111111111111111111111111111"})
 
-    assert form["recovery_safe_address"] == "0x1111111111111111111111111111111111111111"
-    assert form["auction_proceeds_recipient"] == "0x1111111111111111111111111111111111111111"
-    assert form["ethereum_revenue_treasury"] == "0x1111111111111111111111111111111111111111"
+    assert form["agent_safe_address"] == "0x1111111111111111111111111111111111111111"
   end
 
   test "max_available_step follows selected agent, preview, and queued job state" do

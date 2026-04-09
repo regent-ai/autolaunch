@@ -513,42 +513,40 @@ defmodule AutolaunchWeb.RegentScenes do
   defp conduit_commands(conduit, nodes_by_id) do
     custom_commands = Map.get(conduit, "commands")
 
-    cond do
-      is_list(custom_commands) ->
-        custom_commands
+    if is_list(custom_commands) do
+      custom_commands
+    else
+      with from_node when is_map(from_node) <- Map.get(nodes_by_id, conduit["from"]),
+           to_node when is_map(to_node) <- Map.get(nodes_by_id, conduit["to"]) do
+        base =
+          SceneSpec.add_line(
+            "#{conduit["id"]}:line",
+            SceneSpec.anchor(Map.fetch!(from_node, "position"), Map.fetch!(from_node, "size")),
+            SceneSpec.anchor(Map.fetch!(to_node, "position"), Map.fetch!(to_node, "size")),
+            radius: conduit["radius"] || 0.75,
+            shape: conduit["shape"] || "rounded",
+            style: SceneSpec.conduit_style(conduit["state"] || "visible"),
+            hover_cycle: conduit["hoverCycle"]
+          )
 
-      true ->
-        with from_node when is_map(from_node) <- Map.get(nodes_by_id, conduit["from"]),
-             to_node when is_map(to_node) <- Map.get(nodes_by_id, conduit["to"]) do
-          base =
-            SceneSpec.add_line(
-              "#{conduit["id"]}:line",
-              SceneSpec.anchor(Map.fetch!(from_node, "position"), Map.fetch!(from_node, "size")),
-              SceneSpec.anchor(Map.fetch!(to_node, "position"), Map.fetch!(to_node, "size")),
-              radius: conduit["radius"] || 0.75,
-              shape: conduit["shape"] || "rounded",
+        waypoints =
+          conduit
+          |> Map.get("waypoints", [])
+          |> Enum.with_index()
+          |> Enum.map(fn {point, index} ->
+            SceneSpec.add_sphere(
+              "#{conduit["id"]}:waypoint:#{index}",
+              point,
+              0.6,
               style: SceneSpec.conduit_style(conduit["state"] || "visible"),
               hover_cycle: conduit["hoverCycle"]
             )
+          end)
 
-          waypoints =
-            conduit
-            |> Map.get("waypoints", [])
-            |> Enum.with_index()
-            |> Enum.map(fn {point, index} ->
-              SceneSpec.add_sphere(
-                "#{conduit["id"]}:waypoint:#{index}",
-                point,
-                0.6,
-                style: SceneSpec.conduit_style(conduit["state"] || "visible"),
-                hover_cycle: conduit["hoverCycle"]
-              )
-            end)
-
-          [base | waypoints]
-        else
-          _ -> []
-        end
+        [base | waypoints]
+      else
+        _ -> []
+      end
     end
   end
 end

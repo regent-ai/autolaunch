@@ -16,10 +16,7 @@ defmodule Autolaunch.Prelaunch.Plan do
     field :token_symbol, :string
     field :minimum_raise_usdc, :string
     field :minimum_raise_usdc_raw, :string
-    field :treasury_safe_address, :string
-    field :auction_proceeds_recipient, :string
-    field :ethereum_revenue_treasury, :string
-    field :backup_safe_address, :string
+    field :agent_safe_address, :string
     field :launch_notes, :string
     field :identity_snapshot, :map, default: %{}
     field :metadata_draft, :map, default: %{}
@@ -43,10 +40,7 @@ defmodule Autolaunch.Prelaunch.Plan do
       :token_symbol,
       :minimum_raise_usdc,
       :minimum_raise_usdc_raw,
-      :treasury_safe_address,
-      :auction_proceeds_recipient,
-      :ethereum_revenue_treasury,
-      :backup_safe_address,
+      :agent_safe_address,
       :launch_notes,
       :identity_snapshot,
       :metadata_draft,
@@ -62,9 +56,7 @@ defmodule Autolaunch.Prelaunch.Plan do
       :chain_id,
       :token_name,
       :token_symbol,
-      :treasury_safe_address,
-      :auction_proceeds_recipient,
-      :ethereum_revenue_treasury
+      :agent_safe_address
     ])
     |> validate_inclusion(:state, @states)
     |> validate_length(:token_name, min: 1, max: 80)
@@ -82,10 +74,7 @@ defmodule Autolaunch.Prelaunch.Plan do
       :token_symbol,
       :minimum_raise_usdc,
       :minimum_raise_usdc_raw,
-      :treasury_safe_address,
-      :auction_proceeds_recipient,
-      :ethereum_revenue_treasury,
-      :backup_safe_address,
+      :agent_safe_address,
       :launch_notes,
       :identity_snapshot,
       :metadata_draft,

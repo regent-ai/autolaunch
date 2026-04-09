@@ -54,7 +54,7 @@ defmodule AutolaunchWeb.Api.PrelaunchControllerTest do
          validation: %{
            "launchable" => true,
            "blockers" => [],
-           "warnings" => ["Treasury safe and auction proceeds recipient are the same address."]
+           "warnings" => []
          }
        }}
     end
@@ -147,9 +147,7 @@ defmodule AutolaunchWeb.Api.PrelaunchControllerTest do
         "agent_id" => "11155111:42",
         "token_name" => "Atlas Coin",
         "token_symbol" => "ATLAS",
-        "treasury_safe_address" => "0x1111111111111111111111111111111111111111",
-        "auction_proceeds_recipient" => "0x1111111111111111111111111111111111111111",
-        "ethereum_revenue_treasury" => "0x1111111111111111111111111111111111111111",
+        "agent_safe_address" => "0x1111111111111111111111111111111111111111",
         "metadata_draft" => %{"title" => "Atlas Launch"}
       })
 
@@ -167,7 +165,7 @@ defmodule AutolaunchWeb.Api.PrelaunchControllerTest do
 
     assert %{
              "ok" => true,
-             "validation" => %{"launchable" => true, "warnings" => [_]}
+             "validation" => %{"launchable" => true, "warnings" => []}
            } = json_response(validate_conn, 200)
 
     publish_conn = post(conn, "/api/prelaunch/plans/plan_alpha/publish", %{})

@@ -7,7 +7,12 @@ import {IERC20SupplyMinimal} from "src/revenue/interfaces/IERC20SupplyMinimal.so
 contract AgentTokenVestingWallet {
     using SafeTransferLib for address;
 
-    address public immutable beneficiary;
+    uint64 internal constant DEFAULT_ROTATION_DELAY = 3 days;
+
+    address public beneficiary;
+    address public pendingBeneficiary;
+    uint64 public pendingBeneficiaryEta;
+    uint64 public immutable rotationDelay;
     uint64 public immutable startTimestamp;
     uint64 public immutable durationSeconds;
     address public immutable launchToken;
@@ -16,6 +21,15 @@ contract AgentTokenVestingWallet {
     uint256 private _reentrancyGuard = 1;
 
     event LaunchTokenReleased(address indexed beneficiary, uint256 amount);
+    event BeneficiaryRotationProposed(
+        address indexed currentBeneficiary, address indexed pendingBeneficiary, uint64 eta
+    );
+    event BeneficiaryRotationCancelled(
+        address indexed currentBeneficiary, address indexed cancelledBeneficiary
+    );
+    event BeneficiaryRotationExecuted(
+        address indexed oldBeneficiary, address indexed newBeneficiary
+    );
     event NativeRescued(address indexed recipient, uint256 amount);
     event UnsupportedTokenRescued(address indexed token, uint256 amount, address indexed recipient);
 
@@ -42,6 +56,7 @@ contract AgentTokenVestingWallet {
         require(launchToken_ != address(0), "LAUNCH_TOKEN_ZERO");
 
         beneficiary = beneficiary_;
+        rotationDelay = DEFAULT_ROTATION_DELAY;
         startTimestamp = startTimestamp_;
         durationSeconds = durationSeconds_;
         launchToken = launchToken_;
@@ -60,6 +75,40 @@ contract AgentTokenVestingWallet {
         launchToken.safeTransfer(beneficiary, amount);
 
         emit LaunchTokenReleased(beneficiary, amount);
+    }
+
+    function proposeBeneficiaryRotation(address newBeneficiary) external onlyBeneficiary {
+        require(newBeneficiary != address(0), "BENEFICIARY_ZERO");
+        require(newBeneficiary != beneficiary, "BENEFICIARY_UNCHANGED");
+
+        uint64 eta = uint64(_currentTime()) + rotationDelay;
+        pendingBeneficiary = newBeneficiary;
+        pendingBeneficiaryEta = eta;
+
+        emit BeneficiaryRotationProposed(beneficiary, newBeneficiary, eta);
+    }
+
+    function cancelBeneficiaryRotation() external onlyBeneficiary {
+        address cancelledBeneficiary = pendingBeneficiary;
+        require(cancelledBeneficiary != address(0), "PENDING_BENEFICIARY_ZERO");
+
+        pendingBeneficiary = address(0);
+        pendingBeneficiaryEta = 0;
+
+        emit BeneficiaryRotationCancelled(beneficiary, cancelledBeneficiary);
+    }
+
+    function executeBeneficiaryRotation() external {
+        address nextBeneficiary = pendingBeneficiary;
+        require(nextBeneficiary != address(0), "PENDING_BENEFICIARY_ZERO");
+        require(_currentTime() >= pendingBeneficiaryEta, "ROTATION_NOT_READY");
+
+        address oldBeneficiary = beneficiary;
+        beneficiary = nextBeneficiary;
+        pendingBeneficiary = address(0);
+        pendingBeneficiaryEta = 0;
+
+        emit BeneficiaryRotationExecuted(oldBeneficiary, nextBeneficiary);
     }
 
     function rescueNative(address recipient) external onlyBeneficiary nonReentrant {

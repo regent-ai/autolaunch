@@ -57,9 +57,7 @@ defmodule AutolaunchWeb.LaunchPagesTest do
            symbol: "ATLAS",
            chain_id: 11_155_111,
            chain_label: "Ethereum Sepolia",
-           recovery_safe_address: "0x1111111111111111111111111111111111111111",
-           auction_proceeds_recipient: "0x1111111111111111111111111111111111111111",
-           ethereum_revenue_treasury: "0x1111111111111111111111111111111111111111"
+           agent_safe_address: "0x1111111111111111111111111111111111111111"
          },
          next_steps: [
            "Sign the SIWA message with a linked wallet that controls this ERC-8004 identity.",

@@ -119,9 +119,7 @@ defmodule Autolaunch.ReleaseSmoke do
         agent_name: "Smoke Agent",
         token_name: "Smoke Coin",
         token_symbol: "SMOKE",
-        recovery_safe_address: @wallet,
-        auction_proceeds_recipient: @wallet,
-        ethereum_revenue_treasury: @wallet,
+        agent_safe_address: @wallet,
         network: "ethereum-sepolia",
         chain_id: 11_155_111,
         status: "queued",
@@ -209,6 +207,8 @@ defmodule Autolaunch.ReleaseSmoke do
   end
 
   defmodule SmokeRpc do
+    @moduledoc false
+
     @splitter "0x6666666666666666666666666666666666666666"
     @ingress "0x7777777777777777777777777777777777777777"
     @usdc "0x5555555555555555555555555555555555555555"

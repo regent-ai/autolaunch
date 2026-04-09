@@ -7,10 +7,7 @@
     "chain_id": 11155111,
     "token_name": "Atlas Coin",
     "token_symbol": "ATLAS",
-    "treasury_safe_address": "0x1111111111111111111111111111111111111111",
-    "auction_proceeds_recipient": "0x2222222222222222222222222222222222222222",
-    "ethereum_revenue_treasury": "0x3333333333333333333333333333333333333333",
-    "backup_safe_address": "0x4444444444444444444444444444444444444444",
+    "agent_safe_address": "0x1111111111111111111111111111111111111111",
     "identity_snapshot": {
       "agent_id": "11155111:42",
       "name": "Atlas",
@@ -37,9 +34,7 @@
       "launchable": true,
       "state": "launchable",
       "blockers": [],
-      "warnings": [
-        "Auction proceeds recipient and Ethereum revenue treasury are the same address."
-      ],
+      "warnings": [],
       "identity_status": {
         "agent_id": "11155111:42",
         "agent_name": "Atlas",
@@ -65,9 +60,7 @@
       "chain_id": 11155111,
       "chain_family": "ethereum",
       "chain_label": "Ethereum Sepolia",
-      "recovery_safe_address": "0x1111111111111111111111111111111111111111",
-      "auction_proceeds_recipient": "0x2222222222222222222222222222222222222222",
-      "ethereum_revenue_treasury": "0x3333333333333333333333333333333333333333",
+      "agent_safe_address": "0x1111111111111111111111111111111111111111",
       "total_supply": "100000000000000000000000000000"
     },
     "economics": {
@@ -81,7 +74,7 @@
     "permanence_notes": [
       "One ERC-8004 identity can launch at most one Agent Coin.",
       "AgentLaunchToken supply is fixed at 100 billion from launch.",
-      "Recovery Safe, auction proceeds, and the Ethereum treasury safe are locked into the launch configuration you sign."
+      "The Agent Safe is locked into the launch configuration you sign."
     ],
     "next_steps": [
       "Sign the SIWA message with a linked wallet that controls this ERC-8004 identity.",

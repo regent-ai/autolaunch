@@ -1,35 +1,17 @@
 import type { Hook } from "phoenix_live_view"
 
 import { LocalStorage, Privy } from "../../vendor/privy-core.esm.js"
-
-const PROVIDER_STORAGE_KEY = "autolaunch:privy:oauth-provider"
-
-type PrivyUser = {
-  id?: string
-  email?: { address?: string }
-  linked_accounts?: Array<{ type?: string; address?: string }>
-} | null
+import {
+  labelForUser,
+  loginWithPrivyWallet,
+  requireEthereumProvider,
+  type PrivyLike,
+  type PrivyUser,
+  walletForUser,
+  walletsForUser,
+} from "./privy-wallet.ts"
 
 const SESSION_ENDPOINT = "/api/auth/privy/session"
-
-function linkedAccounts(user: PrivyUser): Array<{ type?: string; address?: string }> {
-  return user?.linked_accounts ?? []
-}
-
-function walletForUser(user: PrivyUser): string | null {
-  const wallet = linkedAccounts(user).find((account) => account?.address)
-  return wallet?.address || null
-}
-
-function walletsForUser(user: PrivyUser): string[] {
-  return linkedAccounts(user)
-    .map((account) => account?.address?.trim())
-    .filter((address): address is string => Boolean(address))
-}
-
-function labelForUser(user: PrivyUser): string {
-  return user?.email?.address || user?.id || "connected"
-}
 
 function csrfHeaders(csrfToken: string): Record<string, string> {
   return csrfToken ? { "x-csrf-token": csrfToken } : {}
@@ -47,7 +29,7 @@ export const PrivyAuth: Hook = {
     const csrfToken =
       document.querySelector<HTMLMetaElement>("meta[name='csrf-token']")?.content?.trim() || ""
 
-    const privy = new Privy({ appId, clientId: appId, storage: new LocalStorage() })
+    const privy = new Privy({ appId, clientId: appId, storage: new LocalStorage() }) as unknown as PrivyLike
 
     const syncSession = async (user: PrivyUser) => {
       const token = await privy.getAccessToken()
@@ -83,29 +65,11 @@ export const PrivyAuth: Hook = {
       })
     }
 
-    const completeOAuthFlow = async () => {
-      const provider = window.localStorage.getItem(PROVIDER_STORAGE_KEY)
-      const url = new URL(window.location.href)
-      const code = url.searchParams.get("code")
-      const oauthState = url.searchParams.get("state")
-
-      if (!provider || !code || !oauthState) return
-
-      try {
-        await privy.auth.oauth.loginWithCode(code, oauthState, provider)
-      } finally {
-        window.localStorage.removeItem(PROVIDER_STORAGE_KEY)
-        url.searchParams.delete("code")
-        url.searchParams.delete("state")
-        window.history.replaceState({}, "", url.toString())
-      }
-    }
-
     const refreshState = async () => {
       const result = await privy.user.get()
       const user = result?.user as PrivyUser
       state.textContent = user ? labelForUser(user) : "guest"
-      button.textContent = user ? "Logout" : "Privy Login"
+      button.textContent = user ? "Disconnect wallet" : "Connect wallet"
       return user
     }
 
@@ -120,17 +84,31 @@ export const PrivyAuth: Hook = {
         return
       }
 
-      const redirectURI = window.location.href
-      const result = await privy.auth.oauth.generateURL("google", redirectURI)
-      window.localStorage.setItem(PROVIDER_STORAGE_KEY, "google")
-      window.location.assign(result.url)
+      const provider = await requireEthereumProvider()
+      await loginWithPrivyWallet(privy, provider)
+      const next = await privy.user.get()
+      const nextUser = next?.user as PrivyUser
+
+      if (!nextUser?.id) {
+        throw new Error("Privy wallet sign-in did not return a user.")
+      }
+
+      const synced = await syncSession(nextUser)
+      if (synced || sessionState === "missing") {
+        window.location.reload()
+      }
     }
 
-    button.addEventListener("click", () => void toggleAuth())
+    button.addEventListener("click", () => {
+      void toggleAuth().catch((error) => {
+        console.error("Privy wallet auth failed", error)
+        state.textContent = error instanceof Error ? error.message : "Wallet sign-in failed."
+      })
+    })
 
     await privy.initialize()
-    await completeOAuthFlow()
     const user = await refreshState()
+
     if (user?.id) {
       const synced = await syncSession(user)
       if (synced && sessionState === "missing") {

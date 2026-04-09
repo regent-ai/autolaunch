@@ -52,6 +52,30 @@ defmodule AutolaunchWeb.Api.ContractsControllerTest do
        }}
     end
 
+    def prepare_job_action(
+          "job_contracts",
+          "vesting",
+          "propose_beneficiary_rotation",
+          %{"beneficiary" => beneficiary},
+          _human
+        ) do
+      {:ok,
+       %{
+         job_id: "job_contracts",
+         prepared: %{
+           resource: "vesting",
+           action: "propose_beneficiary_rotation",
+           params: %{"beneficiary" => beneficiary},
+           tx_request: %{
+             chain_id: 11_155_111,
+             to: "0xdddddddddddddddddddddddddddddddddddddddd",
+             value: "0x0",
+             data: "0xc178cb2d"
+           }
+         }
+       }}
+    end
+
     def prepare_job_action("job_invalid_address", _resource, _action, _attrs, _human),
       do: {:error, :invalid_address}
 
@@ -85,6 +109,53 @@ defmodule AutolaunchWeb.Api.ContractsControllerTest do
              to: "0x9999999999999999999999999999999999999999",
              value: "0x0",
              data: "0x16c38b3c"
+           }
+         }
+       }}
+    end
+
+    def prepare_subject_action(
+          subject_id,
+          "splitter",
+          "sweep_treasury_residual",
+          %{"amount" => "7"},
+          _human
+        ) do
+      {:ok,
+       %{
+         subject_id: String.downcase(subject_id),
+         prepared: %{
+           resource: "splitter",
+           action: "sweep_treasury_residual",
+           tx_request: %{
+             chain_id: 11_155_111,
+             to: "0x9999999999999999999999999999999999999999",
+             value: "0x0",
+             data: "0xe37459b1"
+           }
+         }
+       }}
+    end
+
+    def prepare_subject_action(
+          subject_id,
+          "registry",
+          "rotate_safe",
+          %{"new_safe" => new_safe},
+          _human
+        ) do
+      {:ok,
+       %{
+         subject_id: String.downcase(subject_id),
+         prepared: %{
+           resource: "registry",
+           action: "rotate_safe",
+           params: %{"new_safe" => new_safe},
+           tx_request: %{
+             chain_id: 11_155_111,
+             to: "0x2222222222222222222222222222222222222222",
+             value: "0x0",
+             data: "0xdbf6fd39"
            }
          }
        }}
@@ -160,6 +231,23 @@ defmodule AutolaunchWeb.Api.ContractsControllerTest do
            } = json_response(conn, 200)
   end
 
+  test "job prepare route supports vesting beneficiary rotation", %{conn: conn} do
+    conn =
+      post(
+        conn,
+        "/api/contracts/jobs/job_contracts/vesting/propose_beneficiary_rotation/prepare",
+        %{"beneficiary" => "0x1111111111111111111111111111111111111111"}
+      )
+
+    assert %{
+             "ok" => true,
+             "prepared" => %{
+               "action" => "propose_beneficiary_rotation",
+               "tx_request" => %{"data" => "0xc178cb2d"}
+             }
+           } = json_response(conn, 200)
+  end
+
   test "subject prepare route returns prepared transaction payload", %{conn: conn} do
     conn =
       post(
@@ -176,6 +264,38 @@ defmodule AutolaunchWeb.Api.ContractsControllerTest do
                "tx_request" => %{"data" => "0x16c38b3c"}
              }
            } = json_response(conn, 200)
+  end
+
+  test "subject prepare route supports treasury sweep and safe sync", %{conn: conn} do
+    sweep_conn =
+      post(
+        conn,
+        "/api/contracts/subjects/0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/splitter/sweep_treasury_residual/prepare",
+        %{"amount" => "7"}
+      )
+
+    assert %{
+             "ok" => true,
+             "prepared" => %{
+               "action" => "sweep_treasury_residual",
+               "tx_request" => %{"data" => "0xe37459b1"}
+             }
+           } = json_response(sweep_conn, 200)
+
+    rotate_conn =
+      post(
+        conn,
+        "/api/contracts/subjects/0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/registry/rotate_safe/prepare",
+        %{"new_safe" => "0x5555555555555555555555555555555555555555"}
+      )
+
+    assert %{
+             "ok" => true,
+             "prepared" => %{
+               "action" => "rotate_safe",
+               "tx_request" => %{"data" => "0xdbf6fd39"}
+             }
+           } = json_response(rotate_conn, 200)
   end
 
   test "prepare routes translate stable contract errors", %{conn: conn} do

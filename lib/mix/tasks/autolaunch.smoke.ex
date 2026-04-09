@@ -1,4 +1,6 @@
 defmodule Mix.Tasks.Autolaunch.Smoke do
+  @moduledoc false
+
   use Mix.Task
 
   @shortdoc "Runs a synthetic release smoke for the launch-to-subject pipeline"

@@ -161,13 +161,24 @@ defmodule AutolaunchWeb.ContractsLive do
 
           <article class="al-panel al-contract-card">
             <p class="al-kicker">Vesting</p>
-            <h3>Release path</h3>
+            <h3>Release path and Safe rotation</h3>
             <div class="al-contract-kv">
               <div><span>Vesting wallet</span><strong>{short_address(@job_scope.vesting.address)}</strong></div>
+              <div><span>Beneficiary</span><strong>{short_address(@job_scope.vesting.beneficiary)}</strong></div>
+              <div><span>Pending beneficiary</span><strong>{short_address(@job_scope.vesting.pending_beneficiary)}</strong></div>
+              <div><span>Rotation ETA</span><strong>{display_timestamp(@job_scope.vesting.pending_beneficiary_eta)}</strong></div>
+              <div><span>Rotation delay</span><strong>{display_seconds(@job_scope.vesting.rotation_delay)}</strong></div>
               <div><span>Releasable token</span><strong>{display_uint(@job_scope.vesting.releasable_launch_token)}</strong></div>
             </div>
+            <form phx-change="update_form" class="al-contract-form-grid">
+              <input type="hidden" name="form_name" value="vesting_beneficiary_rotation" />
+              <input type="text" name="form[beneficiary]" value={form_value(@forms, "vesting_beneficiary_rotation", "beneficiary")} placeholder="New beneficiary Safe" />
+            </form>
             <div class="al-contract-action-row">
               <button type="button" class="al-submit" phx-click="prepare_action" phx-value-scope="job" phx-value-resource="vesting" phx-value-action="release" phx-value-form_name="vesting_release">Prepare release</button>
+              <button type="button" class="al-ghost" phx-click="prepare_action" phx-value-scope="job" phx-value-resource="vesting" phx-value-action="propose_beneficiary_rotation" phx-value-form_name="vesting_beneficiary_rotation">Prepare beneficiary proposal</button>
+              <button type="button" class="al-ghost" phx-click="prepare_action" phx-value-scope="job" phx-value-resource="vesting" phx-value-action="cancel_beneficiary_rotation" phx-value-form_name="vesting_beneficiary_rotation">Prepare beneficiary cancel</button>
+              <button type="button" class="al-ghost" phx-click="prepare_action" phx-value-scope="job" phx-value-resource="vesting" phx-value-action="execute_beneficiary_rotation" phx-value-form_name="vesting_beneficiary_rotation">Prepare beneficiary execute</button>
             </div>
           </article>
 
@@ -287,9 +298,14 @@ defmodule AutolaunchWeb.ContractsLive do
               <input type="text" name="form[identity_registry]" value={form_value(@forms, "registry_identity", "identity_registry")} placeholder="Identity registry" />
               <input type="text" name="form[identity_agent_id]" value={form_value(@forms, "registry_identity", "identity_agent_id")} placeholder="Identity agent id" />
             </form>
+            <form phx-change="update_form" class="al-contract-form-grid">
+              <input type="hidden" name="form_name" value="registry_rotate_safe" />
+              <input type="text" name="form[new_safe]" value={form_value(@forms, "registry_rotate_safe", "new_safe")} placeholder="New Agent Safe" />
+            </form>
             <div class="al-contract-action-row">
               <button type="button" class="al-submit" phx-click="prepare_action" phx-value-scope="subject" phx-value-resource="registry" phx-value-action="set_subject_manager" phx-value-form_name="registry_manager">Prepare manager change</button>
               <button type="button" class="al-ghost" phx-click="prepare_action" phx-value-scope="subject" phx-value-resource="registry" phx-value-action="link_identity" phx-value-form_name="registry_identity">Prepare identity link</button>
+              <button type="button" class="al-ghost" phx-click="prepare_action" phx-value-scope="subject" phx-value-resource="registry" phx-value-action="rotate_safe" phx-value-form_name="registry_rotate_safe">Prepare Safe sync</button>
             </div>
           </article>
 
@@ -300,6 +316,9 @@ defmodule AutolaunchWeb.ContractsLive do
               <div><span>Owner</span><strong>{short_address(@subject_scope.splitter.owner)}</strong></div>
               <div><span>Paused</span><strong>{yes_no(@subject_scope.splitter.paused)}</strong></div>
               <div><span>Treasury recipient</span><strong>{short_address(@subject_scope.splitter.treasury_recipient)}</strong></div>
+              <div><span>Pending treasury recipient</span><strong>{short_address(@subject_scope.splitter.pending_treasury_recipient)}</strong></div>
+              <div><span>Treasury rotation ETA</span><strong>{display_timestamp(@subject_scope.splitter.pending_treasury_recipient_eta)}</strong></div>
+              <div><span>Treasury rotation delay</span><strong>{display_seconds(@subject_scope.splitter.treasury_rotation_delay)}</strong></div>
               <div><span>Protocol recipient</span><strong>{short_address(@subject_scope.splitter.protocol_recipient)}</strong></div>
               <div><span>Protocol skim bps</span><strong>{display_uint(@subject_scope.splitter.protocol_skim_bps)}</strong></div>
               <div><span>Label</span><strong>{@subject_scope.splitter.label || "n/a"}</strong></div>
@@ -319,16 +338,19 @@ defmodule AutolaunchWeb.ContractsLive do
             </form>
 
             <form phx-change="update_form" class="al-contract-form-grid">
-              <input type="hidden" name="form_name" value="splitter_recipients" />
-              <input type="text" name="form[treasury_recipient]" value={form_value(@forms, "splitter_recipients", "treasury_recipient")} placeholder="Treasury recipient" />
-              <input type="text" name="form[protocol_recipient]" value={form_value(@forms, "splitter_recipients", "protocol_recipient")} placeholder="Protocol recipient" />
-              <input type="text" name="form[skim_bps]" value={form_value(@forms, "splitter_recipients", "skim_bps")} placeholder="Protocol skim bps" />
+              <input type="hidden" name="form_name" value="splitter_treasury_rotation" />
+              <input type="text" name="form[recipient]" value={form_value(@forms, "splitter_treasury_rotation", "recipient")} placeholder="New treasury recipient Safe" />
             </form>
 
             <form phx-change="update_form" class="al-contract-form-grid">
-              <input type="hidden" name="form_name" value="splitter_withdrawals" />
-              <input type="text" name="form[amount]" value={form_value(@forms, "splitter_withdrawals", "amount")} placeholder="Amount (raw units)" />
-              <input type="text" name="form[recipient]" value={form_value(@forms, "splitter_withdrawals", "recipient")} placeholder="Recipient address" />
+              <input type="hidden" name="form_name" value="splitter_protocol" />
+              <input type="text" name="form[recipient]" value={form_value(@forms, "splitter_protocol", "recipient")} placeholder="Protocol recipient" />
+              <input type="text" name="form[skim_bps]" value={form_value(@forms, "splitter_protocol", "skim_bps")} placeholder="Protocol skim bps" />
+            </form>
+
+            <form phx-change="update_form" class="al-contract-form-grid">
+              <input type="hidden" name="form_name" value="splitter_sweeps" />
+              <input type="text" name="form[amount]" value={form_value(@forms, "splitter_sweeps", "amount")} placeholder="Amount (raw units)" />
             </form>
 
             <form phx-change="update_form" class="al-contract-form-grid">
@@ -339,11 +361,13 @@ defmodule AutolaunchWeb.ContractsLive do
             <div class="al-contract-action-row">
               <button type="button" class="al-submit" phx-click="prepare_action" phx-value-scope="subject" phx-value-resource="splitter" phx-value-action="set_paused" phx-value-form_name="splitter_paused">Prepare pause toggle</button>
               <button type="button" class="al-ghost" phx-click="prepare_action" phx-value-scope="subject" phx-value-resource="splitter" phx-value-action="set_label" phx-value-form_name="splitter_label">Prepare label update</button>
-              <button type="button" class="al-ghost" phx-click="prepare_action" phx-value-scope="subject" phx-value-resource="splitter" phx-value-action="set_treasury_recipient" phx-value-form_name="splitter_recipients">Prepare treasury recipient</button>
-              <button type="button" class="al-ghost" phx-click="prepare_action" phx-value-scope="subject" phx-value-resource="splitter" phx-value-action="set_protocol_recipient" phx-value-form_name="splitter_recipients">Prepare protocol recipient</button>
-              <button type="button" class="al-ghost" phx-click="prepare_action" phx-value-scope="subject" phx-value-resource="splitter" phx-value-action="set_protocol_skim_bps" phx-value-form_name="splitter_recipients">Prepare skim update</button>
-              <button type="button" class="al-ghost" phx-click="prepare_action" phx-value-scope="subject" phx-value-resource="splitter" phx-value-action="withdraw_treasury_residual" phx-value-form_name="splitter_withdrawals">Prepare treasury withdrawal</button>
-              <button type="button" class="al-ghost" phx-click="prepare_action" phx-value-scope="subject" phx-value-resource="splitter" phx-value-action="withdraw_protocol_reserve" phx-value-form_name="splitter_withdrawals">Prepare protocol withdrawal</button>
+              <button type="button" class="al-ghost" phx-click="prepare_action" phx-value-scope="subject" phx-value-resource="splitter" phx-value-action="propose_treasury_recipient_rotation" phx-value-form_name="splitter_treasury_rotation">Prepare treasury proposal</button>
+              <button type="button" class="al-ghost" phx-click="prepare_action" phx-value-scope="subject" phx-value-resource="splitter" phx-value-action="cancel_treasury_recipient_rotation" phx-value-form_name="splitter_treasury_rotation">Prepare treasury cancel</button>
+              <button type="button" class="al-ghost" phx-click="prepare_action" phx-value-scope="subject" phx-value-resource="splitter" phx-value-action="execute_treasury_recipient_rotation" phx-value-form_name="splitter_treasury_rotation">Prepare treasury execute</button>
+              <button type="button" class="al-ghost" phx-click="prepare_action" phx-value-scope="subject" phx-value-resource="splitter" phx-value-action="set_protocol_recipient" phx-value-form_name="splitter_protocol">Prepare protocol recipient</button>
+              <button type="button" class="al-ghost" phx-click="prepare_action" phx-value-scope="subject" phx-value-resource="splitter" phx-value-action="set_protocol_skim_bps" phx-value-form_name="splitter_protocol">Prepare skim update</button>
+              <button type="button" class="al-ghost" phx-click="prepare_action" phx-value-scope="subject" phx-value-resource="splitter" phx-value-action="sweep_treasury_residual" phx-value-form_name="splitter_sweeps">Prepare treasury sweep</button>
+              <button type="button" class="al-ghost" phx-click="prepare_action" phx-value-scope="subject" phx-value-resource="splitter" phx-value-action="sweep_protocol_reserve" phx-value-form_name="splitter_sweeps">Prepare protocol sweep</button>
               <button type="button" class="al-ghost" phx-click="prepare_action" phx-value-scope="subject" phx-value-resource="splitter" phx-value-action="reassign_dust" phx-value-form_name="splitter_dust">Prepare dust reassignment</button>
             </div>
           </article>
@@ -541,6 +565,23 @@ defmodule AutolaunchWeb.ContractsLive do
   defp display_int(value) when is_integer(value), do: Integer.to_string(value)
   defp display_int(value), do: to_string(value)
 
+  defp display_timestamp(nil), do: "n/a"
+  defp display_timestamp(0), do: "n/a"
+
+  defp display_timestamp(value) when is_integer(value) and value > 0 do
+    value
+    |> DateTime.from_unix!()
+    |> Calendar.strftime("%Y-%m-%d %H:%M:%S UTC")
+  rescue
+    _ -> Integer.to_string(value)
+  end
+
+  defp display_timestamp(value), do: to_string(value)
+
+  defp display_seconds(nil), do: "n/a"
+  defp display_seconds(value) when is_integer(value), do: Integer.to_string(value) <> " seconds"
+  defp display_seconds(value), do: to_string(value)
+
   defp yes_no(true), do: "yes"
   defp yes_no(false), do: "no"
   defp yes_no(nil), do: "n/a"
@@ -560,6 +601,12 @@ defmodule AutolaunchWeb.ContractsLive do
 
   defp prepare_error(:ingress_not_found),
     do: "That ingress account does not belong to the current subject."
+
+  defp prepare_error(:subject_config_unavailable),
+    do: "The current subject settings could not be loaded for this action."
+
+  defp prepare_error(:safe_rotation_noop),
+    do: "The new Safe must be different from the current one."
 
   defp prepare_error(:unsupported_action),
     do: "That contract action is not supported from this console."

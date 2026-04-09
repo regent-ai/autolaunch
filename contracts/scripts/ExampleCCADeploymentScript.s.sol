@@ -10,8 +10,7 @@ import {RevenueShareFactory} from "src/revenue/RevenueShareFactory.sol";
 
 contract ExampleCCADeploymentScript is Script {
     struct ScriptConfig {
-        address recoverySafe;
-        address agentTreasurySafe;
+        address agentSafe;
         address revenueShareFactory;
         address revenueIngressFactory;
         address identityRegistry;
@@ -65,20 +64,14 @@ contract ExampleCCADeploymentScript is Script {
     function _loadConfig() internal view returns (ScriptConfig memory cfg) {
         require(block.chainid == ETHEREUM_SEPOLIA_CHAIN_ID, "SEPOLIA_ONLY");
 
-        address recoverySafe = vm.envAddress("AUTOLAUNCH_RECOVERY_SAFE_ADDRESS");
-        require(recoverySafe != address(0), "RECOVERY_SAFE_ZERO");
+        address agentSafe = vm.envAddress("AUTOLAUNCH_AGENT_SAFE_ADDRESS");
+        require(agentSafe != address(0), "AGENT_SAFE_ZERO");
 
         uint256 totalSupply = vm.envOr("AUTOLAUNCH_TOTAL_SUPPLY", DEFAULT_TOTAL_SUPPLY);
         require(totalSupply > 0, "TOTAL_SUPPLY_ZERO");
 
         uint256 agentId = _parseAgentId(vm.envOr("AUTOLAUNCH_AGENT_ID", string("")));
         require(agentId > 0, "AGENT_ID_ZERO");
-
-        address agentTreasurySafe = vm.envAddress("AUTOLAUNCH_ETHEREUM_REVENUE_TREASURY");
-        require(agentTreasurySafe != address(0), "AGENT_TREASURY_ZERO");
-
-        address positionRecipient = vm.envAddress("AUTOLAUNCH_AUCTION_PROCEEDS_RECIPIENT");
-        require(positionRecipient != address(0), "POSITION_RECIPIENT_ZERO");
 
         address strategyOperator = vm.envAddress("STRATEGY_OPERATOR");
         require(strategyOperator != address(0), "STRATEGY_OPERATOR_ZERO");
@@ -161,8 +154,7 @@ contract ExampleCCADeploymentScript is Script {
         string memory tokenSymbol = vm.envOr("AUTOLAUNCH_TOKEN_SYMBOL", string("RAGENT"));
         string memory subjectLabel = vm.envOr("AUTOLAUNCH_SUBJECT_LABEL", tokenName);
 
-        cfg.recoverySafe = recoverySafe;
-        cfg.agentTreasurySafe = agentTreasurySafe;
+        cfg.agentSafe = agentSafe;
         cfg.revenueShareFactory = revenueShareFactory;
         cfg.revenueIngressFactory = revenueIngressFactory;
         cfg.identityRegistry = identityRegistry;
@@ -171,7 +163,7 @@ contract ExampleCCADeploymentScript is Script {
         cfg.auctionInitializerFactory = auctionInitializerFactory;
         cfg.poolManager = poolManager;
         cfg.positionManager = positionManager;
-        cfg.positionRecipient = positionRecipient;
+        cfg.positionRecipient = agentSafe;
         cfg.strategyOperator = strategyOperator;
         cfg.usdcToken = usdcToken;
         cfg.regentRecipient = regentRecipient;
@@ -216,8 +208,7 @@ contract ExampleCCADeploymentScript is Script {
             .setAuthorizedCreator(address(controller), true);
         result = controller.deploy(
             LaunchDeploymentController.DeploymentConfig({
-                recoverySafe: cfg.recoverySafe,
-                agentTreasurySafe: cfg.agentTreasurySafe,
+                agentSafe: cfg.agentSafe,
                 revenueShareFactory: cfg.revenueShareFactory,
                 revenueIngressFactory: cfg.revenueIngressFactory,
                 identityRegistry: cfg.identityRegistry,

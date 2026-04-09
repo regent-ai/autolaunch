@@ -148,15 +148,12 @@ defmodule Autolaunch.Launch.Internal do
            required_decimal(Map.get(attrs, :minimum_raise_usdc), :minimum_raise_required),
          :ok <- ensure_positive_decimal(minimum_raise_decimal, :minimum_raise_required),
          {:ok, minimum_raise_raw} <- decimal_to_wei(minimum_raise_decimal),
-         {:ok, recovery_safe_address} <-
-           required_address(Map.get(attrs, :recovery_safe_address)),
-         {:ok, auction_proceeds_recipient} <-
-           required_address(Map.get(attrs, :auction_proceeds_recipient)),
-         {:ok, ethereum_revenue_treasury} <-
-           required_address(Map.get(attrs, :ethereum_revenue_treasury)),
-         {:ok, chain} <- normalize_launch_chain(),
-         total_supply = normalize_total_supply(Map.get(attrs, :total_supply)),
-         launch_notes = normalize_optional_text(Map.get(attrs, :launch_notes), 1_000) do
+         {:ok, agent_safe_address} <-
+           required_address(Map.get(attrs, :agent_safe_address)),
+         {:ok, chain} <- normalize_launch_chain() do
+      total_supply = normalize_total_supply(Map.get(attrs, :total_supply))
+      launch_notes = normalize_optional_text(Map.get(attrs, :launch_notes), 1_000)
+
       preview = %{
         agent: agent,
         token: %{
@@ -168,9 +165,7 @@ defmodule Autolaunch.Launch.Internal do
           chain_id: chain.id,
           chain_family: chain.family,
           chain_label: chain.label,
-          recovery_safe_address: recovery_safe_address,
-          auction_proceeds_recipient: auction_proceeds_recipient,
-          ethereum_revenue_treasury: ethereum_revenue_treasury,
+          agent_safe_address: agent_safe_address,
           total_supply: total_supply
         },
         economics: fee_split_summary(),
@@ -179,7 +174,7 @@ defmodule Autolaunch.Launch.Internal do
         permanence_notes: [
           "One ERC-8004 identity can launch at most one Agent Coin.",
           "AgentLaunchToken supply is fixed at 100 billion from launch.",
-          "Recovery Safe, auction proceeds, and the Ethereum treasury safe are locked into the launch configuration you sign.",
+          "The Agent Safe is locked into the launch configuration you sign.",
           "Only Sepolia USDC that reaches the revsplit counts as recognized subject revenue."
         ],
         next_steps: [
@@ -238,10 +233,11 @@ defmodule Autolaunch.Launch.Internal do
              nonce: nonce,
              message: message,
              signature: signature
-           }),
-         issued_at = parse_issued_at(Map.get(attrs, :issued_at)),
-         broadcast = truthy?(Map.get(attrs, :broadcast, true)),
-         job_id = "job_" <> Ecto.UUID.generate() do
+           }) do
+      issued_at = parse_issued_at(Map.get(attrs, :issued_at))
+      broadcast = truthy?(Map.get(attrs, :broadcast, true))
+      job_id = "job_" <> Ecto.UUID.generate()
+
       agent = preview.agent
 
       job_attrs = %{
@@ -255,9 +251,7 @@ defmodule Autolaunch.Launch.Internal do
         token_symbol: preview.token.symbol,
         minimum_raise_usdc: preview.token.minimum_raise_usdc,
         minimum_raise_usdc_raw: preview.token.minimum_raise_usdc_raw,
-        recovery_safe_address: preview.token.recovery_safe_address,
-        auction_proceeds_recipient: preview.token.auction_proceeds_recipient,
-        ethereum_revenue_treasury: preview.token.ethereum_revenue_treasury,
+        agent_safe_address: preview.token.agent_safe_address,
         network: preview.token.chain,
         chain_id: chain_id,
         broadcast: broadcast,
@@ -1490,7 +1484,7 @@ defmodule Autolaunch.Launch.Internal do
       lifecycle_run_id: job.lifecycle_run_id,
       chain_id: job.chain_id,
       total_supply: job.total_supply,
-      vesting_beneficiary: job.auction_proceeds_recipient,
+      vesting_beneficiary: job.agent_safe_address,
       beneficiary_confirmed_at: now,
       vesting_start_at: now,
       vesting_end_at: DateTime.add(now, 365 * 24 * 60 * 60, :second),
@@ -1842,9 +1836,7 @@ defmodule Autolaunch.Launch.Internal do
       token_symbol: job.token_symbol,
       minimum_raise_usdc: job.minimum_raise_usdc,
       minimum_raise_usdc_raw: job.minimum_raise_usdc_raw,
-      recovery_safe_address: job.recovery_safe_address,
-      auction_proceeds_recipient: job.auction_proceeds_recipient,
-      ethereum_revenue_treasury: job.ethereum_revenue_treasury,
+      agent_safe_address: job.agent_safe_address,
       network: job.network,
       chain_id: job.chain_id,
       chain_family: if(chain, do: chain.family, else: nil),
@@ -2212,9 +2204,7 @@ defmodule Autolaunch.Launch.Internal do
       {"AUTOLAUNCH_TOKEN_SYMBOL", job.token_symbol || ""},
       {"CCA_REQUIRED_CURRENCY_RAISED", job.minimum_raise_usdc_raw || "0"},
       {"AUTOLAUNCH_TOTAL_SUPPLY", job.total_supply},
-      {"AUTOLAUNCH_RECOVERY_SAFE_ADDRESS", job.recovery_safe_address || ""},
-      {"AUTOLAUNCH_AUCTION_PROCEEDS_RECIPIENT", job.auction_proceeds_recipient || ""},
-      {"AUTOLAUNCH_ETHEREUM_REVENUE_TREASURY", job.ethereum_revenue_treasury || ""},
+      {"AUTOLAUNCH_AGENT_SAFE_ADDRESS", job.agent_safe_address || ""},
       {"AUTOLAUNCH_LIFECYCLE_RUN_ID", job.lifecycle_run_id || ""},
       {"AUTOLAUNCH_LAUNCH_NOTES", job.launch_notes || ""},
       {"AUTOLAUNCH_NETWORK", job.network},

@@ -25,22 +25,22 @@ defmodule Autolaunch.ReleaseDeployVerifier do
                 "fee_registry_ownership",
                 job.chain_id,
                 job.launch_fee_registry_address,
-                job.recovery_safe_address,
-                "Fee registry ownership is fully accepted by the recovery safe."
+                job.agent_safe_address,
+                "Fee registry ownership is fully accepted by the Agent Safe."
               ),
               accepted_owner_check(
                 "fee_vault_ownership",
                 job.chain_id,
                 job.launch_fee_vault_address,
-                job.recovery_safe_address,
-                "Fee vault ownership is fully accepted by the recovery safe."
+                job.agent_safe_address,
+                "Fee vault ownership is fully accepted by the Agent Safe."
               ),
               accepted_owner_check(
                 "hook_ownership",
                 job.chain_id,
                 job.hook_address,
-                job.recovery_safe_address,
-                "Fee hook ownership is fully accepted by the recovery safe."
+                job.agent_safe_address,
+                "Fee hook ownership is fully accepted by the Agent Safe."
               ),
               fee_vault_canonical_tokens_check(job),
               strategy_migration_check(job),
@@ -393,7 +393,7 @@ defmodule Autolaunch.ReleaseDeployVerifier do
       } ->
         if normalize_address(stake_token) == normalize_address(job.token_address) and
              normalize_address(splitter) == normalize_address(job.revenue_share_splitter_address) and
-             normalize_address(treasury_safe) == normalize_address(job.recovery_safe_address) do
+             normalize_address(treasury_safe) == normalize_address(job.agent_safe_address) do
           case pool_config(job) do
             %{treasury: treasury} ->
               if normalize_address(treasury) ==
@@ -422,7 +422,7 @@ defmodule Autolaunch.ReleaseDeployVerifier do
           fail_check(
             "subject_registry_wiring",
             :error,
-            "Subject registry wiring does not match the recorded token, splitter, recovery safe, or active state."
+            "Subject registry wiring does not match the recorded token, splitter, Agent Safe, or active state."
           )
         end
 
@@ -430,7 +430,7 @@ defmodule Autolaunch.ReleaseDeployVerifier do
         fail_check(
           "subject_registry_wiring",
           :error,
-          "Subject registry wiring does not match the recorded token, splitter, recovery safe, or active state."
+          "Subject registry wiring does not match the recorded token, splitter, Agent Safe, or active state."
         )
 
       _ ->

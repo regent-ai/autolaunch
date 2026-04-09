@@ -16,9 +16,7 @@ defmodule Autolaunch.Launch.Job do
     field :token_symbol, :string
     field :minimum_raise_usdc, :string
     field :minimum_raise_usdc_raw, :string
-    field :recovery_safe_address, :string
-    field :auction_proceeds_recipient, :string
-    field :ethereum_revenue_treasury, :string
+    field :agent_safe_address, :string
     field :network, :string, default: @sepolia_network
     field :chain_id, :integer, default: @sepolia_chain_id
     field :broadcast, :boolean, default: true
@@ -75,9 +73,7 @@ defmodule Autolaunch.Launch.Job do
       :token_symbol,
       :minimum_raise_usdc,
       :minimum_raise_usdc_raw,
-      :recovery_safe_address,
-      :auction_proceeds_recipient,
-      :ethereum_revenue_treasury,
+      :agent_safe_address,
       :network,
       :chain_id,
       :broadcast,
@@ -102,9 +98,7 @@ defmodule Autolaunch.Launch.Job do
       :agent_id,
       :token_name,
       :token_symbol,
-      :recovery_safe_address,
-      :auction_proceeds_recipient,
-      :ethereum_revenue_treasury,
+      :agent_safe_address,
       :network,
       :chain_id,
       :status,

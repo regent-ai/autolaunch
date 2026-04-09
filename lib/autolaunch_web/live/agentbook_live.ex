@@ -54,10 +54,12 @@ defmodule AutolaunchWeb.AgentbookLive do
         %{"session_id" => session_id, "connector_uri" => connector_uri},
         socket
       ) do
-    with {:ok, session} <- context_module().store_connector_uri(session_id, connector_uri) do
-      {:noreply, assign(socket, :active_session, session)}
-    else
-      _ -> {:noreply, socket}
+    case context_module().store_connector_uri(session_id, connector_uri) do
+      {:ok, session} ->
+        {:noreply, assign(socket, :active_session, session)}
+
+      _ ->
+        {:noreply, socket}
     end
   end
 

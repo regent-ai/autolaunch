@@ -8,6 +8,8 @@ import {AuctionParameters} from "src/cca/interfaces/IContinuousClearingAuction.s
 import {LaunchDeploymentController} from "src/LaunchDeploymentController.sol";
 import {LaunchFeeRegistry} from "src/LaunchFeeRegistry.sol";
 import {LaunchFeeVault} from "src/LaunchFeeVault.sol";
+import {LaunchPoolFeeHook} from "src/LaunchPoolFeeHook.sol";
+import {AgentTokenVestingWallet} from "src/AgentTokenVestingWallet.sol";
 import {RegentLBPStrategy} from "src/RegentLBPStrategy.sol";
 import {RegentLBPStrategyFactory} from "src/RegentLBPStrategyFactory.sol";
 import {RevenueIngressFactory} from "src/revenue/RevenueIngressFactory.sol";
@@ -22,19 +24,17 @@ import {MockHookPoolManager} from "test/mocks/MockHookPoolManager.sol";
 import {MockLaunchToken, MockTokenFactory} from "test/mocks/MockTokenFactory.sol";
 
 contract LaunchDeploymentControllerTest is Test {
-    address internal constant RECOVERY_SAFE = address(0xABCD);
-    address internal constant AGENT_TREASURY_SAFE = address(0x5678);
-    address internal constant POSITION_RECIPIENT = address(0x1234);
+    address internal constant AGENT_SAFE = address(0xABCD);
+    address internal constant POSITION_RECIPIENT = AGENT_SAFE;
     address internal constant IDENTITY_REGISTRY = address(0x8004);
     address internal constant REGENT_RECIPIENT = address(0x9FA1);
     address internal constant STRATEGY_OPERATOR = address(0xBEEF);
     uint96 internal constant IDENTITY_AGENT_ID = 42;
     uint256 internal constant TOTAL_SUPPLY = 1_000_000_000e18;
     uint256 internal constant AUCTION_TICK_SPACING = 79_228_162_514_264_334_008_320;
-    bytes32 internal constant LAUNCH_STACK_DEPLOYED_TOPIC0 =
-        keccak256(
-            "LaunchStackDeployed(address,bytes32,address,address,address,address,address,address,address,address,address,address,bytes32,address)"
-        );
+    bytes32 internal constant LAUNCH_STACK_DEPLOYED_TOPIC0 = keccak256(
+        "LaunchStackDeployed(address,bytes32,address,address,address,address,address,address,address,address,address,address,bytes32,address)"
+    );
 
     LaunchDeploymentController internal controller;
     MockContinuousClearingAuctionFactory internal auctionFactory;
@@ -87,6 +87,14 @@ contract LaunchDeploymentControllerTest is Test {
         controller.deploy(cfg);
     }
 
+    function testRejectsMismatchedPositionRecipient() external {
+        LaunchDeploymentController.DeploymentConfig memory cfg = defaultConfig();
+        cfg.positionRecipient = address(0x1234);
+
+        vm.expectRevert("POSITION_RECIPIENT_MUST_MATCH_AGENT_SAFE");
+        controller.deploy(cfg);
+    }
+
     function testRejectsUnauthorizedDeployCaller() external {
         vm.prank(address(0xBAD));
         vm.expectRevert("ONLY_OWNER");
@@ -117,6 +125,7 @@ contract LaunchDeploymentControllerTest is Test {
         assertEq(strategy.reserveTokenAmount(), expectedReserveAmount);
         assertEq(strategy.tokenSplitToAuctionMps(), 6_666_666);
         assertEq(strategy.positionManager(), address(0xDEAD));
+        assertEq(strategy.positionRecipient(), AGENT_SAFE);
         assertEq(strategy.poolManager(), address(poolManager));
         assertEq(strategy.officialPoolFee(), 0);
         assertEq(strategy.officialPoolTickSpacing(), 60);
@@ -134,23 +143,35 @@ contract LaunchDeploymentControllerTest is Test {
         assertEq(poolConfig.quoteToken, address(usdc));
         assertEq(poolConfig.regentRecipient, REGENT_RECIPIENT);
         assertEq(registry.owner(), address(controller));
-        assertEq(registry.pendingOwner(), RECOVERY_SAFE);
+        assertEq(registry.pendingOwner(), AGENT_SAFE);
 
         RevenueShareSplitter splitter = RevenueShareSplitter(result.revenueShareSplitterAddress);
         assertEq(splitter.stakeToken(), result.tokenAddress);
         assertEq(splitter.usdc(), address(usdc));
-        assertEq(splitter.treasuryRecipient(), AGENT_TREASURY_SAFE);
+        assertEq(splitter.owner(), address(revenueShareFactory));
+        assertEq(splitter.pendingOwner(), AGENT_SAFE);
+        assertEq(splitter.treasuryRecipient(), AGENT_SAFE);
         assertEq(splitter.protocolRecipient(), REGENT_RECIPIENT);
 
         LaunchFeeVault feeVault = LaunchFeeVault(payable(result.feeVaultAddress));
+        assertEq(feeVault.owner(), address(controller));
+        assertEq(feeVault.pendingOwner(), AGENT_SAFE);
         assertEq(feeVault.canonicalLaunchToken(), result.tokenAddress);
         assertEq(feeVault.canonicalQuoteToken(), address(usdc));
+
+        LaunchPoolFeeHook hook = LaunchPoolFeeHook(result.hookAddress);
+        assertEq(hook.owner(), address(controller));
+        assertEq(hook.pendingOwner(), AGENT_SAFE);
+
+        AgentTokenVestingWallet vestingWallet = AgentTokenVestingWallet(result.vestingWalletAddress);
+        assertEq(vestingWallet.beneficiary(), AGENT_SAFE);
 
         SubjectRegistry.SubjectConfig memory subject = subjectRegistry.getSubject(result.subjectId);
         assertEq(subject.stakeToken, result.tokenAddress);
         assertEq(subject.splitter, result.revenueShareSplitterAddress);
-        assertEq(subject.treasurySafe, RECOVERY_SAFE);
+        assertEq(subject.treasurySafe, AGENT_SAFE);
         assertTrue(subject.active);
+        assertTrue(subjectRegistry.subjectManagers(result.subjectId, AGENT_SAFE));
 
         bytes32 expectedSubjectId = keccak256(abi.encode(block.chainid, result.tokenAddress));
         assertEq(result.subjectId, expectedSubjectId);
@@ -196,7 +217,7 @@ contract LaunchDeploymentControllerTest is Test {
                     address revenueShareSplitterAddress,
                     address defaultIngressAddress,
                     bytes32 poolId,
-                    address recoverySafe
+                    address agentSafe
                 ) = abi.decode(
                     entries[i].data,
                     (
@@ -224,7 +245,7 @@ contract LaunchDeploymentControllerTest is Test {
                 assertEq(revenueShareSplitterAddress, result.revenueShareSplitterAddress);
                 assertEq(defaultIngressAddress, result.defaultIngressAddress);
                 assertEq(poolId, result.poolId);
-                assertEq(recoverySafe, RECOVERY_SAFE);
+                assertEq(agentSafe, AGENT_SAFE);
                 break;
             }
         }
@@ -237,8 +258,7 @@ contract LaunchDeploymentControllerTest is Test {
         view
         returns (LaunchDeploymentController.DeploymentConfig memory cfg)
     {
-        cfg.recoverySafe = RECOVERY_SAFE;
-        cfg.agentTreasurySafe = AGENT_TREASURY_SAFE;
+        cfg.agentSafe = AGENT_SAFE;
         cfg.revenueShareFactory = address(revenueShareFactory);
         cfg.revenueIngressFactory = address(revenueIngressFactory);
         cfg.identityRegistry = IDENTITY_REGISTRY;

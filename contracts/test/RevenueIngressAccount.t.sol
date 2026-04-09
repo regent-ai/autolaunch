@@ -34,10 +34,8 @@ contract RevenueIngressAccountTest is Test {
         address splitterAddress = revenueShareFactory.createSubjectSplitter(
             SUBJECT_ID,
             address(stakeToken),
-            AGENT_TREASURY,
+            TREASURY_SAFE,
             REGENT_RECIPIENT,
-            TREASURY_SAFE,
-            TREASURY_SAFE,
             100,
             1000e18,
             "Subject",

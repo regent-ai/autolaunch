@@ -1141,9 +1141,7 @@ components:
         - agent_id
         - token_name
         - token_symbol
-        - treasury_safe_address
-        - auction_proceeds_recipient
-        - ethereum_revenue_treasury
+        - agent_safe_address
         - minimum_raise_usdc
         - minimum_raise_usdc_raw
       properties:
@@ -1151,13 +1149,7 @@ components:
         agent_id: { type: string }
         token_name: { type: string }
         token_symbol: { type: string }
-        treasury_safe_address: { $ref: "#/components/schemas/Address" }
-        auction_proceeds_recipient: { $ref: "#/components/schemas/Address" }
-        ethereum_revenue_treasury: { $ref: "#/components/schemas/Address" }
-        backup_safe_address:
-          anyOf:
-            - { $ref: "#/components/schemas/Address" }
-            - { type: "null" }
+        agent_safe_address: { $ref: "#/components/schemas/Address" }
         launch_notes:
           anyOf:
             - { type: string }
@@ -1179,21 +1171,13 @@ components:
         - agent_id
         - token_name
         - token_symbol
-        - treasury_safe_address
-        - auction_proceeds_recipient
-        - ethereum_revenue_treasury
+        - agent_safe_address
         - minimum_raise_usdc
       properties:
         agent_id: { type: string }
         token_name: { type: string }
         token_symbol: { type: string }
-        treasury_safe_address: { $ref: "#/components/schemas/Address" }
-        auction_proceeds_recipient: { $ref: "#/components/schemas/Address" }
-        ethereum_revenue_treasury: { $ref: "#/components/schemas/Address" }
-        backup_safe_address:
-          anyOf:
-            - { $ref: "#/components/schemas/Address" }
-            - { type: "null" }
+        agent_safe_address: { $ref: "#/components/schemas/Address" }
         launch_notes:
           anyOf:
             - { type: string }
@@ -1312,9 +1296,7 @@ components:
         - chain_id
         - token_name
         - token_symbol
-        - recovery_safe_address
-        - auction_proceeds_recipient
-        - ethereum_revenue_treasury
+        - agent_safe_address
         - total_supply
         - minimum_raise_usdc
       properties:
@@ -1322,9 +1304,7 @@ components:
         chain_id: { type: integer }
         token_name: { type: string }
         token_symbol: { type: string }
-        recovery_safe_address: { $ref: "#/components/schemas/Address" }
-        auction_proceeds_recipient: { $ref: "#/components/schemas/Address" }
-        ethereum_revenue_treasury: { $ref: "#/components/schemas/Address" }
+        agent_safe_address: { $ref: "#/components/schemas/Address" }
         total_supply: { type: string }
         launch_notes:
           anyOf:

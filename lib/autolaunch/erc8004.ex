@@ -232,10 +232,7 @@ defmodule Autolaunch.ERC8004 do
   end
 
   defp infer_access_mode(_access_mode, _owner, operators, _agent_wallet, wallets) do
-    cond do
-      Enum.any?(operators, &(&1 in wallets)) -> "operator"
-      true -> "wallet_bound"
-    end
+    if Enum.any?(operators, &(&1 in wallets)), do: "operator", else: "wallet_bound"
   end
 
   defp merge_identity(identity, acc) do

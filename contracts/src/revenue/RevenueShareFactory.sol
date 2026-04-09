@@ -49,10 +49,8 @@ contract RevenueShareFactory is Owned {
     function createSubjectSplitter(
         bytes32 subjectId,
         address stakeToken,
-        address treasuryRecipient,
+        address agentSafe,
         address protocolRecipient,
-        address splitterOwner,
-        address treasurySafe,
         uint16 protocolSkimBps,
         uint256 revenueShareSupplyDenominator,
         string calldata label,
@@ -62,12 +60,10 @@ contract RevenueShareFactory is Owned {
     ) external onlyAuthorizedCreator returns (address splitter) {
         require(subjectId != bytes32(0), "SUBJECT_ZERO");
         require(stakeToken != address(0), "STAKE_TOKEN_ZERO");
-        require(treasuryRecipient != address(0), "TREASURY_RECIPIENT_ZERO");
+        require(agentSafe != address(0), "AGENT_SAFE_ZERO");
         require(protocolRecipient != address(0), "PROTOCOL_RECIPIENT_ZERO");
         require(splitterOfStakeToken[stakeToken] == address(0), "SPLITTER_EXISTS_FOR_TOKEN");
         require(splitterOfSubject[subjectId] == address(0), "SPLITTER_EXISTS_FOR_SUBJECT");
-        require(splitterOwner != address(0), "SPLITTER_OWNER_ZERO");
-        require(treasurySafe != address(0), "TREASURY_SAFE_ZERO");
         require(revenueShareSupplyDenominator != 0, "SUPPLY_DENOMINATOR_ZERO");
         bool hasIdentityLink =
             identityChainId != 0 || identityRegistry != address(0) || identityAgentId != 0;
@@ -80,7 +76,7 @@ contract RevenueShareFactory is Owned {
         RevenueShareSplitter deployed = new RevenueShareSplitter(
             stakeToken,
             usdc,
-            treasuryRecipient,
+            agentSafe,
             protocolRecipient,
             protocolSkimBps,
             revenueShareSupplyDenominator,
@@ -96,19 +92,19 @@ contract RevenueShareFactory is Owned {
             subjectId,
             stakeToken,
             splitter,
-            splitterOwner,
-            treasuryRecipient,
+            agentSafe,
+            agentSafe,
             protocolRecipient,
             label
         );
 
-        subjectRegistry.createSubject(subjectId, stakeToken, splitter, treasurySafe, true, label);
+        subjectRegistry.createSubject(subjectId, stakeToken, splitter, agentSafe, true, label);
         if (hasIdentityLink) {
             bytes32 identityHash = subjectRegistry.linkIdentity(
                 subjectId, identityChainId, identityRegistry, identityAgentId
             );
             require(identityHash != bytes32(0), "IDENTITY_LINK_FAILED");
         }
-        deployed.transferOwnership(splitterOwner);
+        deployed.transferOwnership(agentSafe);
     }
 }

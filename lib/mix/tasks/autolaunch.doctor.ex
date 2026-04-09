@@ -1,4 +1,6 @@
 defmodule Mix.Tasks.Autolaunch.Doctor do
+  @moduledoc false
+
   use Mix.Task
 
   @shortdoc "Checks launch-blocking dependencies and warns on optional trust dependencies"

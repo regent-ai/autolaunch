@@ -14,11 +14,11 @@ defmodule AutolaunchWeb.LaunchLive.Presenter do
 
   def regent_step_summary(2, selected_agent, _current_job),
     do:
-      "Set token routing and recovery details for #{(selected_agent && (selected_agent.name || selected_agent.agent_id)) || "the chosen agent"} before asking for any signature."
+      "Set the Agent Safe for #{(selected_agent && (selected_agent.name || selected_agent.agent_id)) || "the chosen agent"} before asking for any signature."
 
   def regent_step_summary(3, _selected_agent, _current_job),
     do:
-      "This is the irreversible checkpoint. Review the fixed supply, treasury routing, and the optional trust check before you sign."
+      "This is the irreversible checkpoint. Review the fixed supply, Agent Safe, and the optional trust check before you sign."
 
   def regent_step_summary(4, _selected_agent, current_job),
     do:

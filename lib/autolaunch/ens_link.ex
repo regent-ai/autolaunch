@@ -69,30 +69,27 @@ defmodule Autolaunch.EnsLink do
   defp resolve_identity(%HumanUser{} = human, attrs) do
     identity_id = Map.get(attrs, "identity_id")
 
-    cond do
-      is_binary(identity_id) and identity_id != "" ->
-        case Launch.get_agent(human, identity_id) do
-          nil -> {:error, :agent_not_found}
-          agent -> {:ok, agent}
-        end
-
-      true ->
-        with {:ok, chain_id} <-
-               required_chain_id(Map.get(attrs, "chain_id")),
-             {:ok, token_id} <- required_numeric(Map.get(attrs, "agent_id"), :agent_id),
-             registry_address when is_binary(registry_address) <-
-               ERC8004.identity_registry(chain_id) do
-          {:ok,
-           %{
-             chain_id: chain_id,
-             token_id: token_id,
-             registry_address: registry_address,
-             agent_uri: Map.get(attrs, "current_agent_uri")
-           }}
-        else
-          nil -> {:error, :identity_registry_not_configured}
-          {:error, _} = error -> error
-        end
+    if is_binary(identity_id) and identity_id != "" do
+      case Launch.get_agent(human, identity_id) do
+        nil -> {:error, :agent_not_found}
+        agent -> {:ok, agent}
+      end
+    else
+      with {:ok, chain_id} <- required_chain_id(Map.get(attrs, "chain_id")),
+           {:ok, token_id} <- required_numeric(Map.get(attrs, "agent_id"), :agent_id),
+           registry_address when is_binary(registry_address) <-
+             ERC8004.identity_registry(chain_id) do
+        {:ok,
+         %{
+           chain_id: chain_id,
+           token_id: token_id,
+           registry_address: registry_address,
+           agent_uri: Map.get(attrs, "current_agent_uri")
+         }}
+      else
+        nil -> {:error, :identity_registry_not_configured}
+        {:error, _} = error -> error
+      end
     end
   end
 

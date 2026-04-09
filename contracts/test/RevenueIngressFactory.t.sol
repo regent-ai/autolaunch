@@ -32,10 +32,8 @@ contract RevenueIngressFactoryTest is Test {
         revenueShareFactory.createSubjectSplitter(
             SUBJECT_ID,
             address(0xB0B),
-            AGENT_TREASURY,
+            TREASURY_SAFE,
             REGENT_RECIPIENT,
-            TREASURY_SAFE,
-            TREASURY_SAFE,
             100,
             1000e18,
             "Subject",

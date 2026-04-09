@@ -8,9 +8,7 @@ defmodule AutolaunchWeb.LaunchLive.Flow do
       "agent_id" => nil,
       "token_name" => "",
       "token_symbol" => "",
-      "recovery_safe_address" => "",
-      "auction_proceeds_recipient" => "",
-      "ethereum_revenue_treasury" => "",
+      "agent_safe_address" => "",
       "total_supply" => @agent_launch_total_supply,
       "launch_notes" => ""
     }
@@ -18,9 +16,7 @@ defmodule AutolaunchWeb.LaunchLive.Flow do
 
   def default_form(current_human) do
     default_form(nil)
-    |> Map.put("recovery_safe_address", current_human.wallet_address || "")
-    |> Map.put("auction_proceeds_recipient", current_human.wallet_address || "")
-    |> Map.put("ethereum_revenue_treasury", current_human.wallet_address || "")
+    |> Map.put("agent_safe_address", current_human.wallet_address || "")
   end
 
   def max_available_step(%{job_id: job_id, preview: preview, selected_agent: selected_agent}) do
@@ -45,8 +41,7 @@ defmodule AutolaunchWeb.LaunchLive.Flow do
   def preview_error(:token_name_required), do: "Token name is required."
   def preview_error(:token_symbol_required), do: "Token symbol is required."
 
-  def preview_error(:invalid_wallet_address),
-    do: "Each launch recipient must be a valid EVM address."
+  def preview_error(:invalid_wallet_address), do: "The Agent Safe must be a valid EVM address."
 
   def preview_error(:invalid_chain_id), do: "Launch network is not configured."
   def preview_error(:agent_not_found), do: "Select an eligible agent first."

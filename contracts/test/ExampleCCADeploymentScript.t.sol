@@ -21,9 +21,7 @@ import {MockHookPoolManager} from "test/mocks/MockHookPoolManager.sol";
 import {MockLaunchToken, MockTokenFactory} from "test/mocks/MockTokenFactory.sol";
 
 contract ExampleCCADeploymentScriptTest is Test {
-    address internal constant RECOVERY_SAFE = address(0x4321);
-    address internal constant POSITION_RECIPIENT = address(0x1234);
-    address internal constant AGENT_TREASURY_SAFE = address(0x5678);
+    address internal constant AGENT_SAFE = address(0x4321);
     address internal constant REGENT_MULTISIG = address(0x9FA1);
     address internal constant IDENTITY_REGISTRY = address(0x8004);
     address internal constant STRATEGY_OPERATOR = address(0xBEEF);
@@ -58,9 +56,7 @@ contract ExampleCCADeploymentScriptTest is Test {
         subjectRegistry.transferOwnership(address(revenueShareFactory));
         revenueShareFactory.acceptSubjectRegistryOwnership();
 
-        _setEnvAddress("AUTOLAUNCH_RECOVERY_SAFE_ADDRESS", RECOVERY_SAFE);
-        _setEnvAddress("AUTOLAUNCH_AUCTION_PROCEEDS_RECIPIENT", POSITION_RECIPIENT);
-        _setEnvAddress("AUTOLAUNCH_ETHEREUM_REVENUE_TREASURY", AGENT_TREASURY_SAFE);
+        _setEnvAddress("AUTOLAUNCH_AGENT_SAFE_ADDRESS", AGENT_SAFE);
         _setEnvAddress("REGENT_MULTISIG_ADDRESS", REGENT_MULTISIG);
         vm.setEnv("REVENUE_SHARE_FACTORY_ADDRESS", vm.toString(address(revenueShareFactory)));
         vm.setEnv("REVENUE_INGRESS_FACTORY_ADDRESS", vm.toString(address(revenueIngressFactory)));
@@ -106,12 +102,13 @@ contract ExampleCCADeploymentScriptTest is Test {
         assertEq(strategy.officialPoolFee(), 0);
         assertEq(strategy.officialPoolTickSpacing(), 60);
         assertEq(strategy.positionManager(), address(0xDEAD));
+        assertEq(strategy.positionRecipient(), AGENT_SAFE);
         assertEq(strategy.poolManager(), address(poolManager));
 
         SubjectRegistry.SubjectConfig memory config = subjectRegistry.getSubject(result.subjectId);
         assertEq(config.stakeToken, result.tokenAddress);
         assertEq(config.splitter, result.revenueShareSplitterAddress);
-        assertEq(config.treasurySafe, RECOVERY_SAFE);
+        assertEq(config.treasurySafe, AGENT_SAFE);
         assertTrue(config.active);
 
         LaunchFeeRegistry registry = LaunchFeeRegistry(result.launchFeeRegistryAddress);
@@ -124,7 +121,7 @@ contract ExampleCCADeploymentScriptTest is Test {
         RevenueShareSplitter splitter = RevenueShareSplitter(result.revenueShareSplitterAddress);
         assertEq(splitter.stakeToken(), result.tokenAddress);
         assertEq(splitter.usdc(), address(usdc));
-        assertEq(splitter.treasuryRecipient(), AGENT_TREASURY_SAFE);
+        assertEq(splitter.treasuryRecipient(), AGENT_SAFE);
         assertEq(splitter.protocolRecipient(), REGENT_MULTISIG);
 
         assertEq(

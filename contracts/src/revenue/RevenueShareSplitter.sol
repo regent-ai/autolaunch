@@ -15,6 +15,7 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter {
     uint256 public constant ACC_PRECISION = 1e27;
     uint256 public constant MAX_EMISSION_APR_BPS = 10_000;
     uint256 internal constant SECONDS_PER_YEAR = 365 days;
+    uint64 internal constant DEFAULT_TREASURY_ROTATION_DELAY = 3 days;
 
     address public immutable override stakeToken;
     address public immutable override usdc;
@@ -23,6 +24,9 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter {
     string public label;
 
     address public override treasuryRecipient;
+    address public pendingTreasuryRecipient;
+    uint64 public pendingTreasuryRecipientEta;
+    uint64 public immutable treasuryRotationDelay;
     address public override protocolRecipient;
     uint16 public protocolSkimBps;
     uint16 public emissionAprBps;
@@ -49,7 +53,15 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter {
     uint256 private _reentrancyGuard = 1;
 
     event PausedSet(bool paused);
-    event TreasuryRecipientSet(address indexed treasuryRecipient);
+    event TreasuryRecipientRotationProposed(
+        address indexed currentRecipient, address indexed pendingRecipient, uint64 eta
+    );
+    event TreasuryRecipientRotationCancelled(
+        address indexed currentRecipient, address indexed cancelledRecipient
+    );
+    event TreasuryRecipientRotationExecuted(
+        address indexed oldRecipient, address indexed newRecipient
+    );
     event ProtocolRecipientSet(address indexed protocolRecipient);
     event ProtocolSkimBpsSet(uint16 skimBps);
     event EmissionAprBpsSet(uint16 previousBps, uint16 newBps);
@@ -94,6 +106,7 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter {
         usdc = usdc_;
         revenueShareSupplyDenominator = revenueShareSupplyDenominator_;
         treasuryRecipient = treasuryRecipient_;
+        treasuryRotationDelay = DEFAULT_TREASURY_ROTATION_DELAY;
         protocolRecipient = protocolRecipient_;
         protocolSkimBps = protocolSkimBps_;
         label = label_;
@@ -117,10 +130,38 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter {
         emit PausedSet(paused_);
     }
 
-    function setTreasuryRecipient(address treasuryRecipient_) external onlyOwner {
-        require(treasuryRecipient_ != address(0), "TREASURY_ZERO");
-        treasuryRecipient = treasuryRecipient_;
-        emit TreasuryRecipientSet(treasuryRecipient_);
+    function proposeTreasuryRecipientRotation(address newRecipient) external onlyOwner {
+        require(newRecipient != address(0), "TREASURY_ZERO");
+        require(newRecipient != treasuryRecipient, "TREASURY_UNCHANGED");
+
+        uint64 eta = uint64(block.timestamp) + treasuryRotationDelay;
+        pendingTreasuryRecipient = newRecipient;
+        pendingTreasuryRecipientEta = eta;
+
+        emit TreasuryRecipientRotationProposed(treasuryRecipient, newRecipient, eta);
+    }
+
+    function cancelTreasuryRecipientRotation() external onlyOwner {
+        address cancelledRecipient = pendingTreasuryRecipient;
+        require(cancelledRecipient != address(0), "PENDING_TREASURY_ZERO");
+
+        pendingTreasuryRecipient = address(0);
+        pendingTreasuryRecipientEta = 0;
+
+        emit TreasuryRecipientRotationCancelled(treasuryRecipient, cancelledRecipient);
+    }
+
+    function executeTreasuryRecipientRotation() external {
+        address newRecipient = pendingTreasuryRecipient;
+        require(newRecipient != address(0), "PENDING_TREASURY_ZERO");
+        require(block.timestamp >= pendingTreasuryRecipientEta, "ROTATION_NOT_READY");
+
+        address oldRecipient = treasuryRecipient;
+        treasuryRecipient = newRecipient;
+        pendingTreasuryRecipient = address(0);
+        pendingTreasuryRecipientEta = 0;
+
+        emit TreasuryRecipientRotationExecuted(oldRecipient, newRecipient);
     }
 
     function setProtocolRecipient(address protocolRecipient_) external onlyOwner {
@@ -320,45 +361,20 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter {
         emit StakeUpdated(msg.sender, stakedBalance[msg.sender], totalStaked);
     }
 
-    function withdrawTreasuryResidualUSDC(uint256 amount, address recipient)
-        external
-        whenNotPaused
-        nonReentrant
-    {
-        require(msg.sender == treasuryRecipient || msg.sender == owner, "ONLY_TREASURY");
-        require(recipient != address(0), "RECIPIENT_ZERO");
+    function sweepTreasuryResidualUSDC(uint256 amount) external whenNotPaused nonReentrant {
         require(treasuryResidualUsdc >= amount, "TREASURY_BALANCE_LOW");
 
         treasuryResidualUsdc -= amount;
-        emit USDCTreasuryResidualWithdrawn(amount, recipient);
-        usdc.safeTransfer(recipient, amount);
+        emit USDCTreasuryResidualWithdrawn(amount, treasuryRecipient);
+        usdc.safeTransfer(treasuryRecipient, amount);
     }
 
-    function withdrawProtocolReserveUSDC(uint256 amount, address recipient)
-        external
-        whenNotPaused
-        nonReentrant
-    {
-        _withdrawProtocolReserveUsdc(amount, recipient);
-    }
-
-    function withdrawProtocolReserve(address rewardToken, uint256 amount, address recipient)
-        external
-        whenNotPaused
-        nonReentrant
-    {
-        require(rewardToken == usdc, "REWARD_TOKEN_INVALID");
-        _withdrawProtocolReserveUsdc(amount, recipient);
-    }
-
-    function _withdrawProtocolReserveUsdc(uint256 amount, address recipient) internal {
-        require(msg.sender == protocolRecipient || msg.sender == owner, "ONLY_PROTOCOL");
-        require(recipient != address(0), "RECIPIENT_ZERO");
+    function sweepProtocolReserveUSDC(uint256 amount) external whenNotPaused nonReentrant {
         require(protocolReserveUsdc >= amount, "PROTOCOL_BALANCE_LOW");
 
         protocolReserveUsdc -= amount;
-        emit USDCProtocolReserveWithdrawn(amount, recipient);
-        usdc.safeTransfer(recipient, amount);
+        emit USDCProtocolReserveWithdrawn(amount, protocolRecipient);
+        usdc.safeTransfer(protocolRecipient, amount);
     }
 
     function reassignUndistributedDustToTreasury(uint256 amount) external onlyOwner nonReentrant {

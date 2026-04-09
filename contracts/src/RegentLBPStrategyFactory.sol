@@ -12,7 +12,7 @@ contract RegentLBPStrategyFactory is IDistributionStrategy {
         address auctionInitializerFactory;
         AuctionParameters auctionParameters;
         address officialPoolHook;
-        address agentTreasurySafe;
+        address agentSafe;
         address vestingWallet;
         address operator;
         address positionRecipient;
@@ -53,7 +53,7 @@ contract RegentLBPStrategyFactory is IDistributionStrategy {
                     cfg.auctionInitializerFactory,
                     cfg.auctionParameters,
                     cfg.officialPoolHook,
-                    cfg.agentTreasurySafe,
+                    cfg.agentSafe,
                     cfg.vestingWallet,
                     cfg.operator,
                     cfg.positionRecipient,

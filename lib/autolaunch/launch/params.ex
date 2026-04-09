@@ -6,9 +6,7 @@ defmodule Autolaunch.Launch.Params do
     token_name
     token_symbol
     minimum_raise_usdc
-    recovery_safe_address
-    auction_proceeds_recipient
-    ethereum_revenue_treasury
+    agent_safe_address
     total_supply
     launch_notes
   )a

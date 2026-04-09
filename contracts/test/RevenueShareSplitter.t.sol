@@ -34,6 +34,9 @@ contract RevenueShareSplitterTest is Test {
     address internal constant DAVE = address(0xD4);
     address internal constant EVE = address(0xE5);
     address internal constant FUNDER = address(0xF00D);
+    address internal constant NEXT_TREASURY = address(0xACCE55);
+    address internal constant RANDOM_CALLER = address(0x123456);
+    uint64 internal constant TREASURY_ROTATION_DELAY = 3 days;
 
     function setUp() external {
         stakeToken = new MintableBurnableERC20Mock("Agent", "XYZ", 18);
@@ -270,6 +273,79 @@ contract RevenueShareSplitterTest is Test {
         assertEq(splitter.totalClaimedStakeToken(), expected);
         assertEq(splitter.stakedBalance(ALICE), ALICE_STAKE + expected);
         assertEq(splitter.previewClaimableStakeToken(ALICE), 0);
+    }
+
+    function testSweepTreasuryResidualUSDCCallableByArbitraryAddress() external {
+        usdc.mint(address(this), INITIAL_INGRESS_DEPOSIT);
+        usdc.approve(address(splitter), INITIAL_INGRESS_DEPOSIT);
+        splitter.depositUSDC(INITIAL_INGRESS_DEPOSIT, bytes32("direct"), bytes32("round-1"));
+
+        uint256 amount = splitter.treasuryResidualUsdc();
+
+        vm.prank(RANDOM_CALLER);
+        splitter.sweepTreasuryResidualUSDC(amount);
+
+        assertEq(usdc.balanceOf(TREASURY), amount);
+        assertEq(splitter.treasuryResidualUsdc(), 0);
+    }
+
+    function testSweepProtocolReserveUSDCCallableByArbitraryAddress() external {
+        usdc.mint(address(this), INITIAL_INGRESS_DEPOSIT);
+        usdc.approve(address(splitter), INITIAL_INGRESS_DEPOSIT);
+        splitter.depositUSDC(INITIAL_INGRESS_DEPOSIT, bytes32("direct"), bytes32("round-1"));
+
+        uint256 amount = splitter.protocolReserveUsdc();
+
+        vm.prank(RANDOM_CALLER);
+        splitter.sweepProtocolReserveUSDC(amount);
+
+        assertEq(usdc.balanceOf(PROTOCOL_TREASURY), amount);
+        assertEq(splitter.protocolReserveUsdc(), 0);
+    }
+
+    function testTreasuryRecipientRotationDelay() external {
+        uint64 currentTime = uint64(block.timestamp);
+
+        splitter.proposeTreasuryRecipientRotation(NEXT_TREASURY);
+
+        assertEq(splitter.pendingTreasuryRecipient(), NEXT_TREASURY);
+        assertEq(splitter.pendingTreasuryRecipientEta(), currentTime + TREASURY_ROTATION_DELAY);
+        assertEq(splitter.treasuryRecipient(), TREASURY);
+    }
+
+    function testCancelTreasuryRecipientRotation() external {
+        splitter.proposeTreasuryRecipientRotation(NEXT_TREASURY);
+        splitter.cancelTreasuryRecipientRotation();
+
+        assertEq(splitter.pendingTreasuryRecipient(), address(0));
+        assertEq(splitter.pendingTreasuryRecipientEta(), 0);
+        assertEq(splitter.treasuryRecipient(), TREASURY);
+    }
+
+    function testExecuteTreasuryRecipientRotationAfterDelay() external {
+        splitter.proposeTreasuryRecipientRotation(NEXT_TREASURY);
+
+        vm.warp(block.timestamp + TREASURY_ROTATION_DELAY);
+        splitter.executeTreasuryRecipientRotation();
+
+        assertEq(splitter.treasuryRecipient(), NEXT_TREASURY);
+        assertEq(splitter.pendingTreasuryRecipient(), address(0));
+        assertEq(splitter.pendingTreasuryRecipientEta(), 0);
+    }
+
+    function testStakerClaimsRemainUnaffectedDuringTreasuryRotation() external {
+        usdc.mint(address(this), INITIAL_INGRESS_DEPOSIT);
+        usdc.approve(address(splitter), INITIAL_INGRESS_DEPOSIT);
+        splitter.depositUSDC(INITIAL_INGRESS_DEPOSIT, bytes32("direct"), bytes32("round-1"));
+
+        splitter.proposeTreasuryRecipientRotation(NEXT_TREASURY);
+
+        vm.prank(ALICE);
+        uint256 claimed = splitter.claimUSDC(ALICE);
+
+        assertEq(claimed, 1980 * USDC);
+        assertEq(usdc.balanceOf(ALICE), 1980 * USDC);
+        assertEq(splitter.treasuryRecipient(), TREASURY);
     }
 
     function testPausePreservesPrincipalExit() external {

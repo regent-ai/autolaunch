@@ -29,7 +29,7 @@ contract RegentLBPStrategyFactoryTest is Test {
                     auctionStepsData: bytes("")
                 }),
                 officialPoolHook: address(0x4444),
-                agentTreasurySafe: address(0x5555),
+                agentSafe: address(0x5555),
                 vestingWallet: address(0x6666),
                 operator: address(0x7777),
                 positionRecipient: address(0x8888),
@@ -54,7 +54,7 @@ contract RegentLBPStrategyFactoryTest is Test {
         assertEq(strategy.token(), address(0x1111));
         assertEq(strategy.usdc(), address(0x2222));
         assertEq(strategy.auctionInitializerFactory(), address(0x3333));
-        assertEq(strategy.agentTreasurySafe(), address(0x5555));
+        assertEq(strategy.agentSafe(), address(0x5555));
         assertEq(strategy.vestingWallet(), address(0x6666));
         assertEq(strategy.operator(), address(0x7777));
         assertEq(strategy.officialPoolFee(), 3000);

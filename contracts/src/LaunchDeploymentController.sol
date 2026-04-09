@@ -28,8 +28,7 @@ contract LaunchDeploymentController is Owned {
     uint24 internal constant MAX_POOL_FEE = 1_000_000;
 
     struct DeploymentConfig {
-        address recoverySafe;
-        address agentTreasurySafe;
+        address agentSafe;
         address revenueShareFactory;
         address revenueIngressFactory;
         address identityRegistry;
@@ -95,7 +94,7 @@ contract LaunchDeploymentController is Owned {
         address revenueShareSplitterAddress,
         address defaultIngressAddress,
         bytes32 poolId,
-        address recoverySafe
+        address agentSafe
     );
 
     constructor() Owned(msg.sender) {}
@@ -105,8 +104,7 @@ contract LaunchDeploymentController is Owned {
         onlyOwner
         returns (DeploymentResult memory result)
     {
-        require(cfg.recoverySafe != address(0), "RECOVERY_SAFE_ZERO");
-        require(cfg.agentTreasurySafe != address(0), "AGENT_TREASURY_ZERO");
+        require(cfg.agentSafe != address(0), "AGENT_SAFE_ZERO");
         require(cfg.revenueShareFactory != address(0), "REVENUE_SHARE_FACTORY_ZERO");
         require(cfg.revenueIngressFactory != address(0), "REVENUE_INGRESS_FACTORY_ZERO");
         require(cfg.identityRegistry != address(0), "IDENTITY_REGISTRY_ZERO");
@@ -116,6 +114,7 @@ contract LaunchDeploymentController is Owned {
         require(cfg.poolManager != address(0), "POOL_MANAGER_ZERO");
         require(cfg.positionManager != address(0), "POSITION_MANAGER_ZERO");
         require(cfg.positionRecipient != address(0), "POSITION_RECIPIENT_ZERO");
+        require(cfg.positionRecipient == cfg.agentSafe, "POSITION_RECIPIENT_MUST_MATCH_AGENT_SAFE");
         require(cfg.strategyOperator != address(0), "STRATEGY_OPERATOR_ZERO");
         require(cfg.usdcToken != address(0), "USDC_ZERO");
         require(cfg.regentRecipient != address(0), "REGENT_RECIPIENT_ZERO");
@@ -169,7 +168,7 @@ contract LaunchDeploymentController is Owned {
         require(token != address(0), "TOKEN_NOT_CREATED");
 
         AgentTokenVestingWallet vestingWallet = new AgentTokenVestingWallet(
-            cfg.agentTreasurySafe, cfg.vestingStartTimestamp, cfg.vestingDurationSeconds, token
+            cfg.agentSafe, cfg.vestingStartTimestamp, cfg.vestingDurationSeconds, token
         );
 
         bytes32 subjectId = keccak256(abi.encode(block.chainid, token));
@@ -177,10 +176,8 @@ contract LaunchDeploymentController is Owned {
             .createSubjectSplitter(
                 subjectId,
                 token,
-                cfg.agentTreasurySafe,
+                cfg.agentSafe,
                 cfg.regentRecipient,
-                cfg.recoverySafe,
-                cfg.recoverySafe,
                 cfg.protocolSkimBps,
                 cfg.totalSupply,
                 cfg.subjectLabel,
@@ -233,7 +230,7 @@ contract LaunchDeploymentController is Owned {
                         auctionInitializerFactory: cfg.auctionInitializerFactory,
                         auctionParameters: auctionParameters,
                         officialPoolHook: address(hook),
-                        agentTreasurySafe: cfg.agentTreasurySafe,
+                        agentSafe: cfg.agentSafe,
                         vestingWallet: address(vestingWallet),
                         operator: cfg.strategyOperator,
                         positionRecipient: cfg.positionRecipient,
@@ -281,9 +278,9 @@ contract LaunchDeploymentController is Owned {
         );
         feeVault.setCanonicalTokens(token, cfg.usdcToken);
 
-        launchFeeRegistry.transferOwnership(cfg.recoverySafe);
-        feeVault.transferOwnership(cfg.recoverySafe);
-        hook.transferOwnership(cfg.recoverySafe);
+        launchFeeRegistry.transferOwnership(cfg.agentSafe);
+        feeVault.transferOwnership(cfg.agentSafe);
+        hook.transferOwnership(cfg.agentSafe);
 
         result = DeploymentResult({
             tokenAddress: token,
@@ -316,7 +313,7 @@ contract LaunchDeploymentController is Owned {
             result.revenueShareSplitterAddress,
             result.defaultIngressAddress,
             result.poolId,
-            cfg.recoverySafe
+            cfg.agentSafe
         );
     }
 }

@@ -55,20 +55,17 @@ defmodule Autolaunch.LaunchSchemaCutoverTest do
     Repo.query!(
       """
       INSERT INTO temp_launch_cutover_jobs (
-        job_id, owner_address, agent_id, recovery_safe_address,
-        auction_proceeds_recipient, ethereum_revenue_treasury,
-        network, chain_id, status, step, total_supply, message,
-        siwa_nonce, siwa_signature, issued_at, inserted_at, updated_at
+        job_id, owner_address, agent_id, agent_safe_address,
+        network, chain_id, status, step, total_supply, message, siwa_nonce, siwa_signature,
+        issued_at, inserted_at, updated_at
       ) VALUES
-        ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW(), NOW()),
-        ($16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, NOW(), NOW())
+        ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW(), NOW()),
+        ($14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, NOW(), NOW())
       """,
       [
         "job_sepolia",
         "0x1111111111111111111111111111111111111111",
         "11155111:42",
-        "0x1111111111111111111111111111111111111111",
-        "0x1111111111111111111111111111111111111111",
         "0x1111111111111111111111111111111111111111",
         @sepolia_network,
         @sepolia_chain_id,
@@ -82,8 +79,6 @@ defmodule Autolaunch.LaunchSchemaCutoverTest do
         "job_mainnet",
         "0x2222222222222222222222222222222222222222",
         "11155111:99",
-        "0x2222222222222222222222222222222222222222",
-        "0x2222222222222222222222222222222222222222",
         "0x2222222222222222222222222222222222222222",
         @mainnet_network,
         @mainnet_chain_id,
@@ -132,9 +127,7 @@ defmodule Autolaunch.LaunchSchemaCutoverTest do
       agent_id: "11155111:42",
       token_name: "Atlas Coin",
       token_symbol: "ATLAS",
-      recovery_safe_address: "0x1111111111111111111111111111111111111111",
-      auction_proceeds_recipient: "0x1111111111111111111111111111111111111111",
-      ethereum_revenue_treasury: "0x1111111111111111111111111111111111111111",
+      agent_safe_address: "0x1111111111111111111111111111111111111111",
       network: network,
       chain_id: chain_id,
       status: "queued",
@@ -197,16 +190,13 @@ defmodule Autolaunch.LaunchSchemaCutoverTest do
     Repo.query!(
       """
       INSERT INTO autolaunch_jobs (
-        job_id, owner_address, agent_id, recovery_safe_address,
-        auction_proceeds_recipient, ethereum_revenue_treasury,
-        network, chain_id, status, step, total_supply, message,
-        siwa_nonce, siwa_signature, issued_at, inserted_at, updated_at
+        job_id, owner_address, agent_id, agent_safe_address,
+        network, chain_id, status, step, total_supply, message, siwa_nonce, siwa_signature,
+        issued_at, inserted_at, updated_at
       ) VALUES (
         'job_test',
         '0x1111111111111111111111111111111111111111',
         '11155111:42',
-        '0x1111111111111111111111111111111111111111',
-        '0x1111111111111111111111111111111111111111',
         '0x1111111111111111111111111111111111111111',
         $1,
         $2,

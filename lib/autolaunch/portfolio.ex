@@ -223,12 +223,12 @@ defmodule Autolaunch.Portfolio do
         Map.get(holding, :claimable_usdc_raw),
         Map.get(holding, :claimable_emissions_raw)
       ],
-      &is_positive_integer/1
+      &positive_integer?/1
     )
   end
 
-  defp is_positive_integer(value) when is_integer(value), do: value > 0
-  defp is_positive_integer(_value), do: false
+  defp positive_integer?(value) when is_integer(value), do: value > 0
+  defp positive_integer?(_value), do: false
 
   defp position_value(position, key, default \\ nil) when is_map(position) do
     Map.get(position, key, default)

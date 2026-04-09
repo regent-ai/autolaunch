@@ -1,0 +1,432 @@
+{
+  "project_root": "/Users/sean/Documents/regent/autolaunch/contracts",
+  "in_scope_files": [
+    {
+      "path": "src/LaunchDeploymentController.sol",
+      "priority": "CRITICAL",
+      "score": 100,
+      "category": "core logic",
+      "matched_patterns": [
+        "allocation split from totalSupply",
+        "bps-denominator math",
+        "tokenSplitToAuctionMps conversion",
+        "supply casts to uint128"
+      ],
+      "step2": "REVIEWED_NO_ANCHOR_CHANGES",
+      "step3": "REVIEWED_NO_PROPAGATION_CHANGES",
+      "step4": "VALIDATED"
+    },
+    {
+      "path": "src/RegentLBPStrategy.sol",
+      "priority": "CRITICAL",
+      "score": 99,
+      "category": "core logic",
+      "matched_patterns": [
+        "sqrt price from token/currency ratio",
+        "liquidity for amounts",
+        "LP currency split math",
+        "token split to auction MPS"
+      ],
+      "step2": "REVIEWED_NO_ANCHOR_CHANGES",
+      "step3": "REVIEWED_NO_PROPAGATION_CHANGES",
+      "step4": "VALIDATED"
+    },
+    {
+      "path": "src/revenue/RevenueShareSplitter.sol",
+      "priority": "CRITICAL",
+      "score": 98,
+      "category": "core logic",
+      "matched_patterns": [
+        "accumulator-based reward math",
+        "APR accrual over elapsed time",
+        "mulDiv reward allocation",
+        "staked balance accounting"
+      ],
+      "step2": "REVIEWED_NO_ANCHOR_CHANGES",
+      "step3": "PROPAGATED",
+      "step4": "VALIDATED",
+      "step3_mismatches": [
+        {
+          "id": "DIM-001",
+          "severity": "high",
+          "title": "Fixed denominator can be exceeded by live stake, causing revenue deposits to revert",
+          "summary": "stake and claimAndRestakeStakeToken increase totalStaked without enforcing it stays within revenueShareSupplyDenominator; _recordRevenue then computes stakerEntitlement as net * totalStaked / denominator, which exceeds net once totalStaked > denominator and underflows treasuryPortion."
+        }
+      ],
+      "validated_findings": [
+        "DIM-001"
+      ]
+    },
+    {
+      "path": "src/revenue/RegentRevenueStaking.sol",
+      "priority": "CRITICAL",
+      "score": 97,
+      "category": "core logic",
+      "matched_patterns": [
+        "accumulator-based reward math",
+        "APR accrual over elapsed time",
+        "mulDiv reward allocation",
+        "staked balance accounting"
+      ],
+      "step2": "REVIEWED_NO_ANCHOR_CHANGES",
+      "step3": "PROPAGATED",
+      "step4": "VALIDATED",
+      "step3_mismatches": [
+        {
+          "id": "DIM-002",
+          "severity": "high",
+          "title": "Configured staker share drifts upward when live stake exceeds fixed denominator",
+          "summary": "stake and claimAndRestakeRegent increase totalStaked without enforcing it stays within revenueShareSupplyDenominator; _recordRevenue scales the accumulator by the fixed denominator and then multiplies by live totalStaked, so creditedToStakers can exceed the configured stakerShareBps portion and eventually exceed the full deposit."
+        }
+      ],
+      "validated_findings": [
+        "DIM-002"
+      ]
+    },
+    {
+      "path": "src/LaunchPoolFeeHook.sol",
+      "priority": "HIGH",
+      "score": 94,
+      "category": "core logic",
+      "matched_patterns": [
+        "swap fee bps math",
+        "fee split across treasury and regent",
+        "quote amount extraction from balance delta"
+      ],
+      "step2": "REVIEWED_NO_ANCHOR_CHANGES",
+      "step3": "REVIEWED_NO_PROPAGATION_CHANGES",
+      "step4": "VALIDATED"
+    },
+    {
+      "path": "src/AgentTokenVestingWallet.sol",
+      "priority": "HIGH",
+      "score": 90,
+      "category": "peripheral",
+      "matched_patterns": [
+        "linear vesting over duration",
+        "elapsed over duration",
+        "released amount accounting"
+      ],
+      "step2": "REVIEWED_NO_ANCHOR_CHANGES",
+      "step3": "REVIEWED_NO_PROPAGATION_CHANGES",
+      "step4": "VALIDATED"
+    },
+    {
+      "path": "src/LaunchFeeVault.sol",
+      "priority": "HIGH",
+      "score": 88,
+      "category": "core logic",
+      "matched_patterns": [
+        "accrued fee balances",
+        "withdrawal balance subtraction",
+        "protected token accounting"
+      ],
+      "step2": "REVIEWED_NO_ANCHOR_CHANGES",
+      "step3": "REVIEWED_NO_PROPAGATION_CHANGES",
+      "step4": "VALIDATED"
+    },
+    {
+      "path": "src/SimpleMintableERC20.sol",
+      "priority": "MEDIUM",
+      "score": 76,
+      "category": "peripheral",
+      "matched_patterns": [
+        "totalSupply and balance accounting",
+        "allowance decrement",
+        "mint and transfer balance updates"
+      ],
+      "step2": "REVIEWED_NO_ANCHOR_CHANGES",
+      "step3": "REVIEWED_NO_PROPAGATION_CHANGES",
+      "step4": "VALIDATED"
+    },
+    {
+      "path": "src/RegentLBPStrategyFactory.sol",
+      "priority": "MEDIUM",
+      "score": 72,
+      "category": "peripheral",
+      "matched_patterns": [
+        "uint128 supply cast",
+        "distribution initialization amount"
+      ],
+      "step2": "REVIEWED_NO_ANCHOR_CHANGES",
+      "step3": "REVIEWED_NO_PROPAGATION_CHANGES",
+      "step4": "VALIDATED"
+    },
+    {
+      "path": "src/revenue/RevenueIngressAccount.sol",
+      "priority": "MEDIUM",
+      "score": 68,
+      "category": "peripheral",
+      "matched_patterns": [
+        "sweep full balance",
+        "recognized amount forwarded to splitter"
+      ],
+      "step2": "REVIEWED_NO_ANCHOR_CHANGES",
+      "step3": "REVIEWED_NO_PROPAGATION_CHANGES",
+      "step4": "VALIDATED"
+    },
+    {
+      "path": "src/LaunchFeeRegistry.sol",
+      "priority": "LOW",
+      "score": 58,
+      "category": "peripheral",
+      "matched_patterns": [
+        "pool fee validation",
+        "tick spacing validation",
+        "poolId derivation"
+      ],
+      "step2": "REVIEWED_NO_ANCHOR_CHANGES",
+      "step3": "REVIEWED_NO_PROPAGATION_CHANGES",
+      "step4": "VALIDATED"
+    },
+    {
+      "path": "src/revenue/RevenueShareFactory.sol",
+      "priority": "LOW",
+      "score": 56,
+      "category": "peripheral",
+      "matched_patterns": [
+        "protocol skim bps validation",
+        "identity linkage numeric validation",
+        "supply denominator validation"
+      ],
+      "step2": "REVIEWED_NO_ANCHOR_CHANGES",
+      "step3": "REVIEWED_NO_PROPAGATION_CHANGES",
+      "step4": "VALIDATED"
+    },
+    {
+      "path": "src/revenue/RevenueIngressFactory.sol",
+      "priority": "LOW",
+      "score": 54,
+      "category": "peripheral",
+      "matched_patterns": [
+        "ingress account count",
+        "default ingress tracking"
+      ],
+      "step2": "REVIEWED_NO_ANCHOR_CHANGES",
+      "step3": "REVIEWED_NO_PROPAGATION_CHANGES",
+      "step4": "VALIDATED"
+    },
+    {
+      "path": "src/revenue/SubjectRegistry.sol",
+      "priority": "LOW",
+      "score": 52,
+      "category": "peripheral",
+      "matched_patterns": [
+        "identity chainId and agentId validation",
+        "identity link count",
+        "looped removal of identity links"
+      ],
+      "step2": "REVIEWED_NO_ANCHOR_CHANGES",
+      "step3": "REVIEWED_NO_PROPAGATION_CHANGES",
+      "step4": "VALIDATED"
+    }
+  ],
+  "discoverer_focus_files": [
+    {
+      "path": "src/LaunchDeploymentController.sol",
+      "priority": "CRITICAL",
+      "score": 100,
+      "category": "core logic",
+      "matched_patterns": [
+        "allocation split from totalSupply",
+        "bps-denominator math",
+        "tokenSplitToAuctionMps conversion",
+        "supply casts to uint128"
+      ],
+      "step2": "PENDING",
+      "step3": "PENDING",
+      "step4": "PENDING"
+    },
+    {
+      "path": "src/RegentLBPStrategy.sol",
+      "priority": "CRITICAL",
+      "score": 99,
+      "category": "core logic",
+      "matched_patterns": [
+        "sqrt price from token/currency ratio",
+        "liquidity for amounts",
+        "LP currency split math",
+        "token split to auction MPS"
+      ],
+      "step2": "PENDING",
+      "step3": "PENDING",
+      "step4": "PENDING"
+    },
+    {
+      "path": "src/revenue/RevenueShareSplitter.sol",
+      "priority": "CRITICAL",
+      "score": 98,
+      "category": "core logic",
+      "matched_patterns": [
+        "accumulator-based reward math",
+        "APR accrual over elapsed time",
+        "mulDiv reward allocation",
+        "staked balance accounting"
+      ],
+      "step2": "PENDING",
+      "step3": "PENDING",
+      "step4": "PENDING"
+    },
+    {
+      "path": "src/revenue/RegentRevenueStaking.sol",
+      "priority": "CRITICAL",
+      "score": 97,
+      "category": "core logic",
+      "matched_patterns": [
+        "accumulator-based reward math",
+        "APR accrual over elapsed time",
+        "mulDiv reward allocation",
+        "staked balance accounting"
+      ],
+      "step2": "PENDING",
+      "step3": "PENDING",
+      "step4": "PENDING"
+    },
+    {
+      "path": "src/LaunchPoolFeeHook.sol",
+      "priority": "HIGH",
+      "score": 94,
+      "category": "core logic",
+      "matched_patterns": [
+        "swap fee bps math",
+        "fee split across treasury and regent",
+        "quote amount extraction from balance delta"
+      ],
+      "step2": "PENDING",
+      "step3": "PENDING",
+      "step4": "PENDING"
+    },
+    {
+      "path": "src/AgentTokenVestingWallet.sol",
+      "priority": "HIGH",
+      "score": 90,
+      "category": "peripheral",
+      "matched_patterns": [
+        "linear vesting over duration",
+        "elapsed over duration",
+        "released amount accounting"
+      ],
+      "step2": "PENDING",
+      "step3": "PENDING",
+      "step4": "PENDING"
+    },
+    {
+      "path": "src/LaunchFeeVault.sol",
+      "priority": "HIGH",
+      "score": 88,
+      "category": "core logic",
+      "matched_patterns": [
+        "accrued fee balances",
+        "withdrawal balance subtraction",
+        "protected token accounting"
+      ],
+      "step2": "PENDING",
+      "step3": "PENDING",
+      "step4": "PENDING"
+    },
+    {
+      "path": "src/SimpleMintableERC20.sol",
+      "priority": "MEDIUM",
+      "score": 76,
+      "category": "peripheral",
+      "matched_patterns": [
+        "totalSupply and balance accounting",
+        "allowance decrement",
+        "mint and transfer balance updates"
+      ],
+      "step2": "PENDING",
+      "step3": "PENDING",
+      "step4": "PENDING"
+    },
+    {
+      "path": "src/RegentLBPStrategyFactory.sol",
+      "priority": "MEDIUM",
+      "score": 72,
+      "category": "peripheral",
+      "matched_patterns": [
+        "uint128 supply cast",
+        "distribution initialization amount"
+      ],
+      "step2": "PENDING",
+      "step3": "PENDING",
+      "step4": "PENDING"
+    },
+    {
+      "path": "src/revenue/RevenueIngressAccount.sol",
+      "priority": "MEDIUM",
+      "score": 68,
+      "category": "peripheral",
+      "matched_patterns": [
+        "sweep full balance",
+        "recognized amount forwarded to splitter"
+      ],
+      "step2": "PENDING",
+      "step3": "PENDING",
+      "step4": "PENDING"
+    },
+    {
+      "path": "src/LaunchFeeRegistry.sol",
+      "priority": "LOW",
+      "score": 58,
+      "category": "peripheral",
+      "matched_patterns": [
+        "pool fee validation",
+        "tick spacing validation",
+        "poolId derivation"
+      ],
+      "step2": "PENDING",
+      "step3": "PENDING",
+      "step4": "PENDING"
+    },
+    {
+      "path": "src/revenue/RevenueShareFactory.sol",
+      "priority": "LOW",
+      "score": 56,
+      "category": "peripheral",
+      "matched_patterns": [
+        "protocol skim bps validation",
+        "identity linkage numeric validation",
+        "supply denominator validation"
+      ],
+      "step2": "PENDING",
+      "step3": "PENDING",
+      "step4": "PENDING"
+    },
+    {
+      "path": "src/revenue/RevenueIngressFactory.sol",
+      "priority": "LOW",
+      "score": 54,
+      "category": "peripheral",
+      "matched_patterns": [
+        "ingress account count",
+        "default ingress tracking"
+      ],
+      "step2": "PENDING",
+      "step3": "PENDING",
+      "step4": "PENDING"
+    },
+    {
+      "path": "src/revenue/SubjectRegistry.sol",
+      "priority": "LOW",
+      "score": 52,
+      "category": "peripheral",
+      "matched_patterns": [
+        "identity chainId and agentId validation",
+        "identity link count",
+        "looped removal of identity links"
+      ],
+      "step2": "PENDING",
+      "step3": "PENDING",
+      "step4": "PENDING"
+    }
+  ],
+  "recommended_discovery_order": [
+    "math libraries",
+    "oracles",
+    "core logic",
+    "peripheral"
+  ],
+  "coverage": {
+    "unprocessed_files": []
+  }
+}

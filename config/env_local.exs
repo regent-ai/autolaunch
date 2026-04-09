@@ -25,33 +25,31 @@ defmodule Autolaunch.ConfigEnvLocal do
   defp parse_line(line) do
     trimmed = String.trim(line)
 
-    cond do
-      trimmed == "" or String.starts_with?(trimmed, "#") ->
-        nil
-
-      true ->
-        normalized =
-          if String.starts_with?(trimmed, "export ") do
-            trimmed |> String.replace_prefix("export ", "") |> String.trim()
-          else
-            trimmed
-          end
-
-        case String.split(normalized, "=", parts: 2) do
-          [key, value] ->
-            {
-              String.trim(key),
-              value
-              |> String.trim()
-              |> String.trim_leading("\"")
-              |> String.trim_trailing("\"")
-              |> String.trim_leading("'")
-              |> String.trim_trailing("'")
-            }
-
-          _ ->
-            nil
+    if trimmed == "" or String.starts_with?(trimmed, "#") do
+      nil
+    else
+      normalized =
+        if String.starts_with?(trimmed, "export ") do
+          trimmed |> String.replace_prefix("export ", "") |> String.trim()
+        else
+          trimmed
         end
+
+      case String.split(normalized, "=", parts: 2) do
+        [key, value] ->
+          {
+            String.trim(key),
+            value
+            |> String.trim()
+            |> String.trim_leading("\"")
+            |> String.trim_trailing("\"")
+            |> String.trim_leading("'")
+            |> String.trim_trailing("'")
+          }
+
+        _ ->
+          nil
+      end
     end
   end
 end

@@ -57,7 +57,8 @@ defmodule Autolaunch.Contracts do
          hook: hook_card(job),
          available_actions: %{
            strategy: ~w(migrate sweep_token sweep_currency),
-           vesting: ~w(release),
+           vesting:
+             ~w(release propose_beneficiary_rotation cancel_beneficiary_rotation execute_beneficiary_rotation),
            fee_registry: ~w(set_hook_enabled),
            fee_vault: ~w(withdraw_treasury withdraw_regent_share set_hook)
          }
@@ -87,10 +88,10 @@ defmodule Autolaunch.Contracts do
            subject:
              ~w(stake unstake claim_usdc claim_emissions claim_and_stake_emissions sweep_ingress),
            splitter:
-             ~w(set_paused set_label set_treasury_recipient set_protocol_recipient set_protocol_skim_bps withdraw_treasury_residual withdraw_protocol_reserve reassign_dust),
+             ~w(set_paused set_label propose_treasury_recipient_rotation cancel_treasury_recipient_rotation execute_treasury_recipient_rotation set_protocol_recipient set_protocol_skim_bps sweep_treasury_residual sweep_protocol_reserve reassign_dust),
            ingress_factory: ~w(create set_default),
            ingress_account: ~w(set_label rescue sweep),
-           registry: ~w(set_subject_manager link_identity)
+           registry: ~w(set_subject_manager link_identity rotate_safe)
          }
        }}
     else
@@ -219,6 +220,11 @@ defmodule Autolaunch.Contracts do
     %{
       address: job.vesting_wallet_address,
       beneficiary: safe_address_call(job.chain_id, job.vesting_wallet_address, :beneficiary),
+      pending_beneficiary:
+        safe_address_call(job.chain_id, job.vesting_wallet_address, :pending_beneficiary),
+      pending_beneficiary_eta:
+        safe_uint_call(job.chain_id, job.vesting_wallet_address, :pending_beneficiary_eta),
+      rotation_delay: safe_uint_call(job.chain_id, job.vesting_wallet_address, :rotation_delay),
       start_timestamp: safe_uint_call(job.chain_id, job.vesting_wallet_address, :start_timestamp),
       duration_seconds:
         safe_uint_call(job.chain_id, job.vesting_wallet_address, :duration_seconds),
@@ -364,6 +370,16 @@ defmodule Autolaunch.Contracts do
       paused: safe_bool_call(subject.chain_id, subject.splitter_address, :paused),
       treasury_recipient:
         safe_address_call(subject.chain_id, subject.splitter_address, :treasury_recipient),
+      pending_treasury_recipient:
+        safe_address_call(subject.chain_id, subject.splitter_address, :pending_treasury_recipient),
+      pending_treasury_recipient_eta:
+        safe_uint_call(
+          subject.chain_id,
+          subject.splitter_address,
+          :pending_treasury_recipient_eta
+        ),
+      treasury_rotation_delay:
+        safe_uint_call(subject.chain_id, subject.splitter_address, :treasury_rotation_delay),
       protocol_recipient:
         safe_address_call(subject.chain_id, subject.splitter_address, :protocol_recipient),
       protocol_skim_bps:

@@ -57,6 +57,9 @@ if config_env() != :test do
     app_id: env.("PRIVY_APP_ID", ""),
     verification_key: env.("PRIVY_VERIFICATION_KEY", "")
 
+  config :autolaunch, Autolaunch.Xmtp,
+    agent_private_key: env.("AUTOLAUNCH_XMTP_AGENT_PRIVATE_KEY", "")
+
   config :autolaunch, :siwa,
     internal_url: env.("SIWA_INTERNAL_URL", "http://siwa-sidecar:4100"),
     shared_secret: env.("SIWA_SHARED_SECRET", ""),

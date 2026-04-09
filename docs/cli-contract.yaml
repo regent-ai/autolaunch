@@ -47,6 +47,9 @@ command_groups:
       - autolaunch jobs watch
       - autolaunch vesting status
       - autolaunch vesting release
+      - autolaunch vesting propose-beneficiary-rotation
+      - autolaunch vesting cancel-beneficiary-rotation
+      - autolaunch vesting execute-beneficiary-rotation
     path_templates:
       - /api/prelaunch/plans
       - /api/prelaunch/plans/{id}
@@ -138,17 +141,20 @@ command_groups:
       - autolaunch splitter show
       - autolaunch splitter set-paused
       - autolaunch splitter set-label
-      - autolaunch splitter set-treasury-recipient
+      - autolaunch splitter propose-treasury-recipient-rotation
+      - autolaunch splitter cancel-treasury-recipient-rotation
+      - autolaunch splitter execute-treasury-recipient-rotation
       - autolaunch splitter set-protocol-recipient
       - autolaunch splitter set-protocol-skim-bps
-      - autolaunch splitter withdraw-treasury-residual
-      - autolaunch splitter withdraw-protocol-reserve
+      - autolaunch splitter sweep-treasury-residual
+      - autolaunch splitter sweep-protocol-reserve
       - autolaunch splitter reassign-dust
       - autolaunch ingress create
       - autolaunch ingress set-default
       - autolaunch ingress set-label
       - autolaunch ingress rescue
       - autolaunch registry show
+      - autolaunch registry rotate-safe
       - autolaunch registry set-subject-manager
       - autolaunch registry link-identity
       - autolaunch factory revenue-share set-authorized-creator

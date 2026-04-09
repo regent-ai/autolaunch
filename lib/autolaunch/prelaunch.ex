@@ -203,9 +203,7 @@ defmodule Autolaunch.Prelaunch do
       "token_name" => plan.token_name,
       "token_symbol" => plan.token_symbol,
       "minimum_raise_usdc" => plan.minimum_raise_usdc,
-      "recovery_safe_address" => plan.treasury_safe_address,
-      "auction_proceeds_recipient" => plan.auction_proceeds_recipient,
-      "ethereum_revenue_treasury" => plan.ethereum_revenue_treasury,
+      "agent_safe_address" => plan.agent_safe_address,
       "launch_notes" => plan.launch_notes
     }
 
@@ -222,25 +220,8 @@ defmodule Autolaunch.Prelaunch do
             "Add a hosted description for the launch page."
           )
           |> maybe_block(blank?(image_url), "Add an image for the launch page.")
-          |> maybe_block(
-            blank?(plan.backup_safe_address),
-            "Set a backup safe address."
-          )
 
-        warnings =
-          []
-          |> maybe_warn(
-            same_address?(plan.treasury_safe_address, plan.auction_proceeds_recipient),
-            "Treasury safe and auction proceeds recipient are the same address."
-          )
-          |> maybe_warn(
-            same_address?(plan.treasury_safe_address, plan.ethereum_revenue_treasury),
-            "Treasury safe and Ethereum revenue treasury are the same address."
-          )
-          |> maybe_warn(
-            same_address?(plan.auction_proceeds_recipient, plan.ethereum_revenue_treasury),
-            "Auction proceeds recipient and Ethereum revenue treasury are the same address."
-          )
+        warnings = []
 
         state = if blockers == [], do: "launchable", else: "validated"
 
@@ -289,9 +270,7 @@ defmodule Autolaunch.Prelaunch do
       "token_name" => plan.token_name,
       "token_symbol" => plan.token_symbol,
       "minimum_raise_usdc" => plan.minimum_raise_usdc,
-      "recovery_safe_address" => plan.treasury_safe_address,
-      "auction_proceeds_recipient" => plan.auction_proceeds_recipient,
-      "ethereum_revenue_treasury" => plan.ethereum_revenue_treasury,
+      "agent_safe_address" => plan.agent_safe_address,
       "launch_notes" => plan.launch_notes,
       "wallet_address" => Map.get(attrs, "wallet_address"),
       "message" => Map.get(attrs, "message"),
@@ -311,19 +290,14 @@ defmodule Autolaunch.Prelaunch do
       "token_symbol" => trim(Map.get(attrs, "token_symbol")),
       "minimum_raise_usdc" => minimum_raise && minimum_raise.display,
       "minimum_raise_usdc_raw" => minimum_raise && minimum_raise.raw,
-      "treasury_safe_address" => normalize_address(Map.get(attrs, "treasury_safe_address")),
-      "auction_proceeds_recipient" =>
-        normalize_address(Map.get(attrs, "auction_proceeds_recipient")),
-      "ethereum_revenue_treasury" =>
-        normalize_address(Map.get(attrs, "ethereum_revenue_treasury")),
-      "backup_safe_address" => normalize_optional_address(Map.get(attrs, "backup_safe_address")),
+      "agent_safe_address" => normalize_address(Map.get(attrs, "agent_safe_address")),
       "launch_notes" => trim(Map.get(attrs, "launch_notes")),
       "metadata_draft" => metadata_draft(Map.get(attrs, "metadata_draft"))
     }
 
     if require_all? and
          Enum.any?(
-           ~w(token_name token_symbol minimum_raise_usdc treasury_safe_address auction_proceeds_recipient ethereum_revenue_treasury),
+           ~w(token_name token_symbol minimum_raise_usdc agent_safe_address),
            &blank?(fields[&1])
          ) do
       {:error, :invalid_plan}
@@ -425,10 +399,7 @@ defmodule Autolaunch.Prelaunch do
       token_symbol: plan.token_symbol,
       minimum_raise_usdc: plan.minimum_raise_usdc,
       minimum_raise_usdc_raw: plan.minimum_raise_usdc_raw,
-      treasury_safe_address: plan.treasury_safe_address,
-      auction_proceeds_recipient: plan.auction_proceeds_recipient,
-      ethereum_revenue_treasury: plan.ethereum_revenue_treasury,
-      backup_safe_address: plan.backup_safe_address,
+      agent_safe_address: plan.agent_safe_address,
       launch_notes: plan.launch_notes,
       identity_snapshot: plan.identity_snapshot || %{},
       metadata_draft: plan.metadata_draft || %{},
@@ -506,9 +477,6 @@ defmodule Autolaunch.Prelaunch do
   defp maybe_block(list, true, message), do: list ++ [message]
   defp maybe_block(list, _condition, _message), do: list
 
-  defp maybe_warn(list, true, message), do: list ++ [message]
-  defp maybe_warn(list, _condition, _message), do: list
-
   defp normalize_usdc_amount(nil), do: nil
 
   defp normalize_usdc_amount(value) when is_binary(value) do
@@ -566,14 +534,8 @@ defmodule Autolaunch.Prelaunch do
   end
 
   defp normalize_address(_value), do: nil
-  defp normalize_optional_address(nil), do: nil
-  defp normalize_optional_address(""), do: nil
-  defp normalize_optional_address(value), do: normalize_address(value)
 
   defp blank?(value), do: is_nil(value) or value == ""
-
-  defp same_address?(left, right) when is_binary(left) and is_binary(right), do: left == right
-  defp same_address?(_left, _right), do: false
 
   defp metadata_preview_url(plan_id), do: "/api/prelaunch/plans/#{plan_id}/metadata-preview"
 

@@ -38,10 +38,8 @@ contract RevenueShareFactoryTest is Test {
         factory.createSubjectSplitter(
             SUBJECT_ID,
             address(stakeToken),
-            TREASURY,
+            TREASURY_SAFE,
             PROTOCOL,
-            TREASURY_SAFE,
-            TREASURY_SAFE,
             100,
             1000 ether,
             "Agent",
@@ -59,10 +57,8 @@ contract RevenueShareFactoryTest is Test {
         address splitter = factory.createSubjectSplitter(
             SUBJECT_ID,
             address(stakeToken),
-            TREASURY,
+            TREASURY_SAFE,
             PROTOCOL,
-            TREASURY_SAFE,
-            TREASURY_SAFE,
             100,
             1000 ether,
             "Agent",
@@ -86,10 +82,8 @@ contract RevenueShareFactoryTest is Test {
         factory.createSubjectSplitter(
             SUBJECT_ID,
             address(stakeToken),
-            TREASURY,
+            TREASURY_SAFE,
             PROTOCOL,
-            TREASURY_SAFE,
-            TREASURY_SAFE,
             100,
             1000 ether,
             "Agent",
@@ -104,14 +98,12 @@ contract RevenueShareFactoryTest is Test {
         factory.setAuthorizedCreator(CREATOR, true);
 
         vm.prank(CREATOR);
-        vm.expectRevert("TREASURY_RECIPIENT_ZERO");
+        vm.expectRevert("AGENT_SAFE_ZERO");
         factory.createSubjectSplitter(
             SUBJECT_ID,
             address(stakeToken),
             address(0),
             PROTOCOL,
-            TREASURY_SAFE,
-            TREASURY_SAFE,
             100,
             1000 ether,
             "Agent",
@@ -125,10 +117,8 @@ contract RevenueShareFactoryTest is Test {
         factory.createSubjectSplitter(
             SUBJECT_ID,
             address(stakeToken),
-            TREASURY,
+            TREASURY_SAFE,
             address(0),
-            TREASURY_SAFE,
-            TREASURY_SAFE,
             100,
             1000 ether,
             "Agent",

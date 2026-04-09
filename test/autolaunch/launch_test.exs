@@ -1,9 +1,9 @@
 defmodule Autolaunch.LaunchTest do
   use Autolaunch.DataCase, async: false
 
+  alias Autolaunch.Launch
   alias Autolaunch.Launch.Auction
   alias Autolaunch.Launch.Job
-  alias Autolaunch.Launch
   alias Autolaunch.Repo
 
   defmodule TokenPricingStub do
@@ -16,11 +16,7 @@ defmodule Autolaunch.LaunchTest do
   end
 
   defp launch_recipients do
-    %{
-      recovery_safe_address: "0x1111111111111111111111111111111111111111",
-      auction_proceeds_recipient: "0x1111111111111111111111111111111111111111",
-      ethereum_revenue_treasury: "0x1111111111111111111111111111111111111111"
-    }
+    %{agent_safe_address: "0x1111111111111111111111111111111111111111"}
   end
 
   test "repo-backed auctions fail closed when none exist" do
@@ -98,9 +94,7 @@ defmodule Autolaunch.LaunchTest do
         agent_id: "11155111:99",
         token_name: "Nova Coin",
         token_symbol: "NOVA",
-        recovery_safe_address: "0x2222222222222222222222222222222222222222",
-        auction_proceeds_recipient: "0x2222222222222222222222222222222222222222",
-        ethereum_revenue_treasury: "0x2222222222222222222222222222222222222222",
+        agent_safe_address: "0x2222222222222222222222222222222222222222",
         network: "ethereum-sepolia",
         chain_id: 11_155_111,
         status: "ready",
@@ -186,9 +180,7 @@ defmodule Autolaunch.LaunchTest do
         agent_id: "11155111:11",
         token_name: "Mature Coin",
         token_symbol: "MAT",
-        recovery_safe_address: "0x1111111111111111111111111111111111111111",
-        auction_proceeds_recipient: "0x1111111111111111111111111111111111111111",
-        ethereum_revenue_treasury: "0x1111111111111111111111111111111111111111",
+        agent_safe_address: "0x1111111111111111111111111111111111111111",
         network: "ethereum-sepolia",
         chain_id: 11_155_111,
         status: "ready",

@@ -1,4 +1,6 @@
 defmodule Mix.Tasks.Autolaunch.VerifyDeploy do
+  @moduledoc false
+
   use Mix.Task
 
   @shortdoc "Checks live launch-contract invariants for a ready Autolaunch job"

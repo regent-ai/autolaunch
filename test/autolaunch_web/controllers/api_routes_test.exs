@@ -23,9 +23,7 @@ defmodule AutolaunchWeb.ApiRoutesTest do
         "agent_id" => "ag_research",
         "token_name" => "Agent Coin",
         "token_symbol" => "AGENT",
-        "recovery_safe_address" => "0x0000000000000000000000000000000000000001",
-        "auction_proceeds_recipient" => "0x0000000000000000000000000000000000000001",
-        "ethereum_revenue_treasury" => "0x0000000000000000000000000000000000000001"
+        "agent_safe_address" => "0x0000000000000000000000000000000000000001"
       })
 
     assert %{"ok" => false, "error" => %{"code" => "auth_required"}} = json_response(conn, 401)
