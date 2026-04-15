@@ -5,6 +5,7 @@ import {Test} from "forge-std/Test.sol";
 
 import {RegentRevenueStaking} from "src/revenue/RegentRevenueStaking.sol";
 import {MintableBurnableERC20Mock} from "test/mocks/MintableBurnableERC20Mock.sol";
+import {TransferFeeERC20Mock} from "test/mocks/TransferFeeERC20Mock.sol";
 
 contract RegentRevenueStakingTest is Test {
     uint256 internal constant REGENT = 1e18;
@@ -147,6 +148,64 @@ contract RegentRevenueStakingTest is Test {
         assertEq(staking.totalClaimedRegent(), expected);
         assertEq(regent.balanceOf(ALICE), 100 * REGENT + expected);
         assertEq(staking.previewClaimableRegent(ALICE), 0);
+    }
+
+    function testStakeRejectsInboundFeeOnTransferToken() external {
+        TransferFeeERC20Mock taxed = new TransferFeeERC20Mock("Taxed Regent", "tREG", 18, address(0));
+        RegentRevenueStaking taxedStaking = new RegentRevenueStaking(
+            address(taxed),
+            address(usdc),
+            TREASURY,
+            STAKER_SHARE_BPS,
+            REVENUE_SHARE_SUPPLY_DENOMINATOR,
+            OWNER
+        );
+
+        taxed.setFeeBps(500);
+        taxed.setFeeTriggers(address(taxedStaking), false, true);
+        taxed.mint(ALICE, 100 * REGENT);
+
+        vm.startPrank(ALICE);
+        taxed.approve(address(taxedStaking), type(uint256).max);
+        vm.expectRevert("STAKE_TOKEN_IN_EXACT");
+        taxedStaking.stake(100 * REGENT, ALICE);
+        vm.stopPrank();
+    }
+
+    function testClaimRejectsOutboundFeeOnTransferToken() external {
+        TransferFeeERC20Mock taxed = new TransferFeeERC20Mock("Taxed Regent", "tREG", 18, address(0));
+        RegentRevenueStaking taxedStaking = new RegentRevenueStaking(
+            address(taxed),
+            address(usdc),
+            TREASURY,
+            STAKER_SHARE_BPS,
+            REVENUE_SHARE_SUPPLY_DENOMINATOR,
+            OWNER
+        );
+
+        taxed.mint(ALICE, 100 * REGENT);
+        taxed.mint(FUNDER, 1000 * REGENT);
+
+        vm.startPrank(ALICE);
+        taxed.approve(address(taxedStaking), type(uint256).max);
+        taxedStaking.stake(100 * REGENT, ALICE);
+        vm.stopPrank();
+
+        vm.startPrank(FUNDER);
+        taxed.approve(address(taxedStaking), type(uint256).max);
+        taxedStaking.fundRegentRewards(1000 * REGENT);
+        vm.stopPrank();
+
+        vm.prank(OWNER);
+        taxedStaking.setEmissionAprBps(MAX_APR_BPS);
+        vm.warp(block.timestamp + 30 days);
+
+        taxed.setFeeBps(500);
+        taxed.setFeeTriggers(address(taxedStaking), true, false);
+
+        vm.prank(ALICE);
+        vm.expectRevert("STAKE_TOKEN_OUT_EXACT");
+        taxedStaking.claimRegent(ALICE);
     }
 
     function testAprChangeMidstreamSettlesUsingBothRates() external {
