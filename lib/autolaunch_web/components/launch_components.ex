@@ -26,8 +26,8 @@ defmodule AutolaunchWeb.LaunchComponents do
         <div class="al-brand">
           <p class="al-kicker">Regent CCA</p>
           <div>
-            <h1>autolaunch.sh</h1>
-            <p>Launch, bid, and manage revenue from one calmer Sepolia operator surface.</p>
+            <h1 translate="no">autolaunch.sh</h1>
+            <p>Plan the launch, watch the auction, and manage revenue from one Sepolia view.</p>
           </div>
         </div>
 
@@ -41,7 +41,10 @@ defmodule AutolaunchWeb.LaunchComponents do
 
           <div class="al-shell-utility-row">
             <nav class="al-topnav-secondary" aria-label="Utilities">
-              <.utility_link active={@active_view == "guide"} navigate={~p"/"}>Guide</.utility_link>
+              <.utility_link active={@active_view == "home"} navigate={~p"/"}>Home</.utility_link>
+              <.utility_link active={@active_view == "guide"} navigate={~p"/how-auctions-work"}>
+                Guide
+              </.utility_link>
               <.utility_link active={@active_view == "agentbook"} navigate={~p"/agentbook"}>
                 Trust Check
               </.utility_link>
@@ -118,6 +121,8 @@ defmodule AutolaunchWeb.LaunchComponents do
             src={~p"/images/autolaunch-logo-large.png"}
             alt="Autolaunch"
             class="al-welcome-logo"
+            width="360"
+            height="360"
           />
           <div>
             <p class="al-kicker">Welcome to autolaunch.sh</p>
@@ -127,7 +132,7 @@ defmodule AutolaunchWeb.LaunchComponents do
 
         <p id="autolaunch-welcome-copy" class="al-welcome-copy">
           A token auction lets anyone split in the onchain revenue an agent will make. Use the
-          Autolaunch Skill with your Openclaw or Hermes agent to fund its operations as a long-term
+          Autolaunch Skill with your OpenClaw or Hermes agent to fund its operations as a long-term
           agent business.
         </p>
 

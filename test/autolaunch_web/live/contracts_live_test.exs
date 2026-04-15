@@ -43,14 +43,14 @@ defmodule AutolaunchWeb.ContractsLiveTest do
            migrated_currency_for_lp: 0,
            migrated_token_for_lp: 0
          },
-        vesting: %{
-          address: "0xdddddddddddddddddddddddddddddddddddddddd",
-          beneficiary: "0x1111111111111111111111111111111111111111",
-          pending_beneficiary: nil,
-          pending_beneficiary_eta: 0,
-          rotation_delay: 259_200,
-          releasable_launch_token: 0
-        },
+         vesting: %{
+           address: "0xdddddddddddddddddddddddddddddddddddddddd",
+           beneficiary: "0x1111111111111111111111111111111111111111",
+           pending_beneficiary: nil,
+           pending_beneficiary_eta: 0,
+           rotation_delay: 259_200,
+           releasable_launch_token: 0
+         },
          fee_registry: %{
            address: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
            pool_id: "0x" <> String.duplicate("f", 64),
@@ -100,12 +100,12 @@ defmodule AutolaunchWeb.ContractsLiveTest do
            address: "0x7777777777777777777777777777777777777777",
            owner: "0x6666666666666666666666666666666666666666",
            connected_wallet_can_manage: true,
-          subject_config: %{
-            splitter: "0x9999999999999999999999999999999999999999",
-            treasury_safe: "0x5555555555555555555555555555555555555555",
-            active: true,
-            label: "Atlas"
-          },
+           subject_config: %{
+             splitter: "0x9999999999999999999999999999999999999999",
+             treasury_safe: "0x5555555555555555555555555555555555555555",
+             active: true,
+             label: "Atlas"
+           },
            identity_links: [
              %{
                chain_id: 11_155_111,
@@ -114,17 +114,17 @@ defmodule AutolaunchWeb.ContractsLiveTest do
              }
            ]
          },
-        splitter: %{
-          owner: "0x3333333333333333333333333333333333333333",
-          paused: false,
-          treasury_recipient: "0x2222222222222222222222222222222222222222",
-          pending_treasury_recipient: nil,
-          pending_treasury_recipient_eta: 0,
-          treasury_rotation_delay: 259_200,
-          protocol_recipient: "0x1111111111111111111111111111111111111111",
-          protocol_skim_bps: 500,
-          label: "Atlas revenue"
-        },
+         splitter: %{
+           owner: "0x3333333333333333333333333333333333333333",
+           paused: false,
+           treasury_recipient: "0x2222222222222222222222222222222222222222",
+           pending_treasury_recipient: nil,
+           pending_treasury_recipient_eta: 0,
+           treasury_rotation_delay: 259_200,
+           protocol_recipient: "0x1111111111111111111111111111111111111111",
+           protocol_skim_bps: 500,
+           label: "Atlas revenue"
+         },
          ingress_factory: %{
            address: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
            owner: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
@@ -215,10 +215,15 @@ defmodule AutolaunchWeb.ContractsLiveTest do
         "/contracts?job_id=job_contracts&subject_id=0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
       )
 
-    assert html =~ "Use this only when you need deep inspection"
+    assert html =~ "Check launch and subject contracts before you send anything."
+
+    assert html =~
+             "Use this page to review contract details, prepare the next action, and open the"
+
+    assert html =~ "Review mode"
     assert html =~ "LBP runtime state"
     assert html =~ "Advanced revenue controls"
-    assert html =~ "Advanced operator tool"
+    assert html =~ "Prepared action"
   end
 
   test "contracts page prepares transaction payloads", %{conn: conn} do

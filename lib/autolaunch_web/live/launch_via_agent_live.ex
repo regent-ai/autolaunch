@@ -1,39 +1,16 @@
 defmodule AutolaunchWeb.LaunchViaAgentLive do
   use AutolaunchWeb, :live_view
 
-  @golden_path [
-    %{
-      step: "01",
-      title: "Start with a saved launch plan.",
-      body:
-        "OpenClaw or Hermes operators should begin in the CLI with a saved prelaunch plan. Do not jump straight to raw launch flags."
-    },
-    %{
-      step: "02",
-      title: "Validate and publish before you run.",
-      body:
-        "Use the CLI to validate the plan against backend checks, then publish the hosted metadata so the launch inputs are locked before signing."
-    },
-    %{
-      step: "03",
-      title: "Run the launch and monitor the three-day auction.",
-      body:
-        "The CLI is the main operator surface for starting the launch, watching the job, and tracking the auction until the migration and sweep actions are ready."
-    },
-    %{
-      step: "04",
-      title: "Finalize post-auction actions, then handle vesting.",
-      body:
-        "After the sale, use the CLI to finalize migration and sweeps, then check vesting status later when releases become available."
-    }
-  ]
+  alias AutolaunchWeb.LaunchLive.Presenter
 
   def mount(_params, _session, socket) do
     {:ok,
      socket
      |> assign(:page_title, "Launch Via Agent")
      |> assign(:active_view, "launch")
-     |> assign(:golden_path, @golden_path)}
+     |> assign(:golden_path, Presenter.launch_via_agent_path())
+     |> assign(:launch_command, Presenter.launch_command())
+     |> assign(:launch_transcript, Presenter.launch_agent_transcript())}
   end
 
   def render(assigns) do
@@ -57,7 +34,7 @@ defmodule AutolaunchWeb.LaunchViaAgentLive do
             <button
               type="button"
               class="al-cta-link al-cta-link--primary"
-              data-copy-value={launch_command()}
+              data-copy-value={@launch_command}
             >
               Copy CLI command
             </button>
@@ -80,9 +57,9 @@ defmodule AutolaunchWeb.LaunchViaAgentLive do
         <.terminal_command_panel
           kicker="Copy and paste"
           title="Starter command"
-          command={launch_command()}
+          command={@launch_command}
           output_label="Golden path"
-          output={launch_transcript()}
+          output={@launch_transcript}
         />
       </section>
 
@@ -112,21 +89,5 @@ defmodule AutolaunchWeb.LaunchViaAgentLive do
       </section>
     </.shell>
     """
-  end
-
-  defp launch_command do
-    "regent autolaunch prelaunch wizard"
-  end
-
-  defp launch_transcript do
-    """
-    > regent autolaunch prelaunch validate
-    > regent autolaunch prelaunch publish
-    > regent autolaunch launch run --plan plan_alpha
-    > regent autolaunch launch monitor --job job_alpha
-    > regent autolaunch launch finalize --job job_alpha
-    > regent autolaunch vesting status --job job_alpha
-    """
-    |> String.trim()
   end
 end

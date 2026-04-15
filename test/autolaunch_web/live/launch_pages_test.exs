@@ -153,12 +153,12 @@ defmodule AutolaunchWeb.LaunchPagesTest do
   test "launch page renders the CLI-first review page", %{conn: conn} do
     {:ok, _view, html} = live(conn, "/launch")
 
-    assert html =~ "Run the launch from the CLI. Use the site to review what happens next."
+    assert html =~ "Start with one command. Keep the launch run tight."
     assert html =~ "regent autolaunch prelaunch wizard"
     assert html =~ "Launch via agent"
     assert html =~ "What you need"
     assert html =~ "What to run"
-    assert html =~ "Browser for review only"
+    assert html =~ "Come back for live checks"
   end
 
   test "launch via agent page explains the CLI-first path", %{conn: conn} do
@@ -167,7 +167,7 @@ defmodule AutolaunchWeb.LaunchPagesTest do
     assert html =~ "Launch a token through your OpenClaw or Hermes Agent."
     assert html =~ "regent autolaunch prelaunch wizard"
     assert html =~ "Keep the launch boring in the best way."
-    assert html =~ "Run the launch and monitor the three-day auction."
+    assert html =~ "Run the launch and watch the sale."
   end
 
   test "launch page links operators toward the CLI flow and browser follow-up pages", %{
@@ -188,6 +188,7 @@ defmodule AutolaunchWeb.LaunchPagesTest do
     assert html =~ "regent autolaunch launch finalize --job"
     assert html =~ "Starter command"
     assert html =~ "Browse auctions"
+    assert html =~ "One repeatable launch path"
   end
 
   test "launch page keeps the browser role focused on review rather than launch creation", %{
@@ -225,7 +226,11 @@ defmodule AutolaunchWeb.LaunchPagesTest do
     assert html =~ "regent autolaunch prelaunch validate --plan"
     assert html =~ "regent autolaunch prelaunch publish --plan"
     assert html =~ "regent autolaunch launch monitor --job"
-    assert html =~ "Foundry deploy"
+
+    assert html =~
+             "Open the contracts page when you want to review addresses or prepare the next action."
+
+    assert html =~ "Open contracts"
     refute html =~ "Prepare review"
   end
 
@@ -251,6 +256,7 @@ defmodule AutolaunchWeb.LaunchPagesTest do
     assert html =~ "Auctions"
     assert html =~ "Positions"
     assert html =~ "Profile"
+    assert html =~ "Home"
     assert html =~ "Guide"
     assert html =~ "Trust Check"
     assert html =~ "Contracts"

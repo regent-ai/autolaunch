@@ -1,50 +1,17 @@
 defmodule AutolaunchWeb.LaunchLive do
   use AutolaunchWeb, :live_view
 
-  @cli_command "regent autolaunch prelaunch wizard"
-  @launch_inputs [
-    %{
-      title: "Identity",
-      value: "Agent id and linked operator wallet",
-      body:
-        "Use the wallet that actually controls the ERC-8004 identity. Launch still signs through SIWA."
-    },
-    %{
-      title: "Token basics",
-      value: "Name, symbol, and minimum USDC raise",
-      body:
-        "The minimum raise is now a first-class launch setting. If the auction misses it, bidders can return their USDC."
-    },
-    %{
-      title: "Treasury routing",
-      value: "One Agent Safe for treasury, vesting, and contract ownership",
-      body:
-        "This Safe is part of the signed launch configuration, so confirm it carefully before you run the launch."
-    },
-    %{
-      title: "Hosted metadata",
-      value: "Title, description, and image",
-      body:
-        "The CLI wizard can upload the image and save the hosted launch metadata before publish and launch."
-    }
-  ]
-  @launch_flow [
-    %{index: 1, label: "Save plan"},
-    %{index: 2, label: "Validate"},
-    %{index: 3, label: "Publish"},
-    %{index: 4, label: "Run"},
-    %{index: 5, label: "Monitor"},
-    %{index: 6, label: "Finalize"}
-  ]
+  alias AutolaunchWeb.LaunchLive.Presenter
 
   def mount(_params, _session, socket) do
     {:ok,
      socket
      |> assign(:page_title, "Launch")
      |> assign(:active_view, "launch")
-     |> assign(:cli_command, @cli_command)
-     |> assign(:launch_inputs, @launch_inputs)
-     |> assign(:launch_flow, @launch_flow)}
+     |> assign(:cli_command, Presenter.launch_command())
+     |> assign(:launch_inputs, Presenter.launch_inputs())
+     |> assign(:launch_flow, Presenter.launch_flow())
+     |> assign(:launch_transcript, Presenter.launch_cli_transcript())}
   end
 
   def render(assigns) do
@@ -52,11 +19,11 @@ defmodule AutolaunchWeb.LaunchLive do
     <.shell current_human={@current_human} active_view={@active_view}>
       <section id="launch-cli-hero" class="al-hero al-launch-hero al-panel" phx-hook="MissionMotion">
         <div class="al-launch-copy">
-          <p class="al-kicker">CLI-first launch</p>
-          <h2>Run the launch from the CLI. Use the site to review what happens next.</h2>
+          <p class="al-kicker">Launch</p>
+          <h2>Start with one command. Keep the launch run tight.</h2>
           <p class="al-subcopy">
-            One plan file feeds validation, publish, launch, monitor, and finalize. The browser
-            stays focused on auctions, token holders, and contract reads after the launch is live.
+            Save the plan, validate it, publish it, run the launch, and monitor the auction. Come
+            back here when you need the live sale, token holder actions, or contract details.
           </p>
 
           <div class="al-hero-actions">
@@ -67,9 +34,9 @@ defmodule AutolaunchWeb.LaunchLive do
           </div>
 
           <div class="al-launch-tags" aria-label="Launch summary">
-            <span class="al-launch-tag">One saved plan</span>
+            <span class="al-launch-tag">Save one plan</span>
             <span class="al-launch-tag">Ethereum Sepolia only</span>
-            <span class="al-launch-tag">Browser for review only</span>
+            <span class="al-launch-tag">Come back for live checks</span>
           </div>
         </div>
 
@@ -78,7 +45,7 @@ defmodule AutolaunchWeb.LaunchLive do
           title="Starter command"
           command={@cli_command}
           output_label="What happens next"
-          output={launch_transcript()}
+          output={@launch_transcript}
         />
       </section>
 
@@ -87,7 +54,7 @@ defmodule AutolaunchWeb.LaunchLive do
           <div class="al-section-head">
             <div>
               <p class="al-kicker">What this does</p>
-              <h3>One repeatable operator path</h3>
+              <h3>One repeatable launch path</h3>
             </div>
           </div>
 
@@ -151,8 +118,8 @@ defmodule AutolaunchWeb.LaunchLive do
           </div>
 
           <p class="al-inline-note">
-            The backend worker still executes the Foundry deploy. The CLI just keeps the operator
-            review path consistent from start to finish.
+            Keep the full launch in the command line so the same reviewed plan stays in place from
+            start to finish.
           </p>
         </article>
       </section>
@@ -180,31 +147,20 @@ defmodule AutolaunchWeb.LaunchLive do
 
           <article class="al-directory-fact-card">
             <span>Contract reads</span>
-            <strong>Use the advanced console when you need prepared calldata or stack inspection.</strong>
-            <p>The contract view stays available, but it is no longer the first operator stop.</p>
+            <strong>Open the contracts page when you want to review addresses or prepare the next action.</strong>
+            <p>Use it when you need more detail after the launch is already underway.</p>
           </article>
         </div>
 
         <div class="al-action-row">
           <.link navigate={~p"/launch-via-agent"} class="al-submit">How to use agents</.link>
           <.link navigate={~p"/auctions"} class="al-ghost">Browse active auctions</.link>
-          <.link navigate={~p"/contracts"} class="al-ghost">Open contract console</.link>
+          <.link navigate={~p"/contracts"} class="al-ghost">Open contracts</.link>
         </div>
       </section>
 
       <.flash_group flash={@flash} />
     </.shell>
     """
-  end
-
-  defp launch_transcript do
-    """
-    > regent autolaunch prelaunch validate --plan plan_alpha
-    > regent autolaunch prelaunch publish --plan plan_alpha
-    > regent autolaunch launch run --plan plan_alpha --watch
-    > regent autolaunch launch monitor --job job_alpha --watch
-    > regent autolaunch launch finalize --job job_alpha --submit
-    """
-    |> String.trim()
   end
 end

@@ -88,10 +88,12 @@ defmodule AutolaunchWeb.AuctionLive do
 
   def render(assigns) do
     latest_position = List.first(assigns.positions)
+    auction_trust = auction_trust(assigns.auction)
 
     assigns =
       assigns
       |> assign(:latest_position, latest_position)
+      |> assign(:trust_summary, auction_trust_summary(auction_trust))
       |> assign(:regent_detail_title, regent_detail_title(assigns.detail_focus))
       |> assign(
         :regent_detail_summary,
@@ -136,7 +138,7 @@ defmodule AutolaunchWeb.AuctionLive do
                   </button>
                   <span class="al-network-badge">{@auction.status}</span>
                   <span class="al-network-badge">{LaunchComponents.time_left_label(@auction.ends_at)}</span>
-                  <span class="al-network-badge">Trust {if @auction.world_registered, do: "checked", else: "pending"}</span>
+                  <span class="al-network-badge">Trust {@trust_summary.status}</span>
                 </div>
               </div>
             </:header_strip>
@@ -174,7 +176,7 @@ defmodule AutolaunchWeb.AuctionLive do
                     </tr>
                     <tr>
                       <th scope="row">Trust</th>
-                      <td>{if @auction.world_registered, do: "Checked", else: "Pending"}</td>
+                      <td>{String.capitalize(@trust_summary.status)}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -195,7 +197,7 @@ defmodule AutolaunchWeb.AuctionLive do
             <div class="al-launch-tags">
               <span class="al-launch-tag">{LaunchComponents.time_left_label(@auction.ends_at)}</span>
               <span class="al-launch-tag">Status {@auction.status}</span>
-              <span class="al-launch-tag">Trust {if @auction.world_registered, do: "checked", else: "pending"}</span>
+              <span class="al-launch-tag">Trust {@trust_summary.status}</span>
             </div>
           </div>
 
@@ -457,22 +459,14 @@ defmodule AutolaunchWeb.AuctionLive do
             <div class="al-note-grid">
               <article class="al-note-card">
                 <span>ENS link</span>
-                <strong>{if @auction.ens_attached, do: "Linked", else: "Needs link"}</strong>
-                <p>
-                  {if @auction.ens_attached,
-                    do: "Creator identity name: #{@auction.ens_name}",
-                    else: "The creator identity still needs an ENS name attached."}
-                </p>
+                <strong>{@trust_summary.ens.title}</strong>
+                <p>{@trust_summary.ens.body}</p>
               </article>
 
               <article class="al-note-card">
                 <span>Trust record</span>
-                <strong>{if @auction.world_registered, do: "Checked", else: "Needs check"}</strong>
-                <p>
-                  {if @auction.world_registered,
-                    do: "Human ID #{@auction.world_human_id} has launched #{@auction.world_launch_count} tokens through autolaunch.",
-                    else: "A trust check still needs to be completed for this token."}
-                </p>
+                <strong>{@trust_summary.world.title}</strong>
+                <p>{@trust_summary.world.body}</p>
               </article>
             </div>
           </details>
@@ -550,6 +544,58 @@ defmodule AutolaunchWeb.AuctionLive do
   end
 
   defp preset_form(_auction, form, _preset), do: form
+
+  defp auction_trust(nil), do: %{}
+
+  defp auction_trust(%{trust: trust}) when is_map(trust), do: trust
+
+  defp auction_trust(_auction), do: %{}
+
+  defp auction_trust_summary(%{
+         ens: %{
+           connected: ens_connected,
+           name: ens_name
+         },
+         world: %{
+           connected: world_connected,
+           human_id: human_id,
+           launch_count: launch_count
+         }
+       }) do
+    %{
+      status: if(world_connected, do: "checked", else: "pending"),
+      ens: %{
+        title: if(ens_connected, do: "Linked", else: "Needs link"),
+        body:
+          if(ens_connected,
+            do: "Creator identity name: #{ens_name}",
+            else: "The creator identity still needs an ENS name attached."
+          )
+      },
+      world: %{
+        title: if(world_connected, do: "Checked", else: "Needs check"),
+        body:
+          if(world_connected,
+            do: "Human ID #{human_id} has launched #{launch_count} tokens through autolaunch.",
+            else: "A trust check still needs to be completed for this token."
+          )
+      }
+    }
+  end
+
+  defp auction_trust_summary(_trust) do
+    %{
+      status: "pending",
+      ens: %{
+        title: "Needs link",
+        body: "The creator identity still needs an ENS name attached."
+      },
+      world: %{
+        title: "Needs check",
+        body: "A trust check still needs to be completed for this token."
+      }
+    }
+  end
 
   defp reload_auction(socket) do
     auction = launch_module().get_auction(socket.assigns.auction_id, socket.assigns.current_human)

@@ -12,21 +12,15 @@ function reducedMotion(): boolean {
 }
 
 function animateIntro(root: MotionRoot): void {
-  const selectors =
-    root.id === "launch-cli-hero" || root.id === "auction-detail-hero" || root.id === "positions-hero" ||
-        root.id === "subject-hero" || root.id === "contracts-hero" || root.id === "profile-hero" ||
-        root.id === "agentbook-hero" || root.id === "auctions-intro" || root.id === "launch-via-agent-hero"
-      ? ":scope > *"
-      : root.id === "launch-cli-steps" || root.id === "auctions-grid" || root.id === "profile-sections" ||
-          root.id === "subject-primary-actions" || root.id === "subject-secondary-actions"
-        ? ":scope > *"
-        : ""
+  const items = Array.from(root.children).filter(
+    (child): child is HTMLElement => child instanceof HTMLElement && !child.hidden,
+  )
 
-  if (selectors === "") {
+  if (items.length < 2) {
     return
   }
 
-  revealSequence(root, selectors, {
+  revealSequence(root, ":scope > *", {
     translateY: 18,
     delay: 70,
     duration: 560,

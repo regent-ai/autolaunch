@@ -92,31 +92,30 @@ defmodule AutolaunchWeb.ContractsLive do
     <.shell current_human={@current_human} active_view={@active_view}>
       <section id="contracts-hero" class="al-hero al-panel al-contracts-hero" phx-hook="MissionMotion">
         <div>
-          <p class="al-kicker">Contracts console</p>
-          <h2>Use this only when you need deep inspection or prepared operator calldata.</h2>
+          <p class="al-kicker">Contracts</p>
+          <h2>Check launch and subject contracts before you send anything.</h2>
           <p class="al-subcopy">
-            The main operator path lives in the CLI. This screen stays available for stack reads,
-            prepared payloads, and subject-level inspection after the guided flow has already told
-            you what to do.
+            Use this page to review contract details, prepare the next action, and open the
+            subject page when you need more detail.
           </p>
 
           <div class="al-contract-pill-row">
-            <span class="al-launch-tag">Advanced operator tool</span>
-            <span class="al-launch-tag">Job and subject deep links</span>
-            <span class="al-launch-tag">Sepolia launch stack reads</span>
+            <span class="al-launch-tag">Review before you sign</span>
+            <span class="al-launch-tag">Open from launch and subject pages</span>
+            <span class="al-launch-tag">Sepolia launch details</span>
           </div>
         </div>
 
         <div class="al-stat-grid">
-          <.stat_card title="Mode" value="Prepare only" hint="This page exports calldata instead of sending it." />
-          <.stat_card title="Prepared tx" value={if(@prepared, do: @prepared.action, else: "none")} hint="Most recent payload" />
+          <.stat_card title="Review mode" value="Check first" hint="Prepare the action here, then send it from your wallet." />
+          <.stat_card title="Prepared action" value={if(@prepared, do: @prepared.action, else: "none")} hint="Most recent action you drafted" />
         </div>
       </section>
 
       <%= if is_nil(@job_scope) and is_nil(@subject_scope) do %>
         <.empty_state
-          title="Choose a launch job or subject"
-          body="Open this page from the launch queue or a subject page, or attach ?job_id=... or ?subject_id=... in the URL."
+          title="Open this from a launch or subject page."
+          body="This view fills in once you arrive from a launch detail page or a subject page."
         />
       <% end %>
 

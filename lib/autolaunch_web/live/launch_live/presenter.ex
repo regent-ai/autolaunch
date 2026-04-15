@@ -10,23 +10,22 @@ defmodule AutolaunchWeb.LaunchLive.Presenter do
 
   def regent_step_summary(1, _selected_agent, _current_job),
     do:
-      "Pick the ERC-8004 identity that is actually allowed to launch. The spatial surface is only there to orient you; the review cards still hold the real evidence."
+      "Pick the identity that is allowed to launch. Use the review cards to confirm the details before you continue."
 
   def regent_step_summary(2, selected_agent, _current_job),
     do:
-      "Set the Agent Safe for #{(selected_agent && (selected_agent.name || selected_agent.agent_id)) || "the chosen agent"} before asking for any signature."
+      "Set the Agent Safe for #{(selected_agent && (selected_agent.name || selected_agent.agent_id)) || "the chosen identity"} before you sign."
 
   def regent_step_summary(3, _selected_agent, _current_job),
     do:
-      "This is the irreversible checkpoint. Review the fixed supply, Agent Safe, and the optional trust check before you sign."
+      "This is the last chance to review the fixed supply, Agent Safe, and the optional trust check before you sign."
 
   def regent_step_summary(4, _selected_agent, current_job),
     do:
-      "The job is queued. Keep the browser on live queue state while the CLI remains the cleaner operator path. Current state: #{regent_job_status(current_job)}."
+      "The launch is queued. Keep the page open and watch for the next step. Current state: #{regent_job_status(current_job)}."
 
   def regent_step_summary(5, _selected_agent, current_job),
-    do:
-      "The launch stack is now in deployment tracking. Current state: #{regent_job_status(current_job)}."
+    do: "The launch is now being tracked. Current state: #{regent_job_status(current_job)}."
 
   def regent_step_summary(_step, _selected_agent, _current_job),
     do: "Launch control is live."
@@ -54,11 +53,10 @@ defmodule AutolaunchWeb.LaunchLive.Presenter do
   def access_mode_label(_mode), do: "Unknown"
 
   def disabled_agent_message(%{state: "already_launched"}),
-    do: "This ERC-8004 identity already has an Agent Coin."
+    do: "This identity already has an Agent Coin."
 
   def disabled_agent_message(%{access_mode: "wallet_bound"}),
-    do:
-      "This identity is only wallet-bound. Launching requires ERC-8004 owner or operator access."
+    do: "This identity can only be used from its connected wallet."
 
   def disabled_agent_message(_agent),
     do: "Finish the missing setup before launch."
@@ -67,4 +65,96 @@ defmodule AutolaunchWeb.LaunchLive.Presenter do
   def reputation_action_status("available"), do: "Ready now"
   def reputation_action_status("pending"), do: "Available after launch"
   def reputation_action_status(_status), do: "Optional"
+
+  def launch_command, do: "regent autolaunch prelaunch wizard"
+
+  def launch_cli_transcript do
+    """
+    > regent autolaunch prelaunch validate --plan plan_alpha
+    > regent autolaunch prelaunch publish --plan plan_alpha
+    > regent autolaunch launch run --plan plan_alpha --watch
+    > regent autolaunch launch monitor --job job_alpha --watch
+    > regent autolaunch launch finalize --job job_alpha --submit
+    """
+    |> String.trim()
+  end
+
+  def launch_inputs do
+    [
+      %{
+        title: "Identity",
+        value: "The launch identity and the wallet that controls it",
+        body: "Use the wallet that can sign for this identity."
+      },
+      %{
+        title: "Token basics",
+        value: "Name, symbol, and minimum USDC raise",
+        body:
+          "Set the minimum amount you want to raise. If the sale does not reach it, buyers can get their money back."
+      },
+      %{
+        title: "Treasury routing",
+        value: "One Agent Safe for treasury, vesting, and contract ownership",
+        body:
+          "Use one Safe for treasury, vesting, and contract control. Check it carefully before you launch."
+      },
+      %{
+        title: "Hosted metadata",
+        value: "Title, description, and image",
+        body:
+          "The launch tool can upload the image and save the launch details before you publish and start."
+      }
+    ]
+  end
+
+  def launch_flow do
+    [
+      %{index: 1, label: "Save plan"},
+      %{index: 2, label: "Validate"},
+      %{index: 3, label: "Publish"},
+      %{index: 4, label: "Run"},
+      %{index: 5, label: "Monitor"},
+      %{index: 6, label: "Finalize"}
+    ]
+  end
+
+  def launch_via_agent_path do
+    [
+      %{
+        step: "01",
+        title: "Start with a saved launch plan.",
+        body:
+          "Start in the command line with a saved plan. Do not skip straight to launch settings."
+      },
+      %{
+        step: "02",
+        title: "Validate and publish before you run.",
+        body: "Check the plan, then publish the launch details so nothing changes after you sign."
+      },
+      %{
+        step: "03",
+        title: "Run the launch and watch the sale.",
+        body:
+          "Use the command line to start the launch, track the sale, and wait for the next steps."
+      },
+      %{
+        step: "04",
+        title: "Handle the final steps after the sale.",
+        body:
+          "After the sale, finish the remaining steps, then check vesting when releases are ready."
+      }
+    ]
+  end
+
+  def launch_agent_transcript do
+    """
+    > regent autolaunch prelaunch validate
+    > regent autolaunch prelaunch publish
+    > regent autolaunch launch run --plan plan_alpha
+    > regent autolaunch launch monitor --job job_alpha
+    > regent autolaunch launch finalize --job job_alpha
+    > regent autolaunch vesting status --job job_alpha
+    """
+    |> String.trim()
+  end
 end

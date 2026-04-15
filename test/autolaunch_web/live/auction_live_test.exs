@@ -16,11 +16,25 @@ defmodule AutolaunchWeb.AuctionLiveTest do
         total_bid_volume: "200.0",
         ends_at: DateTime.add(DateTime.utc_now(), 86_400, :second) |> DateTime.to_iso8601(),
         status: "active",
-        ens_attached: true,
-        ens_name: "atlas.eth",
-        world_registered: true,
-        world_human_id: "world_1",
-        world_launch_count: 2,
+        trust: %{
+          erc8004: %{
+            connected: true,
+            agent_id: "11155111:42",
+            token_id: "42",
+            chain_id: 11_155_111,
+            registry_address: nil,
+            web_endpoint: nil,
+            image_url: nil
+          },
+          ens: %{connected: true, name: "atlas.eth"},
+          world: %{
+            connected: true,
+            network: "world",
+            human_id: "world_1",
+            launch_count: 2
+          },
+          x: %{connected: false, handle: nil, profile_url: nil, verified_at: nil}
+        },
         chain: "Ethereum Sepolia"
       }
     end

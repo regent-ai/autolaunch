@@ -65,11 +65,13 @@ defmodule AutolaunchWeb.SubjectLive do
   def render(assigns) do
     subject = assigns.subject
     recommended = recommended_action(subject)
+    wallet_position = wallet_position(subject)
 
     assigns =
       assigns
       |> assign(:pending_actions, assigns.pending_actions || %{})
       |> assign(:recommended_action, recommended)
+      |> assign(:wallet_position, wallet_position)
 
     ~H"""
     <.shell current_human={@current_human} active_view={@active_view}>
@@ -84,20 +86,20 @@ defmodule AutolaunchWeb.SubjectLive do
         </div>
 
         <div class="al-stat-grid">
-          <.stat_card title="Claimable USDC" value={subject_value(@subject, :claimable_usdc)} hint="Ready now" />
+          <.stat_card title="Claimable USDC" value={@wallet_position.claimable_usdc} hint="Ready now" />
           <.stat_card
             title="Your staked tokens"
-            value={subject_value(@subject, :wallet_stake_balance)}
+            value={@wallet_position.wallet_stake_balance}
             hint="Currently staked from this wallet"
           />
           <.stat_card
             title="Wallet token balance"
-            value={subject_value(@subject, :wallet_token_balance)}
+            value={@wallet_position.wallet_token_balance}
             hint="Still available to stake"
           />
           <.stat_card
             title="Claimable emissions"
-            value={subject_value(@subject, :claimable_stake_token)}
+            value={@wallet_position.claimable_stake_token}
             hint="Reward tokens ready to claim or restake"
           />
         </div>
@@ -137,11 +139,11 @@ defmodule AutolaunchWeb.SubjectLive do
               <div class="al-review-card">
                 <span>Wallet position</span>
                 <strong>Claim, stake, or unstake from here</strong>
-                <p>Your staked balance, unstaked balance, and claimable USDC all live here.</p>
-                <p>Staked: {subject_value(@subject, :wallet_stake_balance)}</p>
-                <p>Wallet: {subject_value(@subject, :wallet_token_balance)}</p>
-                <p>USDC: {subject_value(@subject, :claimable_usdc)}</p>
-                <p>Emissions: {subject_value(@subject, :claimable_stake_token)}</p>
+                <p>{@wallet_position.summary}</p>
+                <p>{@wallet_position.staked_line}</p>
+                <p>{@wallet_position.wallet_line}</p>
+                <p>{@wallet_position.claimable_usdc_line}</p>
+                <p>{@wallet_position.claimable_emissions_line}</p>
               </div>
               <div class="al-review-card">
                 <span>Protocol reserve</span>
@@ -168,7 +170,7 @@ defmodule AutolaunchWeb.SubjectLive do
               <article class="al-note-card">
                 <p class="al-kicker">Stake</p>
                 <strong>Move claimed tokens into the splitter.</strong>
-                <p>Wallet balance: {subject_value(@subject, :wallet_token_balance)}.</p>
+                <p>{@wallet_position.stake_note}</p>
                 <p>Use the exact token amount you want this wallet to stake.</p>
                 <form phx-change="stake_changed" class="al-inline-form">
                   <label class="al-kicker" for="subject-stake-amount">Amount</label>
@@ -209,7 +211,7 @@ defmodule AutolaunchWeb.SubjectLive do
               <article class="al-note-card">
                 <p class="al-kicker">Claim</p>
                 <strong>Withdraw recognized USDC to the connected wallet.</strong>
-                <p>Claimable now: {subject_value(@subject, :claimable_usdc)}.</p>
+                <p>{@wallet_position.claim_note}</p>
                 <p>Claimable balance refreshes from onchain state after each confirmed transaction.</p>
                 <div class="al-action-row">
                   <button
@@ -251,7 +253,7 @@ defmodule AutolaunchWeb.SubjectLive do
                 <article class="al-note-card">
                   <p class="al-kicker">Unstake</p>
                   <strong>Withdraw staked balance back to the same wallet.</strong>
-                  <p>Currently staked: {subject_value(@subject, :wallet_stake_balance)}.</p>
+                  <p>{@wallet_position.unstake_note}</p>
                   <p>The amount is denominated in the launch token, not USDC.</p>
                   <form phx-change="unstake_changed" class="al-inline-form">
                     <label class="al-kicker" for="subject-unstake-amount">Amount</label>
@@ -292,7 +294,7 @@ defmodule AutolaunchWeb.SubjectLive do
                 <article class="al-note-card">
                   <p class="al-kicker">Emissions</p>
                   <strong>Claim reward tokens or claim and restake them in one move.</strong>
-                  <p>Claimable emissions: {subject_value(@subject, :claimable_stake_token)}.</p>
+                  <p>{@wallet_position.emissions_note}</p>
                   <div class="al-action-row">
                     <button
                       :if={!@pending_actions[:claim_emissions]}
@@ -485,6 +487,30 @@ defmodule AutolaunchWeb.SubjectLive do
 
   defp subject_value(nil, _key), do: "0"
   defp subject_value(subject, key) when is_map(subject), do: Map.get(subject, key, "0")
+
+  defp wallet_position(subject) do
+    staked = subject_value(subject, :wallet_stake_balance)
+    wallet = subject_value(subject, :wallet_token_balance)
+    claimable_usdc = subject_value(subject, :claimable_usdc)
+    claimable_emissions = subject_value(subject, :claimable_stake_token)
+
+    %{
+      wallet_stake_balance: staked,
+      wallet_token_balance: wallet,
+      claimable_usdc: claimable_usdc,
+      claimable_stake_token: claimable_emissions,
+      summary:
+        "Your staked balance, wallet balance, claimable USDC, and claimable emissions all live here.",
+      staked_line: "Staked: #{staked}",
+      wallet_line: "Wallet: #{wallet}",
+      claimable_usdc_line: "USDC: #{claimable_usdc}",
+      claimable_emissions_line: "Emissions: #{claimable_emissions}",
+      stake_note: "Wallet balance: #{wallet}.",
+      unstake_note: "Currently staked: #{staked}.",
+      claim_note: "Claimable now: #{claimable_usdc}.",
+      emissions_note: "Claimable emissions: #{claimable_emissions}."
+    }
+  end
 
   defp recommended_action(nil), do: nil
 
