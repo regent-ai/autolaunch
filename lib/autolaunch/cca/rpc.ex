@@ -74,12 +74,20 @@ defmodule Autolaunch.CCA.Rpc do
     def rpc_url(chain_id) do
       launch_config = Application.get_env(:autolaunch, :launch, [])
       regent_staking_config = Application.get_env(:autolaunch, :regent_staking, [])
+      regent_staking_chain_id = Keyword.get(regent_staking_config, :chain_id)
 
-      case chain_id do
-        1 -> fetch_url(launch_config, :eth_mainnet_rpc_url)
-        8_453 -> fetch_url(regent_staking_config, :rpc_url)
-        11_155_111 -> fetch_url(launch_config, :eth_sepolia_rpc_url)
-        _ -> {:error, :invalid_chain_id}
+      cond do
+        chain_id == 1 ->
+          fetch_url(launch_config, :eth_mainnet_rpc_url)
+
+        chain_id == 11_155_111 ->
+          fetch_url(launch_config, :eth_sepolia_rpc_url)
+
+        is_integer(regent_staking_chain_id) and chain_id == regent_staking_chain_id ->
+          fetch_url(regent_staking_config, :rpc_url)
+
+        true ->
+          {:error, :invalid_chain_id}
       end
     end
 

@@ -5,7 +5,6 @@ defmodule Autolaunch.RegentStaking do
   alias Autolaunch.CCA.Rpc
   alias Autolaunch.RegentStaking.Abi
 
-  @base_chain_id 8_453
   @usdc_decimals 6
   @token_decimals 18
 
@@ -93,7 +92,7 @@ defmodule Autolaunch.RegentStaking do
          staking: compact_state(cfg, wallet_address),
          tx_request:
            serialize_tx_request(%{
-             chain_id: @base_chain_id,
+             chain_id: cfg.chain_id,
              to: cfg.contract_address,
              value_hex: "0x0",
              data: Abi.encode_stake(amount, wallet_address)
@@ -111,7 +110,7 @@ defmodule Autolaunch.RegentStaking do
          staking: compact_state(cfg, wallet_address),
          tx_request:
            serialize_tx_request(%{
-             chain_id: @base_chain_id,
+             chain_id: cfg.chain_id,
              to: cfg.contract_address,
              value_hex: "0x0",
              data: Abi.encode_unstake(amount, wallet_address)
@@ -128,7 +127,7 @@ defmodule Autolaunch.RegentStaking do
          staking: compact_state(cfg, wallet_address),
          tx_request:
            serialize_tx_request(%{
-             chain_id: @base_chain_id,
+             chain_id: cfg.chain_id,
              to: cfg.contract_address,
              value_hex: "0x0",
              data: Abi.encode_claim_usdc(wallet_address)
@@ -145,7 +144,7 @@ defmodule Autolaunch.RegentStaking do
          staking: compact_state(cfg, wallet_address),
          tx_request:
            serialize_tx_request(%{
-             chain_id: @base_chain_id,
+             chain_id: cfg.chain_id,
              to: cfg.contract_address,
              value_hex: "0x0",
              data: Abi.encode_claim_regent(wallet_address)
@@ -162,7 +161,7 @@ defmodule Autolaunch.RegentStaking do
          staking: compact_state(cfg, wallet_address),
          tx_request:
            serialize_tx_request(%{
-             chain_id: @base_chain_id,
+             chain_id: cfg.chain_id,
              to: cfg.contract_address,
              value_hex: "0x0",
              data: Abi.encode_claim_and_restake_regent()
@@ -180,6 +179,7 @@ defmodule Autolaunch.RegentStaking do
        %{
          prepared:
            prepare_payload(
+             cfg,
              "deposit_usdc",
              cfg.contract_address,
              Abi.encode_deposit_usdc(amount, source_tag, source_ref),
@@ -204,6 +204,7 @@ defmodule Autolaunch.RegentStaking do
        %{
          prepared:
            prepare_payload(
+             cfg,
              "withdraw_treasury",
              cfg.contract_address,
              Abi.encode_withdraw_treasury_residual(amount, recipient),
@@ -330,15 +331,15 @@ defmodule Autolaunch.RegentStaking do
     }
   end
 
-  defp prepare_payload(action, target, calldata, params) do
+  defp prepare_payload(cfg, action, target, calldata, params) do
     %{
       resource: "regent_staking",
       action: action,
-      chain_id: @base_chain_id,
+      chain_id: cfg.chain_id,
       target: target,
       calldata: calldata,
       params: params,
-      tx_request: %{chain_id: @base_chain_id, to: target, value: "0x0", data: calldata}
+      tx_request: %{chain_id: cfg.chain_id, to: target, value: "0x0", data: calldata}
     }
   end
 
@@ -360,8 +361,8 @@ defmodule Autolaunch.RegentStaking do
     else
       {:ok,
        %{
-         chain_id: @base_chain_id,
-         chain_label: Keyword.get(cfg, :chain_label, "Base"),
+         chain_id: Keyword.get(cfg, :chain_id, 84_532),
+         chain_label: Keyword.get(cfg, :chain_label, "Base Sepolia"),
          contract_address: contract_address
        }}
     end

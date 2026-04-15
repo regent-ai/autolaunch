@@ -5,7 +5,7 @@ defmodule AutolaunchWeb.Api.RegentStakingControllerTest do
     def overview(_human) do
       {:ok,
        %{
-         chain_id: 8_453,
+         chain_id: 84_532,
          contract_address: "0x9999999999999999999999999999999999999999",
          treasury_residual_usdc: "150"
        }}
@@ -19,7 +19,7 @@ defmodule AutolaunchWeb.Api.RegentStakingControllerTest do
       {:ok,
        %{
          tx_request: %{
-           chain_id: 8_453,
+           chain_id: 84_532,
            to: "0x9999999999999999999999999999999999999999",
            value: "0x0",
            data: "0x7acb7757"
@@ -33,7 +33,7 @@ defmodule AutolaunchWeb.Api.RegentStakingControllerTest do
       {:ok,
        %{
          tx_request: %{
-           chain_id: 8_453,
+           chain_id: 84_532,
            to: "0x9999999999999999999999999999999999999999",
            value: "0x0",
            data: "0x8381e182"
@@ -45,7 +45,7 @@ defmodule AutolaunchWeb.Api.RegentStakingControllerTest do
       {:ok,
        %{
          tx_request: %{
-           chain_id: 8_453,
+           chain_id: 84_532,
            to: "0x9999999999999999999999999999999999999999",
            value: "0x0",
            data: "0x42852610"
@@ -59,7 +59,7 @@ defmodule AutolaunchWeb.Api.RegentStakingControllerTest do
          prepared: %{
            action: "deposit_usdc",
            tx_request: %{
-             chain_id: 8_453,
+             chain_id: 84_532,
              to: "0x9999999999999999999999999999999999999999",
              value: "0x0",
              data: "0x7dc6bb98"
@@ -74,7 +74,7 @@ defmodule AutolaunchWeb.Api.RegentStakingControllerTest do
          prepared: %{
            action: "withdraw_treasury",
            tx_request: %{
-             chain_id: 8_453,
+             chain_id: 84_532,
              to: "0x9999999999999999999999999999999999999999",
              value: "0x0",
              data: "0xe13b5822"
@@ -96,7 +96,7 @@ defmodule AutolaunchWeb.Api.RegentStakingControllerTest do
 
     assert %{
              "ok" => true,
-             "chain_id" => 8453,
+             "chain_id" => 84532,
              "treasury_residual_usdc" => "150"
            } = json_response(conn, 200)
   end
@@ -116,7 +116,7 @@ defmodule AutolaunchWeb.Api.RegentStakingControllerTest do
 
     assert %{
              "ok" => true,
-             "tx_request" => %{"chain_id" => 8453, "data" => "0x7acb7757"}
+             "tx_request" => %{"chain_id" => 84532, "data" => "0x7acb7757"}
            } = json_response(conn, 200)
   end
 

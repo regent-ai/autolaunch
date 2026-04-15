@@ -10,6 +10,7 @@ defmodule Autolaunch.RegentStakingTest do
   @treasury "0xcccccccccccccccccccccccccccccccccccccccc"
   @owner "0xdddddddddddddddddddddddddddddddddddddddd"
   @wallet "0x1111111111111111111111111111111111111111"
+  @base_sepolia_chain_id 84_532
 
   setup do
     previous_adapter = Application.get_env(:autolaunch, :cca_rpc_adapter)
@@ -20,9 +21,9 @@ defmodule Autolaunch.RegentStakingTest do
     Application.put_env(
       :autolaunch,
       :regent_staking,
-      chain_id: 8_453,
-      chain_label: "Base",
-      rpc_url: "https://base.example",
+      chain_id: @base_sepolia_chain_id,
+      chain_label: "Base Sepolia",
+      rpc_url: "https://base-sepolia.example",
       contract_address: @contract
     )
 
@@ -42,7 +43,7 @@ defmodule Autolaunch.RegentStakingTest do
   test "overview returns live contract and wallet state", %{human: human} do
     assert {:ok, state} = RegentStaking.overview(human)
 
-    assert state.chain_id == 8_453
+    assert state.chain_id == @base_sepolia_chain_id
     assert state.contract_address == @contract
     assert state.stake_token_address == @stake_token
     assert state.usdc_address == @usdc
@@ -79,9 +80,23 @@ defmodule Autolaunch.RegentStakingTest do
   test "stake returns a canonical wallet tx request", %{human: human} do
     assert {:ok, %{tx_request: tx_request}} = RegentStaking.stake(%{"amount" => "1.5"}, human)
 
-    assert tx_request.chain_id == 8_453
+    assert tx_request.chain_id == @base_sepolia_chain_id
     assert tx_request.to == @contract
     assert String.starts_with?(tx_request.data, "0x7acb7757")
+  end
+
+  test "stake uses the configured staking chain id", %{human: human} do
+    Application.put_env(
+      :autolaunch,
+      :regent_staking,
+      chain_id: 12_345,
+      chain_label: "Custom Base Test",
+      rpc_url: "https://custom-base.example",
+      contract_address: @contract
+    )
+
+    assert {:ok, %{tx_request: tx_request}} = RegentStaking.stake(%{"amount" => "1.5"}, human)
+    assert tx_request.chain_id == 12_345
   end
 
   test "prepare_deposit_usdc encodes ascii source tags and refs" do
@@ -94,7 +109,7 @@ defmodule Autolaunch.RegentStakingTest do
 
     assert prepared.resource == "regent_staking"
     assert prepared.action == "deposit_usdc"
-    assert prepared.chain_id == 8_453
+    assert prepared.chain_id == @base_sepolia_chain_id
     assert prepared.target == @contract
     assert String.starts_with?(prepared.calldata, "0x7dc6bb98")
   end
@@ -109,7 +124,12 @@ defmodule Autolaunch.RegentStakingTest do
   end
 
   test "overview fails cleanly when the rail is unconfigured" do
-    Application.put_env(:autolaunch, :regent_staking, chain_id: 8_453, chain_label: "Base")
+    Application.put_env(
+      :autolaunch,
+      :regent_staking,
+      chain_id: @base_sepolia_chain_id,
+      chain_label: "Base Sepolia"
+    )
 
     assert {:error, :unconfigured} = RegentStaking.overview(nil)
   end
@@ -126,7 +146,7 @@ defmodule Autolaunch.RegentStakingTest do
     def tx_by_hash(_chain_id, _tx_hash), do: {:ok, nil}
     def get_logs(_chain_id, _filter), do: {:ok, []}
 
-    def eth_call(8_453, to, data) do
+    def eth_call(_chain_id, to, data) do
       case {String.downcase(to), String.slice(data, 0, 10)} do
         {contract, "0x8da5cb5b"} when contract == @contract ->
           {:ok, address_word(@owner)}
@@ -180,8 +200,6 @@ defmodule Autolaunch.RegentStakingTest do
           {:error, :unexpected_call}
       end
     end
-
-    def eth_call(_chain_id, _to, _data), do: {:error, :unexpected_chain}
 
     defp uint_word(value) do
       "0x" <> String.pad_leading(Integer.to_string(value, 16), 64, "0")

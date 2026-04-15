@@ -118,11 +118,10 @@ contract RegentRevenueStaking is Owned {
         require(receiver != address(0), "RECEIVER_ZERO");
 
         _sync(receiver);
+        _pullExactStakeToken(msg.sender, amount);
 
         stakedBalance[receiver] += amount;
         totalStaked += amount;
-
-        stakeToken.safeTransferFrom(msg.sender, address(this), amount);
 
         emit StakeUpdated(receiver, stakedBalance[receiver], totalStaked);
     }
@@ -142,7 +141,7 @@ contract RegentRevenueStaking is Owned {
         }
 
         emit StakeUpdated(msg.sender, stakedBalance[msg.sender], totalStaked);
-        stakeToken.safeTransfer(recipient, amount);
+        _pushExactStakeToken(recipient, amount);
     }
 
     function sync(address account) external nonReentrant {
@@ -221,7 +220,7 @@ contract RegentRevenueStaking is Owned {
         totalClaimedRegent += amount;
 
         emit RewardTokenClaimed(msg.sender, amount, recipient);
-        stakeToken.safeTransfer(recipient, amount);
+        _pushExactStakeToken(recipient, amount);
     }
 
     function claimAndRestakeRegent() external whenNotPaused nonReentrant returns (uint256 amount) {
@@ -268,11 +267,7 @@ contract RegentRevenueStaking is Owned {
         require(amount != 0, "AMOUNT_ZERO");
         _settleRegentEmissions();
 
-        uint256 beforeBalance = IERC20SupplyMinimal(stakeToken).balanceOf(address(this));
-        stakeToken.safeTransferFrom(msg.sender, address(this), amount);
-        uint256 afterBalance = IERC20SupplyMinimal(stakeToken).balanceOf(address(this));
-        received = afterBalance - beforeBalance;
-        require(received > 0, "NOTHING_RECEIVED");
+        received = _pullExactStakeToken(msg.sender, amount);
 
         totalFundedRegent += received;
         emit RewardTokenFunded(msg.sender, received);
@@ -420,5 +415,20 @@ contract RegentRevenueStaking is Owned {
         accRewardPerTokenRegent += deltaAcc;
         totalEmittedRegent += FullMath.mulDiv(totalStaked, deltaAcc, ACC_PRECISION);
         lastEmissionUpdate = timestamp;
+    }
+
+    function _pullExactStakeToken(address from, uint256 amount) internal returns (uint256 received) {
+        uint256 beforeBalance = IERC20SupplyMinimal(stakeToken).balanceOf(address(this));
+        stakeToken.safeTransferFrom(from, address(this), amount);
+        uint256 afterBalance = IERC20SupplyMinimal(stakeToken).balanceOf(address(this));
+        received = afterBalance - beforeBalance;
+        require(received == amount, "STAKE_TOKEN_IN_EXACT");
+    }
+
+    function _pushExactStakeToken(address recipient, uint256 amount) internal {
+        uint256 beforeBalance = IERC20SupplyMinimal(stakeToken).balanceOf(recipient);
+        stakeToken.safeTransfer(recipient, amount);
+        uint256 afterBalance = IERC20SupplyMinimal(stakeToken).balanceOf(recipient);
+        require(afterBalance - beforeBalance == amount, "STAKE_TOKEN_OUT_EXACT");
     }
 }
