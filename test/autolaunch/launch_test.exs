@@ -118,6 +118,8 @@ defmodule Autolaunch.LaunchTest do
 
     [latest | _rest] = Launch.list_auctions(%{"mode" => "all", "sort" => "newest"}, nil)
 
+    assert latest.trust.ens.connected
+    assert latest.trust.ens.name == "atlas.eth"
     assert latest.trust.world.connected
     assert latest.trust.world.human_id == "0x1234"
     assert latest.trust.world.launch_count == 2
@@ -324,13 +326,23 @@ defmodule Autolaunch.LaunchTest do
 
     assert response.job.subject_id == "0x" <> String.duplicate("1", 64)
     assert response.job.default_ingress_address == "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
-
     assert response.job.pool_id == "0x" <> String.duplicate("2", 64)
-
-    refute Map.has_key?(response.job, :emission_recipient)
-    refute Map.has_key?(response.job, :epoch_seconds)
+    assert response.job.trust.ens.connected
+    assert response.job.trust.ens.name == "atlas.eth"
+    refute response.job.trust.world.connected
+    assert response.job.trust.world.human_id == nil
+    assert response.job.trust.world.launch_count == 0
+    refute response.job.completion_plan.agentbook.attached
     assert response.job.reputation_prompt.prompt =~ "optionally link an ENS name"
     assert response.job.reputation_prompt.skip_label == "Skip for now"
+    refute Map.has_key?(response.job, :ens_name)
+    refute Map.has_key?(response.job, :ens_attached)
+    refute Map.has_key?(response.job, :world_registered)
+    refute Map.has_key?(response.job, :world_human_id)
+    refute Map.has_key?(response.job, :world_network)
+    refute Map.has_key?(response.job, :world_launch_count)
+    refute Map.has_key?(response.job, :emission_recipient)
+    refute Map.has_key?(response.job, :epoch_seconds)
 
     assert Enum.any?(response.job.reputation_prompt.actions, fn action ->
              action.key == "ens" and action.status == "complete"

@@ -3,8 +3,7 @@ defmodule Autolaunch.Launch.Jobs do
 
   alias Autolaunch.Launch.Internal
 
-  def get_job_response(job_id, owner_address \\ nil),
-    do: Internal.get_job_response(job_id, owner_address)
+  def get_job_response(job_id), do: Internal.get_job_response(job_id)
 
   def queue_processing(job_id), do: Internal.queue_processing(job_id)
   def terminal_status?(status), do: Internal.terminal_status?(status)

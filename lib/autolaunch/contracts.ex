@@ -1,15 +1,11 @@
 defmodule Autolaunch.Contracts do
   @moduledoc false
 
-  import Ecto.Query, warn: false
-
   alias Autolaunch.Accounts.HumanUser
   alias Autolaunch.CCA.Rpc
   alias Autolaunch.Contracts.Abi
   alias Autolaunch.Contracts.Dispatch
   alias Autolaunch.Launch
-  alias Autolaunch.Launch.Job
-  alias Autolaunch.Repo
   alias Autolaunch.Revenue
 
   @sepolia_chain_id 11_155_111
@@ -43,35 +39,20 @@ defmodule Autolaunch.Contracts do
   end
 
   def job_state(job_id, current_human \\ nil) do
-    with %{job: job} = response <- Launch.get_job_response(job_id),
-         {:ok, job_scope} <- authorize_job_scope(response, current_human) do
-      {:ok,
-       %{
-         job: job,
-         scope: job_scope,
-         controller: controller_card(job),
-         strategy: strategy_card(job),
-         vesting: vesting_card(job),
-         fee_registry: fee_registry_card(job),
-         fee_vault: fee_vault_card(job),
-         hook: hook_card(job),
-         available_actions: %{
-           strategy: ~w(migrate sweep_token sweep_currency),
-           vesting:
-             ~w(release propose_beneficiary_rotation cancel_beneficiary_rotation execute_beneficiary_rotation),
-           fee_registry: ~w(set_hook_enabled),
-           fee_vault: ~w(withdraw_treasury withdraw_regent_share set_hook)
-         }
-       }}
-    else
-      nil -> {:error, :not_found}
-      {:error, _} = error -> error
+    with {:ok, response} <- Launch.get_job_response(job_id) do
+      job_state_from_response(response, current_human)
+    end
+  end
+
+  def job_state_from_response(%{job: job}, current_human) do
+    with {:ok, job_scope} <- authorize_job_scope(job, current_human) do
+      {:ok, build_job_state(job, job_scope)}
     end
   end
 
   def subject_state(subject_id, current_human \\ nil) do
-    with {:ok, subject} <- Revenue.get_subject(subject_id, current_human),
-         %Job{} = job <- subject_job(subject.subject_id) do
+    with {:ok, %{subject: subject, job: job}} <- Revenue.subject_scope(subject_id, current_human),
+         {:ok, _job_scope} <- authorize_job_scope(job, current_human) do
       registry = subject_registry_card(job, subject, current_human)
       splitter = splitter_card(subject)
       ingress_factory = ingress_factory_card(subject.subject_id)
@@ -94,18 +75,19 @@ defmodule Autolaunch.Contracts do
            registry: ~w(set_subject_manager link_identity rotate_safe)
          }
        }}
-    else
-      nil -> {:error, :not_found}
-      {:error, _} = error -> error
     end
-  rescue
-    _ -> {:error, :subject_lookup_failed}
   end
 
   def prepare_job_action(job_id, resource, action, attrs, current_human \\ nil) do
     with {:ok, %{job: job, scope: _scope}} <- job_state(job_id, current_human),
          {:ok, prepared} <- Dispatch.build_job_action(job, resource, action, attrs) do
       {:ok, %{job_id: job_id, prepared: prepared}}
+    end
+  end
+
+  def prepare_job_action_for_job(%{} = job, resource, action, attrs) do
+    with {:ok, prepared} <- Dispatch.build_job_action(job, resource, action, attrs) do
+      {:ok, %{job_id: job.job_id, prepared: prepared}}
     end
   end
 
@@ -132,7 +114,7 @@ defmodule Autolaunch.Contracts do
     end
   end
 
-  defp authorize_job_scope(%{job: %{owner_address: owner_address}}, %HumanUser{} = current_human) do
+  defp authorize_job_scope(%{owner_address: owner_address}, %HumanUser{} = current_human) do
     wallets =
       [current_human.wallet_address | List.wrap(current_human.wallet_addresses)]
       |> Enum.map(&normalize_address/1)
@@ -141,11 +123,11 @@ defmodule Autolaunch.Contracts do
     if normalize_address(owner_address) in wallets do
       {:ok, %{owner_matched: true}}
     else
-      {:ok, %{owner_matched: false}}
+      {:error, :forbidden}
     end
   end
 
-  defp authorize_job_scope(_response, _current_human), do: {:ok, %{owner_matched: false}}
+  defp authorize_job_scope(_job, _current_human), do: {:error, :unauthorized}
 
   defp authorize_subject_action(subject, registry, resource, action) do
     allowed_direct = MapSet.new([{"ingress_account", "sweep"}])
@@ -162,12 +144,32 @@ defmodule Autolaunch.Contracts do
     end
   end
 
+  defp build_job_state(job, job_scope) do
+    %{
+      job: job,
+      scope: job_scope,
+      controller: controller_card(job),
+      strategy: strategy_card(job),
+      vesting: vesting_card(job),
+      fee_registry: fee_registry_card(job),
+      fee_vault: fee_vault_card(job),
+      hook: hook_card(job),
+      available_actions: %{
+        strategy: ~w(migrate sweep_token sweep_currency),
+        vesting:
+          ~w(release propose_beneficiary_rotation cancel_beneficiary_rotation execute_beneficiary_rotation),
+        fee_registry: ~w(set_hook_enabled),
+        fee_vault: ~w(withdraw_treasury withdraw_regent_share set_hook)
+      }
+    }
+  end
+
   defp controller_card(job) do
     %{
       address: nil,
-      deploy_binary: job.deploy_binary,
-      deploy_workdir: job.deploy_workdir,
-      script_target: job.script_target,
+      deploy_binary: job_metadata(job, :deploy_binary, [:command_summary, :binary]),
+      deploy_workdir: job_metadata(job, :deploy_workdir, [:command_summary, :cwd]),
+      script_target: job_metadata(job, :script_target, [:command_summary, :script_target]),
       deploy_tx_hash: job.tx_hash,
       result_addresses: %{
         auction_address: job.auction_address,
@@ -237,19 +239,23 @@ defmodule Autolaunch.Contracts do
 
   defp fee_registry_card(job) do
     config =
-      case safe_call(
-             job.chain_id,
-             job.launch_fee_registry_address,
-             Abi.encode_call(:get_pool_config, [{:bytes32, job.pool_id}])
-           ) do
-        {:ok, data} ->
-          case Abi.decode_pool_config(data) do
-            {:ok, decoded} -> decoded
-            _ -> nil
-          end
+      if blank?(job.pool_id) do
+        nil
+      else
+        case safe_call(
+               job.chain_id,
+               job.launch_fee_registry_address,
+               Abi.encode_call(:get_pool_config, [{:bytes32, job.pool_id}])
+             ) do
+          {:ok, data} ->
+            case Abi.decode_pool_config(data) do
+              {:ok, decoded} -> decoded
+              _ -> nil
+            end
 
-        _ ->
-          nil
+          _ ->
+            nil
+        end
       end
 
     %{
@@ -452,7 +458,7 @@ defmodule Autolaunch.Contracts do
   end
 
   defp safe_mapping_amount(chain_id, to, selector_name, pool_id, currency) do
-    if blank?(currency) do
+    if blank?(currency) or blank?(pool_id) do
       nil
     else
       safe_uint_call(chain_id, to, selector_name, [{:bytes32, pool_id}, {:address, currency}])
@@ -516,13 +522,8 @@ defmodule Autolaunch.Contracts do
     end
   end
 
-  defp subject_job(subject_id) do
-    Repo.one(
-      from job in Job,
-        where: job.subject_id == ^subject_id and job.status == "ready",
-        order_by: [desc: job.updated_at],
-        limit: 1
-    )
+  defp job_metadata(job, key, fallback_path) do
+    Map.get(job, key) || get_in(job, fallback_path)
   end
 
   defp normalize_address(value) when is_binary(value), do: String.downcase(String.trim(value))

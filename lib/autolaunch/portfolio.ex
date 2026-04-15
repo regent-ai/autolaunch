@@ -68,8 +68,8 @@ defmodule Autolaunch.Portfolio do
       directory_rows
       |> Enum.filter(&(is_binary(&1.subject_id) and &1.subject_id != ""))
       |> Enum.reduce([], fn row, acc ->
-        with {:ok, position} <- revenue_module().subject_wallet_positions(row.subject_id, wallets),
-             {:ok, %{subject: subject}} <- revenue_module().subject_state(row.subject_id, human) do
+        with {:ok, %{position: position, subject: subject}} <-
+               revenue_module().subject_portfolio_state(row.subject_id, wallets, human) do
           holding = %{
             holding_type: "subject",
             auction_id: row.id,

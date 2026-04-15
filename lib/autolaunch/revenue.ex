@@ -15,137 +15,17 @@ defmodule Autolaunch.Revenue do
   @token_decimals 18
 
   def get_subject(subject_id, current_human \\ nil) do
+    with {:ok, %{subject: subject}} <- subject_scope(subject_id, current_human) do
+      {:ok, subject}
+    end
+  end
+
+  def subject_scope(subject_id, current_human \\ nil) do
     with {:ok, normalized_subject_id} <- normalize_subject_id(subject_id),
-         %Job{} = job <- load_subject_job(normalized_subject_id) do
-      owner_address = primary_wallet_address(current_human)
-      ingress_accounts = load_ingress_accounts(job, normalized_subject_id)
-      can_manage = owner_address && can_manage_subject?(job, normalized_subject_id, owner_address)
-
-      total_staked =
-        call_uint(
-          job.chain_id,
-          job.revenue_share_splitter_address,
-          Abi.encode_no_args(:total_staked)
-        )
-
-      treasury_residual_usdc =
-        call_uint(
-          job.chain_id,
-          job.revenue_share_splitter_address,
-          Abi.encode_no_args(:treasury_residual_usdc)
-        )
-
-      protocol_reserve_usdc =
-        call_uint(
-          job.chain_id,
-          job.revenue_share_splitter_address,
-          Abi.encode_no_args(:protocol_reserve_usdc)
-        )
-
-      undistributed_dust_usdc =
-        call_uint(
-          job.chain_id,
-          job.revenue_share_splitter_address,
-          Abi.encode_no_args(:undistributed_dust_usdc)
-        )
-
-      wallet_stake_balance_raw =
-        owner_address &&
-          call_uint(
-            job.chain_id,
-            job.revenue_share_splitter_address,
-            Abi.encode_address_call(:staked_balance, owner_address)
-          )
-
-      wallet_token_balance_raw =
-        owner_address &&
-          call_uint(
-            job.chain_id,
-            job.token_address,
-            Abi.encode_address_call(:balance_of, owner_address)
-          )
-
-      claimable_usdc_raw =
-        owner_address &&
-          call_uint(
-            job.chain_id,
-            job.revenue_share_splitter_address,
-            Abi.encode_address_call(:preview_claimable_usdc, owner_address)
-          )
-
-      claimable_stake_token_raw =
-        owner_address &&
-          call_uint(
-            job.chain_id,
-            job.revenue_share_splitter_address,
-            Abi.encode_address_call(:preview_claimable_stake_token, owner_address)
-          )
-
-      materialized_outstanding_raw =
-        call_uint(
-          job.chain_id,
-          job.revenue_share_splitter_address,
-          Abi.encode_no_args(:unclaimed_stake_token_liability)
-        )
-
-      available_reward_inventory_raw =
-        call_uint(
-          job.chain_id,
-          job.revenue_share_splitter_address,
-          Abi.encode_no_args(:available_stake_token_reward_inventory)
-        )
-
-      total_claimed_so_far_raw =
-        call_uint(
-          job.chain_id,
-          job.revenue_share_splitter_address,
-          Abi.encode_no_args(:total_claimed_stake_token)
-        )
-
-      {:ok,
-       %{
-         subject_id: normalized_subject_id,
-         chain_id: job.chain_id,
-         chain_label: "Ethereum Sepolia",
-         token_address: job.token_address,
-         strategy_address: job.strategy_address,
-         subject_registry_address: job.subject_registry_address,
-         splitter_address: job.revenue_share_splitter_address,
-         default_ingress_address:
-           Map.get(ingress_accounts, :default_address) || job.default_ingress_address,
-         ingress_accounts: ingress_accounts.accounts,
-         total_staked_raw: total_staked,
-         total_staked: format_units(total_staked, @token_decimals),
-         treasury_residual_usdc_raw: treasury_residual_usdc,
-         treasury_residual_usdc: format_units(treasury_residual_usdc, @usdc_decimals),
-         protocol_reserve_usdc_raw: protocol_reserve_usdc,
-         protocol_reserve_usdc: format_units(protocol_reserve_usdc, @usdc_decimals),
-         undistributed_dust_usdc_raw: undistributed_dust_usdc,
-         undistributed_dust_usdc: format_units(undistributed_dust_usdc, @usdc_decimals),
-         wallet_address: owner_address,
-         wallet_stake_balance_raw: wallet_stake_balance_raw,
-         wallet_stake_balance:
-           owner_address && format_units(wallet_stake_balance_raw, @token_decimals),
-         wallet_token_balance_raw: wallet_token_balance_raw,
-         wallet_token_balance:
-           owner_address && format_units(wallet_token_balance_raw, @token_decimals),
-         claimable_usdc_raw: claimable_usdc_raw,
-         claimable_usdc: owner_address && format_units(claimable_usdc_raw, @usdc_decimals),
-         claimable_stake_token_raw: claimable_stake_token_raw,
-         claimable_stake_token:
-           owner_address && format_units(claimable_stake_token_raw, @token_decimals),
-         materialized_outstanding_raw: materialized_outstanding_raw,
-         materialized_outstanding: format_units(materialized_outstanding_raw, @token_decimals),
-         available_reward_inventory_raw: available_reward_inventory_raw,
-         available_reward_inventory:
-           format_units(available_reward_inventory_raw, @token_decimals),
-         total_claimed_so_far_raw: total_claimed_so_far_raw,
-         total_claimed_so_far: format_units(total_claimed_so_far_raw, @token_decimals),
-         can_manage_ingress: can_manage || false
-       }}
-    else
-      nil -> {:error, :not_found}
-      {:error, _} = error -> error
+         {:ok, job} <- fetch_subject_job(normalized_subject_id),
+         {:ok, subject} <-
+           build_subject(job, normalized_subject_id, primary_wallet_address(current_human)) do
+      {:ok, %{subject: subject, job: job}}
     end
   rescue
     _ -> {:error, :subject_lookup_failed}
@@ -159,41 +39,10 @@ defmodule Autolaunch.Revenue do
 
   def subject_wallet_position(subject_id, wallet_address) do
     with {:ok, normalized_subject_id} <- normalize_subject_id(subject_id),
-         %Job{} = job <- load_subject_job(normalized_subject_id),
+         {:ok, job} <- fetch_subject_job(normalized_subject_id),
          {:ok, normalized_wallet} <- normalize_required_address(wallet_address) do
-      wallet_stake_balance_raw =
-        call_uint(
-          job.chain_id,
-          job.revenue_share_splitter_address,
-          Abi.encode_address_call(:staked_balance, normalized_wallet)
-        )
-
-      claimable_usdc_raw =
-        call_uint(
-          job.chain_id,
-          job.revenue_share_splitter_address,
-          Abi.encode_address_call(:preview_claimable_usdc, normalized_wallet)
-        )
-
-      claimable_stake_token_raw =
-        call_uint(
-          job.chain_id,
-          job.revenue_share_splitter_address,
-          Abi.encode_address_call(:preview_claimable_stake_token, normalized_wallet)
-        )
-
-      {:ok,
-       %{
-         wallet_address: normalized_wallet,
-         wallet_stake_balance_raw: wallet_stake_balance_raw,
-         wallet_stake_balance: format_units(wallet_stake_balance_raw, @token_decimals),
-         claimable_usdc_raw: claimable_usdc_raw,
-         claimable_usdc: format_units(claimable_usdc_raw, @usdc_decimals),
-         claimable_stake_token_raw: claimable_stake_token_raw,
-         claimable_stake_token: format_units(claimable_stake_token_raw, @token_decimals)
-       }}
+      subject_wallet_position_from_job(job, normalized_wallet)
     else
-      nil -> {:error, :not_found}
       {:error, _} = error -> error
     end
   rescue
@@ -201,36 +50,28 @@ defmodule Autolaunch.Revenue do
   end
 
   def subject_wallet_positions(subject_id, wallet_addresses) do
-    with {:ok, addresses} <- normalize_address_list(wallet_addresses) do
-      positions =
-        addresses
-        |> Enum.map(&subject_wallet_position(subject_id, &1))
-        |> Enum.filter(&match?({:ok, _}, &1))
-        |> Enum.map(fn {:ok, position} -> position end)
+    with {:ok, normalized_subject_id} <- normalize_subject_id(subject_id),
+         {:ok, job} <- fetch_subject_job(normalized_subject_id),
+         {:ok, addresses} <- normalize_address_list(wallet_addresses) do
+      build_wallet_positions(job, addresses)
+    else
+      {:error, _} = error -> error
+    end
+  rescue
+    _ -> {:error, :subject_lookup_failed}
+  end
 
-      wallet_stake_balance_raw = Enum.reduce(positions, 0, &(&1.wallet_stake_balance_raw + &2))
-      claimable_usdc_raw = Enum.reduce(positions, 0, &(&1.claimable_usdc_raw + &2))
-
-      claimable_stake_token_raw =
-        Enum.reduce(positions, 0, &(&1.claimable_stake_token_raw + &2))
-
-      {:ok,
-       %{
-         wallet_addresses: addresses,
-         wallet_count: length(addresses),
-         wallet_stake_balance_raw: wallet_stake_balance_raw,
-         wallet_stake_balance: format_units(wallet_stake_balance_raw, @token_decimals),
-         claimable_usdc_raw: claimable_usdc_raw,
-         claimable_usdc: format_units(claimable_usdc_raw, @usdc_decimals),
-         claimable_stake_token_raw: claimable_stake_token_raw,
-         claimable_stake_token: format_units(claimable_stake_token_raw, @token_decimals)
-       }}
+  def subject_portfolio_state(subject_id, wallet_addresses, current_human \\ nil) do
+    with {:ok, addresses} <- normalize_address_list(wallet_addresses),
+         {:ok, %{subject: subject, job: job}} <- subject_scope(subject_id, current_human),
+         {:ok, position} <- build_wallet_positions(job, addresses) do
+      {:ok, %{subject: subject, position: position}}
     end
   end
 
   def subject_obligation_metrics(subject_id, staker_addresses) do
     with {:ok, normalized_subject_id} <- normalize_subject_id(subject_id),
-         %Job{} = job <- load_subject_job(normalized_subject_id),
+         {:ok, job} <- fetch_subject_job(normalized_subject_id),
          {:ok, addresses} <- normalize_address_list(staker_addresses) do
       exact_total_accrued_obligations_raw =
         Enum.reduce(addresses, 0, fn address, acc ->
@@ -307,7 +148,6 @@ defmodule Autolaunch.Revenue do
            )
        }}
     else
-      nil -> {:error, :not_found}
       {:error, _} = error -> error
     end
   rescue
@@ -899,13 +739,201 @@ defmodule Autolaunch.Revenue do
   defp default_error_message(:forbidden), do: "Transaction sender does not match this wallet"
   defp default_error_message(_), do: "Transaction registration failed"
 
-  defp load_subject_job(subject_id) do
-    Repo.one(
-      from job in Job,
-        where: job.subject_id == ^subject_id and job.status == "ready",
-        order_by: [desc: job.updated_at],
-        limit: 1
-    )
+  defp fetch_subject_job(subject_id) do
+    case Repo.one(
+           from job in Job,
+             where: job.subject_id == ^subject_id and job.status == "ready",
+             order_by: [desc: job.updated_at],
+             limit: 1
+         ) do
+      %Job{} = job -> {:ok, job}
+      nil -> {:error, :not_found}
+    end
+  end
+
+  defp build_subject(job, subject_id, owner_address) do
+    ingress_accounts = load_ingress_accounts(job, subject_id)
+    can_manage = owner_address && can_manage_subject?(job, subject_id, owner_address)
+
+    total_staked =
+      call_uint(
+        job.chain_id,
+        job.revenue_share_splitter_address,
+        Abi.encode_no_args(:total_staked)
+      )
+
+    treasury_residual_usdc =
+      call_uint(
+        job.chain_id,
+        job.revenue_share_splitter_address,
+        Abi.encode_no_args(:treasury_residual_usdc)
+      )
+
+    protocol_reserve_usdc =
+      call_uint(
+        job.chain_id,
+        job.revenue_share_splitter_address,
+        Abi.encode_no_args(:protocol_reserve_usdc)
+      )
+
+    undistributed_dust_usdc =
+      call_uint(
+        job.chain_id,
+        job.revenue_share_splitter_address,
+        Abi.encode_no_args(:undistributed_dust_usdc)
+      )
+
+    wallet_stake_balance_raw =
+      owner_address &&
+        call_uint(
+          job.chain_id,
+          job.revenue_share_splitter_address,
+          Abi.encode_address_call(:staked_balance, owner_address)
+        )
+
+    wallet_token_balance_raw =
+      owner_address &&
+        call_uint(
+          job.chain_id,
+          job.token_address,
+          Abi.encode_address_call(:balance_of, owner_address)
+        )
+
+    claimable_usdc_raw =
+      owner_address &&
+        call_uint(
+          job.chain_id,
+          job.revenue_share_splitter_address,
+          Abi.encode_address_call(:preview_claimable_usdc, owner_address)
+        )
+
+    claimable_stake_token_raw =
+      owner_address &&
+        call_uint(
+          job.chain_id,
+          job.revenue_share_splitter_address,
+          Abi.encode_address_call(:preview_claimable_stake_token, owner_address)
+        )
+
+    materialized_outstanding_raw =
+      call_uint(
+        job.chain_id,
+        job.revenue_share_splitter_address,
+        Abi.encode_no_args(:unclaimed_stake_token_liability)
+      )
+
+    available_reward_inventory_raw =
+      call_uint(
+        job.chain_id,
+        job.revenue_share_splitter_address,
+        Abi.encode_no_args(:available_stake_token_reward_inventory)
+      )
+
+    total_claimed_so_far_raw =
+      call_uint(
+        job.chain_id,
+        job.revenue_share_splitter_address,
+        Abi.encode_no_args(:total_claimed_stake_token)
+      )
+
+    {:ok,
+     %{
+       subject_id: subject_id,
+       chain_id: job.chain_id,
+       chain_label: "Ethereum Sepolia",
+       token_address: job.token_address,
+       strategy_address: job.strategy_address,
+       subject_registry_address: job.subject_registry_address,
+       splitter_address: job.revenue_share_splitter_address,
+       default_ingress_address:
+         Map.get(ingress_accounts, :default_address) || job.default_ingress_address,
+       ingress_accounts: ingress_accounts.accounts,
+       total_staked_raw: total_staked,
+       total_staked: format_units(total_staked, @token_decimals),
+       treasury_residual_usdc_raw: treasury_residual_usdc,
+       treasury_residual_usdc: format_units(treasury_residual_usdc, @usdc_decimals),
+       protocol_reserve_usdc_raw: protocol_reserve_usdc,
+       protocol_reserve_usdc: format_units(protocol_reserve_usdc, @usdc_decimals),
+       undistributed_dust_usdc_raw: undistributed_dust_usdc,
+       undistributed_dust_usdc: format_units(undistributed_dust_usdc, @usdc_decimals),
+       wallet_address: owner_address,
+       wallet_stake_balance_raw: wallet_stake_balance_raw,
+       wallet_stake_balance:
+         owner_address && format_units(wallet_stake_balance_raw, @token_decimals),
+       wallet_token_balance_raw: wallet_token_balance_raw,
+       wallet_token_balance:
+         owner_address && format_units(wallet_token_balance_raw, @token_decimals),
+       claimable_usdc_raw: claimable_usdc_raw,
+       claimable_usdc: owner_address && format_units(claimable_usdc_raw, @usdc_decimals),
+       claimable_stake_token_raw: claimable_stake_token_raw,
+       claimable_stake_token:
+         owner_address && format_units(claimable_stake_token_raw, @token_decimals),
+       materialized_outstanding_raw: materialized_outstanding_raw,
+       materialized_outstanding: format_units(materialized_outstanding_raw, @token_decimals),
+       available_reward_inventory_raw: available_reward_inventory_raw,
+       available_reward_inventory: format_units(available_reward_inventory_raw, @token_decimals),
+       total_claimed_so_far_raw: total_claimed_so_far_raw,
+       total_claimed_so_far: format_units(total_claimed_so_far_raw, @token_decimals),
+       can_manage_ingress: can_manage || false
+     }}
+  end
+
+  defp subject_wallet_position_from_job(job, wallet_address) do
+    wallet_stake_balance_raw =
+      call_uint(
+        job.chain_id,
+        job.revenue_share_splitter_address,
+        Abi.encode_address_call(:staked_balance, wallet_address)
+      )
+
+    claimable_usdc_raw =
+      call_uint(
+        job.chain_id,
+        job.revenue_share_splitter_address,
+        Abi.encode_address_call(:preview_claimable_usdc, wallet_address)
+      )
+
+    claimable_stake_token_raw =
+      call_uint(
+        job.chain_id,
+        job.revenue_share_splitter_address,
+        Abi.encode_address_call(:preview_claimable_stake_token, wallet_address)
+      )
+
+    {:ok,
+     %{
+       wallet_address: wallet_address,
+       wallet_stake_balance_raw: wallet_stake_balance_raw,
+       wallet_stake_balance: format_units(wallet_stake_balance_raw, @token_decimals),
+       claimable_usdc_raw: claimable_usdc_raw,
+       claimable_usdc: format_units(claimable_usdc_raw, @usdc_decimals),
+       claimable_stake_token_raw: claimable_stake_token_raw,
+       claimable_stake_token: format_units(claimable_stake_token_raw, @token_decimals)
+     }}
+  end
+
+  defp build_wallet_positions(job, addresses) do
+    positions =
+      addresses
+      |> Enum.map(&subject_wallet_position_from_job(job, &1))
+      |> Enum.filter(&match?({:ok, _}, &1))
+      |> Enum.map(fn {:ok, position} -> position end)
+
+    wallet_stake_balance_raw = Enum.reduce(positions, 0, &(&1.wallet_stake_balance_raw + &2))
+    claimable_usdc_raw = Enum.reduce(positions, 0, &(&1.claimable_usdc_raw + &2))
+    claimable_stake_token_raw = Enum.reduce(positions, 0, &(&1.claimable_stake_token_raw + &2))
+
+    {:ok,
+     %{
+       wallet_addresses: addresses,
+       wallet_count: length(addresses),
+       wallet_stake_balance_raw: wallet_stake_balance_raw,
+       wallet_stake_balance: format_units(wallet_stake_balance_raw, @token_decimals),
+       claimable_usdc_raw: claimable_usdc_raw,
+       claimable_usdc: format_units(claimable_usdc_raw, @usdc_decimals),
+       claimable_stake_token_raw: claimable_stake_token_raw,
+       claimable_stake_token: format_units(claimable_stake_token_raw, @token_decimals)
+     }}
   end
 
   defp load_ingress_accounts(job, subject_id) do

@@ -2,6 +2,7 @@ defmodule AutolaunchWeb.Api.PrelaunchController do
   use AutolaunchWeb, :controller
 
   alias Autolaunch.Prelaunch
+  alias AutolaunchWeb.ClientIp
   alias AutolaunchWeb.ApiError
 
   def index(conn, _params) do
@@ -47,7 +48,7 @@ defmodule AutolaunchWeb.Api.PrelaunchController do
         plan_id,
         params,
         conn.assigns[:current_human],
-        client_ip(conn)
+        ClientIp.from_conn(conn)
       ),
       nil
     )
@@ -127,12 +128,5 @@ defmodule AutolaunchWeb.Api.PrelaunchController do
   defp context_module do
     Application.get_env(:autolaunch, :prelaunch_api, [])
     |> Keyword.get(:context_module, Prelaunch)
-  end
-
-  defp client_ip(conn) do
-    case get_req_header(conn, "x-forwarded-for") do
-      [value | _] -> value |> String.split(",", parts: 2) |> hd() |> String.trim()
-      _ -> conn.remote_ip |> :inet.ntoa() |> to_string()
-    end
   end
 end

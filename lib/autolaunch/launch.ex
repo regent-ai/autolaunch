@@ -14,7 +14,7 @@ defmodule Autolaunch.Launch do
   defdelegate preview_launch(attrs, human), to: Preview
   defdelegate create_launch_job(attrs, human, request_ip), to: Preview
 
-  defdelegate get_job_response(job_id, owner_address \\ nil), to: Jobs
+  defdelegate get_job_response(job_id), to: Jobs
   defdelegate queue_processing(job_id), to: Jobs
   defdelegate terminal_status?(status), to: Jobs
   defdelegate process_job(job_id), to: Jobs

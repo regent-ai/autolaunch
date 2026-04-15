@@ -57,10 +57,7 @@ defmodule Autolaunch.ReleaseDoctorTest do
     Application.put_env(:autolaunch, :launch, launch)
     Application.put_env(:autolaunch, :privy, app_id: "test-app", verification_key: "test-key")
 
-    Application.put_env(:autolaunch, :siwa,
-      internal_url: "http://siwa.test",
-      shared_secret: "secret"
-    )
+    Application.put_env(:autolaunch, :siwa, internal_url: "http://siwa.test")
 
     Application.put_env(:agent_world, :networks, %{
       "world" => %{
@@ -94,6 +91,21 @@ defmodule Autolaunch.ReleaseDoctorTest do
 
     assert %{ok: false, checks: checks} = ReleaseDoctor.run()
     assert Enum.any?(checks, &(&1.key == "deploy_script_target" and not &1.ok))
+  end
+
+  test "doctor fails when a path deploy binary exists but is not executable", %{tempdir: tempdir} do
+    binary_path = Path.join(tempdir, "not-executable.sh")
+    File.write!(binary_path, "#!/bin/sh\nexit 0\n")
+    File.chmod!(binary_path, 0o644)
+
+    launch =
+      Application.get_env(:autolaunch, :launch, [])
+      |> Keyword.put(:deploy_binary, binary_path)
+
+    Application.put_env(:autolaunch, :launch, launch)
+
+    assert %{ok: false, checks: checks} = ReleaseDoctor.run()
+    assert Enum.any?(checks, &(&1.key == "deploy_binary" and not &1.ok))
   end
 
   test "trust warnings do not fail the overall doctor status" do

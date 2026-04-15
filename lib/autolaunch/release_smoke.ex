@@ -26,7 +26,7 @@ defmodule Autolaunch.ReleaseSmoke do
       {:ok, job} = insert_job(human)
       Process.put(:release_smoke_cleanup_job_id, job.job_id)
       :ok = Launch.process_job(job.job_id)
-      job_payload = Launch.get_job_response(job.job_id, human.wallet_address)
+      {:ok, job_payload} = Launch.get_job_response(job.job_id)
       set_smoke_state(job_payload)
       Application.put_env(:autolaunch, :cca_rpc_adapter, __MODULE__.SmokeRpc)
 

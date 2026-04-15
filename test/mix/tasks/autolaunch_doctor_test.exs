@@ -37,10 +37,7 @@ defmodule Mix.Tasks.Autolaunch.DoctorTest do
 
     Application.put_env(:autolaunch, :privy, app_id: "test-app", verification_key: "test-key")
 
-    Application.put_env(:autolaunch, :siwa,
-      internal_url: "http://siwa.test",
-      shared_secret: "secret"
-    )
+    Application.put_env(:autolaunch, :siwa, internal_url: "http://siwa.test")
 
     Application.put_env(:autolaunch, :cca_rpc_adapter, Mix.Tasks.Autolaunch.DoctorTest.DoctorRpc)
 

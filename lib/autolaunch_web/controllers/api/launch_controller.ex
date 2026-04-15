@@ -2,6 +2,8 @@ defmodule AutolaunchWeb.Api.LaunchController do
   use AutolaunchWeb, :controller
 
   alias Autolaunch.Launch
+  alias AutolaunchWeb.ClientIp
+  alias AutolaunchWeb.ApiError
   alias AutolaunchWeb.ApiErrorTranslator
 
   def preview(conn, params) do
@@ -16,7 +18,7 @@ defmodule AutolaunchWeb.Api.LaunchController do
 
   def create_job(conn, params) do
     current_human = conn.assigns[:current_human]
-    request_ip = client_ip(conn)
+    request_ip = ClientIp.from_conn(conn)
 
     case launch_module().create_launch_job(params, current_human, request_ip) do
       {:ok, job} ->
@@ -27,25 +29,17 @@ defmodule AutolaunchWeb.Api.LaunchController do
     end
   end
 
-  def show_job(conn, %{"id" => job_id} = params) do
-    owner_address = Map.get(params, "address")
+  def show_job(conn, %{"id" => job_id}) do
+    with {:ok, owner_addresses} <- session_owner_addresses(conn.assigns[:current_human]),
+         {:ok, response} <- launch_module().get_job_response(job_id),
+         :ok <- authorize_job_owner(response, owner_addresses) do
+      json(conn, Map.put(response, :ok, true))
+    else
+      {:error, :unauthorized} ->
+        ApiError.render(conn, :unauthorized, "auth_required", "Privy session required")
 
-    case launch_module().get_job_response(job_id, owner_address) do
-      nil ->
-        ApiErrorTranslator.render(conn, :launch_show_job, :job_not_found)
-
-      {:error, :forbidden} ->
-        ApiErrorTranslator.render(conn, :launch_show_job, :forbidden)
-
-      response ->
-        json(conn, Map.put(response, :ok, true))
-    end
-  end
-
-  defp client_ip(conn) do
-    case get_req_header(conn, "x-forwarded-for") do
-      [value | _] -> value |> String.split(",", parts: 2) |> hd() |> String.trim()
-      _ -> conn.remote_ip |> :inet.ntoa() |> to_string()
+      {:error, reason} ->
+        ApiErrorTranslator.render(conn, :launch_show_job, reason)
     end
   end
 
@@ -54,4 +48,35 @@ defmodule AutolaunchWeb.Api.LaunchController do
     |> Application.get_env(:launch_controller, [])
     |> Keyword.get(:launch_module, Launch)
   end
+
+  defp session_owner_addresses(nil), do: {:error, :unauthorized}
+
+  defp session_owner_addresses(current_human) do
+    addresses =
+      [
+        Map.get(current_human, :wallet_address)
+        | List.wrap(Map.get(current_human, :wallet_addresses))
+      ]
+      |> Enum.map(&normalize_address/1)
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq()
+
+    if addresses == [], do: {:error, :unauthorized}, else: {:ok, addresses}
+  end
+
+  defp authorize_job_owner(%{job: %{owner_address: owner_address}}, owner_addresses) do
+    if normalize_address(owner_address) in owner_addresses, do: :ok, else: {:error, :forbidden}
+  end
+
+  defp normalize_address(value) when is_binary(value) do
+    value
+    |> String.trim()
+    |> String.downcase()
+    |> case do
+      "" -> nil
+      normalized -> normalized
+    end
+  end
+
+  defp normalize_address(_value), do: nil
 end

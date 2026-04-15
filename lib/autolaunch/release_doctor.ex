@@ -1,5 +1,6 @@
 defmodule Autolaunch.ReleaseDoctor do
   @moduledoc false
+  import Bitwise
 
   alias Autolaunch.CCA.Rpc
   alias Autolaunch.Repo
@@ -63,10 +64,10 @@ defmodule Autolaunch.ReleaseDoctor do
   defp siwa_config_check do
     siwa = Application.get_env(:autolaunch, :siwa, [])
 
-    if present?(Keyword.get(siwa, :internal_url)) and present?(Keyword.get(siwa, :shared_secret)) do
-      ok_check("siwa_config", :error, "SIWA internal url and shared secret are configured.")
+    if present?(Keyword.get(siwa, :internal_url)) do
+      ok_check("siwa_config", :error, "SIWA broker url is configured.")
     else
-      fail_check("siwa_config", :error, "SIWA internal url or shared secret is missing.")
+      fail_check("siwa_config", :error, "SIWA broker url is missing.")
     end
   end
 
@@ -205,10 +206,17 @@ defmodule Autolaunch.ReleaseDoctor do
         false
 
       Path.type(binary) == :absolute or String.contains?(binary, "/") ->
-        File.exists?(binary)
+        path_executable?(binary)
 
       true ->
         not is_nil(System.find_executable(binary))
+    end
+  end
+
+  defp path_executable?(path) do
+    case File.stat(path) do
+      {:ok, %File.Stat{type: :regular, mode: mode}} -> (mode &&& 0o111) != 0
+      _ -> false
     end
   end
 

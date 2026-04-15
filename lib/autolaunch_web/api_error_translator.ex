@@ -77,8 +77,14 @@ defmodule AutolaunchWeb.ApiErrorTranslator do
   defp translate(:launch_show_job, :job_not_found),
     do: {:not_found, "job_not_found", "Launch job not found"}
 
+  defp translate(:launch_show_job, :not_found),
+    do: {:not_found, "job_not_found", "Launch job not found"}
+
   defp translate(:launch_show_job, :forbidden),
     do: {:forbidden, "job_forbidden", "Launch job does not belong to this owner"}
+
+  defp translate(:launch_show_job, :job_lookup_failed),
+    do: {:internal_server_error, "job_lookup_failed", "Launch job could not be loaded"}
 
   defp translate(:auction_show, :auction_not_found),
     do: {:not_found, "auction_not_found", "Auction not found"}

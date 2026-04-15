@@ -193,6 +193,27 @@ defmodule AutolaunchWeb.Api.PrelaunchControllerTest do
            } = json_response(launch_conn, 200)
   end
 
+  test "launch ignores spoofed forwarded headers when recording the request ip", %{conn: conn} do
+    conn =
+      conn
+      |> Map.put(:remote_ip, {203, 0, 113, 11})
+      |> put_req_header("x-forwarded-for", "198.51.100.88")
+
+    launch_conn =
+      post(conn, "/api/prelaunch/plans/plan_alpha/launch", %{
+        "wallet_address" => "0x00000000000000000000000000000000000000aa",
+        "nonce" => "nonce_123",
+        "message" => "sign me",
+        "signature" => "0xsig",
+        "issued_at" => "2026-03-27T00:00:00Z"
+      })
+
+    assert %{
+             "ok" => true,
+             "launch" => %{"request_ip" => "203.0.113.11"}
+           } = json_response(launch_conn, 200)
+  end
+
   test "uploads assets and updates metadata preview", %{conn: conn} do
     upload_conn =
       post(conn, "/api/prelaunch/assets", %{

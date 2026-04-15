@@ -15,6 +15,12 @@ defmodule AutolaunchWeb.Api.ContractsError do
   def translate(:forbidden),
     do: {:forbidden, "contract_scope_forbidden", "Contract action is not allowed"}
 
+  def translate(:unauthorized),
+    do: {:unauthorized, "auth_required", "Privy session required"}
+
+  def translate(:job_lookup_failed),
+    do: {:internal_server_error, "job_lookup_failed", "Contract scope could not be loaded"}
+
   def translate(:subject_lookup_failed),
     do: {:internal_server_error, "subject_lookup_failed", "Subject state could not be loaded"}
 

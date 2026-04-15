@@ -153,6 +153,7 @@ defmodule Autolaunch.Launch.Internal do
          {:ok, chain} <- normalize_launch_chain() do
       total_supply = normalize_total_supply(Map.get(attrs, :total_supply))
       launch_notes = normalize_optional_text(Map.get(attrs, :launch_notes), 1_000)
+      trust = trust_summary(agent.agent_id, agent, %{ens_name: agent.ens})
 
       preview = %{
         agent: agent,
@@ -185,24 +186,16 @@ defmodule Autolaunch.Launch.Internal do
         ],
         launch_notes: launch_notes,
         completion_plan:
-          completion_plan(%{
+          completion_plan(trust, %{
             agent_id: agent.agent_id,
-            ens_name: agent.ens,
-            world_registered: false,
-            world_human_id: nil,
             token_address: nil,
-            launch_job_id: nil,
-            world_launch_count: 0
+            launch_job_id: nil
           }),
         reputation_prompt:
-          reputation_prompt(%{
+          reputation_prompt(trust, %{
             agent_id: agent.agent_id,
-            ens_name: agent.ens,
-            world_registered: false,
-            world_human_id: nil,
             token_address: nil,
-            launch_job_id: nil,
-            world_launch_count: 0
+            launch_job_id: nil
           })
       }
 
@@ -287,23 +280,14 @@ defmodule Autolaunch.Launch.Internal do
 
   def create_launch_job(_attrs, _human, _request_ip), do: {:error, :unauthorized}
 
-  def get_job_response(job_id, owner_address \\ nil) do
+  def get_job_response(job_id) do
     case Repo.get(Job, job_id) do
-      nil ->
-        nil
-
-      %Job{} = job ->
-        normalized_owner_address = normalize_address(owner_address)
-
-        if normalized_owner_address && normalized_owner_address != job.owner_address do
-          {:error, :forbidden}
-        else
-          %{job: serialize_job(job), auction: maybe_load_job_auction(job)}
-        end
+      nil -> {:error, :not_found}
+      %Job{} = job -> {:ok, %{job: serialize_job(job), auction: maybe_load_job_auction(job)}}
     end
   rescue
-    DBConnection.ConnectionError -> nil
-    Postgrex.Error -> nil
+    DBConnection.ConnectionError -> {:error, :job_lookup_failed}
+    Postgrex.Error -> {:error, :job_lookup_failed}
   end
 
   def list_auctions(filters \\ %{}, current_human \\ nil) do
@@ -1090,15 +1074,13 @@ defmodule Autolaunch.Launch.Internal do
     world_registered =
       truthy?(auction.world_registered) and is_binary(world_human_id) and world_human_id != ""
 
-    world_launch_count = Map.get(human_launch_counts, world_human_id, 0)
-
     trust =
-      Trust.compose_summary(auction.agent_id, identity, %{
+      trust_summary(auction.agent_id, identity, %{
         ens_name: ens_name,
         world_connected: world_registered,
         world_human_id: world_human_id,
         world_network: auction.world_network || "world",
-        world_launch_count: world_launch_count,
+        world_launch_count: Map.get(human_launch_counts, world_human_id, 0),
         x_account: Map.get(x_accounts, auction.agent_id)
       })
 
@@ -1247,26 +1229,16 @@ defmodule Autolaunch.Launch.Internal do
       subject_url: subject_url,
       trust: trust,
       completion_plan:
-        completion_plan(%{
+        completion_plan(trust, %{
           agent_id: auction.agent_id,
-          ens_name: ens_name,
-          world_registered: world_registered,
-          world_human_id: world_human_id,
-          world_network: auction.world_network || "world",
           token_address: auction.token_address,
-          launch_job_id: source_job_to_job_id(auction.source_job_id),
-          world_launch_count: world_launch_count
+          launch_job_id: source_job_to_job_id(auction.source_job_id)
         }),
       reputation_prompt:
-        reputation_prompt(%{
+        reputation_prompt(trust, %{
           agent_id: auction.agent_id,
-          ens_name: ens_name,
-          world_registered: world_registered,
-          world_human_id: world_human_id,
-          world_network: auction.world_network || "world",
           token_address: auction.token_address,
-          launch_job_id: source_job_to_job_id(auction.source_job_id),
-          world_launch_count: world_launch_count
+          launch_job_id: source_job_to_job_id(auction.source_job_id)
         }),
       your_bid_status: your_bid_status
     }
@@ -1638,14 +1610,14 @@ defmodule Autolaunch.Launch.Internal do
 
         task =
           Task.async(fn ->
-            System.cmd(binary, args,
+            command_runner().cmd(binary, args,
               cd: workdir,
               env: command_env(job),
               stderr_to_stdout: true
             )
           end)
 
-        case Task.yield(task, 180_000) || Task.shutdown(task, :brutal_kill) do
+        case Task.yield(task, deploy_timeout_ms()) do
           {:ok, {output, 0}} ->
             parse_launch_output(job, output)
 
@@ -1654,6 +1626,8 @@ defmodule Autolaunch.Launch.Internal do
              %{stdout_tail: trim_tail(output), stderr_tail: ""}}
 
           nil ->
+            Task.shutdown(task, :brutal_kill)
+
             {:error, "Forge timed out while waiting for deployment.",
              %{stdout_tail: "", stderr_tail: ""}}
         end
@@ -1666,10 +1640,7 @@ defmodule Autolaunch.Launch.Internal do
   defp parse_launch_output(job, output) do
     marker = deploy_output_marker()
 
-    with true <- String.contains?(output, marker),
-         [_prefix, json_line | _] <- String.split(output, marker, parts: 2),
-         [line | _] <- String.split(json_line, ~r/\r?\n/, trim: true),
-         {:ok, parsed} <- Jason.decode(String.trim(line)),
+    with {:ok, parsed} <- parse_launch_output_payload(output, marker),
          {:ok, auction_address} <- required_launch_output_address(parsed, "auctionAddress"),
          {:ok, token_address} <- required_launch_output_address(parsed, "tokenAddress"),
          {:ok, strategy_address} <- required_launch_output_address(parsed, "strategyAddress"),
@@ -1710,11 +1681,31 @@ defmodule Autolaunch.Launch.Internal do
     else
       {:error, message} ->
         {:error, message, %{stdout_tail: trim_tail(output), stderr_tail: ""}}
-
-      _ ->
-        {:error, "Deployment output missing deterministic marker #{marker}.",
-         %{stdout_tail: trim_tail(output), stderr_tail: ""}}
     end
+  end
+
+  defp parse_launch_output_payload(output, marker) do
+    case latest_marked_json(output, marker) do
+      nil -> {:error, "Deployment output missing deterministic marker #{marker}."}
+      parsed -> {:ok, parsed}
+    end
+  end
+
+  defp latest_marked_json(output, marker) do
+    output
+    |> String.split(~r/\r?\n/)
+    |> Enum.reduce(nil, fn line, latest ->
+      case String.split(line, marker, parts: 2) do
+        [_prefix, suffix] ->
+          case Jason.decode(String.trim(suffix)) do
+            {:ok, parsed} -> parsed
+            _ -> latest
+          end
+
+        _ ->
+          latest
+      end
+    end)
   end
 
   defp time_remaining_seconds(nil), do: 0
@@ -1823,15 +1814,21 @@ defmodule Autolaunch.Launch.Internal do
 
   defp serialize_job(job) do
     chain = chain_config(job.chain_id)
-    world_launch_count = world_launch_count(job.world_human_id)
+
+    trust =
+      trust_summary(job.agent_id, nil, %{
+        ens_name: job.ens_name,
+        world_connected: truthy?(job.world_registered),
+        world_human_id: job.world_human_id,
+        world_network: job.world_network || "world",
+        world_launch_count: world_launch_count(job.world_human_id)
+      })
 
     %{
       job_id: job.job_id,
       owner_address: job.owner_address,
       agent_id: job.agent_id,
       agent_name: job.agent_name,
-      ens_name: job.ens_name,
-      ens_attached: is_binary(job.ens_name) and job.ens_name != "",
       token_name: job.token_name,
       token_symbol: job.token_symbol,
       minimum_raise_usdc: job.minimum_raise_usdc,
@@ -1864,35 +1861,22 @@ defmodule Autolaunch.Launch.Internal do
       pool_id: job.pool_id,
       tx_hash: job.tx_hash,
       uniswap_url: job.uniswap_url,
-      world_registered: job.world_registered,
-      world_human_id: job.world_human_id,
-      world_network: job.world_network || "world",
-      world_launch_count: world_launch_count,
+      trust: trust,
       started_at: iso(job.started_at),
       finished_at: iso(job.finished_at),
       created_at: iso(job.inserted_at),
       updated_at: iso(job.updated_at),
       completion_plan:
-        completion_plan(%{
+        completion_plan(trust, %{
           agent_id: job.agent_id,
-          ens_name: job.ens_name,
-          world_registered: job.world_registered,
-          world_human_id: job.world_human_id,
-          world_network: job.world_network || "world",
           token_address: job.token_address,
-          launch_job_id: job.job_id,
-          world_launch_count: world_launch_count
+          launch_job_id: job.job_id
         }),
       reputation_prompt:
-        reputation_prompt(%{
+        reputation_prompt(trust, %{
           agent_id: job.agent_id,
-          ens_name: job.ens_name,
-          world_registered: job.world_registered,
-          world_human_id: job.world_human_id,
-          world_network: job.world_network || "world",
           token_address: job.token_address,
-          launch_job_id: job.job_id,
-          world_launch_count: world_launch_count
+          launch_job_id: job.job_id
         }),
       command_summary: %{
         binary: job.deploy_binary,
@@ -1921,6 +1905,24 @@ defmodule Autolaunch.Launch.Internal do
     |> Trust.x_accounts_by_agent_ids()
   end
 
+  defp trust_summary(agent_id, identity, attrs) do
+    world_human_id = Map.get(attrs, :world_human_id)
+
+    world_connected =
+      truthy?(Map.get(attrs, :world_connected)) and is_binary(world_human_id) and
+        world_human_id != ""
+
+    Trust.compose_summary(agent_id, identity, %{
+      ens_name: Map.get(attrs, :ens_name),
+      world_connected: world_connected,
+      world_human_id: world_human_id,
+      world_network: Map.get(attrs, :world_network) || "world",
+      world_launch_count:
+        if(world_connected, do: Map.get(attrs, :world_launch_count, 0), else: 0),
+      x_account: Map.get(attrs, :x_account)
+    })
+  end
+
   defp live_ens_name(%{ens: ens_name}, _auction) when is_binary(ens_name) and ens_name != "",
     do: ens_name
 
@@ -1929,35 +1931,36 @@ defmodule Autolaunch.Launch.Internal do
 
   defp live_ens_name(_identity, _auction), do: nil
 
-  defp completion_plan(attrs) do
-    ens_name = Map.get(attrs, :ens_name)
-    world_registered = truthy?(Map.get(attrs, :world_registered))
-    world_human_id = Map.get(attrs, :world_human_id)
+  defp completion_plan(trust, attrs) do
+    ens_connected = get_in(trust, [:ens, :connected])
+    ens_name = get_in(trust, [:ens, :name])
+    world_connected = get_in(trust, [:world, :connected])
+    world_human_id = get_in(trust, [:world, :human_id])
+    world_network = get_in(trust, [:world, :network]) || "world"
+    world_launch_count = get_in(trust, [:world, :launch_count]) || 0
     token_address = Map.get(attrs, :token_address)
     launch_job_id = Map.get(attrs, :launch_job_id)
-    world_launch_count = Map.get(attrs, :world_launch_count, 0)
-    world_network = Map.get(attrs, :world_network, "world")
 
     %{
       ens: %{
-        attached: is_binary(ens_name) and ens_name != "",
+        attached: ens_connected,
         ens_name: ens_name,
         action_url: ens_link_path(Map.get(attrs, :agent_id), ens_name),
         note:
-          if(is_binary(ens_name) and ens_name != "",
+          if(ens_connected,
             do: "ENS link already present on the creator identity.",
             else: "Finish the ENS link so the creator identity advertises a public name."
           )
       },
       agentbook: %{
-        attached: world_registered and is_binary(world_human_id) and world_human_id != "",
+        attached: world_connected,
         human_id: world_human_id,
         network: world_network,
         launch_count: world_launch_count,
         action_url: agentbook_path(launch_job_id, token_address),
         note:
           cond do
-            world_registered and is_binary(world_human_id) and world_human_id != "" ->
+            world_connected ->
               "World AgentBook proof is attached."
 
             is_binary(token_address) and token_address != "" ->
@@ -1970,12 +1973,11 @@ defmodule Autolaunch.Launch.Internal do
     }
   end
 
-  defp reputation_prompt(attrs) do
-    plan = completion_plan(attrs)
-    ens_attached = get_in(plan, [:ens, :attached])
-    world_attached = get_in(plan, [:agentbook, :attached])
-    world_human_id = get_in(plan, [:agentbook, :human_id])
-    world_launch_count = get_in(plan, [:agentbook, :launch_count]) || 0
+  defp reputation_prompt(trust, attrs) do
+    plan = completion_plan(trust, attrs)
+    ens_attached = get_in(trust, [:ens, :connected])
+    world_attached = get_in(trust, [:world, :connected])
+    world = get_in(trust, [:world]) || %{}
     world_action_url = get_in(plan, [:agentbook, :action_url])
     world_ready = is_binary(world_action_url) and world_action_url != ""
 
@@ -2023,12 +2025,7 @@ defmodule Autolaunch.Launch.Internal do
             end,
           completed: world_attached,
           action_url: world_action_url,
-          note:
-            world_note(
-              get_in(plan, [:agentbook, :note]),
-              world_human_id,
-              world_launch_count
-            )
+          note: world_note(get_in(plan, [:agentbook, :note]), world)
         }
       ]
     }
@@ -2058,7 +2055,7 @@ defmodule Autolaunch.Launch.Internal do
   defp maybe_put_query(query, _key, ""), do: query
   defp maybe_put_query(query, key, value), do: Map.put(query, key, value)
 
-  defp world_note(base_note, human_id, launch_count) do
+  defp world_note(base_note, %{human_id: human_id, launch_count: launch_count}) do
     cond do
       is_binary(human_id) and human_id != "" and launch_count > 0 ->
         "#{base_note} This human ID has launched #{launch_count} token#{if(launch_count == 1, do: "", else: "s")} through autolaunch."
@@ -2070,6 +2067,8 @@ defmodule Autolaunch.Launch.Internal do
         base_note
     end
   end
+
+  defp world_note(base_note, _world), do: base_note
 
   defp world_launch_counts do
     Repo.all(
@@ -2146,6 +2145,17 @@ defmodule Autolaunch.Launch.Internal do
   defp deploy_output_marker do
     Application.get_env(:autolaunch, :launch, [])
     |> Keyword.get(:deploy_output_marker, "CCA_RESULT_JSON:")
+  end
+
+  defp deploy_timeout_ms do
+    launch_config()
+    |> Keyword.get(:deploy_timeout_ms, 180_000)
+    |> normalize_timeout_ms()
+  end
+
+  defp command_runner do
+    launch_config()
+    |> Keyword.get(:command_runner_module, System)
   end
 
   defp deploy_rpc_url(chain_id) do
@@ -2367,6 +2377,9 @@ defmodule Autolaunch.Launch.Internal do
   defp maybe_load_job_auction(_job), do: nil
 
   defp blank?(value), do: value in [nil, ""]
+
+  defp normalize_timeout_ms(value) when is_integer(value) and value > 0, do: value
+  defp normalize_timeout_ms(_value), do: 180_000
 
   defp launch_config do
     Application.get_env(:autolaunch, :launch, [])

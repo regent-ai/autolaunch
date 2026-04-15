@@ -6,8 +6,9 @@ defmodule Autolaunch.Lifecycle do
   alias Autolaunch.Launch
 
   def job_summary(job_id, current_human \\ nil) do
-    with %{job: job} = response <- Launch.get_job_response(job_id),
-         {:ok, contract_scope} <- Contracts.job_state(job_id, current_human) do
+    with {:ok, response} <- Launch.get_job_response(job_id),
+         {:ok, contract_scope} <- Contracts.job_state_from_response(response, current_human) do
+      job = response.job
       current_block = current_block(job.chain_id)
       strategy = contract_scope.strategy || %{}
       vesting = contract_scope.vesting || %{}
@@ -23,15 +24,12 @@ defmodule Autolaunch.Lifecycle do
          recommended_action: recommended_action(flags)
        }}
       |> then(&Map.merge(&1, flags))
-    else
-      nil -> {:error, :not_found}
-      {:error, _} = error -> error
     end
   end
 
   def prepare_finalize(job_id, current_human \\ nil) do
     with {:ok, summary} <- job_summary(job_id, current_human) do
-      prepared = prepare_action(job_id, summary.recommended_action, current_human)
+      prepared = prepare_action(summary.job, summary.recommended_action)
 
       case prepared do
         {:ok, payload} -> {:ok, Map.put(summary, :prepared, Map.get(payload, :prepared))}
@@ -104,13 +102,13 @@ defmodule Autolaunch.Lifecycle do
   def prepare_scope_action("release_vesting"), do: {:ok, {"vesting", "release"}}
   def prepare_scope_action(_action), do: :noop
 
-  defp prepare_action(job_id, action, current_human) do
+  defp prepare_action(job, action) do
     case prepare_scope_action(action) do
       {:ok, {scope, action_name}} ->
-        Contracts.prepare_job_action(job_id, scope, action_name, %{}, current_human)
+        Contracts.prepare_job_action_for_job(job, scope, action_name, %{})
 
       :noop ->
-        {:ok, %{job_id: job_id, prepared: nil}}
+        {:ok, %{job_id: job.job_id, prepared: nil}}
     end
   end
 

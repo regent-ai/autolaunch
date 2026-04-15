@@ -103,6 +103,35 @@ defmodule Autolaunch.RevenueTest do
     assert Enum.any?(subject.ingress_accounts, &(&1.address == @ingress and &1.is_default))
   end
 
+  test "subject_scope returns both the subject and the backing job", %{human: human} do
+    assert {:ok, %{subject: subject, job: job}} = Revenue.subject_scope(@subject_id, human)
+
+    assert subject.subject_id == @subject_id
+    assert job.job_id == "job_subject"
+  end
+
+  test "subject_scope returns not found when the subject has no ready job", %{human: human} do
+    missing_subject_id = "0x" <> String.duplicate("2b", 32)
+
+    assert {:error, :not_found} = Revenue.subject_scope(missing_subject_id, human)
+  end
+
+  test "subject_portfolio_state returns subject and aggregated wallet position", %{human: human} do
+    assert {:ok, %{subject: subject, position: position}} =
+             Revenue.subject_portfolio_state(@subject_id, [@wallet], human)
+
+    assert subject.subject_id == @subject_id
+    assert position.wallet_addresses == [@wallet]
+    assert position.wallet_stake_balance == "12"
+    assert position.claimable_usdc == "5"
+    assert position.claimable_stake_token == "4"
+  end
+
+  test "subject_wallet_positions fails closed on malformed wallet input" do
+    assert {:error, :invalid_address} =
+             Revenue.subject_wallet_positions(@subject_id, ["not-an-address"])
+  end
+
   test "subject_obligation_metrics computes exact accrued totals from a provided staker list" do
     assert {:ok, metrics} =
              Revenue.subject_obligation_metrics(@subject_id, [

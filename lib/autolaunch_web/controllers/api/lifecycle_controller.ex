@@ -33,6 +33,19 @@ defmodule AutolaunchWeb.Api.LifecycleController do
     ApiError.render(conn, :forbidden, "lifecycle_forbidden", "Lifecycle action is not allowed")
   end
 
+  defp render_result(conn, {:error, :unauthorized}) do
+    ApiError.render(conn, :unauthorized, "auth_required", "Privy session required")
+  end
+
+  defp render_result(conn, {:error, :job_lookup_failed}) do
+    ApiError.render(
+      conn,
+      :internal_server_error,
+      "job_lookup_failed",
+      "Lifecycle job could not be loaded"
+    )
+  end
+
   defp render_result(conn, {:error, :invalid_transaction_hash}) do
     ApiError.render(
       conn,

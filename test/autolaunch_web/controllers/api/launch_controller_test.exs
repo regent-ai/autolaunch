@@ -39,18 +39,39 @@ defmodule AutolaunchWeb.Api.LaunchControllerTest do
       {:error, {:sidecar_error, 503, %{"ok" => false, "error" => "siwa_down"}}}
     end
 
-    def create_launch_job(_params, _human, _request_ip) do
-      {:ok, %{job_id: "job_123", status: "queued"}}
+    def create_launch_job(_params, _human, request_ip) do
+      {:ok, %{job_id: "job_123", status: "queued", request_ip: request_ip}}
     end
 
-    def get_job_response("job_123", _owner_address) do
-      %{job: %{job_id: "job_123", status: "queued", step: "queued"}, auction: nil}
+    def get_job_response("job_123") do
+      {:ok,
+       %{
+         job: %{
+           job_id: "job_123",
+           status: "queued",
+           step: "queued",
+           owner_address: "0x1111111111111111111111111111111111111111"
+         },
+         auction: nil
+       }}
     end
 
-    def get_job_response("job_forbidden", "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"),
-      do: {:error, :forbidden}
+    def get_job_response("job_forbidden") do
+      {:ok,
+       %{
+         job: %{
+           job_id: "job_forbidden",
+           status: "queued",
+           step: "queued",
+           owner_address: "0x9999999999999999999999999999999999999999"
+         },
+         auction: nil
+       }}
+    end
 
-    def get_job_response(_job_id, _owner_address), do: nil
+    def get_job_response("job_missing"), do: {:error, :not_found}
+
+    def get_job_response(_job_id), do: {:error, :not_found}
   end
 
   setup %{conn: conn} do
@@ -71,15 +92,37 @@ defmodule AutolaunchWeb.Api.LaunchControllerTest do
     %{conn: conn, human: human}
   end
 
-  test "preview returns the normalized launch review", %{conn: conn, human: human} do
-    conn = init_test_session(conn, privy_user_id: human.privy_user_id)
+  defp signed_in_conn(conn, human) do
+    init_test_session(conn, privy_user_id: human.privy_user_id)
+  end
 
-    conn =
-      post(conn, "/api/launch/preview", %{
-        "agent_id" => "11155111:42",
-        "token_name" => "Atlas Coin",
-        "token_symbol" => "ATLAS"
-      })
+  defp launch_preview_payload do
+    %{
+      "agent_id" => "11155111:42",
+      "token_name" => "Atlas Coin",
+      "token_symbol" => "ATLAS"
+    }
+  end
+
+  defp launch_job_payload(signature) do
+    %{
+      "agent_id" => "11155111:42",
+      "token_name" => "Atlas Coin",
+      "token_symbol" => "ATLAS",
+      "wallet_address" => @wallet,
+      "message" => "signed message",
+      "signature" => signature,
+      "nonce" => "nonce-1"
+    }
+  end
+
+  defp launch_job_path(job_id), do: "/api/launch/jobs/#{job_id}"
+  defp launch_preview_path, do: "/api/launch/preview"
+
+  test "preview returns the normalized launch review", %{conn: conn, human: human} do
+    conn = signed_in_conn(conn, human)
+
+    conn = post(conn, launch_preview_path(), launch_preview_payload())
 
     assert %{
              "ok" => true,
@@ -90,77 +133,94 @@ defmodule AutolaunchWeb.Api.LaunchControllerTest do
            } = json_response(conn, 200)
   end
 
-  test "preview still requires auth", %{conn: conn} do
-    conn =
-      post(conn, "/api/launch/preview", %{
-        "agent_id" => "11155111:42",
-        "token_name" => "Atlas Coin",
-        "token_symbol" => "ATLAS"
-      })
+  test "launch preview rejects unauthenticated access", %{conn: conn} do
+    conn = post(conn, launch_preview_path(), launch_preview_payload())
 
     assert %{"ok" => false, "error" => %{"code" => "auth_required"}} = json_response(conn, 401)
   end
 
-  test "create_job returns queued launch data", %{conn: conn, human: human} do
-    conn = init_test_session(conn, privy_user_id: human.privy_user_id)
+  test "launch job creation returns queued data for the signed-in owner", %{
+    conn: conn,
+    human: human
+  } do
+    conn = signed_in_conn(conn, human)
 
-    conn =
-      post(conn, "/api/launch/jobs", %{
-        "agent_id" => "11155111:42",
-        "token_name" => "Atlas Coin",
-        "token_symbol" => "ATLAS",
-        "wallet_address" => @wallet,
-        "message" => "signed message",
-        "signature" => "good",
-        "nonce" => "nonce-1"
-      })
+    conn = post(conn, "/api/launch/jobs", launch_job_payload("good"))
 
     assert %{"ok" => true, "job_id" => "job_123", "status" => "queued"} = json_response(conn, 200)
   end
 
-  test "create_job passes through signature verification failures", %{conn: conn, human: human} do
-    conn = init_test_session(conn, privy_user_id: human.privy_user_id)
-
+  test "create_job ignores spoofed forwarded headers when recording the request ip", %{
+    conn: conn,
+    human: human
+  } do
     conn =
-      post(conn, "/api/launch/jobs", %{
-        "agent_id" => "11155111:42",
-        "token_name" => "Atlas Coin",
-        "token_symbol" => "ATLAS",
-        "wallet_address" => @wallet,
-        "message" => "signed message",
-        "signature" => "bad",
-        "nonce" => "nonce-1"
-      })
+      conn
+      |> Map.put(:remote_ip, {203, 0, 113, 10})
+      |> signed_in_conn(human)
+      |> put_req_header("x-forwarded-for", "198.51.100.77")
+
+    conn = post(conn, "/api/launch/jobs", launch_job_payload("good"))
+
+    assert %{
+             "ok" => true,
+             "job" => %{"request_ip" => "203.0.113.10"}
+           } = json_response(conn, 200)
+  end
+
+  test "launch job creation returns signature verification failures", %{
+    conn: conn,
+    human: human
+  } do
+    conn = signed_in_conn(conn, human)
+
+    conn = post(conn, "/api/launch/jobs", launch_job_payload("bad"))
 
     assert %{"ok" => false, "reason" => "bad signature"} = json_response(conn, 401)
   end
 
-  test "create_job passes through sidecar failures", %{conn: conn, human: human} do
-    conn = init_test_session(conn, privy_user_id: human.privy_user_id)
+  test "launch job creation returns sidecar failures", %{conn: conn, human: human} do
+    conn = signed_in_conn(conn, human)
 
-    conn =
-      post(conn, "/api/launch/jobs", %{
-        "agent_id" => "11155111:42",
-        "token_name" => "Atlas Coin",
-        "token_symbol" => "ATLAS",
-        "wallet_address" => @wallet,
-        "message" => "signed message",
-        "signature" => "sidecar",
-        "nonce" => "nonce-1"
-      })
+    conn = post(conn, "/api/launch/jobs", launch_job_payload("sidecar"))
 
     assert %{"ok" => false, "error" => "siwa_down"} = json_response(conn, 503)
   end
 
-  test "show_job enforces owner filtering", %{conn: conn, human: human} do
-    conn = init_test_session(conn, privy_user_id: human.privy_user_id)
+  test "launch job show rejects unauthorized access", %{conn: conn, human: human} do
+    conn = signed_in_conn(conn, human)
 
-    conn =
-      get(
-        conn,
-        "/api/launch/jobs/job_forbidden?address=0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
-      )
+    conn = get(conn, launch_job_path("job_forbidden"))
 
     assert %{"ok" => false, "error" => %{"code" => "job_forbidden"}} = json_response(conn, 403)
+  end
+
+  test "launch job show rejects unauthenticated access", %{conn: conn} do
+    conn = get(conn, launch_job_path("job_123"))
+
+    assert %{"ok" => false, "error" => %{"code" => "auth_required"}} = json_response(conn, 401)
+  end
+
+  test "launch job show returns data for the signed-in owner", %{conn: conn, human: human} do
+    conn = signed_in_conn(conn, human)
+
+    conn = get(conn, launch_job_path("job_123"))
+
+    assert %{
+             "ok" => true,
+             "job" => %{"job_id" => "job_123", "status" => "queued"}
+           } = json_response(conn, 200)
+  end
+
+  test "launch job show returns not found for the signed-in owner when the job is missing", %{
+    conn: conn,
+    human: human
+  } do
+    conn = signed_in_conn(conn, human)
+
+    conn = get(conn, launch_job_path("job_missing"))
+
+    assert %{"ok" => false, "error" => %{"code" => "job_not_found"}} =
+             json_response(conn, 404)
   end
 end

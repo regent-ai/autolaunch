@@ -1,0 +1,228 @@
+defmodule Autolaunch.ContractsTest do
+  use Autolaunch.DataCase, async: false
+
+  alias Autolaunch.Accounts
+  alias Autolaunch.Contracts
+  alias Autolaunch.Launch
+  alias Autolaunch.Launch.Job
+  alias Autolaunch.Repo
+
+  @subject_id "0x" <> String.duplicate("1a", 32)
+  @splitter "0x9999999999999999999999999999999999999999"
+  @token "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  @ingress "0x7777777777777777777777777777777777777777"
+  @registry "0x3333333333333333333333333333333333333333"
+  @wallet "0x1111111111111111111111111111111111111111"
+  @wrong_wallet "0x2222222222222222222222222222222222222222"
+
+  setup do
+    previous_adapter = Application.get_env(:autolaunch, :cca_rpc_adapter)
+
+    Application.put_env(:autolaunch, :cca_rpc_adapter, __MODULE__.FakeRpc)
+
+    on_exit(fn ->
+      if previous_adapter do
+        Application.put_env(:autolaunch, :cca_rpc_adapter, previous_adapter)
+      else
+        Application.delete_env(:autolaunch, :cca_rpc_adapter)
+      end
+    end)
+
+    {:ok, human} =
+      Accounts.upsert_human_by_privy_id("did:privy:contracts-helper", %{
+        "wallet_address" => @wallet,
+        "wallet_addresses" => [@wallet],
+        "display_name" => "Contracts Owner"
+      })
+
+    {:ok, wrong_human} =
+      Accounts.upsert_human_by_privy_id("did:privy:contracts-helper-wrong", %{
+        "wallet_address" => @wrong_wallet,
+        "wallet_addresses" => [@wrong_wallet],
+        "display_name" => "Wrong Wallet"
+      })
+
+    now = DateTime.utc_now()
+    nonce = "nonce-#{System.unique_integer([:positive])}"
+
+    {:ok, job} =
+      %Job{}
+      |> Job.create_changeset(%{
+        job_id: "job_contracts_helper",
+        owner_address: @wallet,
+        agent_id: "11155111:42",
+        token_name: "Atlas Coin",
+        token_symbol: "ATLAS",
+        agent_safe_address: @wallet,
+        network: "ethereum-sepolia",
+        chain_id: 11_155_111,
+        status: "ready",
+        step: "ready",
+        total_supply: "1000",
+        message: "signed",
+        siwa_nonce: nonce,
+        siwa_signature: "sig",
+        issued_at: now
+      })
+      |> Repo.insert()
+
+    job =
+      job
+      |> Job.update_changeset(%{
+        token_address: @token,
+        strategy_address: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        vesting_wallet_address: "0xdddddddddddddddddddddddddddddddddddddddd",
+        subject_registry_address: @registry,
+        revenue_share_splitter_address: @splitter,
+        default_ingress_address: @ingress,
+        subject_id: @subject_id
+      })
+      |> Repo.update!()
+
+    %{human: human, wrong_human: wrong_human, job: job}
+  end
+
+  test "job_state_from_response enforces owner scoping", %{human: human, wrong_human: wrong_human} do
+    assert {:ok, response} = Launch.get_job_response("job_contracts_helper")
+
+    assert {:ok, %{job: %{job_id: "job_contracts_helper"}}} =
+             Contracts.job_state_from_response(response, human)
+
+    assert {:error, :forbidden} = Contracts.job_state_from_response(response, wrong_human)
+    assert {:error, :unauthorized} = Contracts.job_state_from_response(response, nil)
+  end
+
+  test "subject_state loads the shared subject view and enforces owner scoping", %{
+    human: human,
+    wrong_human: wrong_human
+  } do
+    assert {:ok, %{subject: subject, registry: registry}} =
+             Contracts.subject_state(@subject_id, human)
+
+    assert subject.subject_id == @subject_id
+    assert subject.splitter_address == @splitter
+    assert registry.address == @registry
+
+    assert {:error, :forbidden} = Contracts.subject_state(@subject_id, wrong_human)
+    assert {:error, :unauthorized} = Contracts.subject_state(@subject_id, nil)
+  end
+
+  test "prepare_job_action enforces owner scoping", %{human: human, wrong_human: wrong_human} do
+    assert {:ok, %{job_id: "job_contracts_helper", prepared: prepared}} =
+             Contracts.prepare_job_action(
+               "job_contracts_helper",
+               "strategy",
+               "migrate",
+               %{},
+               human
+             )
+
+    assert prepared.resource == "strategy"
+    assert prepared.action == "migrate"
+
+    assert {:error, :forbidden} =
+             Contracts.prepare_job_action(
+               "job_contracts_helper",
+               "strategy",
+               "migrate",
+               %{},
+               wrong_human
+             )
+
+    assert {:error, :unauthorized} =
+             Contracts.prepare_job_action("job_contracts_helper", "strategy", "migrate", %{}, nil)
+  end
+
+  test "prepare_subject_action enforces owner scoping", %{human: human, wrong_human: wrong_human} do
+    assert {:ok, %{subject_id: @subject_id, prepared: prepared}} =
+             Contracts.prepare_subject_action(
+               @subject_id,
+               "splitter",
+               "set_paused",
+               %{"paused" => "true"},
+               human
+             )
+
+    assert prepared.resource == "splitter"
+    assert prepared.action == "set_paused"
+
+    assert {:error, :forbidden} =
+             Contracts.prepare_subject_action(
+               @subject_id,
+               "splitter",
+               "set_paused",
+               %{"paused" => "true"},
+               wrong_human
+             )
+
+    assert {:error, :unauthorized} =
+             Contracts.prepare_subject_action(
+               @subject_id,
+               "splitter",
+               "set_paused",
+               %{"paused" => "true"},
+               nil
+             )
+  end
+
+  defmodule FakeRpc do
+    @splitter "0x9999999999999999999999999999999999999999"
+    @token "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    @subject_registry "0x3333333333333333333333333333333333333333"
+    @usdc "0x5555555555555555555555555555555555555555"
+    @wallet "0x1111111111111111111111111111111111111111"
+
+    def block_number(_chain_id), do: {:ok, 1}
+
+    def eth_call(11_155_111, @splitter, data) do
+      case String.slice(data, 0, 10) do
+        "0x817b1cd2" -> {:ok, uint(250 * Integer.pow(10, 18))}
+        "0x966ed108" -> {:ok, uint(25 * Integer.pow(10, 6))}
+        "0x76459dd5" -> {:ok, uint(10 * Integer.pow(10, 6))}
+        "0x5f78d5f4" -> {:ok, uint(1 * Integer.pow(10, 6))}
+        "0x60217267" -> {:ok, uint(12 * Integer.pow(10, 18))}
+        "0xb026ee79" -> {:ok, uint(5 * Integer.pow(10, 6))}
+        "0x05e1fd68" -> {:ok, uint(4 * Integer.pow(10, 18))}
+        "0x05f15537" -> {:ok, uint(3 * Integer.pow(10, 18))}
+        "0xcfb3d0aa" -> {:ok, uint(8 * Integer.pow(10, 18))}
+        "0x66ffb8de" -> {:ok, uint(6 * Integer.pow(10, 18))}
+        "0x3e413bee" -> {:ok, address(@usdc)}
+        "0x8da5cb5b" -> {:ok, address(@wallet)}
+        _ -> {:error, :unsupported_call}
+      end
+    end
+
+    def eth_call(11_155_111, @token, "0x70a08231" <> _rest),
+      do: {:ok, uint(90 * Integer.pow(10, 18))}
+
+    def eth_call(11_155_111, @usdc, "0x70a08231" <> _rest),
+      do: {:ok, uint(7 * Integer.pow(10, 6))}
+
+    def eth_call(11_155_111, @subject_registry, "0x41c2ab07" <> data) do
+      wallet =
+        data
+        |> String.slice(-40, 40)
+        |> then(&("0x" <> String.downcase(&1)))
+
+      {:ok, bool(wallet == @wallet)}
+    end
+
+    def eth_call(11_155_111, @subject_registry, "0x8da5cb5b"), do: {:ok, address(@wallet)}
+    def eth_call(11_155_111, @subject_registry, "0x0f3f0a8f" <> _rest), do: {:ok, uint(0)}
+
+    def eth_call(_chain_id, _to, _data), do: {:error, :unsupported_call}
+
+    def tx_receipt(_chain_id, _tx_hash), do: {:ok, nil}
+    def tx_by_hash(_chain_id, _tx_hash), do: {:ok, nil}
+    def get_logs(_chain_id, _filter), do: {:ok, []}
+
+    defp uint(value), do: "0x" <> (value |> Integer.to_string(16) |> String.pad_leading(64, "0"))
+
+    defp address(value) do
+      "0x" <> String.pad_leading(String.slice(value, 2..-1//1), 64, "0")
+    end
+
+    defp bool(true), do: "0x" <> String.pad_leading("1", 64, "0")
+    defp bool(false), do: "0x" <> String.pad_leading("0", 64, "0")
+  end
+end
