@@ -153,20 +153,21 @@ defmodule AutolaunchWeb.LaunchPagesTest do
   test "launch page renders the CLI-first review page", %{conn: conn} do
     {:ok, _view, html} = live(conn, "/launch")
 
-    assert html =~ "Start with one command. Keep the launch run tight."
+    assert html =~ "Run the launch from one main path."
     assert html =~ "regent autolaunch prelaunch wizard"
-    assert html =~ "Launch via agent"
+    assert html =~ "Operator briefs"
     assert html =~ "What you need"
     assert html =~ "What to run"
-    assert html =~ "Come back for live checks"
+    assert html =~ "Canonical operator path"
   end
 
   test "launch via agent page explains the CLI-first path", %{conn: conn} do
     {:ok, _view, html} = live(conn, "/launch-via-agent")
 
-    assert html =~ "Launch a token through your OpenClaw or Hermes Agent."
+    assert html =~ "Choose the agent handoff, then move into the main launch console."
     assert html =~ "regent autolaunch prelaunch wizard"
-    assert html =~ "Keep the launch boring in the best way."
+    assert html =~ "Pick the agent that should carry the run."
+    assert html =~ "Keep the run boring in the best way."
     assert html =~ "Run the launch and watch the sale."
   end
 
@@ -237,7 +238,7 @@ defmodule AutolaunchWeb.LaunchPagesTest do
   test "auctions page renders token directory copy", %{conn: conn} do
     {:ok, _view, html} = live(conn, "/auctions")
 
-    assert html =~ "Choose an agent, inspect the live price, then open the bid view."
+    assert html =~ "Choose a live market, then open the bid page."
     assert html =~ "Biddable 0"
     assert html =~ "No tokens match this directory view yet."
   end
@@ -248,17 +249,19 @@ defmodule AutolaunchWeb.LaunchPagesTest do
     assert html =~ "Sign in to inspect your bids."
   end
 
-  test "shell keeps four primary destinations and a secondary utility row", %{conn: conn} do
+  test "shell keeps five primary destinations and a secondary utility row", %{conn: conn} do
     {:ok, _view, html} = live(conn, "/launch")
 
     assert html =~ ~s(aria-label="Primary")
+    assert html =~ "Home"
     assert html =~ "Launch"
     assert html =~ "Auctions"
     assert html =~ "Positions"
     assert html =~ "Profile"
-    assert html =~ "Home"
+    assert html =~ "More"
     assert html =~ "Guide"
     assert html =~ "Trust Check"
+    assert html =~ "X Link"
     assert html =~ "Contracts"
   end
 end

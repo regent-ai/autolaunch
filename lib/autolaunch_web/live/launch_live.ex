@@ -19,24 +19,25 @@ defmodule AutolaunchWeb.LaunchLive do
     <.shell current_human={@current_human} active_view={@active_view}>
       <section id="launch-cli-hero" class="al-hero al-launch-hero al-panel" phx-hook="MissionMotion">
         <div class="al-launch-copy">
-          <p class="al-kicker">Launch</p>
-          <h2>Start with one command. Keep the launch run tight.</h2>
+          <p class="al-kicker">Launch console</p>
+          <h2>Run the launch from one main path.</h2>
           <p class="al-subcopy">
             Save the plan, validate it, publish it, run the launch, and monitor the auction. Come
-            back here when you need the live sale, token holder actions, or contract details.
+            back here when you need the exact sequence and the supporting checks in one place.
           </p>
 
           <div class="al-hero-actions">
-            <.link navigate={~p"/launch-via-agent"} class="al-cta-link al-cta-link--primary">
-              Launch via agent
-            </.link>
+            <button type="button" class="al-cta-link al-cta-link--primary" data-copy-value={@cli_command}>
+              Copy wizard command
+            </button>
+            <.link navigate={~p"/launch-via-agent"} class="al-ghost">Operator briefs</.link>
             <.link navigate={~p"/auctions"} class="al-ghost">Browse auctions</.link>
           </div>
 
           <div class="al-launch-tags" aria-label="Launch summary">
             <span class="al-launch-tag">Save one plan</span>
             <span class="al-launch-tag">Ethereum Sepolia only</span>
-            <span class="al-launch-tag">Come back for live checks</span>
+            <span class="al-launch-tag">Canonical operator path</span>
           </div>
         </div>
 

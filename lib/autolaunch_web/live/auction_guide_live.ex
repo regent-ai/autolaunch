@@ -207,7 +207,7 @@ defmodule AutolaunchWeb.AuctionGuideLive do
         <section id="auction-guide-hero" class="al-panel al-guide-hero">
           <div class="al-guide-hero-copy">
             <p class="al-kicker">Guide</p>
-            <h2>Pick the job you came here for, then go straight to it.</h2>
+            <h2>Pick the job you came here for, then leave this page quickly.</h2>
             <p class="al-subcopy">
               This page should orient you quickly. If you want to back an agent, open the active
               auctions. If you want to launch one, start in the CLI and use the site for review,
@@ -300,7 +300,7 @@ defmodule AutolaunchWeb.AuctionGuideLive do
         </section>
 
         <section class="al-guide-disclosures">
-          <details class="al-panel al-disclosure" open>
+          <details class="al-panel al-disclosure">
             <summary class="al-disclosure-summary">
               <div>
                 <p class="al-kicker">Auction walkthrough</p>

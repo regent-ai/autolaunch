@@ -97,13 +97,13 @@ defmodule AutolaunchWeb.AuctionsLiveTest do
     conn = init_test_session(conn, privy_user_id: human.privy_user_id)
     {:ok, _view, html} = live(conn, "/auctions")
 
-    assert html =~ "Choose an agent, inspect the live price, then open the bid view."
+    assert html =~ "Choose a live market, then open the bid page."
     assert html =~ "Biddable"
     assert html =~ "Atlas"
     refute html =~ "Nova"
     assert html =~ "Auction clearing"
-    assert html =~ "Budget plus max price"
-    assert html =~ "Failed launches can return USDC"
+    assert html =~ "Open the bid page when the market looks interesting."
+    assert html =~ "Open the token page for claim, stake, and revenue work."
   end
 
   test "mode toggle switches from biddable to live tokens", %{conn: conn, human: human} do

@@ -88,14 +88,13 @@ defmodule AutolaunchWeb.HomeLiveTest do
   test "home page renders the wizard-first operator layout", %{conn: conn} do
     {:ok, _view, html} = live(conn, "/")
 
-    assert html =~ "Copy the wizard command. Let your agent carry the launch."
+    assert html =~ "Copy the wizard command. Start the launch from one clear place."
     assert html =~ "Copy wizard command"
-    assert html =~ "Copy OpenClaw brief"
-    assert html =~ "Copy Hermes brief"
-    assert html =~ "The market starts here and keeps moving."
+    assert html =~ "Open operator path"
+    assert html =~ "See what is open, then jump straight to the action page."
     assert html =~ "Atlas"
     assert html =~ "Beacon"
-    assert html =~ "Stay on the Autolaunch wire."
+    assert html =~ "Keep the operator room close, not in the way."
   end
 
   test "home page can drive the XMTP join and send flow from the live view", %{conn: conn} do

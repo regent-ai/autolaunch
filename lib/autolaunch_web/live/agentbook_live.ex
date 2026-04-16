@@ -129,7 +129,7 @@ defmodule AutolaunchWeb.AgentbookLive do
       <section id="agentbook-hero" class="al-hero al-panel" phx-hook="MissionMotion">
         <div>
           <p class="al-kicker">Trust check + AgentBook</p>
-          <h2>Start a trust check, finish it in World App, then return here for the result.</h2>
+          <h2>Start a trust check here, then look up existing records separately.</h2>
           <p class="al-subcopy">
             This flow creates the request, waits for proof, and then finishes registration either
             through the relay or through a normal wallet transaction if sponsorship is unavailable.
@@ -275,9 +275,17 @@ defmodule AutolaunchWeb.AgentbookLive do
         <article class="al-panel al-side-panel">
           <div class="al-section-head">
             <div>
-              <p class="al-kicker">Lookup human-backed status</p>
-              <h3>Query live AgentBook state</h3>
+              <p class="al-kicker">Lookup existing record</p>
+              <h3>Inspect a wallet that may already be registered</h3>
             </div>
+          </div>
+
+          <div class="al-inline-banner">
+            <strong>Separate job</strong>
+            <p>
+              Use this side only when you want to inspect an existing trust record. Start a new
+              verification from the main panel instead.
+            </p>
           </div>
 
           <form phx-change="lookup_changed" phx-submit="lookup_human" class="al-form">

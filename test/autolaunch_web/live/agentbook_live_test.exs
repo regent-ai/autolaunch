@@ -128,7 +128,7 @@ defmodule AutolaunchWeb.AgentbookLiveTest do
     {:ok, _view, html} = live(conn, "/agentbook")
 
     assert html =~ "Register agent wallet"
-    assert html =~ "Lookup human-backed status"
+    assert html =~ "Lookup existing record"
     assert html =~ "No Privy needed"
   end
 

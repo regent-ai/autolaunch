@@ -7,41 +7,6 @@ defmodule AutolaunchWeb.HomeLive do
 
   @poll_ms 15_000
 
-  @operator_guides [
-    %{
-      id: "openclaw",
-      eyebrow: "OpenClaw",
-      title: "Give OpenClaw the whole launch run.",
-      body:
-        "Start with the wizard, let it gather what is missing, save the plan, and carry the launch through monitoring.",
-      copy_label: "Copy OpenClaw brief",
-      prompt: """
-      Use Autolaunch to prepare and run a token launch for me.
-
-      Start with `regent autolaunch prelaunch wizard`.
-      Ask me for any missing launch details before you continue.
-      Save the plan, validate it, publish it, run the launch, and monitor the auction.
-      Stop for confirmation before every signing step and explain what happens next in plain English.
-      """
-    },
-    %{
-      id: "hermes",
-      eyebrow: "Hermes",
-      title: "Give Hermes the operator checklist.",
-      body:
-        "Use Hermes when you want a steadier back-and-forth: one saved plan, one launch run, and clear checkpoints along the way.",
-      copy_label: "Copy Hermes brief",
-      prompt: """
-      Help me launch through Autolaunch as an operator.
-
-      Begin with `regent autolaunch prelaunch wizard`.
-      Keep the saved plan as the source of truth.
-      Walk me through validate, publish, launch, and monitor in order.
-      Before each signing step, tell me what it will do and what to check after it lands.
-      """
-    }
-  ]
-
   @home_steps [
     %{
       title: "Start the wizard",
@@ -69,7 +34,6 @@ defmodule AutolaunchWeb.HomeLive do
      |> Refreshable.schedule(@poll_ms)
      |> assign(:page_title, "Autolaunch")
      |> assign(:active_view, "home")
-     |> assign(:operator_guides, @operator_guides)
      |> assign(:home_steps, @home_steps)
      |> assign(
        :privy_app_id,
@@ -168,26 +132,30 @@ defmodule AutolaunchWeb.HomeLive do
           <section id="home-hero" class="al-panel al-home-hero" phx-hook="MissionMotion">
             <div class="al-home-hero-copy">
               <p class="al-kicker">Start here</p>
-              <h2>Copy the wizard command. Let your agent carry the launch.</h2>
+              <h2>Copy the wizard command. Start the launch from one clear place.</h2>
               <p class="al-subcopy">
-                Save one plan, run one clean launch path, and come back here when the auction is live
-                and token holders need action.
+                Start with the saved plan, run the launch in the command line, then return here when
+                the auction is live and people need a next step.
               </p>
 
               <div class="al-hero-actions">
                 <button type="button" class="al-cta-link al-cta-link--primary" data-copy-value={wizard_command()}>
                   Copy wizard command
                 </button>
-                <.link navigate={~p"/launch-via-agent"} class="al-ghost">Operator path</.link>
+                <.link navigate={~p"/launch"} class="al-ghost">Open launch console</.link>
               </div>
 
               <div class="al-launch-tags" aria-label="Homepage facts">
-                <span class="al-launch-tag">OpenClaw or Hermes</span>
                 <span class="al-launch-tag">Save one plan first</span>
+                <span class="al-launch-tag">Run the launch in the CLI</span>
                 <span class="al-launch-tag">Watch the live auction here</span>
               </div>
               <p class="al-inline-note">
-                Need the auction mechanics first?
+                Need operator prompts or the step-by-step launch doorway?
+                <.link navigate={~p"/launch-via-agent"} class="al-inline-link">Open operator path</.link>.
+              </p>
+              <p class="al-inline-note">
+                Need the auction model first?
                 <.link navigate={~p"/how-auctions-work"} class="al-inline-link">Open the guide</.link>.
               </p>
             </div>
@@ -202,41 +170,14 @@ defmodule AutolaunchWeb.HomeLive do
             />
           </section>
 
-          <section
-            id="home-operator-briefs"
-            class="al-panel al-home-operator-briefs"
-            phx-hook="MissionMotion"
-          >
-            <div class="al-section-head">
-              <div>
-                <p class="al-kicker">Choose the operator</p>
-                <h3>Pick the agent that should carry the run.</h3>
-              </div>
-            </div>
-
-            <div class="al-home-brief-grid">
-              <article :for={guide <- @operator_guides} class="al-home-brief-card">
-                <p class="al-kicker">{guide.eyebrow}</p>
-                <h3>{guide.title}</h3>
-                <p>{guide.body}</p>
-
-                <div class="al-choice-actions">
-                  <button type="button" class="al-submit" data-copy-value={guide.prompt}>
-                    {guide.copy_label}
-                  </button>
-                </div>
-              </article>
-            </div>
-          </section>
-
           <section id="home-market-peek" class="al-panel al-home-market-peek" phx-hook="MissionMotion">
             <div class="al-home-market-head">
               <div>
                 <p class="al-kicker">Live auctions</p>
-                <h3>The market starts here and keeps moving.</h3>
+                <h3>See what is open, then jump straight to the action page.</h3>
                 <p class="al-subcopy">
-                  Watch active auctions from the home page, then open the full list when you are ready
-                  to inspect price and place a bid.
+                  This preview is here to help you choose the next click quickly. Use the full
+                  directory when you want every live market and every filter.
                 </p>
               </div>
 
@@ -310,8 +251,8 @@ defmodule AutolaunchWeb.HomeLive do
           <section id="home-flow" class="al-panel al-home-flow" phx-hook="MissionMotion">
             <div class="al-section-head">
               <div>
-                <p class="al-kicker">How this page works</p>
-                <h3>Start here. Come back here when the market is moving.</h3>
+                <p class="al-kicker">What happens next</p>
+                <h3>Use home as the launcher, not the whole control room.</h3>
               </div>
             </div>
 
@@ -323,120 +264,149 @@ defmodule AutolaunchWeb.HomeLive do
               </article>
             </div>
           </section>
-        </div>
 
-        <aside id="home-right-rail" class="al-home-rail">
-          <section
-            id="home-xmtp-room"
-            class="al-panel al-xmtp-room al-home-xmtp-room"
-            phx-hook="PrivyXmtpRoom"
-            data-privy-app-id={@privy_app_id}
-            data-pending-request-id={@xmtp_room.pending_signature_request_id}
-            data-connected-wallet={@xmtp_room.connected_wallet}
-            data-membership-state={@xmtp_room.membership_state}
-            data-can-join={to_string(@xmtp_room.can_join?)}
-            data-can-send={to_string(@xmtp_room.can_send?)}
-          >
-            <div class="al-xmtp-head">
-              <div class="al-xmtp-copy">
-                <p class="al-kicker">Live wire</p>
-                <h2>Stay on the Autolaunch wire.</h2>
-                <p class="al-subcopy">
-                  Join the room, keep up with new activity, and stay close to the operators while the
-                  market is moving.
-                </p>
+          <details id="home-operator-tools" class="al-panel al-disclosure" phx-hook="MissionMotion">
+            <summary class="al-disclosure-summary">
+              <div>
+                <p class="al-kicker">Operator extras</p>
+                <h3>Open the launch doorway, trust tools, and live room only when you need them.</h3>
               </div>
+              <span class="al-network-badge">Secondary</span>
+            </summary>
 
-              <div class="al-xmtp-badges">
-                <span class="al-network-badge">XMTP group</span>
-                <span class="al-network-badge">
-                  {@xmtp_room.member_count}/{@xmtp_room.seat_count} private seats
-                </span>
-                <span class="al-network-badge">{length(@xmtp_room.messages)} recent</span>
-              </div>
+            <div class="al-note-grid">
+              <article class="al-note-card">
+                <span>Operator prompts</span>
+                <strong>OpenClaw and Hermes briefs live on the operator page.</strong>
+                <p>Use the operator doorway when you want the copy-ready handoff, not when you just need to launch or bid.</p>
+                <div class="al-action-row">
+                  <.link navigate={~p"/launch-via-agent"} class="al-submit">Open operator path</.link>
+                </div>
+              </article>
+
+              <article class="al-note-card">
+                <span>Trust tools</span>
+                <strong>Link identity details and start a verification from the same menu.</strong>
+                <p>Open Trust Check, ENS Link, or X Link only when the launch needs those public signals.</p>
+                <div class="al-action-row">
+                  <.link navigate={~p"/agentbook"} class="al-ghost">Trust check</.link>
+                  <.link navigate={~p"/ens-link"} class="al-ghost">ENS link</.link>
+                  <.link navigate={~p"/x-link"} class="al-ghost">X link</.link>
+                </div>
+              </article>
             </div>
 
-            <div class="al-xmtp-layout">
-              <div class="al-xmtp-feed" data-xmtp-feed>
-                <%= if @xmtp_room.messages == [] do %>
-                  <div class="al-xmtp-empty">
-                    No public posts yet. Connect your wallet and send the first one.
-                  </div>
-                <% else %>
-                  <%= for message <- @xmtp_room.messages do %>
-                    <article
-                      id={"xmtp-room-message-#{message.key}"}
-                      class={["al-xmtp-bubble", message.side == :self && "is-self"]}
-                      data-xmtp-entry
-                      data-message-key={message.key}
-                    >
-                      <header>
-                        <strong>{message.author}</strong>
-                        <span>{message.stamp}</span>
-                      </header>
-                      <p>{message.body}</p>
-                      <div :if={@xmtp_room.moderator?} class="al-xmtp-moderation">
-                        <button
-                          :if={message.can_delete?}
-                          type="button"
-                          class="al-ghost"
-                          phx-click="xmtp_delete_message"
-                          phx-value-message_id={message.key}
-                        >
-                          Delete on website
-                        </button>
-                        <button
-                          :if={message.can_kick?}
-                          type="button"
-                          class="al-ghost"
-                          phx-click="xmtp_kick_user"
-                          phx-value-target={message.sender_wallet || message.sender_inbox_id}
-                        >
-                          Kick user
-                        </button>
-                      </div>
-                    </article>
-                  <% end %>
-                <% end %>
-              </div>
-
-              <div class="al-xmtp-composer">
-                <div class="al-xmtp-composer-head">
-                  <button type="button" class="al-submit" data-xmtp-auth>
-                    {if @current_human, do: "Disconnect wallet", else: "Connect wallet"}
-                  </button>
-
-                  <button
-                    :if={@current_human}
-                    type="button"
-                    class="al-ghost"
-                    data-xmtp-join
-                    disabled={!@xmtp_room.can_join?}
-                  >
-                    Join room
-                  </button>
-
-                  <p class="al-inline-note" data-xmtp-state>{@xmtp_room.status}</p>
+            <section
+              id="home-xmtp-room"
+              class="al-panel al-xmtp-room al-home-xmtp-room"
+              phx-hook="PrivyXmtpRoom"
+              data-privy-app-id={@privy_app_id}
+              data-pending-request-id={@xmtp_room.pending_signature_request_id}
+              data-connected-wallet={@xmtp_room.connected_wallet}
+              data-membership-state={@xmtp_room.membership_state}
+              data-can-join={to_string(@xmtp_room.can_join?)}
+              data-can-send={to_string(@xmtp_room.can_send?)}
+            >
+              <div class="al-xmtp-head">
+                <div class="al-xmtp-copy">
+                  <p class="al-kicker">Live wire</p>
+                  <h2>Keep the operator room close, not in the way.</h2>
+                  <p class="al-subcopy">
+                    Open the room when you need to follow operator chatter while the market is moving.
+                  </p>
                 </div>
 
-                <label class="al-xmtp-input-wrap">
-                  <span>Message</span>
-                  <input
-                    type="text"
-                    maxlength="2000"
-                    placeholder="Write to the Autolaunch wire"
-                    data-xmtp-input
-                    disabled={!@xmtp_room.can_send?}
-                  />
-                </label>
-
-                <button type="button" class="al-submit" data-xmtp-send disabled={!@xmtp_room.can_send?}>
-                  Send update
-                </button>
+                <div class="al-xmtp-badges">
+                  <span class="al-network-badge">XMTP group</span>
+                  <span class="al-network-badge">
+                    {@xmtp_room.member_count}/{@xmtp_room.seat_count} private seats
+                  </span>
+                  <span class="al-network-badge">{length(@xmtp_room.messages)} recent</span>
+                </div>
               </div>
-            </div>
-          </section>
-        </aside>
+
+              <div class="al-xmtp-layout">
+                <div class="al-xmtp-feed" data-xmtp-feed>
+                  <%= if @xmtp_room.messages == [] do %>
+                    <div class="al-xmtp-empty">
+                      No public posts yet. Connect your wallet and send the first one.
+                    </div>
+                  <% else %>
+                    <%= for message <- @xmtp_room.messages do %>
+                      <article
+                        id={"xmtp-room-message-#{message.key}"}
+                        class={["al-xmtp-bubble", message.side == :self && "is-self"]}
+                        data-xmtp-entry
+                        data-message-key={message.key}
+                      >
+                        <header>
+                          <strong>{message.author}</strong>
+                          <span>{message.stamp}</span>
+                        </header>
+                        <p>{message.body}</p>
+                        <div :if={@xmtp_room.moderator?} class="al-xmtp-moderation">
+                          <button
+                            :if={message.can_delete?}
+                            type="button"
+                            class="al-ghost"
+                            phx-click="xmtp_delete_message"
+                            phx-value-message_id={message.key}
+                          >
+                            Delete on website
+                          </button>
+                          <button
+                            :if={message.can_kick?}
+                            type="button"
+                            class="al-ghost"
+                            phx-click="xmtp_kick_user"
+                            phx-value-target={message.sender_wallet || message.sender_inbox_id}
+                          >
+                            Kick user
+                          </button>
+                        </div>
+                      </article>
+                    <% end %>
+                  <% end %>
+                </div>
+
+                <div class="al-xmtp-composer">
+                  <div class="al-xmtp-composer-head">
+                    <button type="button" class="al-submit" data-xmtp-auth>
+                      {if @current_human, do: "Disconnect wallet", else: "Connect wallet"}
+                    </button>
+
+                    <button
+                      :if={@current_human}
+                      type="button"
+                      class="al-ghost"
+                      data-xmtp-join
+                      disabled={!@xmtp_room.can_join?}
+                    >
+                      Join room
+                    </button>
+
+                    <p class="al-inline-note" data-xmtp-state>{@xmtp_room.status}</p>
+                  </div>
+
+                  <label class="al-xmtp-input-wrap">
+                    <span>Message</span>
+                    <input
+                      type="text"
+                      maxlength="2000"
+                      placeholder="Write to the Autolaunch wire"
+                      data-xmtp-input
+                      disabled={!@xmtp_room.can_send?}
+                    />
+                  </label>
+
+                  <button type="button" class="al-submit" data-xmtp-send disabled={!@xmtp_room.can_send?}>
+                    Send update
+                  </button>
+                </div>
+              </div>
+            </section>
+          </details>
+        </div>
       </div>
 
       <.flash_group flash={@flash} />

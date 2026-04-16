@@ -328,6 +328,14 @@ textarea {
   align-items: center;
 }
 
+.al-utility-label {
+  font-family: var(--al-font-display);
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--al-muted);
+}
+
 .al-topbar-actions {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -1290,7 +1298,7 @@ textarea {
 
 .al-home-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.72fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
   align-items: start;
 }
@@ -1299,12 +1307,6 @@ textarea {
   min-width: 0;
   display: grid;
   gap: 1rem;
-}
-
-.al-home-rail {
-  min-width: 0;
-  position: sticky;
-  top: 1rem;
 }
 
 .al-home-hero,
@@ -1375,6 +1377,10 @@ textarea {
   gap: 1rem;
 }
 
+.al-home-market-peek .al-token-card-facts {
+  grid-template-columns: 1fr;
+}
+
 .al-home-market-head {
   display: flex;
   flex-wrap: wrap;
@@ -1399,6 +1405,7 @@ textarea {
 }
 
 .al-home-xmtp-room {
+  margin-top: 1rem;
   border-radius: 1.7rem;
 }
 
@@ -1637,7 +1644,6 @@ textarea {
   .al-agentbook-layout,
   .al-agentbook-session-grid,
   .al-guide-hero,
-  .al-home-layout,
   .al-home-hero,
   .al-home-brief-grid,
   .al-directory-intro,
@@ -1646,10 +1652,6 @@ textarea {
   .al-guide-outcomes,
   .al-auction-primary-layout {
     grid-template-columns: 1fr;
-  }
-
-  .al-home-rail {
-    position: static;
   }
 }
 

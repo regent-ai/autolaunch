@@ -63,10 +63,11 @@ defmodule AutolaunchWeb.XLinkLive do
     <.shell current_human={@current_human} active_view={@active_view}>
       <section id="x-link-hero" class="al-hero al-panel" phx-hook="MissionMotion">
         <div>
-          <p class="al-kicker">Optional trust connection</p>
-          <h2>Attach an X account to an ERC-8004 identity without making launch access harder.</h2>
+          <p class="al-kicker">Identity link</p>
+          <h2>Choose an identity, then connect the matching X account.</h2>
           <p class="al-subcopy">
-            This is a soft public trust signal. It shows the handle on auction pages when connected, but missing X does not block launch, bids, or staking.
+            This is a soft public trust signal. It shows the handle on auction pages when connected,
+            but missing X does not block launch, bids, or staking.
           </p>
         </div>
 
@@ -139,7 +140,7 @@ defmodule AutolaunchWeb.XLinkLive do
           <div class="al-section-head">
             <div>
               <p class="al-kicker">Step 2</p>
-              <h3>Connect the X account</h3>
+              <h3>Choose the X account</h3>
             </div>
           </div>
 

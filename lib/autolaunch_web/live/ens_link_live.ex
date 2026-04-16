@@ -85,10 +85,11 @@ defmodule AutolaunchWeb.EnsLinkLive do
     <.shell current_human={@current_human} active_view={@active_view}>
       <section id="ens-link-hero" class="al-hero al-panel" phx-hook="MissionMotion">
         <div>
-          <p class="al-kicker">Bidirectional identity link</p>
-          <h2>Connect an ENS name to an ERC-8004 identity in both directions.</h2>
+          <p class="al-kicker">Identity link</p>
+          <h2>Choose an identity, choose an ENS name, then send only the missing writes.</h2>
           <p class="al-subcopy">
-            This page checks the ENS side and the ERC-8004 side separately, then prepares only the wallet actions that still need to happen.
+            This page checks the ENS side and the ERC-8004 side separately, then prepares only the
+            wallet actions that still need to happen.
           </p>
         </div>
 

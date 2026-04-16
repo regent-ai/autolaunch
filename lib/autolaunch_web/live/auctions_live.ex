@@ -37,11 +37,10 @@ defmodule AutolaunchWeb.AuctionsLive do
       <section id="auctions-intro" class="al-panel al-directory-intro" phx-hook="MissionMotion">
         <div class="al-directory-copy">
           <p class="al-kicker">Auctions</p>
-          <h2>Choose an agent, inspect the live price, then open the bid view.</h2>
+          <h2>Choose a live market, then open the bid page.</h2>
           <p class="al-subcopy">
-            The directory is here to help you decide where to look next, not to teach every rule
-            again. Each card answers three questions quickly: is it still biddable, what is the
-            live price, and where do you go next?
+            This page is the short list. Use it to decide where to look next, then move into the
+            auction detail page when you want to bid or inspect your position.
           </p>
           <div class="al-hero-actions">
             <.link navigate={~p"/how-auctions-work"} class="al-cta-link">
@@ -62,19 +61,14 @@ defmodule AutolaunchWeb.AuctionsLive do
 
           <div class="al-note-grid al-directory-points">
             <article class="al-note-card">
-              <span>Start simple</span>
-              <strong>Budget plus max price</strong>
-              <p>Open the bid view when a token looks interesting.</p>
+              <span>First move</span>
+              <strong>Open the bid page when the market looks interesting.</strong>
+              <p>The detail page is where the estimator, bid controls, and your position live.</p>
             </article>
             <article class="al-note-card">
-              <span>Minimum raise</span>
-              <strong>Failed launches can return USDC</strong>
-              <p>The return path stays visible after the auction ends.</p>
-            </article>
-            <article class="al-note-card">
-              <span>Live after auction</span>
-              <strong>Finished tokens move to their token page</strong>
-              <p>Once the sale ends, the subject page is the better operator surface.</p>
+              <span>After the sale</span>
+              <strong>Open the token page for claim, stake, and revenue work.</strong>
+              <p>Returns stay visible from the returns page if an auction misses its minimum raise.</p>
             </article>
           </div>
         </div>
@@ -127,21 +121,20 @@ defmodule AutolaunchWeb.AuctionsLive do
             <div class="al-launch-tags">
               <span class="al-launch-tag">Price {display_value(token.current_price_usdc, "USDC")}</span>
               <span class="al-launch-tag">Market cap {display_value(token.implied_market_cap_usdc, "USDC")}</span>
-              <span class="al-launch-tag">Started {format_date(token.started_at)}</span>
+              <span class="al-launch-tag">{LaunchComponents.time_left_label(token.ends_at)}</span>
             </div>
 
             <div class="al-note-grid al-token-card-facts">
               <article class="al-note-card">
-                <span>Price source</span>
-                <strong>{humanize_price_source(token.price_source)}</strong>
+                <span>What to know</span>
+                <strong>{directory_headline(token.phase)}</strong>
                 <p>{directory_copy(token.phase)}</p>
               </article>
-              <article class="al-note-card">
-                <span>Auction</span>
-                <strong>{LaunchComponents.time_left_label(token.ends_at)}</strong>
-                <p>Trust summary: {trust_summary(token.trust)}</p>
-              </article>
             </div>
+
+            <p class="al-inline-note">
+              Trust summary: {trust_summary(token.trust)} • {humanize_price_source(token.price_source)}
+            </p>
 
             <div class="al-action-row">
               <.link navigate={token.detail_url} class="al-submit">
@@ -187,15 +180,6 @@ defmodule AutolaunchWeb.AuctionsLive do
   defp display_value(nil, unit), do: "Unavailable #{unit}"
   defp display_value(value, unit), do: "#{value} #{unit}"
 
-  defp format_date(nil), do: "Unknown"
-
-  defp format_date(value) do
-    case DateTime.from_iso8601(value) do
-      {:ok, datetime, _} -> Calendar.strftime(datetime, "%b %-d")
-      _ -> "Unknown"
-    end
-  end
-
   defp humanize_price_source("auction_clearing"), do: "Auction clearing"
   defp humanize_price_source("uniswap_spot"), do: "Uniswap spot"
   defp humanize_price_source("uniswap_spot_unavailable"), do: "Quote pending"
@@ -209,13 +193,17 @@ defmodule AutolaunchWeb.AuctionsLive do
   defp trust_summary(%{world: %{connected: true, launch_count: count}}), do: "World #{count}"
   defp trust_summary(_), do: "Optional links"
 
+  defp directory_headline("biddable"), do: "Still open for bids"
+  defp directory_headline("live"), do: "Auction finished"
+  defp directory_headline(_phase), do: "Review the latest state"
+
   defp directory_copy("biddable"),
     do:
-      "This token is still in the active three-day auction window. The price and market cap reflect the current clearing level."
+      "This token is still in the active auction window. Open the bid page if you want the live estimator and order entry."
 
   defp directory_copy("live"),
     do:
-      "This token has moved out of the auction phase. The price and market cap now follow the Uniswap market instead of the auction curve."
+      "This token has moved out of the auction phase. Open the token page for claim, stake, and revenue actions."
 
   defp launch_module do
     :autolaunch

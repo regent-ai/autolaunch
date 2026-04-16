@@ -72,7 +72,7 @@ defmodule AutolaunchWeb.PositionsLive do
       <section id="positions-hero" class="al-hero al-panel" phx-hook="MissionMotion">
         <div>
           <p class="al-kicker">Positions</p>
-          <h2>See what needs attention now, then act from the matching auction.</h2>
+          <h2>See what needs attention now, then open the matching auction.</h2>
           <p class="al-subcopy">
             This view is for quick triage. Claimable positions, refund paths, and active bids should
             be obvious without opening every auction one by one.
@@ -93,12 +93,16 @@ defmodule AutolaunchWeb.PositionsLive do
         />
       <% else %>
         <section class="al-panel al-filter-panel">
+          <div class="al-section-head">
+            <div>
+              <p class="al-kicker">Triage</p>
+              <h3>Use the quick buckets first</h3>
+            </div>
+          </div>
+
           <div class="al-quick-filter-row" role="group" aria-label="Quick position filters">
             <button type="button" class={["al-filter", @filters["status"] == "" && "is-active"]} phx-click="quick_filter" phx-value-status="">
               All
-            </button>
-            <button type="button" class={["al-filter", @filters["status"] == "active" && "is-active"]} phx-click="quick_filter" phx-value-status="active">
-              Active
             </button>
             <button type="button" class={["al-filter", @filters["status"] == "claimable" && "is-active"]} phx-click="quick_filter" phx-value-status="claimable">
               Claimable
@@ -106,27 +110,43 @@ defmodule AutolaunchWeb.PositionsLive do
             <button type="button" class={["al-filter", @filters["status"] == "returnable" && "is-active"]} phx-click="quick_filter" phx-value-status="returnable">
               Returns
             </button>
+            <button type="button" class={["al-filter", @filters["status"] == "active" && "is-active"]} phx-click="quick_filter" phx-value-status="active">
+              Active
+            </button>
+            <button type="button" class={["al-filter", @filters["status"] == "borderline" && "is-active"]} phx-click="quick_filter" phx-value-status="borderline">
+              Borderline
+            </button>
           </div>
 
-          <form phx-change="filters_changed" class="al-filter-form">
-            <label>
-              <span>All statuses</span>
-              <select name="filters[status]">
-                <option value="" selected={@filters["status"] == ""}>All</option>
-              <option value="active" selected={@filters["status"] == "active"}>Active</option>
-              <option value="ending-soon" selected={@filters["status"] == "ending-soon"}>Ending soon</option>
-              <option value="borderline" selected={@filters["status"] == "borderline"}>Borderline</option>
-              <option value="inactive" selected={@filters["status"] == "inactive"}>Inactive</option>
-              <option value="returnable" selected={@filters["status"] == "returnable"}>Returnable</option>
-              <option value="claimable" selected={@filters["status"] == "claimable"}>Claimable</option>
-              <option value="pending-claim" selected={@filters["status"] == "pending-claim"}>Pending claim</option>
-              <option value="claimed" selected={@filters["status"] == "claimed"}>Claimed</option>
-              <option value="exited" selected={@filters["status"] == "exited"}>Exited</option>
-              <option value="settled" selected={@filters["status"] == "settled"}>Settled</option>
-            </select>
-          </label>
-        </form>
-      </section>
+          <details class="al-disclosure">
+            <summary class="al-disclosure-summary">
+              <div>
+                <p class="al-kicker">More filters</p>
+                <h3>Open the full status list only if you need it</h3>
+              </div>
+              <span class="al-network-badge">Optional</span>
+            </summary>
+
+            <form phx-change="filters_changed" class="al-filter-form">
+              <label>
+                <span>All statuses</span>
+                <select name="filters[status]">
+                  <option value="" selected={@filters["status"] == ""}>All</option>
+                  <option value="active" selected={@filters["status"] == "active"}>Active</option>
+                  <option value="ending-soon" selected={@filters["status"] == "ending-soon"}>Ending soon</option>
+                  <option value="borderline" selected={@filters["status"] == "borderline"}>Borderline</option>
+                  <option value="inactive" selected={@filters["status"] == "inactive"}>Inactive</option>
+                  <option value="returnable" selected={@filters["status"] == "returnable"}>Returnable</option>
+                  <option value="claimable" selected={@filters["status"] == "claimable"}>Claimable</option>
+                  <option value="pending-claim" selected={@filters["status"] == "pending-claim"}>Pending claim</option>
+                  <option value="claimed" selected={@filters["status"] == "claimed"}>Claimed</option>
+                  <option value="exited" selected={@filters["status"] == "exited"}>Exited</option>
+                  <option value="settled" selected={@filters["status"] == "settled"}>Settled</option>
+                </select>
+              </label>
+            </form>
+          </details>
+        </section>
 
         <%= if @positions == [] do %>
           <.empty_state

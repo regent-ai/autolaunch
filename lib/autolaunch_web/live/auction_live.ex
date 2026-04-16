@@ -103,95 +103,13 @@ defmodule AutolaunchWeb.AuctionLive do
     ~H"""
     <.shell current_human={@current_human} active_view={@active_view}>
       <%= if @auction do %>
-        <section class="al-regent-shell">
-          <.surface
-            id="auction-detail-regent-surface"
-            class="rg-regent-theme-autolaunch al-terrain-surface"
-            scene={@regent_scene}
-            scene_version={@regent_scene_version}
-            selected_target_id={@regent_selected_target_id}
-            theme="autolaunch"
-            camera_distance={24}
-          >
-            <:header_strip>
-              <div class="al-terrain-strip">
-                <div class="al-terrain-strip-copy">
-                  <p class="al-kicker">Detail strip</p>
-                  <div>
-                    <h2>{@auction.agent_name}</h2>
-                    <p class="al-subcopy">The detail terrain stays orienting only. Bids, claims, trust checks, and estimator math remain in the readable cards below.</p>
-                  </div>
-                </div>
-
-                <div class="al-terrain-strip-controls">
-                  <.link navigate={~p"/auction-returns"} class="al-ghost">
-                    Auction returns
-                  </.link>
-                  <button
-                    :if={@detail_focus != "detail:bid"}
-                    type="button"
-                    phx-click="scene-back"
-                    class="rg-surface-back"
-                  >
-                    <span class="rg-surface-back-icon" aria-hidden="true">←</span>
-                    Back to overview
-                  </button>
-                  <span class="al-network-badge">{@auction.status}</span>
-                  <span class="al-network-badge">{LaunchComponents.time_left_label(@auction.ends_at)}</span>
-                  <span class="al-network-badge">Trust {@trust_summary.status}</span>
-                </div>
-              </div>
-            </:header_strip>
-
-            <:chamber>
-              <.chamber
-                id="auction-detail-regent-chamber"
-                title={@regent_detail_title}
-                subtitle={@auction.agent_name}
-                summary={@regent_detail_summary}
-              >
-                <div class="al-launch-tags" aria-label="Auction detail summary">
-                  <span class="al-launch-tag">Clearing price: {@auction.current_clearing_price}</span>
-                  <span class="al-launch-tag">Bid volume: {@auction.total_bid_volume}</span>
-                  <span class="al-launch-tag">Your status: {human_position_status(@latest_position)}</span>
-                </div>
-              </.chamber>
-            </:chamber>
-
-            <:ledger>
-              <.ledger
-                id="auction-detail-regent-ledger"
-                title="Live state"
-                subtitle="Use the regular cards below to bid, claim, and inspect the estimator."
-              >
-                <table class="rg-table">
-                  <tbody>
-                    <tr>
-                      <th scope="row">Status</th>
-                      <td>{@auction.status}</td>
-                    </tr>
-                    <tr>
-                      <th scope="row">Time remaining</th>
-                      <td>{LaunchComponents.time_left_label(@auction.ends_at)}</td>
-                    </tr>
-                    <tr>
-                      <th scope="row">Trust</th>
-                      <td>{String.capitalize(@trust_summary.status)}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </.ledger>
-            </:ledger>
-          </.surface>
-        </section>
-
         <section id="auction-detail-hero" class="al-detail-hero al-panel" phx-hook="MissionMotion">
           <div>
             <p class="al-kicker">Auction detail</p>
             <h2>{@auction.agent_name}</h2>
             <p class="al-subcopy">
               Start with the bid composer. The supporting cards below are there to confirm price,
-              time, minimum raise, and your current position, not to compete with the action area.
+              time, minimum raise, and your current position without competing with the action area.
             </p>
 
             <div class="al-launch-tags">
@@ -331,6 +249,88 @@ defmodule AutolaunchWeb.AuctionLive do
               </div>
             <% end %>
           </article>
+        </section>
+
+        <section class="al-regent-shell">
+          <.surface
+            id="auction-detail-regent-surface"
+            class="rg-regent-theme-autolaunch al-terrain-surface"
+            scene={@regent_scene}
+            scene_version={@regent_scene_version}
+            selected_target_id={@regent_selected_target_id}
+            theme="autolaunch"
+            camera_distance={24}
+          >
+            <:header_strip>
+              <div class="al-terrain-strip">
+                <div class="al-terrain-strip-copy">
+                  <p class="al-kicker">Detail strip</p>
+                  <div>
+                    <h2>{@auction.agent_name}</h2>
+                    <p class="al-subcopy">The detail terrain stays orienting only. Bids, claims, trust checks, and estimator math remain in the readable cards below.</p>
+                  </div>
+                </div>
+
+                <div class="al-terrain-strip-controls">
+                  <.link navigate={~p"/auction-returns"} class="al-ghost">
+                    Auction returns
+                  </.link>
+                  <button
+                    :if={@detail_focus != "detail:bid"}
+                    type="button"
+                    phx-click="scene-back"
+                    class="rg-surface-back"
+                  >
+                    <span class="rg-surface-back-icon" aria-hidden="true">←</span>
+                    Back to overview
+                  </button>
+                  <span class="al-network-badge">{@auction.status}</span>
+                  <span class="al-network-badge">{LaunchComponents.time_left_label(@auction.ends_at)}</span>
+                  <span class="al-network-badge">Trust {@trust_summary.status}</span>
+                </div>
+              </div>
+            </:header_strip>
+
+            <:chamber>
+              <.chamber
+                id="auction-detail-regent-chamber"
+                title={@regent_detail_title}
+                subtitle={@auction.agent_name}
+                summary={@regent_detail_summary}
+              >
+                <div class="al-launch-tags" aria-label="Auction detail summary">
+                  <span class="al-launch-tag">Clearing price: {@auction.current_clearing_price}</span>
+                  <span class="al-launch-tag">Bid volume: {@auction.total_bid_volume}</span>
+                  <span class="al-launch-tag">Your status: {human_position_status(@latest_position)}</span>
+                </div>
+              </.chamber>
+            </:chamber>
+
+            <:ledger>
+              <.ledger
+                id="auction-detail-regent-ledger"
+                title="Live state"
+                subtitle="Use the regular cards below to bid, claim, and inspect the estimator."
+              >
+                <table class="rg-table">
+                  <tbody>
+                    <tr>
+                      <th scope="row">Status</th>
+                      <td>{@auction.status}</td>
+                    </tr>
+                    <tr>
+                      <th scope="row">Time remaining</th>
+                      <td>{LaunchComponents.time_left_label(@auction.ends_at)}</td>
+                    </tr>
+                    <tr>
+                      <th scope="row">Trust</th>
+                      <td>{String.capitalize(@trust_summary.status)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </.ledger>
+            </:ledger>
+          </.surface>
         </section>
 
         <section class="al-detail-layout">

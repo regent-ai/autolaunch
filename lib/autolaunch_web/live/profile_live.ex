@@ -109,7 +109,7 @@ defmodule AutolaunchWeb.ProfileLive do
                     <td>{String.capitalize(token.phase)}</td>
                     <td>{display_money(token.current_price_usdc)}</td>
                     <td>{display_money(token.implied_market_cap_usdc)}</td>
-                    <td><.link navigate={token.detail_url} class="al-ghost">Open</.link></td>
+                    <td><.link navigate={token.detail_url} class="al-ghost">Open auction view</.link></td>
                   </tr>
                 </tbody>
               </table>
@@ -122,7 +122,7 @@ defmodule AutolaunchWeb.ProfileLive do
                 <p>{String.capitalize(token.phase)} • {display_money(token.current_price_usdc)}</p>
                 <p>Market cap {display_money(token.implied_market_cap_usdc)}</p>
                 <div class="al-action-row">
-                  <.link navigate={token.detail_url} class="al-ghost">Open</.link>
+                  <.link navigate={token.detail_url} class="al-ghost">Open auction view</.link>
                 </div>
               </article>
             </div>
@@ -164,7 +164,7 @@ defmodule AutolaunchWeb.ProfileLive do
                     <td>{display_money(token.staked_usdc_value)}</td>
                     <td>{display_money(token.claimable_usdc)}</td>
                     <td>{display_money(token.implied_market_cap_usdc)}</td>
-                    <td><.link navigate={token.detail_url} class="al-submit">Manage</.link></td>
+                    <td><.link navigate={token.detail_url} class="al-submit">Open token page</.link></td>
                   </tr>
                 </tbody>
               </table>
@@ -177,7 +177,7 @@ defmodule AutolaunchWeb.ProfileLive do
                 <p>{token.staked_token_amount} staked • {display_money(token.claimable_usdc)} claimable</p>
                 <p>Stake value {display_money(token.staked_usdc_value)} • Market cap {display_money(token.implied_market_cap_usdc)}</p>
                 <div class="al-action-row">
-                  <.link navigate={token.detail_url} class="al-submit">Manage</.link>
+                  <.link navigate={token.detail_url} class="al-submit">Open token page</.link>
                 </div>
               </article>
             </div>

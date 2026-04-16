@@ -43,10 +43,10 @@ defmodule AutolaunchWeb.AuctionReturnsLive do
       <section id="auction-returns-hero" class="al-hero al-panel" phx-hook="MissionMotion">
         <div>
           <p class="al-kicker">Auction returns</p>
-          <h2>Failed auctions where bidders can take USDC back.</h2>
+          <h2>Find the auctions where bidders can pull USDC back.</h2>
           <p class="al-subcopy">
-            These are the auctions that ended without meeting the minimum raise. If you bid in one
-            of them, use the return action from the auction page or your positions page.
+            These auctions ended below the minimum raise. Open the matching auction or your
+            positions page to take the return action.
           </p>
         </div>
 
@@ -88,8 +88,14 @@ defmodule AutolaunchWeb.AuctionReturnsLive do
               />
             </div>
 
+            <p class="al-inline-note">
+              Use the return flow when you still have funds tied to this auction. If you were only
+              watching, open the auction to review the final state.
+            </p>
+
             <div class="al-action-row">
-              <.link navigate={auction.detail_url} class="al-submit">Open auction</.link>
+              <.link navigate={auction.detail_url} class="al-submit">Open return path</.link>
+              <.link navigate={~p"/positions"} class="al-ghost">Open positions</.link>
             </div>
           </article>
         </section>

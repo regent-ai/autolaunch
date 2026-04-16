@@ -110,60 +110,18 @@ defmodule AutolaunchWeb.SubjectLive do
           <article class="al-panel al-main-panel">
             <div class="al-section-head">
               <div>
-                <p class="al-kicker">Subject state</p>
-                <h3>Splitter, balances, and next actions</h3>
+                <p class="al-kicker">Primary next step</p>
+                <h3>{recommended_action_heading(@recommended_action)}</h3>
               </div>
-            </div>
-
-            <div class="al-review-grid">
-              <div class="al-review-card">
-                <span>Token</span>
-                <strong>{short_address(@subject.token_address)}</strong>
-                <p>Staking token for this subject.</p>
-              </div>
-              <div class="al-review-card">
-                <span>Splitter</span>
-                <strong>{short_address(@subject.splitter_address)}</strong>
-                <p>Recognized revenue lands here before claims.</p>
-              </div>
-              <div class="al-review-card">
-                <span>Default ingress</span>
-                <strong>{short_address(@subject.default_ingress_address)}</strong>
-                <p>Sepolia USDC can be swept from ingress into the splitter.</p>
-              </div>
-              <div class="al-review-card">
-                <span>Treasury residual</span>
-                <strong>{@subject.treasury_residual_usdc}</strong>
-                <p>Splitter-side treasury balance after staker allocation.</p>
-              </div>
-              <div class="al-review-card">
-                <span>Wallet position</span>
-                <strong>Claim, stake, or unstake from here</strong>
-                <p>{@wallet_position.summary}</p>
-                <p>{@wallet_position.staked_line}</p>
-                <p>{@wallet_position.wallet_line}</p>
-                <p>{@wallet_position.claimable_usdc_line}</p>
-                <p>{@wallet_position.claimable_emissions_line}</p>
-              </div>
-              <div class="al-review-card">
-                <span>Protocol reserve</span>
-                <strong>{@subject.protocol_reserve_usdc}</strong>
-                <p>Protocol skim retained inside the splitter.</p>
-              </div>
-            </div>
-
-            <div class="al-action-row">
-              <.link navigate={~p"/contracts?subject_id=#{@subject_id}"} class="al-ghost">
-                Open advanced contracts console
-              </.link>
             </div>
 
             <section id="subject-primary-actions" class="al-subject-action-group" phx-hook="MissionMotion">
-              <div class="al-section-head">
-                <div>
-                  <p class="al-kicker">Primary next step</p>
-                  <h3>{recommended_action_heading(@recommended_action)}</h3>
-                </div>
+              <div class="al-inline-banner">
+                <strong>Start with the action cards.</strong>
+                <p>
+                  Claim, stake, unstake, or sweep from this area first. Open the subject details
+                  only when you need addresses, balances, or the advanced contract console.
+                </p>
               </div>
 
               <div class="al-note-grid">
@@ -237,7 +195,7 @@ defmodule AutolaunchWeb.SubjectLive do
                   </.wallet_tx_button>
                 </div>
               </article>
-            </div>
+              </div>
             </section>
 
             <details id="subject-secondary-actions" class="al-panel al-disclosure" phx-hook="MissionMotion">
@@ -341,6 +299,63 @@ defmodule AutolaunchWeb.SubjectLive do
                     </.wallet_tx_button>
                   </div>
                 </article>
+              </div>
+            </details>
+
+            <details
+              id="subject-state-details"
+              class="al-panel al-disclosure"
+              phx-hook="MissionMotion"
+            >
+              <summary class="al-disclosure-summary">
+                <div>
+                  <p class="al-kicker">Subject state</p>
+                  <h3>Balances, addresses, and advanced review</h3>
+                </div>
+                <span class="al-network-badge">Details</span>
+              </summary>
+
+              <div class="al-review-grid">
+                <div class="al-review-card">
+                  <span>Token</span>
+                  <strong>{short_address(@subject.token_address)}</strong>
+                  <p>Staking token for this subject.</p>
+                </div>
+                <div class="al-review-card">
+                  <span>Splitter</span>
+                  <strong>{short_address(@subject.splitter_address)}</strong>
+                  <p>Recognized revenue lands here before claims.</p>
+                </div>
+                <div class="al-review-card">
+                  <span>Default ingress</span>
+                  <strong>{short_address(@subject.default_ingress_address)}</strong>
+                  <p>Sepolia USDC can be swept from ingress into the splitter.</p>
+                </div>
+                <div class="al-review-card">
+                  <span>Treasury residual</span>
+                  <strong>{@subject.treasury_residual_usdc}</strong>
+                  <p>Splitter-side treasury balance after staker allocation.</p>
+                </div>
+                <div class="al-review-card">
+                  <span>Wallet position</span>
+                  <strong>Claim, stake, or unstake from here</strong>
+                  <p>{@wallet_position.summary}</p>
+                  <p>{@wallet_position.staked_line}</p>
+                  <p>{@wallet_position.wallet_line}</p>
+                  <p>{@wallet_position.claimable_usdc_line}</p>
+                  <p>{@wallet_position.claimable_emissions_line}</p>
+                </div>
+                <div class="al-review-card">
+                  <span>Protocol reserve</span>
+                  <strong>{@subject.protocol_reserve_usdc}</strong>
+                  <p>Protocol skim retained inside the splitter.</p>
+                </div>
+              </div>
+
+              <div class="al-action-row">
+                <.link navigate={~p"/contracts?subject_id=#{@subject_id}"} class="al-ghost">
+                  Open advanced contracts console
+                </.link>
               </div>
             </details>
           </article>

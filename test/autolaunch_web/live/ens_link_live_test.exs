@@ -87,7 +87,7 @@ defmodule AutolaunchWeb.EnsLinkLiveTest do
   test "guest sees sign-in copy", %{conn: conn} do
     {:ok, _view, html} = live(conn, "/ens-link")
 
-    assert html =~ "Connect an ENS name to an ERC-8004 identity in both directions."
+    assert html =~ "Choose an identity, choose an ENS name, then send only the missing writes."
     assert html =~ "Sign in with Privy before planning ENS links."
   end
 

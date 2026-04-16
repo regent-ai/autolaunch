@@ -81,7 +81,7 @@ defmodule AutolaunchWeb.ProfileLiveTest do
     assert html =~ "Atlas"
     assert html =~ "Nova"
     assert html =~ "13.2 USDC"
-    assert html =~ "Manage"
+    assert html =~ "Open token page"
     assert html =~ "al-mobile-summary-card"
   end
 

@@ -33,6 +33,7 @@ defmodule AutolaunchWeb.LaunchComponents do
 
         <div class="al-shell-nav">
           <nav class="al-topnav" aria-label="Primary">
+            <.nav_link active={@active_view == "home"} navigate={~p"/"}>Home</.nav_link>
             <.nav_link active={@active_view == "launch"} navigate={~p"/launch"}>Launch</.nav_link>
             <.nav_link active={@active_view == "auctions"} navigate={~p"/auctions"}>Auctions</.nav_link>
             <.nav_link active={@active_view == "positions"} navigate={~p"/positions"}>Positions</.nav_link>
@@ -41,7 +42,7 @@ defmodule AutolaunchWeb.LaunchComponents do
 
           <div class="al-shell-utility-row">
             <nav class="al-topnav-secondary" aria-label="Utilities">
-              <.utility_link active={@active_view == "home"} navigate={~p"/"}>Home</.utility_link>
+              <span class="al-utility-label">More</span>
               <.utility_link active={@active_view == "guide"} navigate={~p"/how-auctions-work"}>
                 Guide
               </.utility_link>
@@ -49,6 +50,7 @@ defmodule AutolaunchWeb.LaunchComponents do
                 Trust Check
               </.utility_link>
               <.utility_link active={@active_view == "ens"} navigate={~p"/ens-link"}>ENS Link</.utility_link>
+              <.utility_link active={@active_view == "x-link"} navigate={~p"/x-link"}>X Link</.utility_link>
               <.utility_link active={@active_view == "contracts"} navigate={~p"/contracts"}>
                 Contracts
               </.utility_link>

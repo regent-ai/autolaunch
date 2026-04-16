@@ -7,7 +7,7 @@ defmodule AutolaunchWeb.AuctionGuideLiveTest do
     {:ok, _view, html} = live(conn, "/how-auctions-work")
 
     assert html =~ "Guide strip"
-    assert html =~ "Pick the job you came here for, then go straight to it."
+    assert html =~ "Pick the job you came here for, then leave this page quickly."
     assert html =~ "Back an active auction with USDC."
     assert html =~ "Launch through the CLI, then return here for the live market."
 
@@ -20,7 +20,7 @@ defmodule AutolaunchWeb.AuctionGuideLiveTest do
   test "alias route serves the same guide", %{conn: conn} do
     {:ok, _view, html} = live(conn, "/how-auctions-work")
 
-    assert html =~ "Pick the job you came here for, then go straight to it."
+    assert html =~ "Pick the job you came here for, then leave this page quickly."
     assert html =~ "Everyone who clears the same block gets the same clearing price"
   end
 
