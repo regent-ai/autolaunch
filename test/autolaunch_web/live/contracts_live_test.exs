@@ -114,17 +114,17 @@ defmodule AutolaunchWeb.ContractsLiveTest do
              }
            ]
          },
-         splitter: %{
-           owner: "0x3333333333333333333333333333333333333333",
-           paused: false,
-           treasury_recipient: "0x2222222222222222222222222222222222222222",
-           pending_treasury_recipient: nil,
-           pending_treasury_recipient_eta: 0,
-           treasury_rotation_delay: 259_200,
-           protocol_recipient: "0x1111111111111111111111111111111111111111",
-           protocol_skim_bps: 500,
-           label: "Atlas revenue"
-         },
+        splitter: %{
+          owner: "0x3333333333333333333333333333333333333333",
+          paused: false,
+          treasury_recipient: "0x2222222222222222222222222222222222222222",
+          pending_treasury_recipient: nil,
+          pending_treasury_recipient_eta: 0,
+          treasury_rotation_delay: 259_200,
+          protocol_recipient: "0x1111111111111111111111111111111111111111",
+          protocol_skim_bps: 100,
+          label: "Atlas revenue"
+        },
          ingress_factory: %{
            address: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
            owner: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
@@ -215,10 +215,9 @@ defmodule AutolaunchWeb.ContractsLiveTest do
         "/contracts?job_id=job_contracts&subject_id=0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
       )
 
-    assert html =~ "Check launch and subject contracts before you send anything."
-
-    assert html =~
-             "Use this page to review contract details, prepare the next action, and open the"
+    assert html =~ "Pick the contract view you need before you review or prepare anything."
+    assert html =~ "Open one launch job"
+    assert html =~ "Open one subject"
 
     assert html =~ "Review mode"
     assert html =~ "LBP runtime state"

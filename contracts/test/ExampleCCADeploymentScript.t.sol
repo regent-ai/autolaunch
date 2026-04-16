@@ -123,6 +123,7 @@ contract ExampleCCADeploymentScriptTest is Test {
         assertEq(splitter.usdc(), address(usdc));
         assertEq(splitter.treasuryRecipient(), AGENT_SAFE);
         assertEq(splitter.protocolRecipient(), REGENT_MULTISIG);
+        assertEq(splitter.protocolSkimBps(), 100);
 
         assertEq(
             subjectRegistry.subjectForIdentity(block.chainid, IDENTITY_REGISTRY, IDENTITY_AGENT_ID),

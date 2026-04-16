@@ -267,6 +267,36 @@ contract RegentRevenueStakingTest is Test {
         staking.claimAndRestakeRegent();
     }
 
+    function testRegentClaimsRecoverAfterFundingArrivesLater() external {
+        _stake(ALICE, 200 * REGENT);
+        _stake(BOB, 300 * REGENT);
+
+        vm.prank(OWNER);
+        staking.setEmissionAprBps(MAX_APR_BPS);
+
+        vm.warp(block.timestamp + 365 days);
+
+        uint256 aliceExpected = _expectedEmission(200 * REGENT, MAX_APR_BPS, 365 days);
+        uint256 bobExpected = _expectedEmission(300 * REGENT, MAX_APR_BPS, 365 days);
+
+        _fundRegentRewards(bobExpected);
+
+        vm.prank(BOB);
+        uint256 bobClaim = staking.claimRegent(BOB);
+        assertEq(bobClaim, bobExpected);
+
+        vm.prank(ALICE);
+        vm.expectRevert("REWARD_INVENTORY_LOW");
+        staking.claimRegent(ALICE);
+
+        _fundRegentRewards(aliceExpected);
+
+        vm.prank(ALICE);
+        uint256 aliceClaim = staking.claimRegent(ALICE);
+        assertEq(aliceClaim, aliceExpected);
+        assertEq(staking.previewClaimableRegent(ALICE), 0);
+    }
+
     function testClaimAndRestakeRegentCompoundsIntoPrincipal() external {
         _stake(ALICE, 100 * REGENT);
         _fundRegentRewards(1000 * REGENT);

@@ -34,7 +34,6 @@ contract RevenueIngressFactoryTest is Test {
             address(0xB0B),
             TREASURY_SAFE,
             REGENT_RECIPIENT,
-            100,
             1000e18,
             "Subject",
             block.chainid,

@@ -170,6 +170,7 @@ contract LaunchDeploymentControllerTest is Test {
         assertEq(splitter.pendingOwner(), AGENT_SAFE);
         assertEq(splitter.treasuryRecipient(), AGENT_SAFE);
         assertEq(splitter.protocolRecipient(), REGENT_RECIPIENT);
+        assertEq(splitter.protocolSkimBps(), 100);
 
         LaunchFeeVault feeVault = LaunchFeeVault(payable(result.feeVaultAddress));
         assertEq(feeVault.owner(), address(controller));
@@ -305,7 +306,6 @@ contract LaunchDeploymentControllerTest is Test {
         cfg.floorPrice = AUCTION_TICK_SPACING;
         cfg.requiredCurrencyRaised = 0;
         cfg.maxCurrencyAmountForLP = type(uint128).max;
-        cfg.protocolSkimBps = 100;
         cfg.tokenName = "Agent Coin";
         cfg.tokenSymbol = "AGENT";
         cfg.subjectLabel = "Agent Coin";

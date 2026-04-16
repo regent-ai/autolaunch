@@ -15,6 +15,7 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter {
     uint256 public constant BPS_DENOMINATOR = 10_000;
     uint256 public constant ACC_PRECISION = 1e27;
     uint256 public constant MAX_EMISSION_APR_BPS = 10_000;
+    uint16 public constant protocolSkimBps = 100;
     uint256 internal constant SECONDS_PER_YEAR = 365 days;
     uint64 internal constant DEFAULT_TREASURY_ROTATION_DELAY = 3 days;
 
@@ -31,7 +32,6 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter {
     uint64 public pendingTreasuryRecipientEta;
     uint64 public immutable treasuryRotationDelay;
     address public override protocolRecipient;
-    uint16 public protocolSkimBps;
     uint16 public emissionAprBps;
 
     bool public paused;
@@ -67,7 +67,6 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter {
         address indexed oldRecipient, address indexed newRecipient
     );
     event ProtocolRecipientSet(address indexed protocolRecipient);
-    event ProtocolSkimBpsSet(uint16 skimBps);
     event EmissionAprBpsSet(uint16 previousBps, uint16 newBps);
     event LabelSet(string label);
     event StakeUpdated(address indexed account, uint256 newStakeBalance, uint256 totalStaked);
@@ -96,7 +95,6 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter {
         bytes32 subjectId_,
         address treasuryRecipient_,
         address protocolRecipient_,
-        uint16 protocolSkimBps_,
         uint256 revenueShareSupplyDenominator_,
         string memory label_,
         address owner_
@@ -107,7 +105,6 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter {
         require(subjectId_ != bytes32(0), "SUBJECT_ZERO");
         require(treasuryRecipient_ != address(0), "TREASURY_ZERO");
         require(protocolRecipient_ != address(0), "PROTOCOL_ZERO");
-        require(protocolSkimBps_ <= BPS_DENOMINATOR, "SKIM_BPS_INVALID");
         require(revenueShareSupplyDenominator_ != 0, "SUPPLY_DENOMINATOR_ZERO");
 
         stakeToken = stakeToken_;
@@ -118,7 +115,6 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter {
         treasuryRecipient = treasuryRecipient_;
         treasuryRotationDelay = DEFAULT_TREASURY_ROTATION_DELAY;
         protocolRecipient = protocolRecipient_;
-        protocolSkimBps = protocolSkimBps_;
         label = label_;
         lastEmissionUpdate = block.timestamp;
     }
@@ -188,12 +184,6 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter {
         require(protocolRecipient_ != address(0), "PROTOCOL_ZERO");
         protocolRecipient = protocolRecipient_;
         emit ProtocolRecipientSet(protocolRecipient_);
-    }
-
-    function setProtocolSkimBps(uint16 protocolSkimBps_) external onlyOwner {
-        require(protocolSkimBps_ <= BPS_DENOMINATOR, "SKIM_BPS_INVALID");
-        protocolSkimBps = protocolSkimBps_;
-        emit ProtocolSkimBpsSet(protocolSkimBps_);
     }
 
     function setEmissionAprBps(uint16 newBps) external onlyOwner {

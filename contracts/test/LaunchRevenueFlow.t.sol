@@ -66,7 +66,6 @@ contract LaunchRevenueFlowTest is Test {
             SUBJECT_ID,
             SUBJECT_TREASURY,
             PROTOCOL_TREASURY,
-            100,
             1000e18,
             "Atlas splitter",
             OWNER
@@ -135,5 +134,9 @@ contract LaunchRevenueFlowTest is Test {
         assertEq(claimed, EXPECTED_STAKER_CLAIM);
         assertEq(usdc.balanceOf(ALICE), EXPECTED_STAKER_CLAIM);
         assertEq(splitter.previewClaimableUSDC(ALICE), 0);
+    }
+
+    function testSplitterProtocolSkimIsFixedAtOnePercent() external view {
+        assertEq(splitter.protocolSkimBps(), 100);
     }
 }

@@ -8,7 +8,8 @@ import {LaunchPoolFeeHook} from "src/LaunchPoolFeeHook.sol";
 import {MockHookDeployer} from "test/mocks/MockHookDeployer.sol";
 import {MintableERC20Mock} from "test/mocks/MintableERC20Mock.sol";
 import {
-    MockContinuousClearingAuctionFactory
+    MockContinuousClearingAuctionFactory,
+    MockDistributionContract
 } from "test/mocks/MockContinuousClearingAuctionFactory.sol";
 import {PoolManager} from "@uniswap/v4-core/src/PoolManager.sol";
 import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
@@ -410,6 +411,117 @@ contract RegentLBPStrategyTest is Test {
         strategy.sweepToken();
     }
 
+    function testRecoverFailedAuctionSweepsReturnedTokensIntoVesting() external {
+        RegentLBPStrategy failedStrategy = new RegentLBPStrategy(
+            address(token),
+            address(usdc),
+            address(auctionFactory),
+            _auctionParameters(1),
+            address(hook),
+            AGENT_TREASURY,
+            VESTING_WALLET,
+            OPERATOR,
+            POSITION_RECIPIENT,
+            address(positionManager),
+            address(poolManager),
+            OFFICIAL_POOL_FEE,
+            OFFICIAL_POOL_TICK_SPACING,
+            202,
+            303,
+            5000,
+            6_666_666,
+            AUCTION_AMOUNT + RESERVE_AMOUNT,
+            AUCTION_AMOUNT,
+            RESERVE_AMOUNT,
+            type(uint128).max
+        );
+        token.mint(address(failedStrategy), AUCTION_AMOUNT + RESERVE_AMOUNT);
+        failedStrategy.onTokensReceived();
+
+        MockDistributionContract auction = MockDistributionContract(failedStrategy.auctionAddress());
+        uint256 vestingBefore = token.balanceOf(VESTING_WALLET);
+
+        vm.roll(303);
+        vm.prank(OPERATOR);
+        failedStrategy.recoverFailedAuction();
+
+        assertEq(token.balanceOf(address(failedStrategy)), 0);
+        assertEq(token.balanceOf(address(auction)), 0);
+        assertEq(token.balanceOf(VESTING_WALLET), vestingBefore + AUCTION_AMOUNT + RESERVE_AMOUNT);
+    }
+
+    function testGraduatedAuctionSweepsFundsAfterEndAndMigrationUsesSweptCurrency() external {
+        RegentLBPStrategy graduatedStrategy = new RegentLBPStrategy(
+            address(token),
+            address(usdc),
+            address(auctionFactory),
+            _auctionParameters(100e18),
+            address(hook),
+            AGENT_TREASURY,
+            VESTING_WALLET,
+            OPERATOR,
+            POSITION_RECIPIENT,
+            address(positionManager),
+            address(poolManager),
+            OFFICIAL_POOL_FEE,
+            OFFICIAL_POOL_TICK_SPACING,
+            202,
+            303,
+            5000,
+            6_666_666,
+            AUCTION_AMOUNT + RESERVE_AMOUNT,
+            AUCTION_AMOUNT,
+            RESERVE_AMOUNT,
+            type(uint128).max
+        );
+        token.mint(address(graduatedStrategy), AUCTION_AMOUNT + RESERVE_AMOUNT);
+        graduatedStrategy.onTokensReceived();
+
+        MockDistributionContract auction = MockDistributionContract(graduatedStrategy.auctionAddress());
+        usdc.mint(address(auction), 200e18);
+
+        vm.expectRevert("AUCTION_NOT_ENDED");
+        auction.sweepCurrency();
+
+        vm.roll(102);
+        auction.sweepCurrency();
+        auction.sweepUnsoldTokens();
+
+        assertEq(usdc.balanceOf(address(graduatedStrategy)), 200e18);
+        assertEq(token.balanceOf(address(graduatedStrategy)), AUCTION_AMOUNT + RESERVE_AMOUNT);
+
+        vm.roll(202);
+        vm.prank(OPERATOR);
+        graduatedStrategy.migrate();
+
+        assertTrue(graduatedStrategy.migrated());
+        assertEq(graduatedStrategy.migratedCurrencyForLP(), 100e18);
+        assertEq(graduatedStrategy.migratedTokenForLP(), RESERVE_AMOUNT);
+    }
+
+    function testRecoverFailedAuctionRevertsForGraduatedAuction() external {
+        strategy.onTokensReceived();
+
+        vm.roll(303);
+        vm.prank(OPERATOR);
+        vm.expectRevert("AUCTION_GRADUATED");
+        strategy.recoverFailedAuction();
+    }
+
+    function testRecoverFailedAuctionRevertsAfterMigration() external {
+        strategy.onTokensReceived();
+        usdc.mint(address(strategy), 200e18);
+
+        vm.roll(202);
+        vm.prank(OPERATOR);
+        strategy.migrate();
+
+        vm.roll(303);
+        vm.prank(OPERATOR);
+        vm.expectRevert("ALREADY_MIGRATED");
+        strategy.recoverFailedAuction();
+    }
+
     function testTreasuryCanRescueUnsupportedAssetsButNotCanonicalOnes() external {
         MintableERC20Mock junk = new MintableERC20Mock("Junk", "JUNK");
         junk.mint(address(strategy), 7e18);
@@ -445,6 +557,14 @@ contract RegentLBPStrategyTest is Test {
     }
 
     function _auctionParameters() internal view returns (AuctionParameters memory) {
+        return _auctionParameters(0);
+    }
+
+    function _auctionParameters(uint128 requiredCurrencyRaised)
+        internal
+        view
+        returns (AuctionParameters memory)
+    {
         return AuctionParameters({
             currency: address(usdc),
             tokensRecipient: address(0),
@@ -455,7 +575,7 @@ contract RegentLBPStrategyTest is Test {
             tickSpacing: 1000,
             validationHook: address(0),
             floorPrice: 1000,
-            requiredCurrencyRaised: 0,
+            requiredCurrencyRaised: requiredCurrencyRaised,
             auctionStepsData: bytes("")
         });
     }

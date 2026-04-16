@@ -39,6 +39,7 @@ contract LaunchFeeVault is Owned, ILaunchFeeVaultMinimal {
 
     function setHook(address hook_) external onlyOwner {
         require(hook_ != address(0), "HOOK_ZERO");
+        require(hook == address(0), "HOOK_ALREADY_SET");
         hook = hook_;
         emit HookSet(hook_);
     }

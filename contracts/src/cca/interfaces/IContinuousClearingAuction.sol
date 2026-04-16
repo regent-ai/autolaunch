@@ -14,3 +14,9 @@ struct AuctionParameters {
     uint128 requiredCurrencyRaised;
     bytes auctionStepsData;
 }
+
+interface IContinuousClearingAuction {
+    function isGraduated() external view returns (bool);
+
+    function sweepUnsoldTokens() external;
+}

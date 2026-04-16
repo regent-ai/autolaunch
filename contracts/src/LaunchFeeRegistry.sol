@@ -45,8 +45,6 @@ contract LaunchFeeRegistry is Owned {
         address poolManager,
         address hook
     );
-    event HookEnabledSet(bytes32 indexed poolId, bool hookEnabled);
-
     constructor(address owner_) Owned(owner_) {}
 
     function registerPool(PoolRegistration memory registration)
@@ -103,12 +101,6 @@ contract LaunchFeeRegistry is Owned {
         );
     }
 
-    function setHookEnabled(bytes32 poolId, bool hookEnabled) external onlyOwner {
-        PoolConfig storage config = _poolStorageOrRevert(poolId);
-        config.hookEnabled = hookEnabled;
-        emit HookEnabledSet(poolId, hookEnabled);
-    }
-
     function getPoolConfig(bytes32 poolId) external view returns (PoolConfig memory) {
         return _poolOrRevert(poolId);
     }
@@ -149,15 +141,6 @@ contract LaunchFeeRegistry is Owned {
     }
 
     function _poolOrRevert(bytes32 poolId) internal view returns (PoolConfig memory config) {
-        config = poolConfigs[poolId];
-        require(config.launchToken != address(0), "POOL_NOT_REGISTERED");
-    }
-
-    function _poolStorageOrRevert(bytes32 poolId)
-        internal
-        view
-        returns (PoolConfig storage config)
-    {
         config = poolConfigs[poolId];
         require(config.launchToken != address(0), "POOL_NOT_REGISTERED");
     }

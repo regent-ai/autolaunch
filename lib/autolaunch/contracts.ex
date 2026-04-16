@@ -65,14 +65,14 @@ defmodule Autolaunch.Contracts do
          splitter: splitter,
          ingress_factory: ingress_factory,
          revenue_share_factory: revenue_share_factory,
-         available_actions: %{
-           subject:
-             ~w(stake unstake claim_usdc claim_emissions claim_and_stake_emissions sweep_ingress),
-           splitter:
-             ~w(set_paused set_label propose_treasury_recipient_rotation cancel_treasury_recipient_rotation execute_treasury_recipient_rotation set_protocol_recipient set_protocol_skim_bps sweep_treasury_residual sweep_protocol_reserve reassign_dust),
-           ingress_factory: ~w(create set_default),
-           ingress_account: ~w(set_label rescue sweep),
-           registry: ~w(set_subject_manager link_identity rotate_safe)
+          available_actions: %{
+            subject:
+              ~w(stake unstake claim_usdc claim_emissions claim_and_stake_emissions sweep_ingress),
+            splitter:
+             ~w(set_paused set_label propose_treasury_recipient_rotation cancel_treasury_recipient_rotation execute_treasury_recipient_rotation set_protocol_recipient sweep_treasury_residual sweep_protocol_reserve reassign_dust),
+            ingress_factory: ~w(create set_default),
+            ingress_account: ~w(set_label rescue sweep),
+            registry: ~w(set_subject_manager link_identity rotate_safe)
          }
        }}
     end
@@ -158,8 +158,8 @@ defmodule Autolaunch.Contracts do
         strategy: ~w(migrate sweep_token sweep_currency),
         vesting:
           ~w(release propose_beneficiary_rotation cancel_beneficiary_rotation execute_beneficiary_rotation),
-        fee_registry: ~w(set_hook_enabled),
-        fee_vault: ~w(withdraw_treasury withdraw_regent_share set_hook)
+        fee_registry: [],
+        fee_vault: ~w(withdraw_treasury withdraw_regent_share)
       }
     }
   end

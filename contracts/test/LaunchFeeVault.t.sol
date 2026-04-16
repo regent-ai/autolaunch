@@ -118,6 +118,12 @@ contract LaunchFeeVaultTest is Test {
         vault.rescueUnsupportedToken(address(quoteToken), 1, address(0x8888));
     }
 
+    function testHookCanOnlyBeSetOnce() external {
+        vm.prank(OWNER);
+        vm.expectRevert("HOOK_ALREADY_SET");
+        vault.setHook(address(0x1234));
+    }
+
     function _registerPool(address launchToken, address quoteTokenAddress)
         internal
         returns (bytes32)

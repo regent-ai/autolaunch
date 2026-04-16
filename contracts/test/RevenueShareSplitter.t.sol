@@ -281,7 +281,6 @@ contract RevenueShareSplitterTest is Test {
             subjectId,
             TREASURY,
             PROTOCOL_TREASURY,
-            100,
             INITIAL_SUPPLY_DENOMINATOR,
             "XYZ splitter v2",
             address(this)
@@ -350,7 +349,6 @@ contract RevenueShareSplitterTest is Test {
             subjectId,
             TREASURY,
             PROTOCOL_TREASURY,
-            100,
             INITIAL_SUPPLY_DENOMINATOR,
             "XYZ splitter v2",
             address(this)
@@ -446,6 +444,49 @@ contract RevenueShareSplitterTest is Test {
         vm.expectRevert("REWARD_INVENTORY_LOW");
         vm.prank(ALICE);
         splitter.claimAndRestakeStakeToken();
+    }
+
+    function testProtocolSkimIsFixedAtOnePercent() external {
+        assertEq(splitter.protocolSkimBps(), 100);
+
+        (bool success,) =
+            address(splitter).call(abi.encodeWithSignature("setProtocolSkimBps(uint16)", 250));
+
+        assertFalse(success);
+        assertEq(splitter.protocolSkimBps(), 100);
+    }
+
+    function testRewardClaimsRecoverAfterFundingArrivesLater() external {
+        MintableBurnableERC20Mock customStake =
+            new MintableBurnableERC20Mock("Recover", "RCV", 18);
+        RevenueShareSplitter custom = _deploySplitter(customStake, 1000 * XYZ, "recover");
+
+        customStake.mint(ALICE, 200 * XYZ);
+        customStake.mint(BOB, 300 * XYZ);
+        customStake.mint(FUNDER, 1000 * XYZ);
+
+        _stake(custom, customStake, ALICE, 200 * XYZ);
+        _stake(custom, customStake, BOB, 300 * XYZ);
+
+        custom.setEmissionAprBps(MAX_APR_BPS);
+        vm.warp(block.timestamp + 365 days);
+
+        _fundStakeTokenRewards(custom, customStake, 300 * XYZ);
+
+        vm.prank(BOB);
+        uint256 bobClaim = custom.claimStakeToken(BOB);
+        assertEq(bobClaim, 300 * XYZ);
+
+        vm.prank(ALICE);
+        vm.expectRevert("REWARD_INVENTORY_LOW");
+        custom.claimStakeToken(ALICE);
+
+        _fundStakeTokenRewards(custom, customStake, 200 * XYZ);
+
+        vm.prank(ALICE);
+        uint256 aliceClaim = custom.claimStakeToken(ALICE);
+        assertEq(aliceClaim, 200 * XYZ);
+        assertEq(custom.previewClaimableStakeToken(ALICE), 0);
     }
 
     function testClaimStakeTokenTransfersAndTracksTotalClaimed() external {
@@ -702,7 +743,6 @@ contract RevenueShareSplitterTest is Test {
             subjectId,
             TREASURY,
             PROTOCOL_TREASURY,
-            100,
             denominator,
             splitterLabel,
             address(this)

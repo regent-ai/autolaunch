@@ -65,16 +65,17 @@ contract LaunchFeeRegistryTest is Test {
         registry.registerPool(_registration(LAUNCH_TOKEN, LAUNCH_TOKEN));
     }
 
-    function testHookEnabledCanBeToggled() external {
+    function testHookRemainsEnabledAndRegistryHasNoTogglePath() external {
         vm.prank(OWNER);
         bytes32 poolId = registry.registerPool(_registration(LAUNCH_TOKEN, QUOTE_TOKEN));
 
-        vm.prank(OWNER);
-        registry.setHookEnabled(poolId, false);
-        assertFalse(registry.getPoolConfig(poolId).hookEnabled);
+        assertTrue(registry.getPoolConfig(poolId).hookEnabled);
 
         vm.prank(OWNER);
-        registry.setHookEnabled(poolId, true);
+        (bool success,) =
+            address(registry).call(abi.encodeWithSignature("setHookEnabled(bytes32,bool)", poolId, false));
+
+        assertFalse(success);
         assertTrue(registry.getPoolConfig(poolId).hookEnabled);
     }
 

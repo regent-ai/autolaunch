@@ -36,7 +36,6 @@ contract RevenueIngressAccountTest is Test {
             address(stakeToken),
             TREASURY_SAFE,
             REGENT_RECIPIENT,
-            100,
             1000e18,
             "Subject",
             block.chainid,

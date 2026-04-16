@@ -93,10 +93,10 @@ defmodule AutolaunchWeb.ContractsLive do
       <section id="contracts-hero" class="al-hero al-panel al-contracts-hero" phx-hook="MissionMotion">
         <div>
           <p class="al-kicker">Contracts</p>
-          <h2>Check launch and subject contracts before you send anything.</h2>
+          <h2>Pick the contract view you need before you review or prepare anything.</h2>
           <p class="al-subcopy">
-            Use this page to review contract details, prepare the next action, and open the
-            subject page when you need more detail.
+            Start with a launch job, a subject id, or the shared admin view. This page is for
+            review first and preparation second.
           </p>
 
           <div class="al-contract-pill-row">
@@ -112,10 +112,48 @@ defmodule AutolaunchWeb.ContractsLive do
         </div>
       </section>
 
+      <section id="contracts-entry" class="al-contract-grid" phx-hook="MissionMotion">
+        <article class="al-panel al-contract-card">
+          <p class="al-kicker">Launch mode</p>
+          <h3>Open one launch job</h3>
+          <p class="al-inline-note">
+            Use this when you want deploy results, strategy state, vesting, or fee details.
+          </p>
+          <form method="get" action={~p"/contracts"} class="al-contract-form-grid">
+            <input type="text" name="job_id" value={@job_id} placeholder="Launch job id" />
+            <button type="submit" class="al-submit">Open launch view</button>
+          </form>
+        </article>
+
+        <article class="al-panel al-contract-card">
+          <p class="al-kicker">Subject mode</p>
+          <h3>Open one subject</h3>
+          <p class="al-inline-note">
+            Use this when you want splitter, ingress, and registry tools for a launched token.
+          </p>
+          <form method="get" action={~p"/contracts"} class="al-contract-form-grid">
+            <input type="text" name="subject_id" value={@subject_id} placeholder="Subject id" />
+            <button type="submit" class="al-submit">Open subject view</button>
+          </form>
+        </article>
+
+        <article class="al-panel al-contract-card">
+          <p class="al-kicker">Admin mode</p>
+          <h3>Stay on the shared factory view</h3>
+          <p class="al-inline-note">
+            Use the admin section below when you want global factory settings without drilling into
+            one launch or subject.
+          </p>
+          <div class="al-action-row">
+            <.link navigate={~p"/contracts"} class="al-ghost">Reset to admin</.link>
+          </div>
+        </article>
+      </section>
+
       <%= if is_nil(@job_scope) and is_nil(@subject_scope) do %>
         <.empty_state
-          title="Open this from a launch or subject page."
-          body="This view fills in once you arrive from a launch detail page or a subject page."
+          title="No launch or subject is selected yet."
+          body="Use the entry cards above to open a launch job or a subject. The shared admin view still stays available below."
         />
       <% end %>
 
@@ -183,7 +221,7 @@ defmodule AutolaunchWeb.ContractsLive do
 
           <article class="al-panel al-contract-card">
             <p class="al-kicker">Fee registry</p>
-            <h3>Pool registration and hook state</h3>
+            <h3>Pool registration and locked hook state</h3>
             <div class="al-contract-kv">
               <div><span>Registry</span><strong>{short_address(@job_scope.fee_registry.address)}</strong></div>
               <div><span>Pool id</span><strong>{short_hash(@job_scope.fee_registry.pool_id)}</strong></div>
@@ -192,18 +230,6 @@ defmodule AutolaunchWeb.ContractsLive do
               <div :if={@job_scope.fee_registry.pool_config}><span>Tick spacing</span><strong>{display_int(@job_scope.fee_registry.pool_config.tick_spacing)}</strong></div>
               <div :if={@job_scope.fee_registry.pool_config}><span>Treasury</span><strong>{short_address(@job_scope.fee_registry.pool_config.treasury)}</strong></div>
               <div :if={@job_scope.fee_registry.pool_config}><span>Regent recipient</span><strong>{short_address(@job_scope.fee_registry.pool_config.regent_recipient)}</strong></div>
-            </div>
-            <form phx-change="update_form">
-              <input type="hidden" name="form_name" value="fee_registry_hook" />
-              <div class="al-inline-form">
-                <select name="form[enabled]">
-                  <option value="true" selected={form_value(@forms, "fee_registry_hook", "enabled", "true") == "true"}>Enable hook</option>
-                  <option value="false" selected={form_value(@forms, "fee_registry_hook", "enabled") == "false"}>Disable hook</option>
-                </select>
-              </div>
-            </form>
-            <div class="al-contract-action-row">
-              <button type="button" class="al-submit" phx-click="prepare_action" phx-value-scope="job" phx-value-resource="fee_registry" phx-value-action="set_hook_enabled" phx-value-form_name="fee_registry_hook">Prepare hook toggle</button>
             </div>
           </article>
 
@@ -233,15 +259,9 @@ defmodule AutolaunchWeb.ContractsLive do
               <input type="text" name="form[recipient]" value={form_value(@forms, "fee_vault_withdraw_regent", "recipient")} placeholder="Recipient address" />
             </form>
 
-            <form phx-change="update_form" class="al-contract-form-grid">
-              <input type="hidden" name="form_name" value="fee_vault_set_hook" />
-              <input type="text" name="form[hook]" value={form_value(@forms, "fee_vault_set_hook", "hook", @job_scope.hook.address)} placeholder="Hook address" />
-            </form>
-
             <div class="al-contract-action-row">
               <button type="button" class="al-submit" phx-click="prepare_action" phx-value-scope="job" phx-value-resource="fee_vault" phx-value-action="withdraw_treasury" phx-value-form_name="fee_vault_withdraw_treasury">Prepare treasury withdrawal</button>
               <button type="button" class="al-ghost" phx-click="prepare_action" phx-value-scope="job" phx-value-resource="fee_vault" phx-value-action="withdraw_regent_share" phx-value-form_name="fee_vault_withdraw_regent">Prepare Regent withdrawal</button>
-              <button type="button" class="al-ghost" phx-click="prepare_action" phx-value-scope="job" phx-value-resource="fee_vault" phx-value-action="set_hook" phx-value-form_name="fee_vault_set_hook">Prepare hook update</button>
             </div>
           </article>
         </section>
@@ -364,7 +384,6 @@ defmodule AutolaunchWeb.ContractsLive do
               <button type="button" class="al-ghost" phx-click="prepare_action" phx-value-scope="subject" phx-value-resource="splitter" phx-value-action="cancel_treasury_recipient_rotation" phx-value-form_name="splitter_treasury_rotation">Prepare treasury cancel</button>
               <button type="button" class="al-ghost" phx-click="prepare_action" phx-value-scope="subject" phx-value-resource="splitter" phx-value-action="execute_treasury_recipient_rotation" phx-value-form_name="splitter_treasury_rotation">Prepare treasury execute</button>
               <button type="button" class="al-ghost" phx-click="prepare_action" phx-value-scope="subject" phx-value-resource="splitter" phx-value-action="set_protocol_recipient" phx-value-form_name="splitter_protocol">Prepare protocol recipient</button>
-              <button type="button" class="al-ghost" phx-click="prepare_action" phx-value-scope="subject" phx-value-resource="splitter" phx-value-action="set_protocol_skim_bps" phx-value-form_name="splitter_protocol">Prepare skim update</button>
               <button type="button" class="al-ghost" phx-click="prepare_action" phx-value-scope="subject" phx-value-resource="splitter" phx-value-action="sweep_treasury_residual" phx-value-form_name="splitter_sweeps">Prepare treasury sweep</button>
               <button type="button" class="al-ghost" phx-click="prepare_action" phx-value-scope="subject" phx-value-resource="splitter" phx-value-action="sweep_protocol_reserve" phx-value-form_name="splitter_sweeps">Prepare protocol sweep</button>
               <button type="button" class="al-ghost" phx-click="prepare_action" phx-value-scope="subject" phx-value-resource="splitter" phx-value-action="reassign_dust" phx-value-form_name="splitter_dust">Prepare dust reassignment</button>

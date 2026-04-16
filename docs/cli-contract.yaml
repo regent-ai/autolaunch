@@ -141,7 +141,6 @@ command_groups:
       - autolaunch strategy sweep-token
       - autolaunch strategy sweep-currency
       - autolaunch fee-registry show
-      - autolaunch fee-registry set-hook-enabled
       - autolaunch fee-vault show
       - autolaunch fee-vault withdraw-treasury
       - autolaunch fee-vault withdraw-regent
@@ -152,7 +151,6 @@ command_groups:
       - autolaunch splitter cancel-treasury-recipient-rotation
       - autolaunch splitter execute-treasury-recipient-rotation
       - autolaunch splitter set-protocol-recipient
-      - autolaunch splitter set-protocol-skim-bps
       - autolaunch splitter sweep-treasury-residual
       - autolaunch splitter sweep-protocol-reserve
       - autolaunch splitter reassign-dust

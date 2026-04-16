@@ -39,7 +39,6 @@ contract ExampleCCADeploymentScript is Script {
         uint256 floorPrice;
         uint128 requiredCurrencyRaised;
         uint128 maxCurrencyAmountForLP;
-        uint16 protocolSkimBps;
         string tokenName;
         string tokenSymbol;
         string subjectLabel;
@@ -54,7 +53,6 @@ contract ExampleCCADeploymentScript is Script {
     uint256 internal constant DEFAULT_AUCTION_DURATION_BLOCKS = 9258;
     uint24 internal constant DEFAULT_POOL_FEE = 0;
     int24 internal constant DEFAULT_POOL_TICK_SPACING = 60;
-    uint16 internal constant DEFAULT_PROTOCOL_SKIM_BPS = 100;
     uint64 internal constant DEFAULT_CLAIM_BLOCK_OFFSET = 64;
     uint64 internal constant DEFAULT_MIGRATION_BLOCK_OFFSET = 128;
     uint64 internal constant DEFAULT_SWEEP_BLOCK_OFFSET = 256;
@@ -146,10 +144,6 @@ contract ExampleCCADeploymentScript is Script {
             vm.envOr("MAX_CURRENCY_AMOUNT_FOR_LP", type(uint128).max);
         require(maxCurrencyAmountForLPRaw <= type(uint128).max, "MAX_CCY_FOR_LP_TOO_LARGE");
 
-        uint256 protocolSkimBpsRaw =
-            vm.envOr("PROTOCOL_SKIM_BPS", uint256(DEFAULT_PROTOCOL_SKIM_BPS));
-        require(protocolSkimBpsRaw <= type(uint16).max, "PROTOCOL_SKIM_BPS_TOO_LARGE");
-
         string memory tokenName = vm.envOr("AUTOLAUNCH_TOKEN_NAME", string("Regent Agent Token"));
         string memory tokenSymbol = vm.envOr("AUTOLAUNCH_TOKEN_SYMBOL", string("RAGENT"));
         string memory subjectLabel = vm.envOr("AUTOLAUNCH_SUBJECT_LABEL", tokenName);
@@ -183,7 +177,6 @@ contract ExampleCCADeploymentScript is Script {
         cfg.floorPrice = floorPrice;
         cfg.requiredCurrencyRaised = uint128(requiredCurrencyRaisedRaw);
         cfg.maxCurrencyAmountForLP = uint128(maxCurrencyAmountForLPRaw);
-        cfg.protocolSkimBps = uint16(protocolSkimBpsRaw);
         cfg.tokenName = tokenName;
         cfg.tokenSymbol = tokenSymbol;
         cfg.subjectLabel = subjectLabel;
@@ -237,7 +230,6 @@ contract ExampleCCADeploymentScript is Script {
                 floorPrice: cfg.floorPrice,
                 requiredCurrencyRaised: cfg.requiredCurrencyRaised,
                 maxCurrencyAmountForLP: cfg.maxCurrencyAmountForLP,
-                protocolSkimBps: cfg.protocolSkimBps,
                 tokenName: cfg.tokenName,
                 tokenSymbol: cfg.tokenSymbol,
                 subjectLabel: cfg.subjectLabel,

@@ -78,19 +78,6 @@ defmodule Autolaunch.Contracts.Dispatch do
     )
   end
 
-  def build_job_action(job, "fee_registry", "set_hook_enabled", attrs) do
-    with {:ok, enabled} <- ActionParams.boolean_param(attrs, "enabled") do
-      ActionParams.prepare_tx(
-        job.chain_id,
-        job.launch_fee_registry_address,
-        Abi.encode_call(:set_hook_enabled, [{:bytes32, job.pool_id}, {:bool, enabled}]),
-        "fee_registry",
-        "set_hook_enabled",
-        %{enabled: enabled}
-      )
-    end
-  end
-
   def build_job_action(job, "fee_vault", "withdraw_treasury", attrs) do
     with {:ok, currency} <- ActionParams.address_param(attrs, "currency"),
          {:ok, amount} <- ActionParams.uint_param(attrs, "amount"),
@@ -127,19 +114,6 @@ defmodule Autolaunch.Contracts.Dispatch do
         "fee_vault",
         "withdraw_regent_share",
         %{currency: currency, amount: Integer.to_string(amount), recipient: recipient}
-      )
-    end
-  end
-
-  def build_job_action(job, "fee_vault", "set_hook", attrs) do
-    with {:ok, hook} <- ActionParams.address_param(attrs, "hook") do
-      ActionParams.prepare_tx(
-        job.chain_id,
-        job.launch_fee_vault_address,
-        Abi.encode_call(:set_hook, [{:address, hook}]),
-        "fee_vault",
-        "set_hook",
-        %{hook: hook}
       )
     end
   end
@@ -242,26 +216,6 @@ defmodule Autolaunch.Contracts.Dispatch do
         "splitter",
         "set_protocol_recipient",
         %{recipient: recipient}
-      )
-    end
-  end
-
-  def build_subject_action(
-        subject,
-        _registry,
-        "splitter",
-        "set_protocol_skim_bps",
-        attrs,
-        _config
-      ) do
-    with {:ok, skim_bps} <- ActionParams.uint_param(attrs, "skim_bps") do
-      ActionParams.prepare_tx(
-        subject.chain_id,
-        subject.splitter_address,
-        Abi.encode_call(:set_protocol_skim_bps, [{:uint16, skim_bps}]),
-        "splitter",
-        "set_protocol_skim_bps",
-        %{skim_bps: skim_bps}
       )
     end
   end

@@ -57,7 +57,6 @@ contract LaunchDeploymentController is Owned {
         uint256 floorPrice;
         uint128 requiredCurrencyRaised;
         uint128 maxCurrencyAmountForLP;
-        uint16 protocolSkimBps;
         string tokenName;
         string tokenSymbol;
         string subjectLabel;
@@ -129,7 +128,6 @@ contract LaunchDeploymentController is Owned {
         require(cfg.maxCurrencyAmountForLP != 0, "MAX_CCY_FOR_LP_ZERO");
         require(cfg.vestingDurationSeconds != 0, "VESTING_DURATION_ZERO");
         require(cfg.floorPrice > 0, "FLOOR_PRICE_ZERO");
-        require(cfg.protocolSkimBps <= BPS_DENOMINATOR, "SKIM_BPS_INVALID");
         require(bytes(cfg.tokenName).length != 0, "NAME_EMPTY");
         require(bytes(cfg.tokenSymbol).length != 0, "SYMBOL_EMPTY");
         require(
@@ -185,7 +183,6 @@ contract LaunchDeploymentController is Owned {
                 token,
                 cfg.agentSafe,
                 cfg.regentRecipient,
-                cfg.protocolSkimBps,
                 cfg.totalSupply,
                 cfg.subjectLabel,
                 block.chainid,

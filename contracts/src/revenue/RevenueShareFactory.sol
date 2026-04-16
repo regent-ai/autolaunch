@@ -59,7 +59,6 @@ contract RevenueShareFactory is Owned {
         address stakeToken,
         address agentSafe,
         address protocolRecipient,
-        uint16 protocolSkimBps,
         uint256 revenueShareSupplyDenominator,
         string calldata label,
         uint256 identityChainId,
@@ -88,7 +87,6 @@ contract RevenueShareFactory is Owned {
             subjectId,
             agentSafe,
             protocolRecipient,
-            protocolSkimBps,
             revenueShareSupplyDenominator,
             label,
             address(this)

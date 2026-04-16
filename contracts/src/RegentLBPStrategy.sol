@@ -2,7 +2,10 @@
 pragma solidity ^0.8.26;
 
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {AuctionParameters} from "src/cca/interfaces/IContinuousClearingAuction.sol";
+import {
+    AuctionParameters,
+    IContinuousClearingAuction
+} from "src/cca/interfaces/IContinuousClearingAuction.sol";
 import {
     IContinuousClearingAuctionFactory
 } from "src/cca/interfaces/IContinuousClearingAuctionFactory.sol";
@@ -71,6 +74,9 @@ contract RegentLBPStrategy is IDistributionContract {
     );
     event TokensSweptToVesting(address indexed vestingWallet, uint256 amount);
     event CurrencySweptToTreasury(address indexed treasury, uint256 amount);
+    event FailedAuctionRecovered(
+        address indexed auction, address indexed vestingWallet, uint256 amount
+    );
     event NativeRescued(address indexed recipient, uint256 amount);
     event UnsupportedTokenRescued(address indexed token, uint256 amount, address indexed recipient);
 
@@ -285,6 +291,24 @@ contract RegentLBPStrategy is IDistributionContract {
         usdc.safeTransfer(agentSafe, currencyBalance);
 
         emit CurrencySweptToTreasury(agentSafe, currencyBalance);
+    }
+
+    function recoverFailedAuction() external nonReentrant {
+        require(msg.sender == operator, "NOT_OPERATOR");
+        require(block.number >= sweepBlock, "SWEEP_NOT_ALLOWED");
+        require(!migrated, "ALREADY_MIGRATED");
+        require(auctionAddress != address(0), "AUCTION_NOT_CREATED");
+
+        IContinuousClearingAuction auction = IContinuousClearingAuction(auctionAddress);
+        require(!auction.isGraduated(), "AUCTION_GRADUATED");
+
+        auction.sweepUnsoldTokens();
+
+        uint256 tokenBalance = IERC20SupplyMinimal(token).balanceOf(address(this));
+        require(tokenBalance != 0, "NOTHING_TO_SWEEP");
+
+        token.safeTransfer(vestingWallet, tokenBalance);
+        emit FailedAuctionRecovered(auctionAddress, vestingWallet, tokenBalance);
     }
 
     function rescueNative(address recipient) external onlyTreasury nonReentrant {
