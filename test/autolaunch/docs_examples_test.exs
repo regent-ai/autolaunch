@@ -53,6 +53,14 @@ defmodule Autolaunch.DocsExamplesTest do
     assert vesting_status["vesting_wallet_address"] ==
              "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
+    regent_staking_overview = bundle["regent_staking_overview"]
+    assert regent_staking_overview["chain_id"] == 84_532
+    assert regent_staking_overview["chain_label"] == "Base Sepolia"
+
+    regent_staking_prepare = bundle["regent_staking_prepare"]
+    assert regent_staking_prepare["prepared"]["chain_id"] == 84_532
+    assert regent_staking_prepare["prepared"]["tx_request"]["chain_id"] == 84_532
+
     bid_quote = bundle["bid_quote"]
     assert bid_quote["tx_request"]["chain_id"] == 11_155_111
     assert bid_quote["quote_mode"] == "onchain_exact_v1"
