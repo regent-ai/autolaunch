@@ -29,8 +29,8 @@ contract LaunchPoolFeeHook is Owned, IHooks {
         Hooks.AFTER_SWAP_FLAG | Hooks.AFTER_SWAP_RETURNS_DELTA_FLAG;
 
     struct SwapFeeComputation {
-        address feeCurrency;
-        uint256 quoteAmount;
+        address chargedCurrency;
+        uint256 chargedAmount;
         uint256 totalFee;
         uint256 treasuryFee;
         uint256 regentFee;
@@ -47,7 +47,7 @@ contract LaunchPoolFeeHook is Owned, IHooks {
         bytes32 indexed poolId,
         address indexed payer,
         address indexed currency,
-        uint256 quoteAmount,
+        uint256 chargedAmount,
         uint256 totalFee,
         uint256 treasuryFee,
         uint256 regentFee,
@@ -147,8 +147,8 @@ contract LaunchPoolFeeHook is Owned, IHooks {
         _emitSwapFeeAccrued(
             poolId,
             sender,
-            feeData.feeCurrency,
-            feeData.quoteAmount,
+            feeData.chargedCurrency,
+            feeData.chargedAmount,
             feeData.totalFee,
             feeData.treasuryFee,
             feeData.regentFee,
@@ -156,10 +156,10 @@ contract LaunchPoolFeeHook is Owned, IHooks {
         );
 
         poolManagerContract.take(
-            Currency.wrap(feeData.feeCurrency), address(vaultContract), feeData.totalFee
+            Currency.wrap(feeData.chargedCurrency), address(vaultContract), feeData.totalFee
         );
         vaultContract.recordAccrual(
-            poolId, feeData.feeCurrency, feeData.treasuryFee, feeData.regentFee
+            poolId, feeData.chargedCurrency, feeData.treasuryFee, feeData.regentFee
         );
 
         return (IHooks.afterSwap.selector, feeData.totalFee.toInt128());
@@ -190,23 +190,23 @@ contract LaunchPoolFeeHook is Owned, IHooks {
         PoolKey calldata key,
         SwapParams calldata params,
         BalanceDelta delta,
-        address quoteToken
+        address
     ) internal pure returns (SwapFeeComputation memory feeData) {
-        int128 quoteAmount = Currency.unwrap(key.currency0) == quoteToken
-            ? delta.amount0()
-            : delta.amount1();
+        bool exactInput = params.amountSpecified < 0;
+        bool chargeCurrency0 = exactInput ? !params.zeroForOne : params.zeroForOne;
+        int128 chargedDelta = chargeCurrency0 ? delta.amount0() : delta.amount1();
+        if (chargedDelta < 0) chargedDelta = -chargedDelta;
 
-        if (quoteAmount < 0) quoteAmount = -quoteAmount;
-
-        feeData.feeCurrency = quoteToken;
-        feeData.quoteAmount = uint128(quoteAmount);
-        feeData.totalFee = feeData.quoteAmount * TOTAL_FEE_BPS / BPS_DENOMINATOR;
-        feeData.treasuryFee = feeData.quoteAmount * TREASURY_FEE_BPS / BPS_DENOMINATOR;
-        feeData.regentFee = feeData.quoteAmount * REGENT_MULTISIG_FEE_BPS / BPS_DENOMINATOR;
+        feeData.chargedCurrency =
+            chargeCurrency0 ? Currency.unwrap(key.currency0) : Currency.unwrap(key.currency1);
+        feeData.chargedAmount = uint128(chargedDelta);
+        feeData.totalFee = feeData.chargedAmount * TOTAL_FEE_BPS / BPS_DENOMINATOR;
+        feeData.treasuryFee = feeData.chargedAmount * TREASURY_FEE_BPS / BPS_DENOMINATOR;
+        feeData.regentFee = feeData.chargedAmount * REGENT_MULTISIG_FEE_BPS / BPS_DENOMINATOR;
         if (feeData.treasuryFee + feeData.regentFee > feeData.totalFee) {
             feeData.regentFee = feeData.totalFee - feeData.treasuryFee;
         }
-        feeData.exactInput = params.amountSpecified < 0;
+        feeData.exactInput = exactInput;
     }
 
     function _validatePool(bytes32 poolId)
@@ -224,15 +224,22 @@ contract LaunchPoolFeeHook is Owned, IHooks {
     function _emitSwapFeeAccrued(
         bytes32 poolId,
         address sender,
-        address feeCurrency,
-        uint256 quoteAmount,
+        address chargedCurrency,
+        uint256 chargedAmount,
         uint256 totalFee,
         uint256 treasuryFee,
         uint256 regentFee,
         bool exactInput
     ) internal {
         emit SwapFeeAccrued(
-            poolId, sender, feeCurrency, quoteAmount, totalFee, treasuryFee, regentFee, exactInput
+            poolId,
+            sender,
+            chargedCurrency,
+            chargedAmount,
+            totalFee,
+            treasuryFee,
+            regentFee,
+            exactInput
         );
     }
 }

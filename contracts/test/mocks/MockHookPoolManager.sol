@@ -12,8 +12,15 @@ contract MockHookPoolManager {
     using SafeTransferLib for address;
     using CurrencyLibrary for Currency;
 
+    address public lastTakeCurrency;
+    address public lastTakeRecipient;
+    uint256 public lastTakeAmount;
+
     function take(Currency currency, address to, uint256 amount) external {
-        Currency.unwrap(currency).safeTransfer(to, amount);
+        lastTakeCurrency = Currency.unwrap(currency);
+        lastTakeRecipient = to;
+        lastTakeAmount = amount;
+        lastTakeCurrency.safeTransfer(to, amount);
     }
 
     function simulateSwap(
