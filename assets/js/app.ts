@@ -20,7 +20,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
   hooks,
 })
 
-topbar.config({ barColors: { 0: "#0ea5e9" }, shadowColor: "rgba(1, 9, 20, 0.35)" })
+topbar.config({ barColors: { 0: "#0b7a4b" }, shadowColor: "rgba(24, 59, 51, 0.28)" })
 window.addEventListener("phx:page-loading-start", () => topbar.show(300))
 window.addEventListener("phx:page-loading-stop", () => topbar.hide())
 

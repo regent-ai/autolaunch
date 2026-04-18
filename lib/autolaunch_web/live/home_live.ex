@@ -1,45 +1,69 @@
 defmodule AutolaunchWeb.HomeLive do
   use AutolaunchWeb, :live_view
 
-  alias Autolaunch.{Launch, Xmtp}
-  alias AutolaunchWeb.Live.Refreshable
+  alias Autolaunch.Launch
   alias AutolaunchWeb.LaunchComponents
+  alias AutolaunchWeb.Live.Refreshable
 
   @poll_ms 15_000
 
-  @home_steps [
+  @anchor_nav [
+    %{label: "Markets", href: "#home-markets"},
+    %{label: "How it works", href: "#home-how-it-works"},
+    %{label: "About", href: "#home-about"}
+  ]
+
+  @agent_badges [
+    %{label: "Hermes", mark: "HM", href: "/launch-via-agent"},
+    %{label: "OpenClaw", mark: "OC", href: "/launch-via-agent"},
+    %{label: "IronClaw", mark: "IC", href: "/launch"},
+    %{label: "Codex", mark: "CX", href: "/launch"},
+    %{label: "Claude", mark: "CL", href: "/launch"}
+  ]
+
+  @hero_panels [
     %{
-      title: "Start the wizard",
-      body: "Save the launch plan first so your agent has one clean set of inputs to work from."
+      label: "Launch path",
+      title: "Start from one reviewed plan",
+      body:
+        "Save the plan, check it, publish it, and run the launch from the same working thread."
     },
     %{
-      title: "Run the launch",
+      label: "After the sale",
+      title: "Keep follow-up work in reach",
       body:
-        "Validate, publish, run, and monitor from the same path instead of bouncing between tools."
+        "Once the auction closes, people come back here for claims, staking, and revenue actions."
+    }
+  ]
+
+  @story_bands [
+    %{
+      title: "Start with one launch path",
+      body:
+        "Autolaunch keeps the launch work in one reviewed path instead of scattering it across separate tools and pages."
     },
     %{
-      title: "Come back here live",
+      title: "Bid with a budget and a price cap",
       body:
-        "Use the site to watch active auctions, inspect token pages, and stay on the wire once the market is moving."
+        "Each buyer chooses a total budget and the highest price they will pay, then the sale keeps clearing block by block."
+    },
+    %{
+      title: "Come back after the auction",
+      body:
+        "The same product keeps the next steps close at hand when people need to claim, stake, or manage revenue."
     }
   ]
 
   def mount(_params, _session, socket) do
-    if connected?(socket) do
-      :ok = Xmtp.subscribe()
-    end
-
     {:ok,
      socket
      |> Refreshable.schedule(@poll_ms)
      |> assign(:page_title, "Autolaunch")
      |> assign(:active_view, "home")
-     |> assign(:home_steps, @home_steps)
-     |> assign(
-       :privy_app_id,
-       Keyword.get(Application.get_env(:autolaunch, :privy, []), :app_id, "")
-     )
-     |> assign(:xmtp_room, load_xmtp_panel(socket.assigns[:current_human]))
+     |> assign(:anchor_nav, @anchor_nav)
+     |> assign(:agent_badges, @agent_badges)
+     |> assign(:hero_panels, @hero_panels)
+     |> assign(:story_bands, @story_bands)
      |> assign_home_market()}
   end
 
@@ -47,370 +71,245 @@ defmodule AutolaunchWeb.HomeLive do
     {:noreply, Refreshable.refresh(socket, @poll_ms, &reload_home/1)}
   end
 
-  def handle_info({:xmtp_public_room, :refresh}, socket) do
-    {:noreply, assign(socket, :xmtp_room, load_xmtp_panel(socket.assigns.current_human))}
-  end
-
-  def handle_event("xmtp_send", %{"body" => body}, socket) do
-    case Xmtp.send_public_message(socket.assigns.current_human, body) do
-      {:ok, panel} ->
-        {:noreply, assign(socket, :xmtp_room, panel)}
-
-      {:error, reason} ->
-        {:noreply, assign(socket, :xmtp_room, xmtp_error_panel(socket.assigns, reason))}
-    end
-  end
-
-  def handle_event("xmtp_join", _params, socket) do
-    case Xmtp.request_join(socket.assigns.current_human) do
-      {:ok, panel} ->
-        {:noreply, assign(socket, :xmtp_room, panel)}
-
-      {:needs_signature, %{request_id: request_id, signature_text: signature_text, panel: panel}} ->
-        {:noreply,
-         socket
-         |> assign(:xmtp_room, panel)
-         |> push_event("xmtp:sign-request", %{
-           request_id: request_id,
-           signature_text: signature_text,
-           wallet_address: panel.connected_wallet
-         })}
-
-      {:error, reason} ->
-        {:noreply, assign(socket, :xmtp_room, xmtp_error_panel(socket.assigns, reason))}
-    end
-  end
-
-  def handle_event(
-        "xmtp_join_signature_signed",
-        %{"request_id" => request_id, "signature" => signature},
-        socket
-      ) do
-    case Xmtp.complete_join_signature(socket.assigns.current_human, request_id, signature) do
-      {:ok, panel} ->
-        {:noreply, assign(socket, :xmtp_room, panel)}
-
-      {:error, reason} ->
-        {:noreply, assign(socket, :xmtp_room, xmtp_error_panel(socket.assigns, reason))}
-    end
-  end
-
-  def handle_event("xmtp_join_signature_failed", %{"message" => message}, socket) do
-    {:noreply, update(socket, :xmtp_room, &Map.put(&1, :status, message))}
-  end
-
-  def handle_event("xmtp_heartbeat", _params, socket) do
-    :ok = Xmtp.heartbeat(socket.assigns.current_human)
-    {:noreply, socket}
-  end
-
-  def handle_event("xmtp_delete_message", %{"message_id" => message_id}, socket) do
-    case Xmtp.moderator_delete_message(socket.assigns.current_human, message_id) do
-      {:ok, panel} ->
-        {:noreply, assign(socket, :xmtp_room, panel)}
-
-      {:error, reason} ->
-        {:noreply, assign(socket, :xmtp_room, xmtp_error_panel(socket.assigns, reason))}
-    end
-  end
-
-  def handle_event("xmtp_kick_user", %{"target" => target}, socket) do
-    case Xmtp.moderator_kick_user(socket.assigns.current_human, target) do
-      {:ok, panel} ->
-        {:noreply, assign(socket, :xmtp_room, panel)}
-
-      {:error, reason} ->
-        {:noreply, assign(socket, :xmtp_room, xmtp_error_panel(socket.assigns, reason))}
-    end
-  end
-
   def render(assigns) do
     ~H"""
-    <.shell current_human={@current_human} active_view={@active_view}>
-      <div id="home-page" class="al-home-layout">
-        <div class="al-home-main">
-          <section id="home-hero" class="al-panel al-home-hero" phx-hook="MissionMotion">
-            <div class="al-home-hero-copy">
-              <p class="al-kicker">Start here</p>
-              <h2>Copy the wizard command. Start the launch from one clear place.</h2>
-              <p class="al-subcopy">
-                Start with the saved plan, run the launch in the command line, then return here when
-                the auction is live and people need a next step.
+    <div
+      id="autolaunch-homepage"
+      class="al-homepage-shell rg-app-shell rg-regent-theme-autolaunch"
+      phx-hook="ShellChrome"
+    >
+      <div class="al-homepage-noise" aria-hidden="true"></div>
+      <div class="al-homepage-beam al-homepage-beam--left" aria-hidden="true"></div>
+      <div class="al-homepage-beam al-homepage-beam--right" aria-hidden="true"></div>
+
+      <header class="al-homepage-header">
+        <.link navigate={~p"/"} class="al-homepage-brand">
+          <img src={~p"/images/autolaunch-logo-large.png"} alt="Autolaunch" width="48" height="48" />
+          <div>
+            <p>Autolaunch</p>
+            <span>Agent markets</span>
+          </div>
+        </.link>
+
+        <nav class="al-homepage-nav" aria-label="Homepage">
+          <a :for={item <- @anchor_nav} href={item.href}>{item.label}</a>
+        </nav>
+
+        <.link navigate={~p"/home"} class="al-homepage-cta">Open auctions</.link>
+      </header>
+
+      <main class="al-homepage-main">
+        <section id="home-hero" class="al-homepage-hero" phx-hook="HomeHeroMotion">
+          <div class="al-homepage-hero-stage">
+            <div class="al-homepage-hero-copy" data-home-hero-reveal>
+              <p class="al-homepage-kicker">Operator-first launch path</p>
+              <h1>Start the launch, follow the sale, and return for what comes next.</h1>
+              <p class="al-homepage-subcopy">
+                Use one reviewed plan to start an agent token sale. Then keep the live auction,
+                claims, staking, and revenue follow-up in one calm working surface.
               </p>
 
-              <div class="al-hero-actions">
-                <button type="button" class="al-cta-link al-cta-link--primary" data-copy-value={wizard_command()}>
-                  Copy wizard command
-                </button>
-                <.link navigate={~p"/launch"} class="al-ghost">Open launch console</.link>
+              <div class="al-homepage-hero-actions">
+                <.link navigate={~p"/home"} class="al-homepage-cta">Open auctions</.link>
+                <.link navigate={~p"/launch"} class="al-homepage-about-secondary">
+                  Open launch path
+                </.link>
+                <.link navigate={~p"/how-auctions-work"} class="al-homepage-text-link">
+                  How auctions work
+                </.link>
               </div>
 
-              <div class="al-launch-tags" aria-label="Homepage facts">
-                <span class="al-launch-tag">Save one plan first</span>
-                <span class="al-launch-tag">Run the launch in the CLI</span>
-                <span class="al-launch-tag">Watch the live auction here</span>
-              </div>
-              <p class="al-inline-note">
-                Need operator prompts or the step-by-step launch doorway?
-                <.link navigate={~p"/launch-via-agent"} class="al-inline-link">Open operator path</.link>.
-              </p>
-              <p class="al-inline-note">
-                Need the auction model first?
-                <.link navigate={~p"/how-auctions-work"} class="al-inline-link">Open the guide</.link>.
-              </p>
-            </div>
-
-            <.terminal_command_panel
-              kicker="Copy and paste"
-              title="Wizard command"
-              command={wizard_command()}
-              output_label="What to run next"
-              output={wizard_transcript()}
-              copy_label="Copy command"
-            />
-          </section>
-
-          <section id="home-market-peek" class="al-panel al-home-market-peek" phx-hook="MissionMotion">
-            <div class="al-home-market-head">
-              <div>
-                <p class="al-kicker">Live auctions</p>
-                <h3>See what is open, then jump straight to the action page.</h3>
-                <p class="al-subcopy">
-                  This preview is here to help you choose the next click quickly. Use the full
-                  directory when you want every live market and every filter.
-                </p>
-              </div>
-
-              <div class="al-home-market-actions">
-                <div class="al-launch-tags" aria-label="Auction counts">
-                  <span class="al-launch-tag">Biddable {@biddable_count}</span>
-                  <span class="al-launch-tag">Live {@live_count}</span>
-                  <span class="al-launch-tag">Showing {length(@preview_tokens)}</span>
-                </div>
-                <.link navigate={~p"/auctions"} class="al-submit">Open all auctions</.link>
-              </div>
-            </div>
-
-            <%= if @preview_tokens == [] do %>
-              <.empty_state
-                title="No auctions are live yet."
-                body="The next launch will appear here as soon as the market opens."
-                action_label="Open the guide"
-                action_href={~p"/how-auctions-work"}
-              />
-            <% else %>
-              <section class="al-token-grid al-home-token-grid">
-                <article
-                  :for={token <- @preview_tokens}
-                  id={"home-auction-preview-#{token.id}"}
-                  class="al-panel al-token-card"
-                >
-                  <div class="al-token-card-head">
-                    <div>
-                      <p class="al-kicker">{token.agent_id}</p>
-                      <h3>{token.agent_name}</h3>
-                      <p class="al-inline-note">{token.symbol} • {token.phase}</p>
-                    </div>
-                    <span class={["al-status-badge", if(token.phase == "biddable", do: "is-ready", else: "is-muted")]}>
-                      {String.capitalize(token.phase)}
-                    </span>
-                  </div>
-
-                  <div class="al-launch-tags">
-                    <span class="al-launch-tag">Price {display_value(token.current_price_usdc, "USDC")}</span>
-                    <span class="al-launch-tag">Market cap {display_value(token.implied_market_cap_usdc, "USDC")}</span>
-                    <span class="al-launch-tag">Started {format_date(token.started_at)}</span>
-                  </div>
-
-                  <div class="al-note-grid al-token-card-facts">
-                    <article class="al-note-card">
-                      <span>Price source</span>
-                      <strong>{humanize_price_source(token.price_source)}</strong>
-                      <p>{directory_copy(token.phase)}</p>
-                    </article>
-                    <article class="al-note-card">
-                      <span>Auction</span>
-                      <strong>{LaunchComponents.time_left_label(token.ends_at)}</strong>
-                      <p>Trust summary: {trust_summary(token.trust)}</p>
-                    </article>
-                  </div>
-
-                  <div class="al-action-row">
-                    <.link navigate={token.detail_url} class="al-submit">
-                      {if token.phase == "biddable", do: "Open bid view", else: "Inspect launch"}
-                    </.link>
-                    <.link :if={token.subject_url} navigate={token.subject_url} class="al-ghost">
-                      Open token detail
-                    </.link>
-                  </div>
-                </article>
-              </section>
-            <% end %>
-          </section>
-
-          <section id="home-flow" class="al-panel al-home-flow" phx-hook="MissionMotion">
-            <div class="al-section-head">
-              <div>
-                <p class="al-kicker">What happens next</p>
-                <h3>Use home as the launcher, not the whole control room.</h3>
-              </div>
-            </div>
-
-            <div class="al-directory-facts-grid">
-              <article :for={step <- @home_steps} class="al-directory-fact-card">
-                <span>Step</span>
-                <strong>{step.title}</strong>
-                <p>{step.body}</p>
-              </article>
-            </div>
-          </section>
-
-          <details id="home-operator-tools" class="al-panel al-disclosure" phx-hook="MissionMotion">
-            <summary class="al-disclosure-summary">
-              <div>
-                <p class="al-kicker">Operator extras</p>
-                <h3>Open the launch doorway, trust tools, and live room only when you need them.</h3>
-              </div>
-              <span class="al-network-badge">Secondary</span>
-            </summary>
-
-            <div class="al-note-grid">
-              <article class="al-note-card">
-                <span>Operator prompts</span>
-                <strong>OpenClaw and Hermes briefs live on the operator page.</strong>
-                <p>Use the operator doorway when you want the copy-ready handoff, not when you just need to launch or bid.</p>
-                <div class="al-action-row">
-                  <.link navigate={~p"/launch-via-agent"} class="al-submit">Open operator path</.link>
-                </div>
-              </article>
-
-              <article class="al-note-card">
-                <span>Trust tools</span>
-                <strong>Link identity details and start a verification from the same menu.</strong>
-                <p>Open Trust Check, ENS Link, or X Link only when the launch needs those public signals.</p>
-                <div class="al-action-row">
-                  <.link navigate={~p"/agentbook"} class="al-ghost">Trust check</.link>
-                  <.link navigate={~p"/ens-link"} class="al-ghost">ENS link</.link>
-                  <.link navigate={~p"/x-link"} class="al-ghost">X link</.link>
-                </div>
-              </article>
-            </div>
-
-            <section
-              id="home-xmtp-room"
-              class="al-panel al-xmtp-room al-home-xmtp-room"
-              phx-hook="PrivyXmtpRoom"
-              data-privy-app-id={@privy_app_id}
-              data-pending-request-id={@xmtp_room.pending_signature_request_id}
-              data-connected-wallet={@xmtp_room.connected_wallet}
-              data-membership-state={@xmtp_room.membership_state}
-              data-can-join={to_string(@xmtp_room.can_join?)}
-              data-can-send={to_string(@xmtp_room.can_send?)}
-            >
-              <div class="al-xmtp-head">
-                <div class="al-xmtp-copy">
-                  <p class="al-kicker">Live wire</p>
-                  <h2>Keep the operator room close, not in the way.</h2>
-                  <p class="al-subcopy">
-                    Open the room when you need to follow operator chatter while the market is moving.
-                  </p>
-                </div>
-
-                <div class="al-xmtp-badges">
-                  <span class="al-network-badge">XMTP group</span>
-                  <span class="al-network-badge">
-                    {@xmtp_room.member_count}/{@xmtp_room.seat_count} private seats
-                  </span>
-                  <span class="al-network-badge">{length(@xmtp_room.messages)} recent</span>
-                </div>
-              </div>
-
-              <div class="al-xmtp-layout">
-                <div class="al-xmtp-feed" data-xmtp-feed>
-                  <%= if @xmtp_room.messages == [] do %>
-                    <div class="al-xmtp-empty">
-                      No public posts yet. Connect your wallet and send the first one.
-                    </div>
-                  <% else %>
-                    <%= for message <- @xmtp_room.messages do %>
-                      <article
-                        id={"xmtp-room-message-#{message.key}"}
-                        class={["al-xmtp-bubble", message.side == :self && "is-self"]}
-                        data-xmtp-entry
-                        data-message-key={message.key}
-                      >
-                        <header>
-                          <strong>{message.author}</strong>
-                          <span>{message.stamp}</span>
-                        </header>
-                        <p>{message.body}</p>
-                        <div :if={@xmtp_room.moderator?} class="al-xmtp-moderation">
-                          <button
-                            :if={message.can_delete?}
-                            type="button"
-                            class="al-ghost"
-                            phx-click="xmtp_delete_message"
-                            phx-value-message_id={message.key}
-                          >
-                            Delete on website
-                          </button>
-                          <button
-                            :if={message.can_kick?}
-                            type="button"
-                            class="al-ghost"
-                            phx-click="xmtp_kick_user"
-                            phx-value-target={message.sender_wallet || message.sender_inbox_id}
-                          >
-                            Kick user
-                          </button>
-                        </div>
-                      </article>
-                    <% end %>
-                  <% end %>
-                </div>
-
-                <div class="al-xmtp-composer">
-                  <div class="al-xmtp-composer-head">
-                    <button type="button" class="al-submit" data-xmtp-auth>
-                      {if @current_human, do: "Disconnect wallet", else: "Connect wallet"}
-                    </button>
-
-                    <button
-                      :if={@current_human}
-                      type="button"
-                      class="al-ghost"
-                      data-xmtp-join
-                      disabled={!@xmtp_room.can_join?}
-                    >
-                      Join room
-                    </button>
-
-                    <p class="al-inline-note" data-xmtp-state>{@xmtp_room.status}</p>
-                  </div>
-
-                  <label class="al-xmtp-input-wrap">
-                    <span>Message</span>
-                    <input
-                      type="text"
-                      maxlength="2000"
-                      placeholder="Write to the Autolaunch wire"
-                      data-xmtp-input
-                      disabled={!@xmtp_room.can_send?}
-                    />
-                  </label>
-
-                  <button type="button" class="al-submit" data-xmtp-send disabled={!@xmtp_room.can_send?}>
-                    Send update
+              <div class="al-homepage-command-block" data-home-hero-reveal>
+                <p class="al-homepage-command-label">Start here</p>
+                <div class="al-homepage-command-bar">
+                  <code>regent autolaunch prelaunch wizard</code>
+                  <button
+                    type="button"
+                    class="al-homepage-command-copy"
+                    data-copy-value={wizard_command()}
+                  >
+                    Copy
                   </button>
                 </div>
               </div>
-            </section>
-          </details>
-        </div>
-      </div>
+
+              <p class="al-homepage-install-copy" data-home-hero-reveal>
+                Works with the operator surfaces below
+              </p>
+
+              <div
+                class="al-homepage-badge-row"
+                aria-label="Agent entry points"
+                data-home-hero-reveal
+              >
+                <.link
+                  :for={badge <- @agent_badges}
+                  navigate={badge.href}
+                  class="al-homepage-badge"
+                >
+                  <span class="al-homepage-badge-mark">{badge.mark}</span>
+                  <span>{badge.label}</span>
+                </.link>
+              </div>
+            </div>
+
+            <div class="al-homepage-hero-side">
+              <div class="al-homepage-visual" aria-hidden="true" data-home-hero-reveal>
+                <div class="al-homepage-orbit"></div>
+                <div class="al-homepage-orbit al-homepage-orbit--inner"></div>
+                <div class="al-homepage-sigil-halo"></div>
+                <img
+                  class="al-homepage-sigil"
+                  src={~p"/images/autolaunch-logo-large.png"}
+                  alt=""
+                  width="900"
+                  height="900"
+                />
+              </div>
+
+              <aside class="al-homepage-market-panel" data-home-hero-reveal>
+                <div class="al-homepage-market-panel-head">
+                  <p class="al-homepage-kicker">Live market</p>
+                  <h2>Know where to go next.</h2>
+                  <p>
+                    Open the auction page when you want the live estimator and bid controls. Open
+                    the token page when the sale is over and it is time to claim or stake.
+                  </p>
+                </div>
+
+                <div class="al-homepage-stat-row" aria-label="Market counts">
+                  <span>Biddable {@biddable_count}</span>
+                  <span>Live {@live_count}</span>
+                </div>
+
+                <div class="al-homepage-hero-panel-grid">
+                  <article :for={panel <- @hero_panels} class="al-homepage-hero-panel">
+                    <p class="al-homepage-kicker">{panel.label}</p>
+                    <h3>{panel.title}</h3>
+                    <p>{panel.body}</p>
+                  </article>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </section>
+
+        <section id="home-markets" class="al-homepage-section" phx-hook="MissionMotion">
+          <div class="al-homepage-section-head">
+            <div>
+              <p class="al-homepage-kicker">Markets</p>
+              <h2>See what is live now and open the right page right away.</h2>
+            </div>
+          </div>
+
+          <.market_table
+            title="Open auctions"
+            tokens={@active_tokens}
+            empty_message="No auctions are open right now."
+          />
+
+          <.market_table
+            title="Post-auction tokens"
+            tokens={@past_tokens}
+            empty_message="No past tokens are available yet."
+          />
+        </section>
+
+        <section id="home-how-it-works" class="al-homepage-section" phx-hook="MissionMotion">
+          <div class="al-homepage-section-head">
+            <div>
+              <p class="al-homepage-kicker">How it works</p>
+              <h2>Three stages, without extra page hunting.</h2>
+            </div>
+          </div>
+
+          <div class="al-homepage-story-grid">
+            <article :for={band <- @story_bands} class="al-homepage-story-card">
+              <h3>{band.title}</h3>
+              <p>{band.body}</p>
+            </article>
+          </div>
+        </section>
+
+        <section id="home-about" class="al-homepage-section" phx-hook="MissionMotion">
+          <div class="al-homepage-about-card">
+            <p class="al-homepage-kicker">About</p>
+            <h2>One launch path, one live market, and one return point after the sale.</h2>
+            <p>
+              Start the launch from one reviewed path. Use the market page to find active sales.
+              Then come back to the token page for claims, staking, and revenue actions after the
+              sale closes.
+            </p>
+
+            <div class="al-homepage-about-actions">
+              <.link navigate={~p"/home"} class="al-homepage-about-primary">Open markets</.link>
+              <.link navigate={~p"/launch-via-agent"} class="al-homepage-about-secondary">
+                Use an agent
+              </.link>
+            </div>
+          </div>
+        </section>
+      </main>
 
       <.flash_group flash={@flash} />
-    </.shell>
+    </div>
+    """
+  end
+
+  attr :title, :string, required: true
+  attr :tokens, :list, required: true
+  attr :empty_message, :string, required: true
+
+  defp market_table(assigns) do
+    ~H"""
+    <section class="al-homepage-table-card">
+      <div class="al-homepage-table-head">
+        <h3>{@title}</h3>
+        <span>{length(@tokens)} shown</span>
+      </div>
+
+      <div class="al-homepage-table-wrap">
+        <table class="al-homepage-table">
+          <thead>
+            <tr>
+              <th scope="col">Token</th>
+              <th scope="col">Symbol</th>
+              <th scope="col">Current price</th>
+              <th scope="col">Implied market cap</th>
+              <th scope="col">Timing</th>
+              <th scope="col">Trust</th>
+              <th scope="col">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <%= if @tokens == [] do %>
+              <tr>
+                <td colspan="7" class="al-homepage-table-empty">{@empty_message}</td>
+              </tr>
+            <% else %>
+              <tr :for={token <- @tokens}>
+                <td>
+                  <div class="al-homepage-token-cell">
+                    <strong>{token.agent_name}</strong>
+                    <span>{token.agent_id}</span>
+                  </div>
+                </td>
+                <td>{token.symbol}</td>
+                <td>{display_value(token.current_price_usdc, "USDC")}</td>
+                <td>{display_value(token.implied_market_cap_usdc, "USDC")}</td>
+                <td>{market_timing_label(token)}</td>
+                <td>{trust_summary(token.trust)}</td>
+                <td>
+                  <.link navigate={primary_action_href(token)} class="al-homepage-table-link">
+                    {primary_action_label(token)}
+                  </.link>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </section>
     """
   end
 
@@ -423,45 +322,38 @@ defmodule AutolaunchWeb.HomeLive do
         socket.assigns[:current_human]
       )
 
-    preview_tokens =
-      directory
-      |> Enum.sort_by(fn token -> if token.phase == "biddable", do: 0, else: 1 end)
-      |> Enum.take(4)
-
     socket
-    |> assign(:preview_tokens, preview_tokens)
+    |> assign(:directory, directory)
+    |> assign(:active_tokens, Enum.filter(directory, &(&1.phase == "biddable")))
+    |> assign(:past_tokens, Enum.filter(directory, &(&1.phase == "live")))
     |> assign(:biddable_count, Enum.count(directory, &(&1.phase == "biddable")))
     |> assign(:live_count, Enum.count(directory, &(&1.phase == "live")))
   end
 
   defp wizard_command, do: "regent autolaunch prelaunch wizard"
 
-  defp wizard_transcript do
-    """
-    > regent autolaunch prelaunch validate --plan plan_alpha
-    > regent autolaunch prelaunch publish --plan plan_alpha
-    > regent autolaunch launch run --plan plan_alpha
-    > regent autolaunch launch monitor --job job_alpha
-    """
-    |> String.trim()
-  end
-
   defp display_value(nil, unit), do: "Unavailable #{unit}"
   defp display_value(value, unit), do: "#{value} #{unit}"
 
-  defp format_date(nil), do: "Unknown"
+  defp market_timing_label(%{phase: "biddable", ends_at: ends_at}),
+    do: LaunchComponents.time_left_label(ends_at)
 
-  defp format_date(value) do
-    case DateTime.from_iso8601(value) do
-      {:ok, datetime, _} -> Calendar.strftime(datetime, "%b %-d")
-      _ -> "Unknown"
-    end
-  end
+  defp market_timing_label(%{phase: "live"}), do: "Auction closed"
+  defp market_timing_label(_token), do: "Check token page"
 
-  defp humanize_price_source("auction_clearing"), do: "Auction clearing"
-  defp humanize_price_source("uniswap_spot"), do: "Uniswap spot"
-  defp humanize_price_source("uniswap_spot_unavailable"), do: "Quote pending"
-  defp humanize_price_source(_), do: "Unavailable"
+  defp primary_action_href(%{phase: "live", subject_url: subject_url, detail_url: _detail_url})
+       when is_binary(subject_url),
+       do: subject_url
+
+  defp primary_action_href(%{detail_url: detail_url}), do: detail_url
+
+  defp primary_action_label(%{phase: "biddable"}), do: "Open bid view"
+
+  defp primary_action_label(%{phase: "live", subject_url: subject_url})
+       when is_binary(subject_url), do: "Open token page"
+
+  defp primary_action_label(%{phase: "live"}), do: "Inspect launch"
+  defp primary_action_label(_token), do: "Open"
 
   defp trust_summary(%{ens: %{connected: true, name: name}, world: %{connected: true}})
        when is_binary(name),
@@ -470,73 +362,6 @@ defmodule AutolaunchWeb.HomeLive do
   defp trust_summary(%{ens: %{connected: true, name: name}}) when is_binary(name), do: name
   defp trust_summary(%{world: %{connected: true, launch_count: count}}), do: "World #{count}"
   defp trust_summary(_), do: "Optional links"
-
-  defp directory_copy("biddable"),
-    do: "Still inside the active auction window."
-
-  defp directory_copy("live"),
-    do: "Now trading after the auction closed."
-
-  defp load_xmtp_panel(current_human) do
-    {:ok, panel} = Xmtp.public_room_panel(current_human)
-    panel
-  end
-
-  defp xmtp_error_panel(assigns, :wallet_required) do
-    Map.put(assigns.xmtp_room, :status, "Connect your wallet before joining the room.")
-  end
-
-  defp xmtp_error_panel(assigns, :message_required) do
-    Map.put(assigns.xmtp_room, :status, "Write a message before sending.")
-  end
-
-  defp xmtp_error_panel(assigns, :message_too_long) do
-    Map.put(assigns.xmtp_room, :status, "Messages must stay under 2,000 characters.")
-  end
-
-  defp xmtp_error_panel(assigns, :signature_request_missing) do
-    Map.put(assigns.xmtp_room, :status, "The signature request expired. Click join again.")
-  end
-
-  defp xmtp_error_panel(assigns, :join_required) do
-    Map.put(assigns.xmtp_room, :status, "Join the room before sending.")
-  end
-
-  defp xmtp_error_panel(assigns, :room_full) do
-    Map.put(
-      assigns.xmtp_room,
-      :status,
-      "The room is full right now. Watch from the feed until a seat opens."
-    )
-  end
-
-  defp xmtp_error_panel(assigns, :kicked) do
-    Map.put(
-      assigns.xmtp_room,
-      :status,
-      "You were removed from the room. Click join again when ready."
-    )
-  end
-
-  defp xmtp_error_panel(assigns, :moderator_required) do
-    Map.put(assigns.xmtp_room, :status, "Only moderator wallets can manage the public mirror.")
-  end
-
-  defp xmtp_error_panel(assigns, :message_not_found) do
-    Map.put(
-      assigns.xmtp_room,
-      :status,
-      "That message is no longer available in the website mirror."
-    )
-  end
-
-  defp xmtp_error_panel(assigns, :member_not_found) do
-    Map.put(assigns.xmtp_room, :status, "That user is no longer inside the private room.")
-  end
-
-  defp xmtp_error_panel(assigns, _reason) do
-    Map.put(assigns.xmtp_room, :status, "The room is unavailable right now.")
-  end
 
   defp launch_module do
     :autolaunch

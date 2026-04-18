@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-brand="autolaunch" data-theme="light">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -13,12 +13,13 @@
       (() => {
         const themeKey = "autolaunch:theme";
         const applyTheme = (theme) => {
+          document.documentElement.setAttribute("data-brand", "autolaunch");
           document.documentElement.setAttribute("data-theme", theme);
           localStorage.setItem(themeKey, theme);
         };
-        applyTheme(localStorage.getItem(themeKey) || "dawn");
+        applyTheme(localStorage.getItem(themeKey) || "light");
         window.addEventListener("autolaunch:set-theme", (event) => {
-          applyTheme(event.detail?.theme || "dawn");
+          applyTheme(event.detail?.theme || "light");
         });
       })();
     </script>

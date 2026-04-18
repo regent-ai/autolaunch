@@ -57,8 +57,8 @@ function copyValue(button: CopyButton): void {
 }
 
 function toggleTheme(button: HTMLElement): void {
-  const current = document.documentElement.getAttribute("data-theme") || "dawn"
-  const next = current === "dawn" ? "midnight" : "dawn"
+  const current = document.documentElement.getAttribute("data-theme") || "light"
+  const next = current === "light" ? "dark" : "light"
 
   animateButton(button)
   window.dispatchEvent(new CustomEvent("autolaunch:set-theme", { detail: { theme: next } }))

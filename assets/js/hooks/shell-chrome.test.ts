@@ -124,7 +124,7 @@ describe("shell-chrome hook", () => {
     globalThis.document = {
       documentElement: {
         getAttribute(name: string) {
-          return name === "data-theme" ? "dawn" : null
+          return name === "data-theme" ? "light" : null
         },
       },
     } as unknown as Document
@@ -197,7 +197,7 @@ describe("shell-chrome hook", () => {
 
     assert.equal(dispatchedEvents.length, 1)
     assert.equal(dispatchedEvents[0]?.type, "autolaunch:set-theme")
-    assert.deepEqual(dispatchedEvents[0]?.detail, { theme: "midnight" })
+    assert.deepEqual(dispatchedEvents[0]?.detail, { theme: "dark" })
   })
 
   it("removes the click handler on destroy", () => {

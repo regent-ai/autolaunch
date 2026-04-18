@@ -2,9 +2,11 @@ import type { Hook } from "phoenix_live_view"
 
 import { LocalStorage, Privy } from "../../vendor/privy-core.esm.js"
 import {
+  buildPrivyWallet,
   labelForUser,
   loginWithPrivyWallet,
   requireEthereumProvider,
+  type EthereumProvider,
   type PrivyLike,
   type PrivyUser,
   walletForUser,
@@ -17,8 +19,41 @@ interface PrivyAuthRoot extends HTMLElement {
   _walletSwitchListener?: EventListener
 }
 
+interface SwitchWalletSessionOptions {
+  targetWallet: string
+  getCurrentUser(): Promise<PrivyUser>
+  requireProvider(): Promise<EthereumProvider>
+  logout(userId: string): Promise<void>
+  clearSession(): Promise<void>
+  loginAndSync(expectedWallet: string): Promise<PrivyUser>
+}
+
 function csrfHeaders(csrfToken: string): Record<string, string> {
   return csrfToken ? { "x-csrf-token": csrfToken } : {}
+}
+
+export async function switchWalletSession({
+  targetWallet,
+  getCurrentUser,
+  requireProvider,
+  logout,
+  clearSession,
+  loginAndSync,
+}: SwitchWalletSessionOptions): Promise<PrivyUser> {
+  const provider = await requireProvider()
+
+  // Confirm the browser wallet is already on the requested address before ending
+  // the active session. This avoids signing the user out on a premature click.
+  await buildPrivyWallet(provider, targetWallet)
+
+  const currentUser = await getCurrentUser()
+
+  if (currentUser?.id) {
+    await logout(currentUser.id)
+    await clearSession()
+  }
+
+  return loginAndSync(targetWallet)
 }
 
 export const PrivyAuth: Hook = {
@@ -115,15 +150,17 @@ export const PrivyAuth: Hook = {
     }
 
     const switchWallet = async (targetWallet: string) => {
-      const current = await privy.user.get()
-      const currentUser = current?.user as PrivyUser
-
-      if (currentUser?.id) {
-        await privy.auth.logout({ userId: currentUser.id })
-        await clearSession()
-      }
-
-      await loginAndSync(targetWallet)
+      await switchWalletSession({
+        targetWallet,
+        getCurrentUser: async () => {
+          const current = await privy.user.get()
+          return current?.user as PrivyUser
+        },
+        requireProvider: requireEthereumProvider,
+        logout: (userId) => privy.auth.logout({ userId }),
+        clearSession,
+        loginAndSync,
+      })
       window.location.reload()
     }
 
