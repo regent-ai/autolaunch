@@ -137,11 +137,16 @@ defmodule Autolaunch.CCA.Rpc do
       regent_staking_chain_id = Keyword.get(regent_staking_config, :chain_id)
       launch_chain_id = Keyword.get(launch_config, :chain_id)
       source = Keyword.get(opts, :source, :launch)
+      chain_rpc_urls = Keyword.get(launch_config, :chain_rpc_urls, %{})
 
       cond do
         source == :regent_staking and is_integer(regent_staking_chain_id) and
             chain_id == regent_staking_chain_id ->
           fetch_url(regent_staking_config, :rpc_url)
+
+        is_map(chain_rpc_urls) and is_binary(Map.get(chain_rpc_urls, chain_id)) and
+            String.trim(Map.get(chain_rpc_urls, chain_id)) != "" ->
+          {:ok, String.trim(Map.get(chain_rpc_urls, chain_id))}
 
         is_integer(launch_chain_id) and chain_id == launch_chain_id ->
           fetch_url(launch_config, :rpc_url)

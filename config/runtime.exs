@@ -59,6 +59,8 @@ if config_env() != :test do
     app_id: env.("PRIVY_APP_ID", ""),
     verification_key: env.("PRIVY_VERIFICATION_KEY", "")
 
+  config :autolaunch, :internal_shared_secret, env.("AUTOLAUNCH_INTERNAL_SHARED_SECRET", "")
+
   config :autolaunch, Autolaunch.Xmtp,
     rooms: [
       %{

@@ -18,6 +18,13 @@ defmodule AutolaunchWeb.Router do
   pipeline :session_api do
     plug :accepts, ["json"]
     plug :fetch_session
+    plug :put_secure_browser_headers
+    plug AutolaunchWeb.Plugs.LoadCurrentHuman
+  end
+
+  pipeline :browser_session_api do
+    plug :accepts, ["json"]
+    plug :fetch_session
     plug :protect_from_forgery
     plug :put_secure_browser_headers
     plug AutolaunchWeb.Plugs.LoadCurrentHuman
@@ -26,6 +33,11 @@ defmodule AutolaunchWeb.Router do
   pipeline :agent_api do
     plug :accepts, ["json"]
     plug AutolaunchWeb.Plugs.RequireAgentSiwa
+  end
+
+  pipeline :api_internal do
+    plug :accepts, ["json"]
+    plug AutolaunchWeb.Plugs.RequireInternalSharedSecret
   end
 
   scope "/", AutolaunchWeb do
@@ -59,23 +71,34 @@ defmodule AutolaunchWeb.Router do
   end
 
   scope "/api/auth", AutolaunchWeb do
-    pipe_through :session_api
+    pipe_through :browser_session_api
 
     get "/privy/csrf", PrivySessionController, :csrf
     post "/privy/session", PrivySessionController, :create
+    post "/privy/xmtp/complete", PrivySessionController, :complete_xmtp
     get "/privy/profile", PrivySessionController, :show
     delete "/privy/session", PrivySessionController, :delete
   end
 
+  scope "/api/internal", AutolaunchWeb do
+    pipe_through :api_internal
+
+    get "/xmtp/shards", InternalXmtpController, :list_shards
+    post "/xmtp/rooms/ensure", InternalXmtpController, :ensure_room
+    post "/xmtp/messages/ingest", InternalXmtpController, :ingest_message
+    post "/xmtp/commands/lease", InternalXmtpController, :lease_command
+    post "/xmtp/commands/:id/resolve", InternalXmtpController, :resolve_command
+  end
+
   scope "/api/auth/agent", AutolaunchWeb do
-    pipe_through :session_api
+    pipe_through :browser_session_api
 
     get "/session", AgentSessionController, :show
     delete "/session", AgentSessionController, :delete
   end
 
   scope "/api/auth/agent", AutolaunchWeb do
-    pipe_through [:session_api, :agent_api]
+    pipe_through [:browser_session_api, :agent_api]
 
     post "/session", AgentSessionController, :create
   end

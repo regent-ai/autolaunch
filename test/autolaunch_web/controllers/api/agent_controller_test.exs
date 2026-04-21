@@ -131,12 +131,7 @@ defmodule AutolaunchWeb.Api.AgentControllerTest do
   end
 
   defp receipt_token(audience) do
-    now = DateTime.utc_now() |> DateTime.to_unix()
-
-    header =
-      %{"alg" => "HS256", "typ" => "JWT"}
-      |> Jason.encode!()
-      |> Base.url_encode64(padding: false)
+    now_ms = DateTime.utc_now() |> DateTime.to_unix(:millisecond)
 
     payload =
       %{
@@ -144,21 +139,22 @@ defmodule AutolaunchWeb.Api.AgentControllerTest do
         "jti" => Ecto.UUID.generate(),
         "sub" => @wallet,
         "aud" => audience,
-        "iat" => now,
-        "exp" => now + 600,
-        "chainId" => 84_532,
+        "verified" => "onchain",
+        "iat" => now_ms,
+        "exp" => now_ms + 600_000,
+        "chain_id" => 84_532,
         "nonce" => "nonce-#{System.unique_integer([:positive])}",
-        "keyId" => @wallet,
-        "registryAddress" => @registry,
-        "tokenId" => @token_id
+        "key_id" => @wallet,
+        "registry_address" => @registry,
+        "token_id" => @token_id
       }
       |> Jason.encode!()
       |> Base.url_encode64(padding: false)
 
     signature =
-      :crypto.mac(:hmac, :sha256, @receipt_secret, "#{header}.#{payload}")
+      :crypto.mac(:hmac, :sha256, @receipt_secret, payload)
       |> Base.url_encode64(padding: false)
 
-    "#{header}.#{payload}.#{signature}"
+    "#{payload}.#{signature}"
   end
 end

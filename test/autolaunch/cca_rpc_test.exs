@@ -10,7 +10,14 @@ defmodule Autolaunch.CCARpcTest do
     Application.put_env(
       :autolaunch,
       :launch,
-      Keyword.merge(previous_launch, chain_id: 8_453, rpc_url: "https://base.example")
+      Keyword.merge(previous_launch,
+        chain_id: 8_453,
+        rpc_url: "https://base.example",
+        chain_rpc_urls: %{
+          84_532 => "https://base-sepolia-launch.example",
+          8_453 => "https://base-mainnet-launch.example"
+        }
+      )
     )
 
     Application.put_env(
@@ -30,16 +37,26 @@ defmodule Autolaunch.CCARpcTest do
     :ok
   end
 
-  test "rpc_url resolves the configured staking chain" do
-    assert {:ok, "https://base-sepolia.example"} = Rpc.rpc_url(84_532)
-    assert {:ok, "https://base.example"} = Rpc.rpc_url(8_453)
+  test "rpc_url resolves chain-specific launch RPC urls before legacy fallbacks" do
+    assert {:ok, "https://base-sepolia-launch.example"} = Rpc.rpc_url(84_532)
+    assert {:ok, "https://base-mainnet-launch.example"} = Rpc.rpc_url(8_453)
   end
 
   test "rpc_url keeps Base launch routing unchanged" do
+    previous_launch = Application.get_env(:autolaunch, :launch, [])
+
+    Application.put_env(
+      :autolaunch,
+      :launch,
+      Keyword.merge(previous_launch, chain_rpc_urls: %{})
+    )
+
+    on_exit(fn -> Application.put_env(:autolaunch, :launch, previous_launch) end)
+
     assert {:ok, "https://base.example"} = Rpc.rpc_url(8_453)
   end
 
-  test "rpc_url can resolve the staking RPC when launch and staking share the same chain id" do
+  test "rpc_url keeps per-chain launch routing and still supports explicit staking routing" do
     previous_launch = Application.get_env(:autolaunch, :launch, [])
     previous_regent_staking = Application.get_env(:autolaunch, :regent_staking, [])
 
@@ -63,7 +80,7 @@ defmodule Autolaunch.CCARpcTest do
       Application.put_env(:autolaunch, :regent_staking, previous_regent_staking)
     end)
 
-    assert {:ok, "https://launch-shared.example"} = Rpc.rpc_url(84_532)
+    assert {:ok, "https://base-sepolia-launch.example"} = Rpc.rpc_url(84_532)
 
     assert {:ok, "https://staking-shared.example"} =
              Rpc.rpc_url(84_532, source: :regent_staking)

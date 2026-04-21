@@ -5,7 +5,12 @@ defmodule AutolaunchWeb.PrivySessionController do
   alias Autolaunch.Accounts.HumanUser
   alias Autolaunch.Portfolio
   alias Autolaunch.Privy
+  alias Autolaunch.XmtpIdentity
   alias AutolaunchWeb.ApiError
+
+  @wallet_address_regex ~r/^0x[0-9a-fA-F]{40}$/
+  @pending_wallet_session_key :privy_pending_wallet_address
+  @pending_wallets_session_key :privy_pending_wallet_addresses
 
   def csrf(conn, _params) do
     token = Plug.CSRFProtection.get_csrf_token()
@@ -16,24 +21,33 @@ defmodule AutolaunchWeb.PrivySessionController do
   end
 
   def create(conn, params) do
-    with {:ok, wallet_address} <- normalize_required_wallet(Map.get(params, "wallet_address")),
-         {:ok, wallet_addresses} <-
-           normalize_wallet_addresses(Map.get(params, "wallet_addresses"), wallet_address),
+    with {:ok, wallet_address} <- required_wallet_address(params),
+         {:ok, wallet_addresses} <- required_wallet_addresses(params, wallet_address),
          {:ok, token} <- fetch_bearer_token(conn),
          {:ok, %{privy_user_id: privy_user_id}} <- privy_module().verify_token(token),
+         :ok <- ensure_existing_human_allowed(Accounts.get_human_by_privy_id(privy_user_id)),
          {:ok, human} <-
-           Accounts.upsert_human_by_privy_id(privy_user_id, %{
-             "wallet_address" => wallet_address,
-             "wallet_addresses" => wallet_addresses,
-             "display_name" => normalize_text(Map.get(params, "display_name"))
-           }) do
-      :ok = portfolio_module().schedule_login_refresh(human)
+           Accounts.open_privy_session(privy_user_id, %{
+             "display_name" => normalize_display_name(Map.get(params, "display_name"))
+           }),
+         :ok <- ensure_human_allowed(human),
+         session_human = human_with_pending_wallets(human, wallet_address, wallet_addresses),
+         {:ok, xmtp_result} <- XmtpIdentity.ensure_identity(session_human) do
+      :ok = portfolio_module().schedule_login_refresh(session_human)
 
       conn
-      |> put_session(:privy_user_id, privy_user_id)
-      |> json(session_response(human))
+      |> write_session(privy_user_id, wallet_address, wallet_addresses)
+      |> json(session_response(session_human, xmtp_result))
     else
-      {:error, :invalid_wallet_address} ->
+      {:error, :human_banned} ->
+        conn
+        |> put_status(:forbidden)
+        |> json(%{
+          ok: false,
+          error: %{code: "human_banned", message: "Banned humans cannot open Autolaunch sessions"}
+        })
+
+      {:error, :wallet_address_invalid} ->
         ApiError.render(
           conn,
           :bad_request,
@@ -41,7 +55,7 @@ defmodule AutolaunchWeb.PrivySessionController do
           "wallet_address must be a valid EVM address"
         )
 
-      {:error, :invalid_wallet_addresses} ->
+      {:error, :wallet_addresses_invalid} ->
         ApiError.render(
           conn,
           :bad_request,
@@ -49,21 +63,103 @@ defmodule AutolaunchWeb.PrivySessionController do
           "wallet_addresses must include one or more valid EVM addresses"
         )
 
+      {:error, {:missing, key}} ->
+        invalid_request(conn, missing_field_code(key), missing_field_message(key))
+
+      {:error, :wallet_address_required} ->
+        invalid_request(conn, "wallet_address_required", "Connect a wallet before you continue.")
+
+      {:error, :wallet_address_mismatch} ->
+        invalid_request(
+          conn,
+          "wallet_address_mismatch",
+          "Finish this step with the same wallet you connected."
+        )
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(%{
+          ok: false,
+          error: %{code: "session_invalid", details: translate_changeset(changeset)}
+        })
+
       _ ->
         ApiError.render(conn, :unauthorized, "privy_required", "Valid Privy JWT required")
     end
   end
 
+  def complete_xmtp(conn, params) do
+    with %{} = human <- current_human(conn),
+         :ok <- ensure_human_allowed(human),
+         {:ok, wallet_address} <- current_wallet_address(conn, human),
+         {:ok, updated_human} <- XmtpIdentity.complete_identity(human, wallet_address, params),
+         {:ok, persisted_human} <-
+           Accounts.update_human(updated_human, %{
+             "wallet_addresses" => completed_wallet_addresses(conn, wallet_address)
+           }) do
+      conn
+      |> clear_pending_wallet_session()
+      |> json(session_response(persisted_human, {:ready, persisted_human}))
+    else
+      nil ->
+        conn
+        |> put_status(:unauthorized)
+        |> json(%{
+          ok: false,
+          error: %{
+            code: "privy_session_required",
+            message: "Connect your wallet before you finish room setup."
+          }
+        })
+
+      {:error, :human_banned} ->
+        conn
+        |> put_status(:forbidden)
+        |> json(%{
+          ok: false,
+          error: %{code: "human_banned", message: "Banned humans cannot finish room setup"}
+        })
+
+      {:error, {:missing, key}} ->
+        invalid_request(conn, missing_field_code(key), missing_field_message(key))
+
+      {:error, :wallet_address_required} ->
+        invalid_request(conn, "wallet_address_required", "Connect a wallet before you continue.")
+
+      {:error, :wallet_address_mismatch} ->
+        invalid_request(
+          conn,
+          "wallet_address_mismatch",
+          "Finish this step with the same wallet you connected."
+        )
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(%{
+          ok: false,
+          error: %{code: "session_invalid", details: translate_changeset(changeset)}
+        })
+
+      {:error, reason} ->
+        unexpected_error(conn, reason)
+    end
+  end
+
   def show(conn, _params) do
-    conn
-    |> current_human()
-    |> session_response()
-    |> then(&json(conn, &1))
+    case current_session_human(conn) do
+      {conn, nil} ->
+        json(conn, %{ok: true, human: nil, xmtp: nil})
+
+      {conn, human} ->
+        json(conn, session_response(human))
+    end
   end
 
   def delete(conn, _params) do
     conn
-    |> delete_session(:privy_user_id)
+    |> clear_privy_session()
     |> json(%{ok: true})
   end
 
@@ -80,6 +176,59 @@ defmodule AutolaunchWeb.PrivySessionController do
     end
   end
 
+  defp required_wallet_address(params) do
+    case normalize_wallet_address(Map.get(params, "wallet_address")) do
+      nil -> {:error, :wallet_address_invalid}
+      wallet_address -> {:ok, wallet_address}
+    end
+  end
+
+  defp required_wallet_addresses(params, primary_wallet) do
+    case Map.get(params, "wallet_addresses") do
+      values when is_list(values) ->
+        normalized =
+          values
+          |> Enum.map(&normalize_wallet_address/1)
+          |> Enum.reject(&is_nil/1)
+          |> Enum.uniq()
+
+        cond do
+          normalized == [] ->
+            {:error, :wallet_addresses_invalid}
+
+          primary_wallet in normalized ->
+            {:ok, normalized}
+
+          true ->
+            {:ok, [primary_wallet | normalized]}
+        end
+
+      _ ->
+        {:error, :wallet_addresses_invalid}
+    end
+  end
+
+  defp normalize_wallet_address(value) when is_binary(value) do
+    trimmed = String.trim(value)
+
+    if Regex.match?(@wallet_address_regex, trimmed) do
+      String.downcase(trimmed)
+    else
+      nil
+    end
+  end
+
+  defp normalize_wallet_address(_value), do: nil
+
+  defp normalize_display_name(value) when is_binary(value) do
+    case String.trim(value) do
+      "" -> nil
+      trimmed -> String.slice(trimmed, 0, 80)
+    end
+  end
+
+  defp normalize_display_name(_value), do: nil
+
   defp portfolio_module do
     :autolaunch
     |> Application.get_env(:privy_session_controller, [])
@@ -92,83 +241,195 @@ defmodule AutolaunchWeb.PrivySessionController do
     |> Keyword.get(:privy_module, Privy)
   end
 
-  defp normalize_required_wallet(value) when is_binary(value) do
-    case String.trim(value) do
-      <<"0x", rest::binary>> = trimmed when byte_size(rest) == 40 ->
-        if String.match?(rest, ~r/\A[0-9a-fA-F]{40}\z/u) do
-          {:ok, String.downcase(trimmed)}
-        else
-          {:error, :invalid_wallet_address}
-        end
-
-      _ ->
-        {:error, :invalid_wallet_address}
-    end
-  end
-
-  defp normalize_required_wallet(_value), do: {:error, :invalid_wallet_address}
-
-  defp normalize_wallet_addresses(values, primary_wallet) when is_list(values) do
-    normalized =
-      values
-      |> Enum.map(&normalize_wallet_value/1)
-      |> Enum.reject(&is_nil/1)
-      |> Enum.uniq()
-
-    cond do
-      normalized == [] -> {:error, :invalid_wallet_addresses}
-      primary_wallet in normalized -> {:ok, normalized}
-      true -> {:ok, [primary_wallet | normalized]}
-    end
-  end
-
-  defp normalize_wallet_addresses(_values, _primary_wallet),
-    do: {:error, :invalid_wallet_addresses}
-
-  defp normalize_wallet_value(value) when is_binary(value) do
-    case normalize_required_wallet(value) do
-      {:ok, normalized} -> normalized
-      _ -> nil
-    end
-  end
-
-  defp normalize_wallet_value(_value), do: nil
-
-  defp normalize_text(value) when is_binary(value) do
-    case String.trim(value) do
-      "" -> nil
-      trimmed -> String.slice(trimmed, 0, 80)
-    end
-  end
-
-  defp normalize_text(_value), do: nil
-
   defp current_human(conn) do
     conn
     |> get_session(:privy_user_id)
     |> Accounts.get_human_by_privy_id()
   end
 
-  defp session_response(%HumanUser{} = human) do
+  defp current_session_human(conn) do
+    case current_human(conn) do
+      %{role: "banned"} ->
+        {clear_privy_session(conn), nil}
+
+      %{} = human ->
+        pending_wallet = pending_wallet_address(conn)
+        pending_wallets = pending_wallet_addresses(conn)
+        {conn, human_with_pending_wallets(human, pending_wallet, pending_wallets)}
+
+      nil ->
+        {conn, nil}
+    end
+  end
+
+  defp pending_wallet_address(conn) do
+    conn
+    |> get_session(@pending_wallet_session_key)
+    |> normalize_wallet_address()
+  end
+
+  defp pending_wallet_addresses(conn) do
+    case get_session(conn, @pending_wallets_session_key) do
+      values when is_list(values) ->
+        values
+        |> Enum.map(&normalize_wallet_address/1)
+        |> Enum.reject(&is_nil/1)
+        |> Enum.uniq()
+
+      _ ->
+        []
+    end
+  end
+
+  defp current_wallet_address(conn, human) do
+    case pending_wallet_address(conn) || human.wallet_address do
+      nil -> {:error, :wallet_address_required}
+      wallet_address -> {:ok, wallet_address}
+    end
+  end
+
+  defp completed_wallet_addresses(conn, wallet_address) do
+    case pending_wallet_addresses(conn) do
+      [] ->
+        [wallet_address]
+
+      values ->
+        if Enum.member?(values, wallet_address), do: values, else: [wallet_address | values]
+    end
+  end
+
+  defp human_with_pending_wallets(%HumanUser{} = human, nil, _pending_wallets), do: human
+
+  defp human_with_pending_wallets(%HumanUser{} = human, pending_wallet, pending_wallets) do
+    pending_wallets =
+      case pending_wallets do
+        [] ->
+          [pending_wallet]
+
+        values ->
+          if Enum.member?(values, pending_wallet), do: values, else: [pending_wallet | values]
+      end
+
+    %{human | wallet_address: pending_wallet, wallet_addresses: pending_wallets}
+  end
+
+  defp ensure_human_allowed(%{role: "banned"}), do: {:error, :human_banned}
+  defp ensure_human_allowed(_human), do: :ok
+
+  defp ensure_existing_human_allowed(%{role: "banned"}), do: {:error, :human_banned}
+  defp ensure_existing_human_allowed(_human), do: :ok
+
+  defp write_session(conn, privy_user_id, wallet_address, wallet_addresses) do
+    conn
+    |> put_session(:privy_user_id, privy_user_id)
+    |> put_session(@pending_wallet_session_key, wallet_address)
+    |> put_session(@pending_wallets_session_key, wallet_addresses)
+  end
+
+  defp clear_privy_session(conn) do
+    conn
+    |> delete_session(:privy_user_id)
+    |> delete_session("privy_user_id")
+    |> clear_pending_wallet_session()
+  end
+
+  defp clear_pending_wallet_session(conn) do
+    conn
+    |> delete_session(@pending_wallet_session_key)
+    |> delete_session(Atom.to_string(@pending_wallet_session_key))
+    |> delete_session(@pending_wallets_session_key)
+    |> delete_session(Atom.to_string(@pending_wallets_session_key))
+  end
+
+  defp session_response(%HumanUser{} = human, xmtp_result \\ nil) do
+    {resolved_human, xmtp_state} = resolve_session_state(human, xmtp_result)
+
     %{
       ok: true,
       human: %{
-        id: human.id,
-        privy_user_id: human.privy_user_id,
-        wallet_address: human.wallet_address,
-        wallet_addresses: human.wallet_addresses,
-        display_name: human.display_name,
-        role: human.role
+        id: resolved_human.id,
+        privy_user_id: resolved_human.privy_user_id,
+        wallet_address: resolved_human.wallet_address,
+        wallet_addresses: resolved_human.wallet_addresses,
+        display_name: resolved_human.display_name,
+        role: resolved_human.role,
+        xmtp_inbox_id: response_inbox_id(resolved_human, xmtp_state)
       },
-      xmtp: nil
+      xmtp: xmtp_state
     }
   end
 
-  defp session_response(nil) do
+  defp resolve_session_state(human, nil), do: {human, xmtp_state(human)}
+
+  defp resolve_session_state(_human, {:ready, updated_human}),
+    do: {updated_human, ready_xmtp_state(updated_human)}
+
+  defp resolve_session_state(_human, {:signature_required, updated_human, attrs}) do
+    {updated_human, signature_required_xmtp_state(updated_human, attrs)}
+  end
+
+  defp resolve_session_state(human, _result), do: {human, xmtp_state(human)}
+
+  defp xmtp_state(human) do
+    case XmtpIdentity.ready_inbox_id(human) do
+      {:ok, _inbox_id} -> ready_xmtp_state(human)
+      {:error, _reason} -> nil
+    end
+  end
+
+  defp ready_xmtp_state(human) do
+    {:ok, inbox_id} = XmtpIdentity.ready_inbox_id(human)
+
     %{
-      ok: true,
-      human: nil,
-      xmtp: nil
+      status: "ready",
+      inbox_id: inbox_id,
+      wallet_address: human.wallet_address
     }
+  end
+
+  defp signature_required_xmtp_state(human, attrs) do
+    %{
+      status: "signature_required",
+      inbox_id: nil,
+      wallet_address: human.wallet_address,
+      client_id: Map.get(attrs, :client_id) || Map.get(attrs, "client_id"),
+      signature_request_id:
+        Map.get(attrs, :signature_request_id) || Map.get(attrs, "signature_request_id"),
+      signature_text: Map.get(attrs, :signature_text) || Map.get(attrs, "signature_text")
+    }
+  end
+
+  defp response_inbox_id(_human, xmtp_state) do
+    case xmtp_state do
+      %{"status" => "ready", "inbox_id" => inbox_id} -> inbox_id
+      %{status: "ready", inbox_id: inbox_id} -> inbox_id
+      _ -> nil
+    end
+  end
+
+  defp invalid_request(conn, code, message) do
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(%{ok: false, error: %{code: code, message: message}})
+  end
+
+  defp unexpected_error(conn, reason) do
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(%{
+      ok: false,
+      error: %{code: "xmtp_setup_failed", message: inspect(reason)}
+    })
+  end
+
+  defp missing_field_code(key), do: "#{key}_required"
+  defp missing_field_message(key), do: "#{key} is required"
+
+  defp translate_changeset(changeset) do
+    Ecto.Changeset.traverse_errors(changeset, fn {message, opts} ->
+      Enum.reduce(opts, message, fn {key, value}, acc ->
+        String.replace(acc, "%{#{key}}", to_string(value))
+      end)
+    end)
   end
 end

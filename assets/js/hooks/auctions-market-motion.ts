@@ -16,6 +16,15 @@ interface AnimatedProgressState {
   value?: number
 }
 
+type PulseAnimation = {
+  pause?: () => void
+  cancel?: () => void
+}
+
+type MarketRootState = MarketRoot & {
+  __marketPulseAnimation?: PulseAnimation
+}
+
 function reducedMotion(): boolean {
   return prefersReducedMotion()
 }
@@ -95,11 +104,22 @@ function animateProgress(root: HTMLElement): void {
   }
 }
 
-function animatePulse(root: HTMLElement): void {
-  const pulse = root.querySelector<HTMLElement>("[data-market-pulse]")
-  if (!pulse || reducedMotion()) return
+function stopPulse(root: MarketRootState): void {
+  root.__marketPulseAnimation?.pause?.()
+  root.__marketPulseAnimation?.cancel?.()
+  delete root.__marketPulseAnimation
+}
 
-  animate(pulse, {
+function animatePulse(root: MarketRootState): void {
+  const pulse = root.querySelector<HTMLElement>("[data-market-pulse]")
+  if (!pulse || reducedMotion()) {
+    stopPulse(root)
+    return
+  }
+
+  stopPulse(root)
+
+  root.__marketPulseAnimation = animate(pulse, {
     scale: [0.9, 1.08],
     opacity: [0.55, 1],
     duration: 1800,
@@ -109,7 +129,7 @@ function animatePulse(root: HTMLElement): void {
   })
 }
 
-function animateRoot(root: MarketRoot): void {
+function animateRoot(root: MarketRootState): void {
   if (!reducedMotion()) {
     revealSequence(root, "[data-market-reveal]", {
       translateY: 18,
@@ -125,10 +145,14 @@ function animateRoot(root: MarketRoot): void {
 
 export const AuctionsMarketMotion: Hook = {
   mounted() {
-    animateRoot(this.el as MarketRoot)
+    animateRoot(this.el as MarketRootState)
   },
 
   updated() {
-    animateRoot(this.el as MarketRoot)
+    animateRoot(this.el as MarketRootState)
+  },
+
+  destroyed() {
+    stopPulse(this.el as MarketRootState)
   },
 }

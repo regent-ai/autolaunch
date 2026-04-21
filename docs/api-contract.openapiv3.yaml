@@ -76,6 +76,32 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/OkEnvelope" }
+  /api/auth/privy/xmtp/complete:
+    post:
+      operationId: completePrivyXmtpSetup
+      tags: [auth]
+      security: [{ PrivySessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PrivyXmtpCompleteRequest" }
+      responses:
+        "200":
+          description: XMTP identity saved for the signed-in human
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PrivySessionResponse" }
+        "401":
+          description: Missing signed-in browser session
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LooseObject" }
+        "422":
+          description: XMTP setup request invalid
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LooseObject" }
   /api/auth/privy/profile:
     get:
       operationId: getPrivySessionProfile
@@ -1970,6 +1996,15 @@ components:
             - { type: string }
             - { type: "null" }
       additionalProperties: false
+    PrivyXmtpCompleteRequest:
+      type: object
+      required: [wallet_address, client_id, signature_request_id, signature]
+      properties:
+        wallet_address: { $ref: "#/components/schemas/Address" }
+        client_id: { type: string }
+        signature_request_id: { type: string }
+        signature: { $ref: "#/components/schemas/HexData" }
+      additionalProperties: false
     PrivySessionResponse:
       type: object
       required: [ok, human, xmtp]
@@ -1978,7 +2013,7 @@ components:
         human:
           anyOf:
             - type: object
-              required: [id, privy_user_id, wallet_address, wallet_addresses, role]
+              required: [id, privy_user_id, wallet_address, wallet_addresses, role, xmtp_inbox_id]
               properties:
                 id: { type: integer }
                 privy_user_id: { type: string }
@@ -1991,11 +2026,32 @@ components:
                     - { type: string }
                     - { type: "null" }
                 role: { type: string }
+                xmtp_inbox_id:
+                  anyOf:
+                    - { type: string }
+                    - { type: "null" }
               additionalProperties: false
             - { type: "null" }
         xmtp:
           anyOf:
             - { type: "null" }
+            - type: object
+              required: [status, inbox_id, wallet_address]
+              properties:
+                status: { type: string, enum: [ready] }
+                inbox_id: { type: string }
+                wallet_address: { $ref: "#/components/schemas/Address" }
+              additionalProperties: false
+            - type: object
+              required: [status, inbox_id, wallet_address, client_id, signature_request_id, signature_text]
+              properties:
+                status: { type: string, enum: [signature_required] }
+                inbox_id: { type: "null" }
+                wallet_address: { $ref: "#/components/schemas/Address" }
+                client_id: { type: string }
+                signature_request_id: { type: string }
+                signature_text: { type: string }
+              additionalProperties: false
       additionalProperties: false
     EmptyRequest:
       type: object

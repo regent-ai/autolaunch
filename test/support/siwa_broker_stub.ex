@@ -15,7 +15,7 @@ defmodule Autolaunch.TestSupport.SiwaBrokerStub do
       data: %{
         agent_claims: %{
           wallet_address: Map.get(headers, "x-agent-wallet-address"),
-          chain_id: Map.get(headers, "x-agent-chain-id"),
+          chain_id: String.to_integer(Map.get(headers, "x-agent-chain-id", "0")),
           registry_address: Map.get(headers, "x-agent-registry-address"),
           token_id: Map.get(headers, "x-agent-token-id"),
           label: Map.get(headers, "x-agent-label")

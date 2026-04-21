@@ -6,6 +6,7 @@ defmodule Autolaunch.TrustTest do
   test "summary_for_agent rejects malformed agent ids" do
     assert {:error, :invalid_agent_id} = Trust.summary_for_agent("not-an-agent-id")
     assert {:error, :invalid_agent_id} = Trust.summary_for_agent("8453:   ")
+    assert {:error, :invalid_agent_id} = Trust.summary_for_agent("8453:abc")
   end
 
   test "compose_summary only marks ERC-8004 as connected when the identity exists" do

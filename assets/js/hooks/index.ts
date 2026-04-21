@@ -6,7 +6,6 @@ import { AuctionsMarketMotion } from "./auctions-market-motion"
 import { HomeHeroMotion } from "./home-hero-motion"
 import { MissionMotion } from "./mission-motion"
 import { PrivyAuth } from "./privy-auth"
-import { PrivyXmtpRoom } from "./privy-xmtp-room"
 import { ShellChrome } from "./shell-chrome"
 import { WalletSwitchModal } from "./wallet-switch-modal"
 import { WelcomeModal } from "./welcome-modal"
@@ -20,7 +19,6 @@ export const hooks: HooksOptions = {
   HomeHeroMotion,
   MissionMotion,
   PrivyAuth,
-  PrivyXmtpRoom,
   ShellChrome,
   WalletSwitchModal,
   WelcomeModal,

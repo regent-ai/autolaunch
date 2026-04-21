@@ -20,7 +20,10 @@ defmodule Autolaunch.ReleaseDoctor do
     {:pool_manager_addresses, "Uniswap v4 pool manager address"},
     {:usdc_addresses, "USDC address"},
     {:revenue_share_factory_addresses, "revenue share factory address"},
-    {:revenue_ingress_factory_addresses, "revenue ingress factory address"}
+    {:revenue_ingress_factory_addresses, "revenue ingress factory address"},
+    {:chain_rpc_urls, "RPC url"},
+    {:erc8004_subgraph_urls, "ERC-8004 subgraph url"},
+    {:identity_registry_addresses, "identity registry address"}
   ]
   @verifier_chains [
     {84_532, "Base Sepolia"},
@@ -213,7 +216,7 @@ defmodule Autolaunch.ReleaseDoctor do
           _ -> nil
         end
 
-      if configured_address?(value) do
+      if configured_verifier_value?(key, value) do
         ok_check("launch_#{key}_#{chain_id}", :error, "#{chain_label} #{label} is configured.")
       else
         fail_check(
@@ -233,6 +236,15 @@ defmodule Autolaunch.ReleaseDoctor do
   end
 
   defp configured_address?(_value), do: false
+
+  defp configured_url?(value) when is_binary(value), do: String.trim(value) != ""
+  defp configured_url?(_value), do: false
+
+  defp configured_verifier_value?(key, value)
+       when key in [:chain_rpc_urls, :erc8004_subgraph_urls],
+       do: configured_url?(value)
+
+  defp configured_verifier_value?(_key, value), do: configured_address?(value)
 
   defp http_client do
     Application.get_env(:autolaunch, :release_doctor_http_client, Req)

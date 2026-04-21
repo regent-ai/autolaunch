@@ -23,6 +23,7 @@ What this repo handles:
 - Agent inventory, launch readiness, and trust follow-up
 - AgentBook registration, lookup, and verification
 - Privy session exchange and SIWA verification
+- Privy-backed XMTP room identity setup and the mirrored Autolaunch public-room sync model shared with Techtree
 - Launch job persistence and onchain launch tracking
 
 For agent-facing onboarding, start with [`SKILL.md`](SKILL.md) and [`docs/autolaunch_examples.json`](docs/autolaunch_examples.json). They now describe the CLI-first golden path:
@@ -111,6 +112,7 @@ The main LiveView and API routes are:
 - `/health` for readiness checks
 - `/v1/agent/siwa/nonce` and `/v1/agent/siwa/verify` for SIWA
 - `/api/auth/privy/session` for browser session exchange
+- `/api/auth/privy/xmtp/complete` for finishing wallet-backed XMTP room setup after the browser session opens
 - `/api/prelaunch/*` for saved launch drafts, hosted metadata, and upload-backed launch assets
 - `/api/lifecycle/*` for launch monitoring, finalize guidance, and vesting status
 - `/api/regent/staking/*` for the separate REGENT staking rail
@@ -142,6 +144,7 @@ The full environment list lives in [.env.example](.env.example). For local work,
 
 - App runtime: `DATABASE_URL` or `LOCAL_DATABASE_URL`, `SECRET_KEY_BASE`, `PHX_HOST`, `PORT`
 - Privy auth: `PRIVY_APP_ID`, `PRIVY_VERIFICATION_KEY`, `AUTOLAUNCH_XMTP_AGENT_PRIVATE_KEY`
+- Internal XMTP sync auth: `AUTOLAUNCH_INTERNAL_SHARED_SECRET`
 - SIWA sidecar: `SIWA_INTERNAL_URL`, `SIWA_SHARED_SECRET`, `SIWA_HMAC_SECRET`
 - Launch deployment: `AUTOLAUNCH_RPC_URL`, `AUTOLAUNCH_CCA_FACTORY_ADDRESS`, `AUTOLAUNCH_UNISWAP_V4_POOL_MANAGER`, `AUTOLAUNCH_UNISWAP_V4_POSITION_MANAGER`, `AUTOLAUNCH_USDC_ADDRESS`, `AUTOLAUNCH_DEPLOY_WORKDIR`, `AUTOLAUNCH_DEPLOY_BINARY`, `AUTOLAUNCH_DEPLOY_SCRIPT_TARGET`, `AUTOLAUNCH_DEPLOY_ACCOUNT` or `AUTOLAUNCH_DEPLOY_PRIVATE_KEY`
 - Launch contracts: `REVENUE_SHARE_FACTORY_ADDRESS`, `REVENUE_INGRESS_FACTORY_ADDRESS`, `LBP_STRATEGY_FACTORY_ADDRESS`, `TOKEN_FACTORY_ADDRESS`, `AUTOLAUNCH_ERC8004_SUBGRAPH_URL`

@@ -53,6 +53,7 @@ The main route types are:
 - Product JSON APIs under `/api/*`
 - SIWA agent auth under `/v1/agent/siwa/*`
 - Privy browser session exchange under `/api/auth/privy/session`
+- Wallet-backed XMTP room identity completion under `/api/auth/privy/xmtp/complete`
 
 ## Major Backend Areas
 
@@ -63,6 +64,7 @@ The main route types are:
 - `Agentbook` owns human proof registration, lookup, and verification
 - `Trust` owns agent trust reads and X-link follow-up
 - `RegentStaking` owns the shared staking rail
+- `XMTPMirror` owns the mirrored Autolaunch public-room model and stays aligned with Techtree's room flow
 
 ## Contracts Workspace
 
@@ -93,6 +95,7 @@ Start Solidity work with:
 - Agent auth is SIWA-based.
 - The browser wizard exists, but the preferred operator flow is CLI-first.
 - `regent-staking` is a separate shared rail and should stay distinct from the Base-family launch flow.
+- The Autolaunch public room now follows the same mirrored XMTP group-chat model as Techtree. Keep room identity, membership command queueing, and internal sync endpoints aligned across both repos.
 
 ## Agent Operator Path
 

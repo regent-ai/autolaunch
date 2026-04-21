@@ -38,12 +38,8 @@ defmodule AutolaunchWeb.Plugs.RequireAgentSiwa do
          {:ok, response} <-
            Req.post(
              url: "#{config.internal_url}#{@http_verify_path}",
-             json: %{
-               "method" => conn.method,
-               "path" => conn.request_path,
-               "headers" => headers,
-               "body_digest" => Map.get(headers, "content-digest")
-             },
+             json: build_http_verify_payload(conn, headers),
+             headers: [{"x-siwa-audience", @audience}],
              connect_options: [timeout: config.connect_timeout_ms],
              receive_timeout: config.receive_timeout_ms
            ) do
@@ -95,13 +91,13 @@ defmodule AutolaunchWeb.Plugs.RequireAgentSiwa do
   end
 
   defp normalize_claims(claims) when is_map(claims) do
-    with wallet when is_binary(wallet) <- claims["wallet_address"],
+    with {:ok, wallet} <- required_claim_value(claims, "wallet_address"),
          :ok <- ensure_hex_address(wallet),
-         chain_id when is_binary(chain_id) <- claims["chain_id"],
+         {:ok, chain_id} <- required_claim_value(claims, "chain_id"),
          :ok <- ensure_positive_int(chain_id),
-         registry_address when is_binary(registry_address) <- claims["registry_address"],
+         {:ok, registry_address} <- required_claim_value(claims, "registry_address"),
          :ok <- ensure_hex_address(registry_address),
-         token_id when is_binary(token_id) <- claims["token_id"],
+         {:ok, token_id} <- required_claim_value(claims, "token_id"),
          :ok <- ensure_positive_int(token_id) do
       {:ok,
        %{
@@ -140,6 +136,19 @@ defmodule AutolaunchWeb.Plugs.RequireAgentSiwa do
 
   defp normalize_timeout(_value, fallback), do: fallback
 
+  defp build_http_verify_payload(conn, headers) do
+    base_payload = %{
+      "method" => conn.method,
+      "path" => conn.request_path,
+      "headers" => headers
+    }
+
+    case conn.assigns[:raw_body] do
+      value when is_binary(value) -> Map.put(base_payload, "body", value)
+      _ -> base_payload
+    end
+  end
+
   defp verify_receipt(headers) do
     with {:ok, secret} <- fetch_shared_secret() do
       case SiwaReceipt.verify_request_headers(headers, audience: @audience, secret: secret) do
@@ -176,6 +185,22 @@ defmodule AutolaunchWeb.Plugs.RequireAgentSiwa do
   end
 
   defp normalize_optional_value(_value), do: nil
+
+  defp required_claim_value(claims, key) when is_map(claims) do
+    case claims[key] do
+      value when is_binary(value) ->
+        case String.trim(value) do
+          "" -> {:error, :missing_agent_headers}
+          trimmed -> {:ok, trimmed}
+        end
+
+      value when is_integer(value) ->
+        {:ok, Integer.to_string(value)}
+
+      _ ->
+        {:error, :missing_agent_headers}
+    end
+  end
 
   defp unauthorized(conn) do
     conn

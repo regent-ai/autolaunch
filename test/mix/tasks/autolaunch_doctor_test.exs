@@ -32,11 +32,19 @@ defmodule Mix.Tasks.Autolaunch.DoctorTest do
           84_532 => "0x2222222222222222222222222222222222222222",
           8_453 => "0x1212121212121212121212121212121212121212"
         },
+        chain_rpc_urls: %{
+          84_532 => "https://base-sepolia-launch.example",
+          8_453 => "https://base-mainnet-launch.example"
+        },
         usdc_addresses: %{
           84_532 => "0x4444444444444444444444444444444444444444",
           8_453 => "0x1313131313131313131313131313131313131313"
         },
         identity_registry_address: "0x9999999999999999999999999999999999999998",
+        identity_registry_addresses: %{
+          84_532 => "0x9999999999999999999999999999999999999998",
+          8_453 => "0x1616161616161616161616161616161616161616"
+        },
         revenue_share_factory_address: "0x5555555555555555555555555555555555555555",
         revenue_ingress_factory_address: "0x6666666666666666666666666666666666666666",
         revenue_share_factory_addresses: %{
@@ -46,6 +54,10 @@ defmodule Mix.Tasks.Autolaunch.DoctorTest do
         revenue_ingress_factory_addresses: %{
           84_532 => "0x6666666666666666666666666666666666666666",
           8_453 => "0x1515151515151515151515151515151515151515"
+        },
+        erc8004_subgraph_urls: %{
+          84_532 => "https://base-sepolia-subgraph.example",
+          8_453 => "https://base-mainnet-subgraph.example"
         },
         lbp_strategy_factory_address: "0x7777777777777777777777777777777777777777",
         token_factory_address: "0x8888888888888888888888888888888888888888"

@@ -139,7 +139,11 @@ defmodule AutolaunchWeb.AuctionsLive do
                 <.link navigate={primary_action_href(@featured_auction)} class="al-submit">
                   {primary_action_label(@featured_auction)}
                 </.link>
-                <.link :if={@featured_auction.subject_url} navigate={@featured_auction.subject_url} class="al-ghost">
+                <.link
+                  :if={secondary_subject_href(@featured_auction)}
+                  navigate={secondary_subject_href(@featured_auction)}
+                  class="al-ghost"
+                >
                   Open token page
                 </.link>
                 <a
@@ -357,7 +361,7 @@ defmodule AutolaunchWeb.AuctionsLive do
     |> assign(:directory, directory)
     |> assign(:visible_rows, visible_rows)
     |> assign(:tokens, visible_rows)
-    |> assign(:featured_auction, featured_auction(directory))
+    |> assign(:featured_auction, featured_auction(directory, visible_rows, sanitized_filters))
     |> assign(:leaderboard_items, leaderboard_items(visible_rows))
     |> assign(:network_options, network_options)
     |> assign(:show_network_filter, length(network_options) > 1)
@@ -424,23 +428,28 @@ defmodule AutolaunchWeb.AuctionsLive do
   defp ens_name(%{ens: %{connected: true, name: name}}) when is_binary(name), do: name
   defp ens_name(_trust), do: nil
 
-  defp featured_auction(directory) do
-    Enum.find(directory, &(&1.phase == "biddable")) || Enum.find(directory, &(&1.phase == "live"))
+  defp featured_auction(directory, visible_rows, filters) do
+    case featured_row(visible_rows) do
+      nil ->
+        if filters["search"] == "" and filters["network"] == "all" do
+          featured_row(directory)
+        else
+          nil
+        end
+
+      row ->
+        row
+    end
+  end
+
+  defp featured_row(rows) do
+    Enum.find(rows, &(&1.phase == "biddable")) || Enum.find(rows, &(&1.phase == "live"))
   end
 
   defp leaderboard_items(rows) do
     rows
-    |> Enum.sort_by(&market_cap_sort_key(&1.implied_market_cap_usdc))
+    |> Enum.sort(&market_cap_desc?/2)
     |> Enum.take(5)
-  end
-
-  defp market_cap_sort_key(nil), do: {1, D.new(0)}
-
-  defp market_cap_sort_key(value) do
-    case parse_decimal(value) do
-      nil -> {1, D.new(0)}
-      decimal -> {0, D.negate(decimal)}
-    end
   end
 
   defp network_options(directory) do
@@ -560,6 +569,12 @@ defmodule AutolaunchWeb.AuctionsLive do
 
   defp primary_action_href(row), do: row.detail_url
 
+  defp secondary_subject_href(%{subject_url: subject_url} = row) when is_binary(subject_url) do
+    if primary_action_href(row) == subject_url, do: nil, else: subject_url
+  end
+
+  defp secondary_subject_href(_row), do: nil
+
   defp featured_copy("biddable"),
     do:
       "Watch the live clearing price, compare size, and move straight to the bid page when it looks right."
@@ -606,6 +621,19 @@ defmodule AutolaunchWeb.AuctionsLive do
   defp network_label(%{chain: chain}) when is_binary(chain) and chain != "", do: chain
   defp network_label(%{network: network}) when is_binary(network) and network != "", do: network
   defp network_label(_row), do: "Unknown"
+
+  defp market_cap_desc?(left, right) do
+    compare_market_caps(left.implied_market_cap_usdc, right.implied_market_cap_usdc) in [:gt, :eq]
+  end
+
+  defp compare_market_caps(left, right) do
+    case {parse_decimal(left), parse_decimal(right)} do
+      {nil, nil} -> :eq
+      {nil, _} -> :lt
+      {_, nil} -> :gt
+      {left_decimal, right_decimal} -> D.compare(left_decimal, right_decimal)
+    end
+  end
 
   defp launch_module do
     :autolaunch

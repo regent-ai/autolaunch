@@ -8,17 +8,29 @@ defmodule Autolaunch.Accounts.HumanUser do
     field :privy_user_id, :string
     field :wallet_address, :string
     field :wallet_addresses, {:array, :string}, default: []
+    field :xmtp_inbox_id, :string
     field :display_name, :string
     field :role, :string, default: "user"
+
+    has_many :membership_commands, Autolaunch.XMTPMirror.XmtpMembershipCommand,
+      foreign_key: :human_user_id
 
     timestamps()
   end
 
   def changeset(human, attrs) do
     human
-    |> cast(attrs, [:privy_user_id, :wallet_address, :wallet_addresses, :display_name, :role])
+    |> cast(attrs, [
+      :privy_user_id,
+      :wallet_address,
+      :wallet_addresses,
+      :xmtp_inbox_id,
+      :display_name,
+      :role
+    ])
     |> validate_required([:privy_user_id])
     |> validate_length(:display_name, max: 80)
     |> unique_constraint(:privy_user_id)
+    |> unique_constraint(:xmtp_inbox_id)
   end
 end

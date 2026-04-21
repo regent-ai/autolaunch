@@ -39,12 +39,29 @@ defmodule Autolaunch.Accounts do
     )
   end
 
+  def open_privy_session(privy_user_id, attrs) when is_binary(privy_user_id) and is_map(attrs) do
+    human = Repo.get_by(HumanUser, privy_user_id: privy_user_id) || %HumanUser{}
+
+    attrs
+    |> Map.take(["display_name"])
+    |> Map.put("privy_user_id", privy_user_id)
+    |> then(&HumanUser.changeset(human, &1))
+    |> Repo.insert_or_update()
+  end
+
+  def update_human(%HumanUser{} = human, attrs) when is_map(attrs) do
+    human
+    |> HumanUser.changeset(normalize_wallet_attrs(attrs))
+    |> Repo.update()
+  end
+
   defp upsert_fields(attrs, now) do
     attrs
     |> Enum.reduce([updated_at: now], fn {key, value}, acc ->
       case normalize_attr_key(key) do
         "wallet_address" -> [{:wallet_address, normalize_address(value)} | acc]
         "wallet_addresses" -> [{:wallet_addresses, normalize_addresses(value)} | acc]
+        "xmtp_inbox_id" -> [{:xmtp_inbox_id, normalize_text(value)} | acc]
         "display_name" -> [{:display_name, value} | acc]
         "role" -> [{:role, value} | acc]
         _ -> acc
@@ -68,4 +85,28 @@ defmodule Autolaunch.Accounts do
   end
 
   defp normalize_addresses(_values), do: []
+
+  defp normalize_wallet_attrs(attrs) when is_map(attrs) do
+    attrs
+    |> maybe_put_normalized("wallet_address", normalize_address(Map.get(attrs, "wallet_address")))
+    |> maybe_put_normalized(
+      "wallet_addresses",
+      case Map.fetch(attrs, "wallet_addresses") do
+        {:ok, values} -> normalize_addresses(values)
+        :error -> nil
+      end
+    )
+  end
+
+  defp maybe_put_normalized(attrs, _key, nil), do: attrs
+  defp maybe_put_normalized(attrs, key, value), do: Map.put(attrs, key, value)
+
+  defp normalize_text(value) when is_binary(value) do
+    case String.trim(value) do
+      "" -> nil
+      trimmed -> trimmed
+    end
+  end
+
+  defp normalize_text(_value), do: nil
 end

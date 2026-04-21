@@ -12,6 +12,8 @@ defmodule Autolaunch.Trust do
 
   @x_provider "x"
   @oauth_provider "twitter"
+  @supported_chain_ids [84_532, 8_453]
+  @positive_int_regex ~r/^[1-9][0-9]*$/
 
   def x_provider, do: @x_provider
   def oauth_provider, do: @oauth_provider
@@ -288,7 +290,8 @@ defmodule Autolaunch.Trust do
         parsed_chain_id = String.to_integer(String.trim(chain_id))
         normalized_token_id = normalize_optional_text(token_id, 255)
 
-        if parsed_chain_id in [84_532, 8_453] and is_binary(normalized_token_id) do
+        if parsed_chain_id in @supported_chain_ids and is_binary(normalized_token_id) and
+             normalized_token_id =~ @positive_int_regex do
           {:ok, {parsed_chain_id, normalized_token_id}}
         else
           :error

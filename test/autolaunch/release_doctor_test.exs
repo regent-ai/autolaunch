@@ -52,11 +52,23 @@ defmodule Autolaunch.ReleaseDoctorTest do
           84_532 => "0x2222222222222222222222222222222222222222",
           8_453 => "0x1212121212121212121212121212121212121212"
         },
+        chain_rpc_urls: %{
+          84_532 => "https://base-sepolia-launch.example",
+          8_453 => "https://base-launch.example"
+        },
+        erc8004_subgraph_urls: %{
+          84_532 => "https://base-sepolia-subgraph.example",
+          8_453 => "https://base-subgraph.example"
+        },
         usdc_addresses: %{
           84_532 => "0x4444444444444444444444444444444444444444",
           8_453 => "0x1313131313131313131313131313131313131313"
         },
         identity_registry_address: "0x9999999999999999999999999999999999999998",
+        identity_registry_addresses: %{
+          84_532 => "0x9999999999999999999999999999999999999998",
+          8_453 => "0x1616161616161616161616161616161616161616"
+        },
         revenue_share_factory_address: "0x5555555555555555555555555555555555555555",
         revenue_ingress_factory_address: "0x6666666666666666666666666666666666666666",
         revenue_share_factory_addresses: %{
@@ -126,6 +138,26 @@ defmodule Autolaunch.ReleaseDoctorTest do
              checks,
              &(&1.key == "launch_usdc_addresses_8453" and not &1.ok)
            )
+  end
+
+  test "doctor fails when a per-chain RPC or subgraph entry is missing" do
+    launch =
+      Application.get_env(:autolaunch, :launch, [])
+      |> Keyword.put(:chain_rpc_urls, %{
+        84_532 => "https://base-sepolia-launch.example",
+        8_453 => ""
+      })
+      |> Keyword.put(:erc8004_subgraph_urls, %{
+        84_532 => "https://base-sepolia-subgraph.example",
+        8_453 => ""
+      })
+
+    Application.put_env(:autolaunch, :launch, launch)
+
+    assert %{ok: false, checks: checks} = ReleaseDoctor.run()
+
+    assert Enum.any?(checks, &(&1.key == "launch_chain_rpc_urls_8453" and not &1.ok))
+    assert Enum.any?(checks, &(&1.key == "launch_erc8004_subgraph_urls_8453" and not &1.ok))
   end
 
   test "doctor fails when a path deploy binary exists but is not executable", %{tempdir: tempdir} do

@@ -20,7 +20,7 @@ defmodule AutolaunchWeb.AuctionsLiveTest do
           phase: "biddable",
           price_source: "auction_clearing",
           current_price_usdc: "0.0050",
-          implied_market_cap_usdc: "500000000",
+          implied_market_cap_usdc: "9.5E+2",
           total_bid_volume: "18240.75",
           minimum_raise_progress_percent: 72,
           detail_url: "/auctions/auc_active",
@@ -43,7 +43,7 @@ defmodule AutolaunchWeb.AuctionsLiveTest do
           phase: "biddable",
           price_source: "auction_clearing",
           current_price_usdc: "0.0085",
-          implied_market_cap_usdc: "850000000",
+          implied_market_cap_usdc: "1000",
           total_bid_volume: "9250.00",
           minimum_raise_progress_percent: 41,
           detail_url: "/auctions/auc_beta",
@@ -169,6 +169,8 @@ defmodule AutolaunchWeb.AuctionsLiveTest do
     assert html =~ "Bid volume shown"
     assert html =~ "Search by name, symbol, agent ID, or ENS"
     assert html =~ "Open bid page"
+    assert html =~ "Cinder"
+    assert html =~ "$1,000"
   end
 
   test "mode toggle switches from biddable to live tokens", %{conn: conn, human: human} do
@@ -209,6 +211,8 @@ defmodule AutolaunchWeb.AuctionsLiveTest do
     refute has_element?(view, "#auction-row-auc_beta")
     refute has_element?(view, "#auction-row-auc_live")
     assert render(view) =~ "Base Sepolia"
+    assert render(view) =~ "Atlas"
+    refute render(view) =~ "Featured market</p><h2>Cinder"
   end
 
   test "featured market falls back to a live auction when no biddable auction exists", %{
@@ -228,5 +232,29 @@ defmodule AutolaunchWeb.AuctionsLiveTest do
     assert html =~ "Featured market"
     assert html =~ "Nova"
     assert html =~ "Open token page"
+  end
+
+  test "search with no matches clears the featured card instead of showing an unrelated market",
+       %{
+         conn: conn,
+         human: human
+       } do
+    conn = init_test_session(conn, privy_user_id: human.privy_user_id)
+    {:ok, view, _html} = live(conn, "/auctions")
+
+    _html =
+      view
+      |> form("form[phx-change='filters_changed']", %{
+        "filters" => %{
+          "mode" => "biddable",
+          "network" => "all",
+          "search" => "no-match-here",
+          "sort" => "newest"
+        }
+      })
+      |> render_change()
+
+    assert render(view) =~ "No auctions match this view yet."
+    refute render(view) =~ "Featured market</p><h2>Atlas"
   end
 end
