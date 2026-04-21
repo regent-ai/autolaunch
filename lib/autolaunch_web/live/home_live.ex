@@ -25,30 +25,27 @@ defmodule AutolaunchWeb.HomeLive do
     %{
       label: "Launch path",
       title: "Start from one reviewed plan",
-      body:
-        "Save the plan, check it, publish it, and run the launch from the same working thread."
+      body: "Move from plan to live sale without scattering the operator work."
     },
     %{
       label: "After the sale",
-      title: "Keep follow-up work in reach",
-      body:
-        "Once the auction closes, people come back here for claims, staking, and revenue actions."
+      title: "Keep backers in the loop",
+      body: "Claims, staking, and revenue stay close once the sale is over."
     }
   ]
 
   @story_bands [
     %{
-      title: "Start with one launch path",
-      body:
-        "Autolaunch keeps the launch work in one reviewed path instead of scattering it across separate tools and pages."
+      title: "Raise before you scale",
+      body: "A strong agent still needs runway for compute, APIs, and repeated attempts."
     },
     %{
-      title: "Bid with a budget and a price cap",
+      title: "Bid with a budget and a ceiling",
       body:
         "Each buyer chooses a total budget and the highest price they will pay, then the sale keeps clearing block by block."
     },
     %{
-      title: "Come back after the auction",
+      title: "Give supporters a reason to stay",
       body:
         "The same product keeps the next steps close at hand when people need to claim, stake, or manage revenue."
     }
@@ -102,11 +99,11 @@ defmodule AutolaunchWeb.HomeLive do
         <section id="home-hero" class="al-homepage-hero" phx-hook="HomeHeroMotion">
           <div class="al-homepage-hero-stage">
             <div class="al-homepage-hero-copy" data-home-hero-reveal>
-              <p class="al-homepage-kicker">Operator-first launch path</p>
-              <h1>Start the launch, follow the sale, and return for what comes next.</h1>
+              <p class="al-homepage-kicker">For agents with edge</p>
+              <h1>Turn agent edge into runway.</h1>
               <p class="al-homepage-subcopy">
-                Use one reviewed plan to start an agent token sale. Then keep the live auction,
-                claims, staking, and revenue follow-up in one calm working surface.
+                Raise capital from people who believe in the agent, keep the sale fair, and come
+                back here for claims, staking, and revenue once the auction closes.
               </p>
 
               <div class="al-homepage-hero-actions">
@@ -170,10 +167,10 @@ defmodule AutolaunchWeb.HomeLive do
               <aside class="al-homepage-market-panel" data-home-hero-reveal>
                 <div class="al-homepage-market-panel-head">
                   <p class="al-homepage-kicker">Live market</p>
-                  <h2>Know where to go next.</h2>
+                  <h2>Know where value flows next.</h2>
                   <p>
                     Open the auction page when you want the live estimator and bid controls. Open
-                    the token page when the sale is over and it is time to claim or stake.
+                    the token page when it is time to claim, stake, or follow the revenue path.
                   </p>
                 </div>
 
@@ -234,11 +231,10 @@ defmodule AutolaunchWeb.HomeLive do
         <section id="home-about" class="al-homepage-section" phx-hook="MissionMotion">
           <div class="al-homepage-about-card">
             <p class="al-homepage-kicker">About</p>
-            <h2>One launch path, one live market, and one return point after the sale.</h2>
+            <h2>Raise first. Build longer.</h2>
             <p>
-              Start the launch from one reviewed path. Use the market page to find active sales.
-              Then come back to the token page for claims, staking, and revenue actions after the
-              sale closes.
+              Start from one reviewed launch path. Use the market page to find active sales. Then
+              come back to the token page when holders need claims, staking, and revenue actions.
             </p>
 
             <div class="al-homepage-about-actions">

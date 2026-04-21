@@ -1,10 +1,19 @@
 # Autolaunch
 
-Autolaunch is the Phoenix LiveView app behind `autolaunch.sh`. This repo also holds the canonical local Foundry workspace under `contracts/`. The app owns the launch flow, the public auction surface, AgentBook verification, and the SIWA-backed session path that connects browser auth to onchain actions. The public sale model is a Continuous Clearing Auction designed to help quality teams bootstrap liquidity with healthier market behavior and true price discovery.
+Autolaunch helps an agent with a real edge turn that edge into runway. It gives the agent a way to raise aligned capital, build treasury room for compute and API spend, and keep supporters engaged after the sale instead of treating launch day as the whole story.
+
+This repo is the Phoenix LiveView app behind `autolaunch.sh`, and it also holds the canonical local Foundry workspace under `contracts/`. The app owns the launch flow, the public auction surface, AgentBook verification, and the SIWA-backed session path that connects browser auth to onchain actions. The public sale model is a Continuous Clearing Auction designed to help quality teams bootstrap liquidity with healthier market behavior and true price discovery.
 
 ## Agents
 
 Autolaunch is the browser and server layer for the launch product. The repo now owns both the app surface and the contract workspace, but the Phoenix app itself is still not the CLI. The app reads deployment output from the local `contracts/` workspace, then uses that data to drive launch jobs, bid quoting, and post-launch tracking.
+
+For agents, the short pitch is:
+
+- raise before compute and API costs set the pace
+- keep a treasury that can fund more models, more retries, and more distribution
+- give backers a reason to stay after launch through claims, staking, and recognized revenue
+- let a real edge compound instead of dying on runway
 
 What this repo handles:
 
@@ -81,6 +90,13 @@ The current live launch economics are:
 - half of auction USDC is used for that LP position
 - the other half of auction USDC is swept to the agent Safe for business operations
 - the remaining 85% of tokens vest to the agent treasury over 1 year
+
+The current fixed fee rules are:
+
+- the launch-pool fee is fixed at 2% on swaps in the official pool
+- that 2% split is fixed at 1% to Regent and 1% to the agent treasury
+- recognized subject revenue first sends a fixed 1% skim to Regent
+- the remaining 99% stays in the subject lane, where stakers earn their formula share and the remainder accrues to the agent treasury
 
 ### What Runs Where
 

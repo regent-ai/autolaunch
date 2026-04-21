@@ -50,7 +50,7 @@ defmodule AutolaunchWeb.HomeLiveTest do
   test "home page renders the new landing layout with market tables", %{conn: conn} do
     {:ok, _view, html} = live(conn, "/")
 
-    assert html =~ "Start the launch, follow the sale, and return for what comes next."
+    assert html =~ "Turn agent edge into runway."
     assert html =~ "Open auctions"
     assert html =~ "regent autolaunch prelaunch wizard"
     assert html =~ "Hermes"
@@ -62,9 +62,9 @@ defmodule AutolaunchWeb.HomeLiveTest do
     assert html =~ "Post-auction tokens"
     assert html =~ "Atlas"
     assert html =~ "Beacon"
-    assert html =~ "Start with one launch path"
-    assert html =~ "Bid with a budget and a price cap"
-    assert html =~ "Come back after the auction"
+    assert html =~ "Raise before you scale"
+    assert html =~ "Bid with a budget and a ceiling"
+    assert html =~ "Give supporters a reason to stay"
     assert html =~ ~s(href="/auctions")
   end
 

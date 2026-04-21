@@ -5,10 +5,10 @@ defmodule AutolaunchWeb.ApiRoutesTest do
     conn = get(conn, "/")
     html = html_response(conn, 200)
 
-    assert html =~ "Start the launch, follow the sale, and return for what comes next."
+    assert html =~ "Turn agent edge into runway."
     assert html =~ "regent autolaunch prelaunch wizard"
     assert html =~ "Post-auction tokens"
-    assert html =~ "Start with one launch path"
+    assert html =~ "Raise before you scale"
   end
 
   test "auction index returns JSON", %{conn: conn} do

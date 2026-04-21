@@ -20,10 +20,10 @@ defmodule AutolaunchWeb.LaunchLive do
       <section id="launch-cli-hero" class="al-hero al-launch-hero al-panel" phx-hook="MissionMotion">
         <div class="al-launch-copy">
           <p class="al-kicker">Launch console</p>
-          <h2>Run the launch from one main path.</h2>
+          <h2>Turn a strong agent into funded runway.</h2>
           <p class="al-subcopy">
-            Save the plan, validate it, publish it, run the launch, and monitor the auction. Come
-            back here when you need the exact sequence and the supporting checks in one place.
+            Build the plan once, review it once, and carry the same run from launch prep to live
+            auction. Use this page when a real edge is ready for capital.
           </p>
 
           <div class="al-hero-actions">
@@ -35,9 +35,9 @@ defmodule AutolaunchWeb.LaunchLive do
           </div>
 
           <div class="al-launch-tags" aria-label="Launch summary">
-            <span class="al-launch-tag">Save one plan</span>
-            <span class="al-launch-tag">Base Sepolia + Base mainnet</span>
-            <span class="al-launch-tag">Canonical operator path</span>
+            <span class="al-launch-tag">Raise before you scale</span>
+            <span class="al-launch-tag">Fair price discovery</span>
+            <span class="al-launch-tag">One path through settlement</span>
           </div>
         </div>
 
@@ -55,26 +55,26 @@ defmodule AutolaunchWeb.LaunchLive do
           <div class="al-section-head">
             <div>
               <p class="al-kicker">What this does</p>
-              <h3>One repeatable launch path</h3>
+              <h3>One repeatable operator path</h3>
             </div>
           </div>
 
           <div class="al-note-grid">
             <article class="al-note-card">
-              <span>Save once</span>
-              <strong>Capture the full launch plan in the CLI.</strong>
-              <p>Keep the operator wallet, Agent Safe, and metadata in one reviewed plan.</p>
+              <span>Shape the raise</span>
+              <strong>Put the full launch plan in one place.</strong>
+              <p>Keep the operator wallet, agent safe, and launch brief together before money moves.</p>
             </article>
 
             <article class="al-note-card">
-              <span>Validate once</span>
-              <strong>Check the plan before you publish or deploy.</strong>
-              <p>Minimum raise, routing, and launch settings are reviewed before chain actions start.</p>
+              <span>Review the raise</span>
+              <strong>Check the terms before you publish or deploy.</strong>
+              <p>Minimum raise, routing, and launch settings are reviewed before the live run starts.</p>
             </article>
 
             <article class="al-note-card">
-              <span>Run once</span>
-              <strong>Launch, monitor, and finalize from the same thread of work.</strong>
+              <span>Carry it through</span>
+              <strong>Launch, monitor, and settle from the same thread of work.</strong>
               <p>The web app picks up after launch for bidding, claims, staking, and revenue reads.</p>
             </article>
           </div>
@@ -120,7 +120,7 @@ defmodule AutolaunchWeb.LaunchLive do
 
           <p class="al-inline-note">
             Keep the full launch in the command line so the same reviewed plan stays in place from
-            start to finish.
+            first draft to live market.
           </p>
         </article>
       </section>
@@ -129,7 +129,7 @@ defmodule AutolaunchWeb.LaunchLive do
         <div class="al-section-head">
           <div>
             <p class="al-kicker">What stays in the browser</p>
-            <h3>Come back here after the launch is live</h3>
+            <h3>Come back here when the market is live</h3>
           </div>
         </div>
 

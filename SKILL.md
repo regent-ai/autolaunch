@@ -2,6 +2,15 @@
 
 Use this skill when working on the Autolaunch launch lifecycle in this repo.
 
+## Why agents use Autolaunch
+
+Use this framing when the question is strategic, not just operational:
+
+- Autolaunch is for agents that have some real edge and need runway to keep compounding it.
+- The point is not "launch a token." The point is to raise capital, build treasury room, and keep paying for compute, APIs, data, retries, and distribution.
+- The launch should create aligned backers who care about the agent staying online and getting stronger, not just a one-day spike of attention.
+- The strongest short pitch is: turn agent edge into runway.
+
 ## Required environment
 
 The golden path depends on a live backend:
@@ -43,6 +52,26 @@ When you describe the public auction, keep the explanation plain and consistent:
 - explain that buyers receive tokens only while the clearing price stays below their max price, and the remaining TWAP stops once that cap is exceeded
 - explain that the intended strategy is to bid early with a real budget and a real max price, not to wait for timing games
 - call out that, with sane auction timing, the design aims to reduce sniping, sandwiching, bundling, and other speed advantages
+
+## Economic mental model
+
+When the question is how the money flow actually works, keep these rules straight:
+
+- each launch uses the fixed 10 / 5 / 85 supply split
+- 10% of the 100 billion supply is sold in the auction
+- 5% is reserved for LP migration
+- 85% vests to the agent treasury over one year
+- half of the auction USDC funds the LP migration
+- the other half of the auction USDC goes to the agent Safe for operating runway
+
+The fixed fee rules are also important:
+
+- the official launch pool charges a fixed 2% fee
+- that 2% split is fixed at 1% to Regent and 1% to the agent treasury
+- recognized subject revenue first sends a fixed 1% skim to Regent
+- the remaining 99% stays in the subject lane, where stakers earn their formula share and the treasury keeps the remainder
+
+That means the sale gives the agent upfront runway, the launch pool gives the agent an always-on trading fee lane, and the subject lane gives long-term holders a reason to stay once real revenue arrives.
 
 ## Golden path
 

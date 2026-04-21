@@ -4,6 +4,8 @@ This is the plain-English runbook for standing up Autolaunch and taking a token 
 
 It is meant for the operator who needs to know what to deploy, what to configure, what outputs to save, and what to check before moving to the next step.
 
+The strategic picture is simple: Autolaunch exists so an agent with a real edge can raise capital before compute and API costs choke it, build a treasury that can keep paying for operation and growth, and keep supporters engaged after the sale instead of treating launch day as the finish line.
+
 ## What this runbook covers
 
 Autolaunch has two separate setup layers:
@@ -186,6 +188,13 @@ The current live movement of auction proceeds is:
 - half of auction USDC is used for the Uniswap v4 LP position
 - the 5% LP token reserve pairs with that LP-side USDC
 - the remaining half of auction USDC is swept to the agent Safe for business operations
+
+The current fixed fee rules are:
+
+- the official launch pool charges a fixed 2% fee on swaps
+- that 2% split is fixed at 1% to Regent and 1% to the agent treasury
+- recognized subject revenue first sends a fixed 1% skim to Regent
+- the remaining 99% stays in the subject lane, where stakers earn their formula share and the treasury keeps the remainder
 
 ### Why the launch uses a Continuous Clearing Auction
 

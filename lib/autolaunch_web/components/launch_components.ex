@@ -28,7 +28,7 @@ defmodule AutolaunchWeb.LaunchComponents do
           <p class="al-kicker">Regent CCA</p>
           <div>
             <h1 translate="no">autolaunch.sh</h1>
-            <p>Plan the launch, watch the auction, and manage revenue from one Sepolia view.</p>
+            <p>Raise launch capital, follow the market, and manage what comes back.</p>
           </div>
         </div>
 
@@ -179,14 +179,13 @@ defmodule AutolaunchWeb.LaunchComponents do
           />
           <div>
             <p class="al-kicker">Welcome to autolaunch.sh</p>
-            <h2 id="autolaunch-welcome-title">The hub for agent companies to begin.</h2>
+            <h2 id="autolaunch-welcome-title">Turn agent edge into runway.</h2>
           </div>
         </div>
 
         <p id="autolaunch-welcome-copy" class="al-welcome-copy">
-          A token auction lets anyone split in the onchain revenue an agent will make. Use the
-          Autolaunch Skill with your OpenClaw or Hermes agent to fund its operations as a long-term
-          agent business.
+          Launch a market around a real agent, bring in aligned backers, and keep one place for
+          auctions, claims, staking, and revenue as the agent grows.
         </p>
 
         <div class="al-welcome-actions">

@@ -153,13 +153,13 @@ defmodule AutolaunchWeb.LaunchPagesTest do
   test "launch page renders the CLI-first review page", %{conn: conn} do
     {:ok, _view, html} = live(conn, "/launch")
 
-    assert html =~ "Run the launch from one main path."
+    assert html =~ "Turn a strong agent into funded runway."
     assert html =~ "regent autolaunch prelaunch wizard"
     assert html =~ "Operator briefs"
     assert html =~ "What you need"
     assert html =~ "What to run"
-    assert html =~ "Base Sepolia + Base mainnet"
-    assert html =~ "Canonical operator path"
+    assert html =~ "Fair price discovery"
+    assert html =~ "One path through settlement"
   end
 
   test "launch via agent page explains the CLI-first path", %{conn: conn} do
@@ -190,7 +190,7 @@ defmodule AutolaunchWeb.LaunchPagesTest do
     assert html =~ "regent autolaunch launch finalize --job"
     assert html =~ "Starter command"
     assert html =~ "Browse auctions"
-    assert html =~ "One repeatable launch path"
+    assert html =~ "One repeatable operator path"
   end
 
   test "launch page keeps the browser role focused on review rather than launch creation", %{
@@ -206,7 +206,7 @@ defmodule AutolaunchWeb.LaunchPagesTest do
     conn = init_test_session(conn, privy_user_id: human.privy_user_id)
     {:ok, _view, html} = live(conn, "/launch")
 
-    assert html =~ "Come back here after the launch is live"
+    assert html =~ "Come back here when the market is live"
     assert html =~ "Claim, stake, unstake, and sweep from the token page."
     refute html =~ "Choose an eligible agent"
     refute html =~ "Queue deploy job."
@@ -239,9 +239,9 @@ defmodule AutolaunchWeb.LaunchPagesTest do
   test "market page renders token directory copy", %{conn: conn} do
     {:ok, _view, html} = live(conn, "/auctions")
 
-    assert html =~ "Choose a live market, then open the bid page."
-    assert html =~ "Biddable 0"
-    assert html =~ "No tokens match this directory view yet."
+    assert html =~ "Open now"
+    assert html =~ "Bid volume shown"
+    assert html =~ "No auctions match this view yet."
   end
 
   test "positions page renders sign-in guidance for guests", %{conn: conn} do
