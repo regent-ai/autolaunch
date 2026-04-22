@@ -357,7 +357,6 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
             return 0;
         }
         require(availableStakeTokenRewardInventory() >= amount, "REWARD_INVENTORY_LOW");
-        require(totalStaked + amount <= revenueShareSupplyDenominator, "STAKE_CAP_EXCEEDED");
 
         storedClaimableStakeToken[msg.sender] = 0;
         unclaimedStakeTokenLiability -= amount;

@@ -556,6 +556,36 @@ contract RevenueShareSplitterTest is Test {
         smallSplitter.claimAndRestakeStakeToken();
     }
 
+    function testClaimStakeTokenStillWorksWhenStakeCapIsAlreadyFull() external {
+        MintableBurnableERC20Mock smallStake =
+            new MintableBurnableERC20Mock("Small Agent", "sAGENT", 18);
+        RevenueShareSplitter smallSplitter = _deploySplitter(smallStake, 3 * XYZ, "small-cap");
+
+        address[3] memory stakers = [ALICE, BOB, CAROL];
+        for (uint256 i = 0; i < stakers.length; ++i) {
+            smallStake.mint(stakers[i], XYZ);
+            vm.startPrank(stakers[i]);
+            smallStake.approve(address(smallSplitter), type(uint256).max);
+            smallSplitter.stake(XYZ, stakers[i]);
+            vm.stopPrank();
+        }
+
+        smallStake.mint(FUNDER, 100 * XYZ);
+        _fundStakeTokenRewards(smallSplitter, smallStake, 100 * XYZ);
+
+        smallSplitter.setEmissionAprBps(MAX_APR_BPS);
+        vm.warp(block.timestamp + 365 days);
+
+        uint256 expected = _expectedEmission(XYZ, MAX_APR_BPS, 365 days);
+
+        vm.prank(ALICE);
+        uint256 claimed = smallSplitter.claimStakeToken(ALICE);
+
+        assertEq(claimed, expected);
+        assertEq(smallSplitter.totalStaked(), 3 * XYZ);
+        assertEq(smallStake.balanceOf(ALICE), expected);
+    }
+
     function testSweepTreasuryResidualUSDCIsRestrictedToTreasuryOrOwner() external {
         usdc.mint(address(this), INITIAL_INGRESS_DEPOSIT);
         usdc.approve(address(splitter), INITIAL_INGRESS_DEPOSIT);
