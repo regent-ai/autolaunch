@@ -22,6 +22,8 @@
 /NOTES.md
 /SCRATCH.md
 /WORKFLOW.md
+/design/
+/design/subagents/
 RECENT_AUTOLAUNCH_MESSAGES.md
 /*.db
 /*.sqlite3
