@@ -2,12 +2,14 @@ defmodule AutolaunchWeb.PositionsLive do
   use AutolaunchWeb, :live_view
 
   alias Autolaunch.Launch
+  alias AutolaunchWeb.Live.AccountWorkspace
   alias AutolaunchWeb.Live.Refreshable
 
   @poll_ms 15_000
 
   def mount(_params, _session, socket) do
-    filters = %{"status" => ""}
+    filters = %{"status" => "", "search" => ""}
+    all_positions = load_positions(socket.assigns[:current_human])
 
     {:ok,
      socket
@@ -15,7 +17,8 @@ defmodule AutolaunchWeb.PositionsLive do
      |> assign(:page_title, "Positions")
      |> assign(:active_view, "positions")
      |> assign(:filters, filters)
-     |> assign(:positions, load_positions(socket.assigns[:current_human], filters))}
+     |> assign(:all_positions, all_positions)
+     |> assign(:positions, filter_positions(all_positions, filters))}
   end
 
   def handle_event("filters_changed", %{"filters" => filters}, socket) do
@@ -24,7 +27,7 @@ defmodule AutolaunchWeb.PositionsLive do
     {:noreply,
      socket
      |> assign(:filters, merged)
-     |> assign(:positions, load_positions(socket.assigns.current_human, merged))}
+     |> assign(:positions, filter_positions(socket.assigns.all_positions, merged))}
   end
 
   def handle_event("quick_filter", %{"status" => status}, socket) do
@@ -33,7 +36,7 @@ defmodule AutolaunchWeb.PositionsLive do
     {:noreply,
      socket
      |> assign(:filters, filters)
-     |> assign(:positions, load_positions(socket.assigns.current_human, filters))}
+     |> assign(:positions, filter_positions(socket.assigns.all_positions, filters))}
   end
 
   def handle_event("wallet_tx_started", %{"message" => message}, socket) do
@@ -53,14 +56,16 @@ defmodule AutolaunchWeb.PositionsLive do
   end
 
   def render(assigns) do
-    active = Enum.count(assigns.positions, &(&1.status == "active"))
-    borderline = Enum.count(assigns.positions, &(&1.status == "borderline"))
-    inactive = Enum.count(assigns.positions, &(&1.status == "inactive"))
-    claimable = Enum.count(assigns.positions, &(&1.status == "claimable"))
-    returnable = Enum.count(assigns.positions, &(&1.status == "returnable"))
+    active = Enum.count(assigns.all_positions, &(&1.status == "active"))
+    borderline = Enum.count(assigns.all_positions, &(&1.status == "borderline"))
+    inactive = Enum.count(assigns.all_positions, &(&1.status == "inactive"))
+    claimable = Enum.count(assigns.all_positions, &(&1.status == "claimable"))
+    returnable = Enum.count(assigns.all_positions, &(&1.status == "returnable"))
+    total = length(assigns.all_positions)
 
     assigns =
       assigns
+      |> assign(:total_count, total)
       |> assign(:active_count, active)
       |> assign(:borderline_count, borderline)
       |> assign(:inactive_count, inactive)
@@ -69,171 +74,307 @@ defmodule AutolaunchWeb.PositionsLive do
 
     ~H"""
     <.shell current_human={@current_human} active_view={@active_view}>
-      <section id="positions-hero" class="al-hero al-panel" phx-hook="MissionMotion">
-        <div>
-          <p class="al-kicker">Positions</p>
-          <h2>See what needs attention now, then open the matching auction.</h2>
-          <p class="al-subcopy">
-            This view is for quick triage. Claimable positions, refund paths, and active bids should
-            be obvious without opening every auction one by one.
-          </p>
-        </div>
+      <AccountWorkspace.styles active_tab="positions" />
 
-        <div class="al-stat-grid">
-          <.stat_card title="Claimable" value={Integer.to_string(@claimable_count)} />
-          <.stat_card title="Returns" value={Integer.to_string(@returnable_count)} />
-          <.stat_card title="Active" value={Integer.to_string(@active_count)} />
-        </div>
-      </section>
+      <section class="al-account-page">
+        <header class="al-account-topline">
+          <AccountWorkspace.tabs active_tab="positions" />
+
+          <div :if={!is_nil(@current_human)} class="al-account-utility">
+            <span class="al-account-utility-note">Live triage refreshes every {poll_seconds()}s</span>
+            <.link navigate={~p"/profile"} class="al-ghost">Open profile</.link>
+          </div>
+        </header>
 
         <%= if is_nil(@current_human) do %>
-        <.empty_state
-          title="Sign in to inspect your bids."
-          body="Positions are tied to the Privy-backed session and wallet binding."
-        />
-      <% else %>
-        <section class="al-panel al-filter-panel">
-          <div class="al-section-head">
-            <div>
-              <p class="al-kicker">Triage</p>
-              <h3>Use the quick buckets first</h3>
-            </div>
-          </div>
-
-          <div class="al-quick-filter-row" role="group" aria-label="Quick position filters">
-            <button type="button" class={["al-filter", @filters["status"] == "" && "is-active"]} phx-click="quick_filter" phx-value-status="">
-              All
-            </button>
-            <button type="button" class={["al-filter", @filters["status"] == "claimable" && "is-active"]} phx-click="quick_filter" phx-value-status="claimable">
-              Claimable
-            </button>
-            <button type="button" class={["al-filter", @filters["status"] == "returnable" && "is-active"]} phx-click="quick_filter" phx-value-status="returnable">
-              Returns
-            </button>
-            <button type="button" class={["al-filter", @filters["status"] == "active" && "is-active"]} phx-click="quick_filter" phx-value-status="active">
-              Active
-            </button>
-            <button type="button" class={["al-filter", @filters["status"] == "borderline" && "is-active"]} phx-click="quick_filter" phx-value-status="borderline">
-              Borderline
-            </button>
-          </div>
-
-          <details class="al-disclosure">
-            <summary class="al-disclosure-summary">
-              <div>
-                <p class="al-kicker">More filters</p>
-                <h3>Open the full status list only if you need it</h3>
-              </div>
-              <span class="al-network-badge">Optional</span>
-            </summary>
-
-            <form phx-change="filters_changed" class="al-filter-form">
-              <label>
-                <span>All statuses</span>
-                <select name="filters[status]">
-                  <option value="" selected={@filters["status"] == ""}>All</option>
-                  <option value="active" selected={@filters["status"] == "active"}>Active</option>
-                  <option value="ending-soon" selected={@filters["status"] == "ending-soon"}>Ending soon</option>
-                  <option value="borderline" selected={@filters["status"] == "borderline"}>Borderline</option>
-                  <option value="inactive" selected={@filters["status"] == "inactive"}>Inactive</option>
-                  <option value="returnable" selected={@filters["status"] == "returnable"}>Returnable</option>
-                  <option value="claimable" selected={@filters["status"] == "claimable"}>Claimable</option>
-                  <option value="pending-claim" selected={@filters["status"] == "pending-claim"}>Pending claim</option>
-                  <option value="claimed" selected={@filters["status"] == "claimed"}>Claimed</option>
-                  <option value="exited" selected={@filters["status"] == "exited"}>Exited</option>
-                  <option value="settled" selected={@filters["status"] == "settled"}>Settled</option>
-                </select>
-              </label>
-            </form>
-          </details>
-        </section>
-
-        <%= if @positions == [] do %>
           <.empty_state
-            title="No bids match the current filter."
-            body="Place a bid from an auction detail page or clear the status filter to see every state."
+            title="Sign in to inspect your bids."
+            body="This workspace keeps your active bids, claims, and returns in one place."
           />
         <% else %>
-          <section class="al-position-list">
-            <article :for={position <- @positions} id={"position-card-#{position.bid_id}"} class="al-panel al-position-card" phx-hook="MissionMotion">
-              <div class="al-agent-card-head">
+          <section id="positions-overview" class="al-panel al-account-overview" phx-hook="MissionMotion">
+            <AccountWorkspace.identity
+              current_human={@current_human}
+              eyebrow="Positions"
+              title={positions_title(@current_human)}
+              subtitle="Triage active bids, claims, and return paths before you open a specific auction."
+            />
+
+            <div class="al-account-summary-grid">
+              <AccountWorkspace.summary_card
+                title="Total"
+                value={Integer.to_string(@total_count)}
+                hint="Tracked positions"
+                tone="blue"
+              />
+              <AccountWorkspace.summary_card
+                title="Claimable"
+                value={Integer.to_string(@claimable_count)}
+                hint="Ready to withdraw"
+                tone="green"
+              />
+              <AccountWorkspace.summary_card
+                title="Active"
+                value={Integer.to_string(@active_count)}
+                hint="Live auctions"
+                tone="amber"
+              />
+            </div>
+          </section>
+
+          <section id="positions-panel" class="al-panel al-account-positions-panel" phx-hook="MissionMotion">
+            <div class="al-account-positions-topline">
+              <div class="al-account-section-head">
                 <div>
-                  <p class="al-kicker">{position.chain}</p>
-                  <h3>{position.agent_name}</h3>
-                  <p class="al-inline-note">{position.bid_id}</p>
+                  <p class="al-kicker">Positions triage</p>
+                  <h3>Use the quick buckets first, then inspect the auction only when you need detail.</h3>
                 </div>
-                <.status_badge status={position.status} />
               </div>
 
-              <div class="al-stat-grid">
-                <.stat_card title="Amount" value={position.amount} />
-                <.stat_card title="Max price" value={position.max_price} />
-                <.stat_card title="Current clearing price" value={position.current_clearing_price} />
-                <.stat_card title="Inactive above" value={position.inactive_above_price} />
+              <div class="al-account-metric-strip">
+                <article class="al-account-metric-card">
+                  <span class="al-account-summary-label">All</span>
+                  <strong>{@total_count}</strong>
+                  <p>Total positions</p>
+                </article>
+                <article class="al-account-metric-card">
+                  <span class="al-account-summary-label">Claimable</span>
+                  <strong>{@claimable_count}</strong>
+                  <p>Ready now</p>
+                </article>
+                <article class="al-account-metric-card">
+                  <span class="al-account-summary-label">Returns</span>
+                  <strong>{@returnable_count}</strong>
+                  <p>Failed raises</p>
+                </article>
+                <article class="al-account-metric-card">
+                  <span class="al-account-summary-label">Active</span>
+                  <strong>{@active_count}</strong>
+                  <p>Still in market</p>
+                </article>
+                <article class="al-account-metric-card">
+                  <span class="al-account-summary-label">Borderline</span>
+                  <strong>{@borderline_count}</strong>
+                  <p>Needs attention</p>
+                </article>
               </div>
 
-              <div class="al-inline-banner">
-                <strong>{status_copy(position.status)}</strong>
-                <p>{position.next_action_label}</p>
-              </div>
+              <form phx-change="filters_changed" class="al-account-filter-row">
+                <div class="al-account-pill-row" role="group" aria-label="Quick position filters">
+                  <button
+                    type="button"
+                    class={["al-account-pill", @filters["status"] == "" && "is-active"]}
+                    phx-click="quick_filter"
+                    phx-value-status=""
+                  >
+                    All
+                  </button>
+                  <button
+                    type="button"
+                    class={["al-account-pill", @filters["status"] == "claimable" && "is-active"]}
+                    phx-click="quick_filter"
+                    phx-value-status="claimable"
+                  >
+                    Claimable
+                  </button>
+                  <button
+                    type="button"
+                    class={["al-account-pill", @filters["status"] == "returnable" && "is-active"]}
+                    phx-click="quick_filter"
+                    phx-value-status="returnable"
+                  >
+                    Returns
+                  </button>
+                  <button
+                    type="button"
+                    class={["al-account-pill", @filters["status"] == "active" && "is-active"]}
+                    phx-click="quick_filter"
+                    phx-value-status="active"
+                  >
+                    Active
+                  </button>
+                  <button
+                    type="button"
+                    class={["al-account-pill", @filters["status"] == "borderline" && "is-active"]}
+                    phx-click="quick_filter"
+                    phx-value-status="borderline"
+                  >
+                    Borderline
+                  </button>
+                </div>
 
-              <div class="al-action-row">
-                <.link navigate={~p"/auctions/#{position.auction_id}"} class="al-ghost">Inspect auction</.link>
-                <.wallet_tx_button
-                  :if={return_action(position)}
-                  id={"positions-return-#{position.bid_id}"}
-                  class="al-submit"
-                  tx_request={return_action(position).tx_request}
-                  register_endpoint={~p"/api/bids/#{position.bid_id}/return-usdc"}
-                  pending_message="Return transaction sent. Waiting for confirmation."
-                  success_message="USDC return registered."
-                >
-                  Return USDC
-                </.wallet_tx_button>
-                <.wallet_tx_button
-                  :if={tx_action(position, :exit) && is_nil(return_action(position))}
-                  id={"positions-exit-#{position.bid_id}"}
-                  class="al-ghost"
-                  tx_request={tx_action(position, :exit).tx_request}
-                  register_endpoint={~p"/api/bids/#{position.bid_id}/exit"}
-                  pending_message="Exit transaction sent. Waiting for confirmation."
-                  success_message="Bid exit registered."
-                >
-                  Exit bid
-                </.wallet_tx_button>
-                <.wallet_tx_button
-                  :if={tx_action(position, :claim)}
-                  id={"positions-claim-#{position.bid_id}"}
-                  class="al-submit"
-                  tx_request={tx_action(position, :claim).tx_request}
-                  register_endpoint={~p"/api/bids/#{position.bid_id}/claim"}
-                  pending_message="Claim transaction sent. Waiting for confirmation."
-                  success_message="Claim registered."
-                >
-                  Claim tokens
-                </.wallet_tx_button>
+                <div class="al-account-search">
+                  <label class="sr-only" for="positions-search">Search positions</label>
+                  <input
+                    id="positions-search"
+                    type="search"
+                    name="filters[search]"
+                    value={@filters["search"]}
+                    placeholder="Search by token or auction ID"
+                  />
+                </div>
+              </form>
+            </div>
+
+            <%= if @positions == [] do %>
+              <.empty_state
+                title="No bids match the current view."
+                body="Clear the search or switch buckets to see more positions."
+              />
+            <% else %>
+              <div class="al-account-table-shell">
+                <table class="al-account-position-table">
+                  <thead>
+                    <tr>
+                      <th>Token / auction</th>
+                      <th>Status</th>
+                      <th>Your position</th>
+                      <th>Max price</th>
+                      <th>Current clearing price</th>
+                      <th>Next action</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr :for={position <- @positions} id={"position-row-#{position.bid_id}"}>
+                      <td>
+                        <div class="al-account-position-token">
+                          <strong>{position.agent_name}</strong>
+                          <span class="al-account-token-meta">{position.chain}</span>
+                          <span class="al-account-token-meta">
+                            Auction {position.auction_id} • {position.bid_id}
+                          </span>
+                        </div>
+                      </td>
+                      <td><.status_badge status={position.status} /></td>
+                      <td>
+                        <div class="al-account-position-stack">
+                          <strong>{position.amount}</strong>
+                          <span class="al-account-token-meta">{status_copy(position.status)}</span>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="al-account-position-stack">
+                          <strong>{position.max_price}</strong>
+                          <span class="al-account-token-meta">Bid ceiling</span>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="al-account-position-stack">
+                          <strong>{position.current_clearing_price}</strong>
+                          <span class="al-account-token-meta">
+                            Inactive above {position.inactive_above_price}
+                          </span>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="al-account-next-step">
+                          <strong>{position.next_action_label}</strong>
+                          <span class="al-account-token-meta">{status_copy(position.status)}</span>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="al-account-table-actions">
+                          <.link navigate={~p"/auctions/#{position.auction_id}"} class="al-ghost">
+                            Inspect auction
+                          </.link>
+                          <.wallet_tx_button
+                            :if={return_action(position)}
+                            id={"positions-return-#{position.bid_id}"}
+                            class="al-submit"
+                            tx_request={return_action(position).tx_request}
+                            register_endpoint={~p"/api/bids/#{position.bid_id}/return-usdc"}
+                            pending_message="Return transaction sent. Waiting for confirmation."
+                            success_message="USDC return registered."
+                          >
+                            Return USDC
+                          </.wallet_tx_button>
+                          <.wallet_tx_button
+                            :if={tx_action(position, :exit) && is_nil(return_action(position))}
+                            id={"positions-exit-#{position.bid_id}"}
+                            class="al-ghost"
+                            tx_request={tx_action(position, :exit).tx_request}
+                            register_endpoint={~p"/api/bids/#{position.bid_id}/exit"}
+                            pending_message="Exit transaction sent. Waiting for confirmation."
+                            success_message="Bid exit registered."
+                          >
+                            Exit bid
+                          </.wallet_tx_button>
+                          <.wallet_tx_button
+                            :if={tx_action(position, :claim)}
+                            id={"positions-claim-#{position.bid_id}"}
+                            class="al-submit"
+                            tx_request={tx_action(position, :claim).tx_request}
+                            register_endpoint={~p"/api/bids/#{position.bid_id}/claim"}
+                            pending_message="Claim transaction sent. Waiting for confirmation."
+                            success_message="Claim registered."
+                          >
+                            Claim tokens
+                          </.wallet_tx_button>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
-            </article>
+            <% end %>
           </section>
         <% end %>
-      <% end %>
+      </section>
 
       <.flash_group flash={@flash} />
     </.shell>
     """
   end
 
-  defp load_positions(nil, _filters), do: []
+  defp load_positions(nil), do: []
 
-  defp load_positions(current_human, filters),
-    do: launch_module().list_positions(current_human, filters)
+  defp load_positions(current_human),
+    do: launch_module().list_positions(current_human, %{"status" => ""})
 
   defp reload_positions(socket) do
+    all_positions = load_positions(socket.assigns.current_human)
+
     assign(
       socket,
-      :positions,
-      load_positions(socket.assigns.current_human, socket.assigns.filters)
+      all_positions: all_positions,
+      positions: filter_positions(all_positions, socket.assigns.filters)
     )
+  end
+
+  defp filter_positions(positions, filters) do
+    positions
+    |> filter_by_status(filters["status"])
+    |> filter_by_search(filters["search"])
+  end
+
+  defp filter_by_status(positions, nil), do: positions
+  defp filter_by_status(positions, ""), do: positions
+
+  defp filter_by_status(positions, status) do
+    Enum.filter(positions, &(&1.status == status))
+  end
+
+  defp filter_by_search(positions, nil), do: positions
+  defp filter_by_search(positions, ""), do: positions
+
+  defp filter_by_search(positions, search) do
+    needle = String.downcase(String.trim(search))
+
+    Enum.filter(positions, fn position ->
+      [
+        position.agent_name,
+        position.bid_id,
+        position.auction_id,
+        position.chain
+      ]
+      |> Enum.any?(fn value ->
+        value
+        |> to_string()
+        |> String.downcase()
+        |> String.contains?(needle)
+      end)
+    end)
   end
 
   defp status_copy("active"), do: "Active — receiving tokens at the current clearing price."
@@ -266,6 +407,21 @@ defmodule AutolaunchWeb.PositionsLive do
     |> Map.get(:tx_actions, %{})
     |> Map.get(action)
   end
+
+  defp positions_title(%{display_name: display_name})
+       when is_binary(display_name) and display_name != "",
+       do: display_name
+
+  defp positions_title(%{wallet_address: wallet_address}) when is_binary(wallet_address),
+    do: short_wallet(wallet_address)
+
+  defp positions_title(_), do: "Autolaunch operator"
+
+  defp short_wallet(wallet_address) do
+    "#{String.slice(wallet_address, 0, 6)}...#{String.slice(wallet_address, -4, 4)}"
+  end
+
+  defp poll_seconds, do: div(@poll_ms, 1_000)
 
   defp launch_module do
     :autolaunch

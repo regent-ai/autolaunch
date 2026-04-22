@@ -24,7 +24,14 @@
       })();
     </script>
   </head>
-  <body>
-    {@inner_content}
+  <body class="al-shell-body">
+    <Layouts.app_shell
+      current_human={assigns[:current_human]}
+      active_view={assigns[:active_view]}
+      page_title={assigns[:page_title]}
+      wallet_switch={assigns[:wallet_switch]}
+    >
+      {@inner_content}
+    </Layouts.app_shell>
   </body>
 </html>

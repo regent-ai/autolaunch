@@ -4,6 +4,7 @@ defmodule AutolaunchWeb.SubjectLive do
   alias AutolaunchWeb.Live.Refreshable
 
   @poll_ms 15_000
+  @side_tabs ~w(state balances addresses)
 
   def mount(%{"id" => subject_id}, _session, socket) do
     {:ok,
@@ -12,6 +13,7 @@ defmodule AutolaunchWeb.SubjectLive do
      |> assign(:page_title, "Subject Revenue")
      |> assign(:active_view, "subjects")
      |> assign(:subject_id, subject_id)
+     |> assign(:side_tab, "state")
      |> assign(:stake_form, %{"amount" => ""})
      |> assign(:unstake_form, %{"amount" => ""})
      |> assign(:pending_actions, %{})
@@ -24,6 +26,10 @@ defmodule AutolaunchWeb.SubjectLive do
 
   def handle_event("unstake_changed", %{"unstake" => attrs}, socket) do
     {:noreply, assign(socket, :unstake_form, Map.merge(socket.assigns.unstake_form, attrs))}
+  end
+
+  def handle_event("side_tab_changed", %{"tab" => tab}, socket) when tab in @side_tabs do
+    {:noreply, assign(socket, :side_tab, tab)}
   end
 
   def handle_event(
@@ -66,155 +72,322 @@ defmodule AutolaunchWeb.SubjectLive do
     subject = assigns.subject
     recommended = recommended_action(subject)
     wallet_position = wallet_position(subject)
+    ingress_accounts = if(subject, do: subject.ingress_accounts || [], else: [])
 
     assigns =
       assigns
       |> assign(:pending_actions, assigns.pending_actions || %{})
       |> assign(:recommended_action, recommended)
       |> assign(:wallet_position, wallet_position)
+      |> assign(:ingress_accounts, ingress_accounts)
+      |> assign(:subject_heading, subject_heading(subject, assigns.subject_id))
+      |> assign(:subject_summary, subject_summary(subject))
+      |> assign(:ingress_count, length(ingress_accounts))
 
     ~H"""
     <.shell current_human={@current_human} active_view={@active_view}>
-      <section id="subject-hero" class="al-hero al-panel" phx-hook="MissionMotion">
-        <div>
-          <p class="al-kicker">Subject revenue</p>
-          <h2>See the revenue state, then take the one action that matters most.</h2>
-          <p class="al-subcopy">
-            Recognized revenue still means Base USDC that has already reached the splitter. This
-            page stays focused on what the connected wallet can claim, stake, unstake, or sweep now.
-          </p>
-        </div>
-
-        <div class="al-stat-grid">
-          <.stat_card title="Claimable USDC" value={@wallet_position.claimable_usdc} hint="Ready now" />
-          <.stat_card
-            title="Your staked tokens"
-            value={@wallet_position.wallet_stake_balance}
-            hint="Currently staked from this wallet"
-          />
-          <.stat_card
-            title="Wallet token balance"
-            value={@wallet_position.wallet_token_balance}
-            hint="Still available to stake"
-          />
-          <.stat_card
-            title="Claimable emissions"
-            value={@wallet_position.claimable_stake_token}
-            hint="Reward tokens ready to claim or restake"
-          />
-        </div>
-      </section>
+      <.subject_styles />
 
       <%= if @subject do %>
-        <section id="subject-layout" class="al-subject-layout" phx-hook="MissionMotion">
-          <article class="al-panel al-main-panel">
-            <div class="al-section-head">
-              <div>
-                <p class="al-kicker">Primary next step</p>
-                <h3>{recommended_action_heading(@recommended_action)}</h3>
+        <section id="subject-overview" class="al-subject-page">
+          <header class="al-subject-header">
+            <div class="al-subject-title-group">
+              <.link navigate={~p"/profile"} class="al-subject-back">
+                <span aria-hidden="true">←</span>
+                <span>Back to profile</span>
+              </.link>
+
+              <div class="al-subject-title-row">
+                <div class="al-subject-mark">
+                  <span>{subject_initials(@subject_heading)}</span>
+                </div>
+
+                <div class="al-subject-heading-block">
+                  <div class="al-subject-heading-line">
+                    <h1>{@subject_heading}</h1>
+                    <span class="al-subject-chip">Revenue</span>
+                  </div>
+
+                  <div class="al-subject-meta">
+                    <span>on {Map.get(@subject, :chain_label, "Base")}</span>
+                    <span class="al-subject-status">
+                      <span class="al-subject-status-dot"></span>
+                      <span>{recommended_status_label(@recommended_action)}</span>
+                    </span>
+                  </div>
+
+                  <p class="al-subject-summary">
+                    {@subject_summary}
+                  </p>
+                </div>
               </div>
             </div>
 
-            <section id="subject-primary-actions" class="al-subject-action-group" phx-hook="MissionMotion">
-              <div class="al-inline-banner">
-                <strong>Start with the action cards.</strong>
-                <p>
-                  Claim, stake, unstake, or sweep from this area first. Open the subject details
-                  only when you need addresses, balances, or the advanced contract console.
-                </p>
-              </div>
+            <div class="al-subject-header-actions">
+              <.link navigate={~p"/contracts?subject_id=#{@subject_id}"} class="al-subject-secondary-button">
+                Advanced review
+              </.link>
+              <.link navigate={~p"/how-auctions-work"} class="al-subject-primary-button">
+                How auctions work
+              </.link>
+            </div>
+          </header>
 
-              <div class="al-note-grid">
-              <article class="al-note-card">
-                <p class="al-kicker">Stake</p>
-                <strong>Move claimed tokens into the splitter.</strong>
-                <p>{@wallet_position.stake_note}</p>
-                <p>Use the exact token amount you want this wallet to stake.</p>
-                <form phx-change="stake_changed" class="al-inline-form">
-                  <label class="al-kicker" for="subject-stake-amount">Amount</label>
-                  <input
-                    id="subject-stake-amount"
-                    type="text"
-                    inputmode="decimal"
-                    name="stake[amount]"
-                    value={@stake_form["amount"]}
-                    placeholder="0.0"
-                  />
-                </form>
-                <div class="al-action-row">
-                  <button
-                    :if={!@pending_actions[:stake]}
-                    type="button"
-                    class="al-submit"
-                    phx-click="prepare_action"
-                    phx-value-action="stake"
-                  >
-                    Prepare stake
-                  </button>
-                  <.wallet_tx_button
-                    :if={@pending_actions[:stake]}
-                    id="subject-stake"
-                    class="al-submit"
-                    tx_request={@pending_actions[:stake].tx_request}
-                    register_endpoint={~p"/api/subjects/#{@subject_id}/stake"}
-                    register_body={%{"amount" => @stake_form["amount"]}}
-                    pending_message="Stake transaction sent. Waiting for confirmation."
-                    success_message="Stake registered."
-                  >
-                    Send stake transaction
-                  </.wallet_tx_button>
+          <section class="al-subject-metric-grid">
+            <.subject_metric
+              label="Claimable USDC"
+              value={@wallet_position.claimable_usdc}
+              hint={@wallet_position.claimable_usdc_line}
+            />
+            <.subject_metric
+              label="Your staked tokens"
+              value={@wallet_position.wallet_stake_balance}
+              hint={@wallet_position.staked_line}
+            />
+            <.subject_metric
+              label="Wallet token balance"
+              value={@wallet_position.wallet_token_balance}
+              hint={@wallet_position.wallet_line}
+            />
+            <.subject_metric
+              label="Claimable emissions"
+              value={@wallet_position.claimable_stake_token}
+              hint={@wallet_position.claimable_emissions_line}
+            />
+          </section>
+
+          <section class="al-subject-main-grid">
+            <div class="al-subject-main-stack">
+              <article class="al-subject-hero-panel">
+                <div class="al-subject-hero-copy">
+                  <p class="al-kicker">Primary next step</p>
+                  <h2>{recommended_action_heading(@recommended_action)}</h2>
+                  <p>
+                    {recommended_action_summary(@recommended_action, @wallet_position)}
+                  </p>
+
+                  <div class="al-subject-hero-actions">
+                    <%= case @recommended_action do %>
+                      <% :stake -> %>
+                        <%= if @pending_actions[:stake] do %>
+                          <.wallet_tx_button
+                            id="subject-stake-primary"
+                            class="al-subject-primary-button"
+                            tx_request={@pending_actions[:stake].tx_request}
+                            register_endpoint={~p"/api/subjects/#{@subject_id}/stake"}
+                            register_body={%{"amount" => @stake_form["amount"]}}
+                            pending_message="Stake transaction sent. Waiting for confirmation."
+                            success_message="Stake registered."
+                          >
+                            Send stake transaction
+                          </.wallet_tx_button>
+                        <% else %>
+                          <button
+                            type="button"
+                            class="al-subject-primary-button"
+                            phx-click="prepare_action"
+                            phx-value-action="stake"
+                          >
+                            Prepare stake
+                          </button>
+                        <% end %>
+                      <% :claim -> %>
+                        <%= if @pending_actions[:claim] do %>
+                          <.wallet_tx_button
+                            id="subject-claim-primary"
+                            class="al-subject-primary-button"
+                            tx_request={@pending_actions[:claim].tx_request}
+                            register_endpoint={~p"/api/subjects/#{@subject_id}/claim-usdc"}
+                            register_body={%{}}
+                            pending_message="Claim transaction sent. Waiting for confirmation."
+                            success_message="USDC claim registered."
+                          >
+                            Send claim transaction
+                          </.wallet_tx_button>
+                        <% else %>
+                          <button
+                            type="button"
+                            class="al-subject-primary-button"
+                            phx-click="prepare_action"
+                            phx-value-action="claim"
+                          >
+                            Prepare USDC claim
+                          </button>
+                        <% end %>
+                      <% :unstake -> %>
+                        <%= if @pending_actions[:unstake] do %>
+                          <.wallet_tx_button
+                            id="subject-unstake-primary"
+                            class="al-subject-primary-button"
+                            tx_request={@pending_actions[:unstake].tx_request}
+                            register_endpoint={~p"/api/subjects/#{@subject_id}/unstake"}
+                            register_body={%{"amount" => @unstake_form["amount"]}}
+                            pending_message="Unstake transaction sent. Waiting for confirmation."
+                            success_message="Unstake registered."
+                          >
+                            Send unstake transaction
+                          </.wallet_tx_button>
+                        <% else %>
+                          <button
+                            type="button"
+                            class="al-subject-primary-button"
+                            phx-click="prepare_action"
+                            phx-value-action="unstake"
+                          >
+                            Prepare unstake
+                          </button>
+                        <% end %>
+                      <% :claim_and_stake_emissions -> %>
+                        <%= if @pending_actions[:claim_and_stake_emissions] do %>
+                          <.wallet_tx_button
+                            id="subject-claim-and-stake-primary"
+                            class="al-subject-primary-button"
+                            tx_request={@pending_actions[:claim_and_stake_emissions].tx_request}
+                            register_endpoint={~p"/api/subjects/#{@subject_id}/claim-and-stake-emissions"}
+                            register_body={%{}}
+                            pending_message="Claim and stake sent. Waiting for confirmation."
+                            success_message="Emission claim and stake registered."
+                          >
+                            Send claim and stake
+                          </.wallet_tx_button>
+                        <% else %>
+                          <button
+                            type="button"
+                            class="al-subject-primary-button"
+                            phx-click="prepare_action"
+                            phx-value-action="claim_and_stake_emissions"
+                          >
+                            Prepare claim and stake
+                          </button>
+                        <% end %>
+                      <% _ -> %>
+                        <.link navigate={~p"/contracts?subject_id=#{@subject_id}"} class="al-subject-primary-button">
+                          Open advanced review
+                        </.link>
+                    <% end %>
+
+                    <span class="al-subject-footnote">
+                      Staked tokens stay committed in the splitter until you choose to unstake them.
+                    </span>
+                  </div>
+                </div>
+
+                <div class="al-subject-flow-card" aria-hidden="true">
+                  <div class="al-subject-flow-box">
+                    <span>Your wallet</span>
+                    <strong>{@wallet_position.wallet_token_balance}</strong>
+                    <p>Available to stake</p>
+                  </div>
+                  <div class="al-subject-flow-arrow">→</div>
+                  <div class="al-subject-flow-box is-featured">
+                    <span>Revenue splitter</span>
+                    <strong>{@wallet_position.wallet_stake_balance}</strong>
+                    <p>Currently staked</p>
+                  </div>
+                  <div class="al-subject-flow-arrow">→</div>
+                  <div class="al-subject-flow-box">
+                    <span>Earnings</span>
+                    <strong>{@wallet_position.claimable_usdc}</strong>
+                    <p>USDC ready now</p>
+                  </div>
                 </div>
               </article>
 
-              <article class="al-note-card">
-                <p class="al-kicker">Claim</p>
-                <strong>Withdraw recognized USDC to the connected wallet.</strong>
-                <p>{@wallet_position.claim_note}</p>
-                <p>Claimable balance refreshes from onchain state after each confirmed transaction.</p>
-                <div class="al-action-row">
-                  <button
-                    :if={!@pending_actions[:claim]}
-                    type="button"
-                    class={subject_action_class(@recommended_action, :claim)}
-                    phx-click="prepare_action"
-                    phx-value-action="claim"
-                  >
-                    Prepare USDC claim
-                  </button>
-                  <.wallet_tx_button
-                    :if={@pending_actions[:claim]}
-                    id="subject-claim"
-                    class={subject_action_class(@recommended_action, :claim)}
-                    tx_request={@pending_actions[:claim].tx_request}
-                    register_endpoint={~p"/api/subjects/#{@subject_id}/claim-usdc"}
-                    register_body={%{}}
-                    pending_message="Claim transaction sent. Waiting for confirmation."
-                    success_message="USDC claim registered."
-                  >
-                    Send claim transaction
-                  </.wallet_tx_button>
-                </div>
-              </article>
-              </div>
-            </section>
+              <section class="al-subject-action-grid">
+                <article class="al-subject-action-card">
+                  <div>
+                    <p class="al-kicker">Stake</p>
+                    <h3>Move wallet tokens into the splitter.</h3>
+                    <p>{@wallet_position.stake_note}</p>
+                  </div>
 
-            <details id="subject-secondary-actions" class="al-panel al-disclosure" phx-hook="MissionMotion">
-              <summary class="al-disclosure-summary">
-                <div>
-                  <p class="al-kicker">Other actions</p>
-                  <h3>Unstake, emissions, and ingress tools</h3>
-                </div>
-                <span class="al-network-badge">Secondary</span>
-              </summary>
+                  <form phx-change="stake_changed" class="al-subject-form">
+                    <label for="subject-stake-amount">Amount</label>
+                    <input
+                      id="subject-stake-amount"
+                      type="text"
+                      inputmode="decimal"
+                      name="stake[amount]"
+                      value={@stake_form["amount"]}
+                      placeholder="0.0"
+                    />
+                  </form>
 
-              <div class="al-note-grid">
-                <article class="al-note-card">
-                  <p class="al-kicker">Unstake</p>
-                  <strong>Withdraw staked balance back to the same wallet.</strong>
-                  <p>{@wallet_position.unstake_note}</p>
-                  <p>The amount is denominated in the launch token, not USDC.</p>
-                  <form phx-change="unstake_changed" class="al-inline-form">
-                    <label class="al-kicker" for="subject-unstake-amount">Amount</label>
+                  <div class="al-subject-action-footer">
+                    <%= if @pending_actions[:stake] do %>
+                      <.wallet_tx_button
+                        id="subject-stake"
+                        class="al-subject-action-button"
+                        tx_request={@pending_actions[:stake].tx_request}
+                        register_endpoint={~p"/api/subjects/#{@subject_id}/stake"}
+                        register_body={%{"amount" => @stake_form["amount"]}}
+                        pending_message="Stake transaction sent. Waiting for confirmation."
+                        success_message="Stake registered."
+                      >
+                        Send stake transaction
+                      </.wallet_tx_button>
+                    <% else %>
+                      <button
+                        type="button"
+                        class="al-subject-action-button"
+                        phx-click="prepare_action"
+                        phx-value-action="stake"
+                      >
+                        Prepare stake
+                      </button>
+                    <% end %>
+
+                    <span :if={@recommended_action == :stake} class="al-subject-badge">
+                      Recommended
+                    </span>
+                  </div>
+                </article>
+
+                <article class="al-subject-action-card">
+                  <div>
+                    <p class="al-kicker">Claim</p>
+                    <h3>Withdraw recognized USDC to this wallet.</h3>
+                    <p>{@wallet_position.claim_note}</p>
+                  </div>
+
+                  <div class="al-subject-action-footer">
+                    <%= cond do %>
+                      <% @recommended_action == :claim -> %>
+                        <span class="al-subject-badge">Recommended above</span>
+                      <% @pending_actions[:claim] -> %>
+                      <.wallet_tx_button
+                        id="subject-claim"
+                        class="al-subject-action-button"
+                        tx_request={@pending_actions[:claim].tx_request}
+                        register_endpoint={~p"/api/subjects/#{@subject_id}/claim-usdc"}
+                        register_body={%{}}
+                        pending_message="Claim transaction sent. Waiting for confirmation."
+                        success_message="USDC claim registered."
+                      >
+                        Send claim transaction
+                      </.wallet_tx_button>
+                      <% true -> %>
+                      <button
+                        type="button"
+                        class="al-subject-action-button"
+                        phx-click="prepare_action"
+                        phx-value-action="claim"
+                      >
+                        Prepare USDC claim
+                      </button>
+                    <% end %>
+                  </div>
+                </article>
+
+                <article class="al-subject-secondary-card">
+                  <div>
+                    <p class="al-kicker">Unstake</p>
+                    <h3>Move committed tokens back to the wallet.</h3>
+                    <p>{@wallet_position.unstake_note}</p>
+                  </div>
+
+                  <form phx-change="unstake_changed" class="al-subject-form">
+                    <label for="subject-unstake-amount">Amount</label>
                     <input
                       id="subject-unstake-amount"
                       type="text"
@@ -224,189 +397,268 @@ defmodule AutolaunchWeb.SubjectLive do
                       placeholder="0.0"
                     />
                   </form>
-                  <div class="al-action-row">
-                    <button
-                      :if={!@pending_actions[:unstake]}
-                      type="button"
-                      class="al-ghost"
-                      phx-click="prepare_action"
-                      phx-value-action="unstake"
-                    >
-                      Prepare unstake
-                    </button>
-                    <.wallet_tx_button
-                      :if={@pending_actions[:unstake]}
-                      id="subject-unstake"
-                      class="al-ghost"
-                      tx_request={@pending_actions[:unstake].tx_request}
-                      register_endpoint={~p"/api/subjects/#{@subject_id}/unstake"}
-                      register_body={%{"amount" => @unstake_form["amount"]}}
-                      pending_message="Unstake transaction sent. Waiting for confirmation."
-                      success_message="Unstake registered."
-                    >
-                      Send unstake transaction
-                    </.wallet_tx_button>
+
+                  <div class="al-subject-action-footer">
+                    <%= if @pending_actions[:unstake] do %>
+                      <.wallet_tx_button
+                        id="subject-unstake"
+                        class="al-subject-ghost-button"
+                        tx_request={@pending_actions[:unstake].tx_request}
+                        register_endpoint={~p"/api/subjects/#{@subject_id}/unstake"}
+                        register_body={%{"amount" => @unstake_form["amount"]}}
+                        pending_message="Unstake transaction sent. Waiting for confirmation."
+                        success_message="Unstake registered."
+                      >
+                        Send unstake transaction
+                      </.wallet_tx_button>
+                    <% else %>
+                      <button
+                        type="button"
+                        class="al-subject-ghost-button"
+                        phx-click="prepare_action"
+                        phx-value-action="unstake"
+                      >
+                        Prepare unstake
+                      </button>
+                    <% end %>
                   </div>
                 </article>
 
-                <article class="al-note-card">
-                  <p class="al-kicker">Emissions</p>
-                  <strong>Claim reward tokens or claim and restake them in one move.</strong>
-                  <p>{@wallet_position.emissions_note}</p>
-                  <div class="al-action-row">
-                    <button
-                      :if={!@pending_actions[:claim_emissions]}
-                      type="button"
-                      class="al-ghost"
-                      phx-click="prepare_action"
-                      phx-value-action="claim_emissions"
-                    >
-                      Prepare emissions claim
-                    </button>
-                    <.wallet_tx_button
-                      :if={@pending_actions[:claim_emissions]}
-                      id="subject-claim-emissions"
-                      class="al-ghost"
-                      tx_request={@pending_actions[:claim_emissions].tx_request}
-                      register_endpoint={~p"/api/subjects/#{@subject_id}/claim-emissions"}
-                      register_body={%{}}
-                      pending_message="Emission claim sent. Waiting for confirmation."
-                      success_message="Emission claim registered."
-                    >
-                      Send emissions claim
-                    </.wallet_tx_button>
+                <article class="al-subject-secondary-card">
+                  <div>
+                    <p class="al-kicker">Emissions</p>
+                    <h3>Claim reward tokens or roll them back into stake.</h3>
+                    <p>{@wallet_position.emissions_note}</p>
+                  </div>
 
-                    <button
-                      :if={!@pending_actions[:claim_and_stake_emissions]}
-                      type="button"
-                      class="al-submit al-submit--secondary"
-                      phx-click="prepare_action"
-                      phx-value-action="claim_and_stake_emissions"
-                    >
-                      Prepare claim and stake
-                    </button>
-                    <.wallet_tx_button
-                      :if={@pending_actions[:claim_and_stake_emissions]}
-                      id="subject-claim-and-stake-emissions"
-                      class="al-submit al-submit--secondary"
-                      tx_request={@pending_actions[:claim_and_stake_emissions].tx_request}
-                      register_endpoint={~p"/api/subjects/#{@subject_id}/claim-and-stake-emissions"}
-                      register_body={%{}}
-                      pending_message="Claim and stake sent. Waiting for confirmation."
-                      success_message="Emission claim and stake registered."
-                    >
-                      Send claim and stake
-                    </.wallet_tx_button>
+                  <div class="al-subject-split-actions">
+                    <%= if @pending_actions[:claim_emissions] do %>
+                      <.wallet_tx_button
+                        id="subject-claim-emissions"
+                        class="al-subject-ghost-button"
+                        tx_request={@pending_actions[:claim_emissions].tx_request}
+                        register_endpoint={~p"/api/subjects/#{@subject_id}/claim-emissions"}
+                        register_body={%{}}
+                        pending_message="Emission claim sent. Waiting for confirmation."
+                        success_message="Emission claim registered."
+                      >
+                        Send emissions claim
+                      </.wallet_tx_button>
+                    <% else %>
+                      <button
+                        type="button"
+                        class="al-subject-ghost-button"
+                        phx-click="prepare_action"
+                        phx-value-action="claim_emissions"
+                      >
+                        Prepare emissions claim
+                      </button>
+                    <% end %>
+
+                    <%= if @pending_actions[:claim_and_stake_emissions] do %>
+                      <.wallet_tx_button
+                        id="subject-claim-and-stake-emissions"
+                        class="al-subject-ghost-button"
+                        tx_request={@pending_actions[:claim_and_stake_emissions].tx_request}
+                        register_endpoint={~p"/api/subjects/#{@subject_id}/claim-and-stake-emissions"}
+                        register_body={%{}}
+                        pending_message="Claim and stake sent. Waiting for confirmation."
+                        success_message="Emission claim and stake registered."
+                      >
+                        Send claim and stake
+                      </.wallet_tx_button>
+                    <% else %>
+                      <button
+                        type="button"
+                        class="al-subject-ghost-button"
+                        phx-click="prepare_action"
+                        phx-value-action="claim_and_stake_emissions"
+                      >
+                        Prepare claim and stake
+                      </button>
+                    <% end %>
                   </div>
                 </article>
-              </div>
-            </details>
 
-            <details
-              id="subject-state-details"
-              class="al-panel al-disclosure"
-              phx-hook="MissionMotion"
-            >
-              <summary class="al-disclosure-summary">
-                <div>
-                  <p class="al-kicker">Subject state</p>
-                  <h3>Balances, addresses, and advanced review</h3>
-                </div>
-                <span class="al-network-badge">Details</span>
-              </summary>
+                <article class="al-subject-secondary-card">
+                  <div>
+                    <p class="al-kicker">Ingress</p>
+                    <h3>Move USDC from intake accounts into the splitter.</h3>
+                    <p>Known USDC intake accounts: {@ingress_count}.</p>
+                  </div>
 
-              <div class="al-review-grid">
-                <div class="al-review-card">
-                  <span>Token</span>
-                  <strong>{short_address(@subject.token_address)}</strong>
-                  <p>Staking token for this subject.</p>
-                </div>
-                <div class="al-review-card">
-                  <span>Splitter</span>
-                  <strong>{short_address(@subject.splitter_address)}</strong>
-                  <p>Recognized revenue lands here before claims.</p>
-                </div>
-                <div class="al-review-card">
-                  <span>Default ingress</span>
-                  <strong>{short_address(@subject.default_ingress_address)}</strong>
-                  <p>Base USDC can be swept from ingress into the splitter.</p>
-                </div>
-                <div class="al-review-card">
-                  <span>Treasury residual</span>
-                  <strong>{@subject.treasury_residual_usdc}</strong>
-                  <p>Splitter-side treasury balance after staker allocation.</p>
-                </div>
-                <div class="al-review-card">
-                  <span>Wallet position</span>
-                  <strong>Claim, stake, or unstake from here</strong>
-                  <p>{@wallet_position.summary}</p>
-                  <p>{@wallet_position.staked_line}</p>
-                  <p>{@wallet_position.wallet_line}</p>
-                  <p>{@wallet_position.claimable_usdc_line}</p>
-                  <p>{@wallet_position.claimable_emissions_line}</p>
-                </div>
-                <div class="al-review-card">
-                  <span>Protocol reserve</span>
-                  <strong>{@subject.protocol_reserve_usdc}</strong>
-                  <p>Protocol skim retained inside the splitter.</p>
-                </div>
-              </div>
+                  <%= if @subject.can_manage_ingress and @ingress_accounts != [] do %>
+                    <div class="al-subject-split-actions">
+                      <%= for ingress <- @ingress_accounts do %>
+                        <%= if @pending_actions[{:sweep, ingress.address}] do %>
+                          <.wallet_tx_button
+                            id={"subject-sweep-#{ingress.address}"}
+                            class="al-subject-ghost-button"
+                            tx_request={@pending_actions[{:sweep, ingress.address}].tx_request}
+                            register_endpoint={~p"/api/subjects/#{@subject_id}/ingress/#{ingress.address}/sweep"}
+                            register_body={%{}}
+                            pending_message="Sweep transaction sent. Waiting for confirmation."
+                            success_message="Ingress sweep registered."
+                          >
+                            Send sweep transaction
+                          </.wallet_tx_button>
+                        <% else %>
+                          <button
+                            type="button"
+                            class="al-subject-ghost-button"
+                            phx-click="prepare_action"
+                            phx-value-action="sweep"
+                            phx-value-address={ingress.address}
+                          >
+                            Prepare sweep
+                          </button>
+                        <% end %>
+                      <% end %>
+                    </div>
+                  <% else %>
+                    <p class="al-subject-muted-copy">
+                      No sweep action is available from this wallet right now.
+                    </p>
+                  <% end %>
+                </article>
+              </section>
 
-              <div class="al-action-row">
-                <.link navigate={~p"/contracts?subject_id=#{@subject_id}"} class="al-ghost">
-                  Open advanced contracts console
-                </.link>
-              </div>
-            </details>
-          </article>
+              <details class="al-subject-review-panel">
+                <summary>
+                  <div>
+                    <p class="al-kicker">Advanced review</p>
+                    <h3>Contracts, balances, and ingress details</h3>
+                  </div>
+                  <span>Open</span>
+                </summary>
 
-          <aside class="al-panel al-side-panel">
-            <div class="al-section-head">
-              <div>
-                <p class="al-kicker">Ingress</p>
-                <h3>Known USDC intake accounts</h3>
-              </div>
+                <div class="al-subject-review-grid">
+                  <.review_card label="Token" value={short_address(@subject.token_address)} note="Staking token for this subject." />
+                  <.review_card label="Splitter" value={short_address(@subject.splitter_address)} note="Revenue lands here before claims." />
+                  <.review_card label="Default ingress" value={short_address(@subject.default_ingress_address)} note="Known USDC intake account." />
+                  <.review_card label="Total staked" value={@subject.total_staked} note="Committed launch tokens." />
+                  <.review_card label="Treasury residual" value={@subject.treasury_residual_usdc} note="Residual USDC after staker allocation." />
+                  <.review_card label="Protocol reserve" value={@subject.protocol_reserve_usdc} note="Protocol skim retained in the splitter." />
+                </div>
+
+                <div class="al-subject-review-actions">
+                  <.link navigate={~p"/contracts?subject_id=#{@subject_id}"} class="al-subject-secondary-button">
+                    Open advanced contracts console
+                  </.link>
+                </div>
+              </details>
             </div>
 
-            <%= if @subject.ingress_accounts == [] do %>
-              <p class="al-inline-note">No ingress accounts are currently available for this subject.</p>
-            <% else %>
-              <div class="al-subject-ingress-list">
-                <article
-                  :for={ingress <- @subject.ingress_accounts}
-                  class="al-note-card al-ingress-card"
+            <aside class="al-subject-side-panel">
+              <div class="al-subject-side-tabs" role="tablist" aria-label="Subject side tabs">
+                <button
+                  :for={tab <- side_tabs()}
+                  type="button"
+                  role="tab"
+                  aria-selected={@side_tab == tab}
+                  class={["al-subject-side-tab", @side_tab == tab && "is-active"]}
+                  phx-click="side_tab_changed"
+                  phx-value-tab={tab}
                 >
-                  <p class="al-kicker">{if ingress.is_default, do: "Default ingress", else: "Ingress account"}</p>
-                  <strong>{short_address(ingress.address)}</strong>
-                  <p>USDC balance: {ingress.usdc_balance}</p>
-                  <div class="al-action-row">
-                    <button
-                      :if={@subject.can_manage_ingress and !@pending_actions[{:sweep, ingress.address}]}
-                      type="button"
-                      class="al-ghost"
-                      phx-click="prepare_action"
-                      phx-value-action="sweep"
-                      phx-value-address={ingress.address}
-                    >
-                      Prepare sweep
-                    </button>
-                    <.wallet_tx_button
-                      :if={@pending_actions[{:sweep, ingress.address}]}
-                      id={"subject-sweep-#{ingress.address}"}
-                      class="al-ghost"
-                      tx_request={@pending_actions[{:sweep, ingress.address}].tx_request}
-                      register_endpoint={~p"/api/subjects/#{@subject_id}/ingress/#{ingress.address}/sweep"}
-                      register_body={%{}}
-                      pending_message="Sweep transaction sent. Waiting for confirmation."
-                      success_message="Ingress sweep registered."
-                    >
-                      Send sweep transaction
-                    </.wallet_tx_button>
-                  </div>
-                </article>
+                  {side_tab_label(tab)}
+                </button>
               </div>
-            <% end %>
-          </aside>
+
+              <div :if={@side_tab == "state"} class="al-subject-side-stack">
+                <div class="al-subject-state-card">
+                  <div class="al-subject-state-head">
+                    <span class="al-subject-status">
+                      <span class="al-subject-status-dot"></span>
+                      <span>{recommended_status_label(@recommended_action)}</span>
+                    </span>
+                    <span>{Map.get(@subject, :chain_label, "Base")}</span>
+                  </div>
+
+                  <dl class="al-subject-side-list">
+                    <div><dt>Total staked</dt><dd>{@subject.total_staked}</dd></div>
+                    <div><dt>Treasury residual</dt><dd>{@subject.treasury_residual_usdc} USDC</dd></div>
+                    <div><dt>Protocol reserve</dt><dd>{@subject.protocol_reserve_usdc} USDC</dd></div>
+                    <div><dt>Ingress accounts</dt><dd>{@ingress_count}</dd></div>
+                  </dl>
+                </div>
+
+                <div class="al-subject-state-card">
+                  <p class="al-kicker">Wallet view</p>
+                  <dl class="al-subject-side-list">
+                    <div><dt>Claimable now</dt><dd>{@wallet_position.claimable_usdc} USDC</dd></div>
+                    <div><dt>Available to stake</dt><dd>{@wallet_position.wallet_token_balance}</dd></div>
+                    <div><dt>Committed</dt><dd>{@wallet_position.wallet_stake_balance}</dd></div>
+                    <div><dt>Emissions</dt><dd>{@wallet_position.claimable_stake_token}</dd></div>
+                  </dl>
+                </div>
+              </div>
+
+              <div :if={@side_tab == "balances"} class="al-subject-side-stack">
+                <div class="al-subject-state-card">
+                  <p class="al-kicker">Wallet balances</p>
+                  <dl class="al-subject-side-list">
+                    <div><dt>Claimable USDC</dt><dd>{@wallet_position.claimable_usdc}</dd></div>
+                    <div><dt>Wallet token balance</dt><dd>{@wallet_position.wallet_token_balance}</dd></div>
+                    <div><dt>Your staked tokens</dt><dd>{@wallet_position.wallet_stake_balance}</dd></div>
+                    <div><dt>Claimable emissions</dt><dd>{@wallet_position.claimable_stake_token}</dd></div>
+                  </dl>
+                </div>
+
+                <div class="al-subject-state-card">
+                  <p class="al-kicker">Protocol balances</p>
+                  <dl class="al-subject-side-list">
+                    <div><dt>Total staked</dt><dd>{@subject.total_staked}</dd></div>
+                    <div><dt>Treasury residual</dt><dd>{@subject.treasury_residual_usdc}</dd></div>
+                    <div><dt>Protocol reserve</dt><dd>{@subject.protocol_reserve_usdc}</dd></div>
+                    <div><dt>Undistributed dust</dt><dd>{Map.get(@subject, :undistributed_dust_usdc, "0")}</dd></div>
+                  </dl>
+                </div>
+              </div>
+
+              <div :if={@side_tab == "addresses"} class="al-subject-side-stack">
+                <div class="al-subject-state-card">
+                  <p class="al-kicker">Addresses</p>
+                  <div class="al-subject-address-list">
+                    <article>
+                      <span>Subject id</span>
+                      <code>{@subject.subject_id}</code>
+                    </article>
+                    <article>
+                      <span>Token</span>
+                      <code>{@subject.token_address}</code>
+                    </article>
+                    <article>
+                      <span>Splitter</span>
+                      <code>{@subject.splitter_address}</code>
+                    </article>
+                    <article>
+                      <span>Default ingress</span>
+                      <code>{@subject.default_ingress_address}</code>
+                    </article>
+                  </div>
+                </div>
+
+                <div class="al-subject-state-card">
+                  <p class="al-kicker">Known USDC intake accounts</p>
+                  <%= if @ingress_accounts == [] do %>
+                    <p class="al-subject-muted-copy">
+                      No ingress accounts are currently available for this subject.
+                    </p>
+                  <% else %>
+                    <div class="al-subject-address-list">
+                      <article :for={ingress <- @ingress_accounts}>
+                        <span>
+                          {if ingress.is_default, do: "Default ingress", else: "Ingress account"}
+                        </span>
+                        <code>{ingress.address}</code>
+                        <strong>{ingress.usdc_balance} USDC</strong>
+                      </article>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+            </aside>
+          </section>
         </section>
       <% else %>
         <.empty_state
@@ -417,6 +669,509 @@ defmodule AutolaunchWeb.SubjectLive do
 
       <.flash_group flash={@flash} />
     </.shell>
+    """
+  end
+
+  attr :label, :string, required: true
+  attr :value, :string, required: true
+  attr :hint, :string, default: nil
+
+  defp subject_metric(assigns) do
+    ~H"""
+    <article class="al-subject-metric-card">
+      <p>{@label}</p>
+      <strong>{@value || "0"}</strong>
+      <span :if={@hint}>{@hint}</span>
+    </article>
+    """
+  end
+
+  attr :label, :string, required: true
+  attr :value, :string, required: true
+  attr :note, :string, required: true
+
+  defp review_card(assigns) do
+    ~H"""
+    <article class="al-subject-review-card">
+      <span>{@label}</span>
+      <strong>{@value}</strong>
+      <p>{@note}</p>
+    </article>
+    """
+  end
+
+  defp subject_styles(assigns) do
+    ~H"""
+    <style>
+      #subject-overview.al-subject-page {
+        display: grid;
+        gap: clamp(1rem, 2vw, 1.5rem);
+      }
+
+      .al-subject-header,
+      .al-subject-metric-card,
+      .al-subject-action-card,
+      .al-subject-secondary-card,
+      .al-subject-side-panel,
+      .al-subject-review-panel,
+      .al-subject-state-card {
+        border: 1px solid color-mix(in srgb, var(--al-border) 88%, white 12%);
+        background: color-mix(in srgb, var(--al-panel-strong) 92%, white 8%);
+        box-shadow: 0 20px 60px -48px rgba(17, 35, 64, 0.28);
+      }
+
+      .al-subject-header {
+        border-radius: 1.6rem;
+        padding: clamp(1.1rem, 2.4vw, 1.6rem);
+        display: flex;
+        justify-content: space-between;
+        gap: 1.25rem;
+        align-items: flex-start;
+      }
+
+      .al-subject-title-group,
+      .al-subject-heading-block,
+      .al-subject-main-stack,
+      .al-subject-side-stack {
+        display: grid;
+        gap: 0.85rem;
+      }
+
+      .al-subject-back {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        color: var(--al-muted);
+        text-decoration: none;
+      }
+
+      .al-subject-title-row {
+        display: flex;
+        gap: 1rem;
+        align-items: flex-start;
+      }
+
+      .al-subject-mark {
+        width: clamp(4.5rem, 7vw, 5.8rem);
+        aspect-ratio: 1;
+        border-radius: 1.5rem;
+        display: grid;
+        place-items: center;
+        background:
+          radial-gradient(circle at 30% 30%, rgba(72, 123, 255, 0.28), transparent 48%),
+          linear-gradient(180deg, rgba(10, 31, 78, 0.98), rgba(15, 48, 108, 0.92));
+        color: white;
+        font-family: var(--al-font-display);
+        font-size: clamp(1.1rem, 2vw, 1.5rem);
+        letter-spacing: 0.14em;
+      }
+
+      .al-subject-heading-line {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.65rem;
+        align-items: center;
+      }
+
+      .al-subject-heading-line h1 {
+        margin: 0;
+        font-size: clamp(2rem, 5vw, 3.4rem);
+        line-height: 0.94;
+      }
+
+      .al-subject-chip,
+      .al-subject-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        border-radius: 999px;
+        padding: 0.25rem 0.6rem;
+        background: rgba(36, 94, 255, 0.08);
+        color: color-mix(in srgb, var(--brand-primary) 78%, var(--al-text) 22%);
+        font-size: 0.76rem;
+      }
+
+      .al-subject-meta,
+      .al-subject-header-actions,
+      .al-subject-hero-actions,
+      .al-subject-action-footer,
+      .al-subject-review-actions,
+      .al-subject-split-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        align-items: center;
+      }
+
+      .al-subject-meta {
+        color: var(--al-muted);
+      }
+
+      .al-subject-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+      }
+
+      .al-subject-status-dot {
+        width: 0.55rem;
+        height: 0.55rem;
+        border-radius: 999px;
+        background: #16a34a;
+        box-shadow: 0 0 0 0.18rem rgba(22, 163, 74, 0.12);
+      }
+
+      .al-subject-summary,
+      .al-subject-muted-copy,
+      .al-subject-review-card p {
+        margin: 0;
+        color: var(--al-muted);
+        line-height: 1.6;
+      }
+
+      .al-subject-primary-button,
+      .al-subject-secondary-button,
+      .al-subject-action-button,
+      .al-subject-ghost-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 2.8rem;
+        border-radius: 0.95rem;
+        padding: 0.78rem 1.1rem;
+        text-decoration: none;
+        transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+      }
+
+      .al-subject-primary-button,
+      .al-subject-action-button {
+        border: 1px solid color-mix(in srgb, var(--brand-primary) 78%, white 22%);
+        background: color-mix(in srgb, var(--brand-primary) 86%, white 14%);
+        color: white;
+        box-shadow: 0 18px 36px -26px color-mix(in srgb, var(--brand-primary) 68%, black 32%);
+      }
+
+      .al-subject-secondary-button,
+      .al-subject-ghost-button {
+        border: 1px solid color-mix(in srgb, var(--al-border) 82%, white 18%);
+        background: transparent;
+        color: var(--al-text);
+      }
+
+      .al-subject-primary-button:hover,
+      .al-subject-secondary-button:hover,
+      .al-subject-action-button:hover,
+      .al-subject-ghost-button:hover {
+        transform: translateY(-1px);
+      }
+
+      .al-subject-metric-grid,
+      .al-subject-review-grid {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .al-subject-metric-card {
+        border-radius: 1.35rem;
+        padding: 1.15rem;
+        display: grid;
+        gap: 0.35rem;
+      }
+
+      .al-subject-metric-card p,
+      .al-subject-metric-card span,
+      .al-subject-review-card span,
+      .al-subject-side-list dt,
+      .al-subject-address-list span,
+      .al-subject-address-list strong {
+        color: var(--al-muted);
+      }
+
+      .al-subject-metric-card strong {
+        font-family: var(--al-font-display);
+        font-size: clamp(1.45rem, 2.5vw, 2rem);
+        letter-spacing: 0.02em;
+      }
+
+      .al-subject-main-grid {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: minmax(0, 1.7fr) minmax(18rem, 0.9fr);
+        align-items: start;
+      }
+
+      .al-subject-hero-panel {
+        position: relative;
+        overflow: hidden;
+        border-radius: 1.7rem;
+        padding: clamp(1.25rem, 2.7vw, 1.8rem);
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: minmax(0, 1.15fr) minmax(16rem, 0.9fr);
+        background:
+          radial-gradient(circle at 82% 28%, rgba(53, 131, 255, 0.35), transparent 24%),
+          radial-gradient(circle at 75% 78%, rgba(77, 120, 255, 0.18), transparent 28%),
+          linear-gradient(180deg, rgba(8, 31, 74, 0.98), rgba(10, 25, 56, 0.98));
+        color: white;
+      }
+
+      .al-subject-hero-panel::after {
+        content: "";
+        position: absolute;
+        inset: auto -6% -30% 28%;
+        height: 14rem;
+        background:
+          radial-gradient(circle at 20% 40%, rgba(90, 181, 255, 0.34), transparent 30%),
+          repeating-radial-gradient(circle at center, rgba(255, 255, 255, 0.1) 0 1px, transparent 1px 12px);
+        opacity: 0.3;
+        pointer-events: none;
+      }
+
+      .al-subject-hero-copy,
+      .al-subject-flow-card {
+        position: relative;
+        z-index: 1;
+      }
+
+      .al-subject-hero-copy h2 {
+        margin: 0;
+        font-size: clamp(2rem, 4.6vw, 3.4rem);
+        line-height: 0.94;
+      }
+
+      .al-subject-hero-copy p {
+        margin: 0;
+        color: rgba(238, 245, 255, 0.8);
+        line-height: 1.7;
+      }
+
+      .al-subject-footnote {
+        color: rgba(238, 245, 255, 0.72);
+        font-size: 0.92rem;
+      }
+
+      .al-subject-flow-card {
+        display: grid;
+        align-content: center;
+        gap: 0.75rem;
+      }
+
+      .al-subject-flow-box {
+        border-radius: 1.25rem;
+        border: 1px solid rgba(167, 198, 255, 0.22);
+        background: rgba(255, 255, 255, 0.06);
+        padding: 1rem;
+        display: grid;
+        gap: 0.35rem;
+        text-align: center;
+      }
+
+      .al-subject-flow-box span,
+      .al-subject-flow-box p {
+        margin: 0;
+        color: rgba(238, 245, 255, 0.72);
+      }
+
+      .al-subject-flow-box strong {
+        font-family: var(--al-font-display);
+        font-size: 1.5rem;
+      }
+
+      .al-subject-flow-box.is-featured {
+        background:
+          linear-gradient(180deg, rgba(52, 126, 255, 0.34), rgba(34, 84, 206, 0.18)),
+          rgba(255, 255, 255, 0.08);
+        box-shadow:
+          0 0 0 1px rgba(119, 177, 255, 0.18),
+          0 0 36px -16px rgba(52, 126, 255, 0.8);
+      }
+
+      .al-subject-flow-arrow {
+        justify-self: center;
+        font-size: 1.6rem;
+        color: rgba(238, 245, 255, 0.76);
+      }
+
+      .al-subject-action-grid {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .al-subject-action-card,
+      .al-subject-secondary-card {
+        border-radius: 1.45rem;
+        padding: 1.15rem;
+        display: grid;
+        gap: 0.85rem;
+      }
+
+      .al-subject-action-card h3,
+      .al-subject-secondary-card h3,
+      .al-subject-review-panel h3 {
+        margin: 0;
+        font-size: 1.25rem;
+      }
+
+      .al-subject-action-card p:not(.al-kicker),
+      .al-subject-secondary-card p:not(.al-kicker) {
+        margin: 0;
+        color: var(--al-muted);
+      }
+
+      .al-subject-form {
+        display: grid;
+        gap: 0.45rem;
+      }
+
+      .al-subject-form label {
+        color: var(--al-muted);
+        font-size: 0.85rem;
+      }
+
+      .al-subject-form input {
+        width: 100%;
+        min-height: 2.9rem;
+        border-radius: 0.9rem;
+        border: 1px solid color-mix(in srgb, var(--al-border) 88%, white 12%);
+        background: color-mix(in srgb, white 90%, var(--al-panel) 10%);
+        padding: 0 0.9rem;
+        color: var(--al-text);
+      }
+
+      .al-subject-review-panel {
+        border-radius: 1.45rem;
+        padding: 1rem 1.15rem 1.15rem;
+      }
+
+      .al-subject-review-panel summary {
+        list-style: none;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+      }
+
+      .al-subject-review-panel summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .al-subject-review-grid {
+        margin-top: 1rem;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .al-subject-review-card {
+        border-radius: 1.2rem;
+        padding: 1rem;
+        background: color-mix(in srgb, white 86%, var(--al-panel) 14%);
+        display: grid;
+        gap: 0.4rem;
+      }
+
+      .al-subject-review-card strong {
+        font-size: 1.1rem;
+      }
+
+      .al-subject-side-panel {
+        border-radius: 1.5rem;
+        padding: 1rem;
+        display: grid;
+        gap: 0.9rem;
+      }
+
+      .al-subject-side-tabs {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.5rem;
+        padding: 0.3rem;
+        border-radius: 1rem;
+        background: color-mix(in srgb, var(--al-panel) 84%, white 16%);
+      }
+
+      .al-subject-side-tab {
+        min-height: 2.5rem;
+        border-radius: 0.8rem;
+        border: none;
+        background: transparent;
+        color: var(--al-muted);
+      }
+
+      .al-subject-side-tab.is-active {
+        background: color-mix(in srgb, var(--brand-primary) 12%, white 88%);
+        color: color-mix(in srgb, var(--brand-primary) 74%, var(--al-text) 26%);
+      }
+
+      .al-subject-state-card {
+        border-radius: 1.2rem;
+        padding: 1rem;
+        display: grid;
+        gap: 0.85rem;
+      }
+
+      .al-subject-state-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.75rem;
+        color: var(--al-muted);
+      }
+
+      .al-subject-side-list,
+      .al-subject-address-list {
+        display: grid;
+        gap: 0.75rem;
+      }
+
+      .al-subject-side-list div,
+      .al-subject-address-list article {
+        display: grid;
+        gap: 0.25rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid color-mix(in srgb, var(--al-border) 72%, transparent);
+      }
+
+      .al-subject-side-list div:last-child,
+      .al-subject-address-list article:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+      }
+
+      .al-subject-side-list dd {
+        margin: 0;
+        font-size: 1.05rem;
+      }
+
+      .al-subject-address-list code {
+        overflow-wrap: anywhere;
+        font-size: 0.82rem;
+        color: var(--al-text);
+      }
+
+      @media (max-width: 1120px) {
+        .al-subject-main-grid,
+        .al-subject-hero-panel,
+        .al-subject-metric-grid,
+        .al-subject-review-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .al-subject-action-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 760px) {
+        .al-subject-header,
+        .al-subject-title-row {
+          flex-direction: column;
+        }
+
+        .al-subject-side-tabs {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
     """
   end
 
@@ -539,18 +1294,68 @@ defmodule AutolaunchWeb.SubjectLive do
     end
   end
 
-  defp recommended_action_heading(:claim), do: "Claim the recognized USDC first"
-  defp recommended_action_heading(:stake), do: "Stake the idle wallet balance next"
-  defp recommended_action_heading(:unstake), do: "Unstake if you need the wallet balance back"
+  defp recommended_action_heading(:claim), do: "Claim recognized USDC first"
+  defp recommended_action_heading(:stake), do: "Stake idle wallet balance next"
+  defp recommended_action_heading(:unstake), do: "Unstake if you need wallet liquidity"
 
   defp recommended_action_heading(:claim_and_stake_emissions),
     do: "Roll emissions back into stake"
 
   defp recommended_action_heading(_), do: "No urgent wallet action detected"
 
-  defp subject_action_class(recommended, action) do
-    if recommended == action, do: "al-submit", else: "al-submit al-submit--secondary"
+  defp recommended_action_summary(:claim, wallet_position) do
+    "The wallet already has #{wallet_position.claimable_usdc} USDC ready. Pull that out before moving on to the rest of the subject actions."
   end
+
+  defp recommended_action_summary(:stake, wallet_position) do
+    "This wallet still holds #{wallet_position.wallet_token_balance} unstaked tokens. Move the amount you want into the splitter so revenue stays attached to the position."
+  end
+
+  defp recommended_action_summary(:unstake, wallet_position) do
+    "There is no claimable USDC or idle wallet balance, but #{wallet_position.wallet_stake_balance} tokens are still committed. Unstake only if you want that balance back in the wallet."
+  end
+
+  defp recommended_action_summary(:claim_and_stake_emissions, _wallet_position) do
+    "Reward emissions are available now. Claim them on their own or move them straight back into the splitter."
+  end
+
+  defp recommended_action_summary(_, _wallet_position) do
+    "Everything important is in view. Use the action cards below when you need to claim, stake, sweep, or inspect the contract details."
+  end
+
+  defp recommended_status_label(:claim), do: "Claim ready"
+  defp recommended_status_label(:stake), do: "Stake ready"
+  defp recommended_status_label(:unstake), do: "Unstake available"
+  defp recommended_status_label(:claim_and_stake_emissions), do: "Emissions ready"
+  defp recommended_status_label(_), do: "Active"
+
+  defp subject_heading(subject, subject_id) when is_map(subject) do
+    "Subject #{String.slice(subject.subject_id || subject_id, 0, 10)}"
+  end
+
+  defp subject_heading(_subject, subject_id) do
+    "Subject #{String.slice(subject_id, 0, 10)}"
+  end
+
+  defp subject_summary(subject) when is_map(subject) do
+    "Review what this wallet can claim, what is already committed, and which ingress balances still need attention."
+  end
+
+  defp subject_summary(_subject) do
+    "Review what this wallet can claim, what is already committed, and which ingress balances still need attention."
+  end
+
+  defp subject_initials(heading) when is_binary(heading) do
+    heading
+    |> String.replace("Subject ", "")
+    |> String.slice(0, 2)
+    |> String.upcase()
+  end
+
+  defp side_tab_label("state"), do: "Subject state"
+  defp side_tab_label("balances"), do: "Balances"
+  defp side_tab_label("addresses"), do: "Addresses"
+  defp side_tabs, do: @side_tabs
 
   defp positive_amount?(nil), do: false
 

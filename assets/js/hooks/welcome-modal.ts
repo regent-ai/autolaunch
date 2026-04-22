@@ -2,7 +2,7 @@ import type { Hook } from "phoenix_live_view"
 
 import { animate } from "../../vendor/anime.esm.js"
 
-import { prefersReducedMotion } from "../../../../packages/regent_ui/assets/js/regent_motion.ts"
+import { prefersReducedMotion } from "../regent_motion.ts"
 
 interface WelcomeModalRoot extends HTMLElement {
   _welcomeModalDismiss?: (event: Event) => void

@@ -1,6 +1,6 @@
 import type { HooksOptions } from "phoenix_live_view"
 
-import { hooks as regentHooks } from "../../../../packages/regent_ui/assets/js/regent"
+import { hooks as regentHooks } from "../regent"
 import { AgentBookFlow } from "./agentbook-flow"
 import { AuctionsMarketMotion } from "./auctions-market-motion"
 import { HomeHeroMotion } from "./home-hero-motion"

@@ -17,75 +17,7 @@ defmodule AutolaunchWeb.LaunchComponents do
 
   def shell(assigns) do
     ~H"""
-    <div
-      id="autolaunch-shell"
-      class="al-app-shell rg-app-shell rg-regent-theme-autolaunch"
-      phx-hook="ShellChrome"
-    >
-      <.background_grid id="autolaunch-background-grid" class="rg-regent-theme-autolaunch" />
-      <header class="al-topbar al-panel">
-        <div class="al-brand">
-          <p class="al-kicker">Regent CCA</p>
-          <div>
-            <h1 translate="no">autolaunch.sh</h1>
-            <p>Raise launch capital, follow the market, and manage what comes back.</p>
-          </div>
-        </div>
-
-        <div class="al-shell-nav">
-          <nav class="al-topnav" aria-label="Primary">
-            <.nav_link active={@active_view == "home"} navigate={~p"/"}>Home</.nav_link>
-            <.nav_link active={@active_view == "launch"} navigate={~p"/launch"}>Launch</.nav_link>
-            <.nav_link active={@active_view == "auctions"} navigate={~p"/auctions"}>Auctions</.nav_link>
-            <.nav_link active={@active_view == "positions"} navigate={~p"/positions"}>Positions</.nav_link>
-            <.nav_link active={@active_view == "profile"} navigate={~p"/profile"}>Profile</.nav_link>
-          </nav>
-
-          <div class="al-shell-utility-row">
-            <nav class="al-topnav-secondary" aria-label="Utilities">
-              <span class="al-utility-label">More</span>
-              <.utility_link active={@active_view == "guide"} navigate={~p"/how-auctions-work"}>
-                Guide
-              </.utility_link>
-              <.utility_link active={@active_view == "agentbook"} navigate={~p"/agentbook"}>
-                Trust Check
-              </.utility_link>
-              <.utility_link active={@active_view == "ens"} navigate={~p"/ens-link"}>ENS Link</.utility_link>
-              <.utility_link active={@active_view == "x-link"} navigate={~p"/x-link"}>X Link</.utility_link>
-              <.utility_link active={@active_view == "contracts"} navigate={~p"/contracts"}>
-                Contracts
-              </.utility_link>
-            </nav>
-
-            <div class="al-topbar-actions">
-              <button class="al-theme" type="button" data-theme-action="toggle">Theme</button>
-              <div
-                class="al-auth-chip"
-                id="privy-auth"
-                phx-hook="PrivyAuth"
-                data-privy-app-id={privy_app_id()}
-                data-session-state={if @current_human, do: "present", else: "missing"}
-              >
-                <div>
-                  <span class="al-auth-label">Operator</span>
-                  <strong data-privy-state>
-                    {if @current_human,
-                      do: @current_human.display_name || @current_human.wallet_address || "connected",
-                      else: "guest"}
-                  </strong>
-                </div>
-                <button type="button" data-privy-action="toggle">
-                  {if @current_human, do: "Disconnect wallet", else: "Connect wallet"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <.welcome_modal />
-      <.wallet_switch_modal wallet_switch={@wallet_switch} />
-
+    <div id="autolaunch-shell">
       <main class="al-stage">
         {render_slot(@inner_block)}
       </main>

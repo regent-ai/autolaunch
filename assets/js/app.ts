@@ -5,7 +5,7 @@ import { Socket } from "phoenix"
 import { LiveSocket } from "phoenix_live_view"
 import topbar from "../vendor/topbar"
 
-import { installHeerich } from "../../../packages/regent_ui/assets/js/regent"
+import { installHeerich } from "./regent"
 import { hooks } from "./hooks/index"
 
 function readCsrfToken(): string {

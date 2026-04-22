@@ -5,7 +5,7 @@ import { animate } from "../../vendor/anime.esm.js"
 import {
   prefersReducedMotion,
   pulseElement,
-} from "../../../../packages/regent_ui/assets/js/regent_motion.ts"
+} from "../regent_motion.ts"
 
 interface ShellRoot extends HTMLElement {
   _shellChromeClick?: (event: Event) => void
@@ -67,10 +67,14 @@ function toggleTheme(button: HTMLElement): void {
 export const ShellChrome: Hook = {
   mounted() {
     const root = this.el as ShellRoot
+    root.dataset.shellChromeRoot = "true"
 
     root._shellChromeClick = (event: Event) => {
       const target = event.target as HTMLElement | null
       if (!target) return
+
+      const owner = target.closest<HTMLElement>("[data-shell-chrome-root='true']")
+      if (owner && owner !== root) return
 
       const copyButton = target.closest<CopyButton>("[data-copy-value]")
       if (copyButton && root.contains(copyButton)) {
@@ -93,5 +97,7 @@ export const ShellChrome: Hook = {
     if (root._shellChromeClick) {
       root.removeEventListener("click", root._shellChromeClick)
     }
+
+    delete root.dataset.shellChromeRoot
   },
 }

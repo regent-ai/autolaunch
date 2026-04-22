@@ -1,0 +1,586 @@
+.al-account-page {
+  display: grid;
+  gap: clamp(1rem, 2vw, 1.4rem);
+}
+
+.al-account-topline {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.9rem;
+  padding-inline: 0.15rem;
+}
+
+.al-account-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem;
+  border: 1px solid color-mix(in srgb, var(--al-border) 88%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--al-panel-strong) 82%, white 18%);
+  box-shadow: 0 18px 38px -30px rgba(31, 66, 132, 0.22);
+}
+
+.al-account-tab {
+  min-width: 6.25rem;
+  padding: 0.68rem 1.1rem;
+  border-radius: 999px;
+  color: var(--al-muted);
+  font-size: 0.92rem;
+  text-decoration: none;
+  text-align: center;
+  transition:
+    color 160ms ease,
+    background 160ms ease,
+    transform 160ms ease;
+}
+
+.al-account-tab:hover,
+.al-account-tab:focus-visible {
+  color: var(--al-text);
+  background: color-mix(in srgb, var(--al-accent-soft) 44%, white 56%);
+}
+
+.al-account-tab.is-active {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--al-accent) 92%, white 8%),
+    color-mix(in srgb, var(--al-accent) 72%, #75a6ff 28%)
+  );
+  color: white;
+  box-shadow: 0 18px 36px -26px color-mix(in srgb, var(--al-accent) 52%, transparent);
+}
+
+.al-account-utility {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.al-account-utility-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--al-muted);
+  font-size: 0.88rem;
+}
+
+.al-account-utility-note::before {
+  content: "";
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--al-ready) 84%, white 16%);
+  box-shadow: 0 0 0 0.25rem color-mix(in srgb, var(--al-ready) 14%, transparent);
+}
+
+.al-account-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 1rem;
+  padding: clamp(1rem, 2vw, 1.35rem);
+  border-radius: 1.6rem;
+}
+
+.al-account-identity {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 1rem;
+  align-items: center;
+}
+
+.al-account-avatar {
+  width: clamp(4.75rem, 7vw, 6rem);
+  height: clamp(4.75rem, 7vw, 6rem);
+  border-radius: 1.5rem;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 30% 28%, rgba(255, 255, 255, 0.72), transparent 30%),
+    linear-gradient(160deg, color-mix(in srgb, var(--al-accent) 70%, white 30%), #112d73 78%);
+  color: white;
+  box-shadow: 0 28px 50px -30px rgba(20, 54, 119, 0.6);
+}
+
+.al-account-avatar span {
+  font-family: var(--al-font-display);
+  font-size: clamp(1.55rem, 2.6vw, 2rem);
+  letter-spacing: 0.08em;
+}
+
+.al-account-identity-copy {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.al-account-identity-copy h2 {
+  margin: 0;
+  font-size: clamp(1.6rem, 3vw, 2.35rem);
+  line-height: 1.05;
+}
+
+.al-account-identity-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.al-account-wallet,
+.al-account-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.32rem 0.72rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--al-border) 82%, white 18%);
+  background: color-mix(in srgb, var(--al-panel-strong) 72%, white 28%);
+  font-size: 0.86rem;
+}
+
+.al-account-subcopy {
+  margin: 0;
+  color: var(--al-muted);
+  max-width: 46rem;
+}
+
+.al-account-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.al-account-summary-card {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  gap: 0.3rem;
+  min-height: 8.8rem;
+  padding: 1rem 1rem 0.95rem;
+  border-radius: 1.35rem;
+  border: 1px solid color-mix(in srgb, var(--al-border) 82%, white 18%);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(245, 249, 255, 0.9)),
+    var(--al-panel-strong);
+}
+
+.al-account-summary-card strong {
+  font-family: var(--al-font-display);
+  font-size: clamp(1.55rem, 2.5vw, 2.15rem);
+  line-height: 1;
+}
+
+.al-account-summary-card p,
+.al-account-summary-card span {
+  margin: 0;
+}
+
+.al-account-summary-label {
+  color: var(--al-muted);
+  font-size: 0.86rem;
+}
+
+.al-account-summary-card p {
+  color: var(--al-muted);
+  font-size: 0.84rem;
+}
+
+.al-account-summary-card.is-green .al-account-summary-trace span {
+  background: linear-gradient(90deg, #9be8bf 0%, #22b66f 100%);
+}
+
+.al-account-summary-card.is-amber .al-account-summary-trace span {
+  background: linear-gradient(90deg, #f7d28a 0%, #e7a438 100%);
+}
+
+.al-account-summary-card.is-slate .al-account-summary-trace span {
+  background: linear-gradient(90deg, #d7e1f6 0%, #9ab0de 100%);
+}
+
+.al-account-summary-card.is-blue .al-account-summary-trace span,
+.al-account-summary-trace span {
+  background: linear-gradient(90deg, #9cc4ff 0%, #2c68ff 100%);
+}
+
+.al-account-summary-trace {
+  margin-top: auto;
+  height: 2.2rem;
+  display: flex;
+  align-items: flex-end;
+}
+
+.al-account-summary-trace span {
+  width: 100%;
+  height: 2px;
+  border-radius: 999px;
+  position: relative;
+}
+
+.al-account-summary-trace span::before,
+.al-account-summary-trace span::after {
+  content: "";
+  position: absolute;
+  right: 18%;
+  bottom: 0;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, currentColor 18%, white 82%);
+  transform: translateY(15%);
+  opacity: 0.55;
+}
+
+.al-account-summary-trace span::after {
+  right: 0;
+  width: 0.5rem;
+  height: 0.5rem;
+  background: white;
+  box-shadow: 0 0 0 0.18rem currentColor;
+  opacity: 1;
+}
+
+.al-account-banner {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: center;
+  padding: clamp(1rem, 2vw, 1.3rem);
+  border-radius: 1.55rem;
+  border: 1px solid color-mix(in srgb, var(--al-border) 82%, white 18%);
+  background:
+    radial-gradient(circle at 78% 18%, rgba(136, 191, 255, 0.38), transparent 18%),
+    radial-gradient(circle at 82% 0%, rgba(255, 255, 255, 0.62), transparent 22%),
+    linear-gradient(130deg, rgba(230, 241, 255, 0.92), rgba(243, 248, 255, 0.98) 58%, rgba(228, 238, 255, 0.92));
+}
+
+.al-account-banner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 70% 135%, rgba(56, 108, 255, 0.22), transparent 32%),
+    repeating-radial-gradient(
+      circle at 82% 50%,
+      rgba(255, 255, 255, 0) 0 0.75rem,
+      rgba(100, 152, 255, 0.1) 0.75rem 0.84rem
+    );
+  pointer-events: none;
+}
+
+.al-account-banner-copy,
+.al-account-banner-actions {
+  position: relative;
+  z-index: 1;
+}
+
+.al-account-banner-copy h3 {
+  margin: 0.18rem 0 0.32rem;
+  font-size: clamp(1.05rem, 1.7vw, 1.45rem);
+}
+
+.al-account-banner-copy p {
+  margin: 0;
+  color: color-mix(in srgb, var(--al-text) 72%, white 28%);
+  max-width: 38rem;
+}
+
+.al-account-banner-actions {
+  display: grid;
+  gap: 0.55rem;
+  justify-items: end;
+}
+
+.al-account-note {
+  color: var(--al-muted);
+  font-size: 0.84rem;
+}
+
+.al-account-section-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.al-account-section {
+  padding: 1rem 1rem 0.5rem;
+  border-radius: 1.45rem;
+}
+
+.al-account-section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin-bottom: 0.85rem;
+}
+
+.al-account-section-head h3 {
+  margin: 0.18rem 0 0;
+  font-size: clamp(1rem, 1.4vw, 1.28rem);
+}
+
+.al-account-link {
+  color: var(--al-accent);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.al-account-token-list {
+  display: grid;
+  gap: 0;
+}
+
+.al-account-token-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) repeat(2, minmax(0, 0.8fr)) auto;
+  gap: 0.8rem;
+  align-items: center;
+  padding: 0.85rem 0;
+  border-top: 1px solid color-mix(in srgb, var(--al-border) 82%, white 18%);
+}
+
+.al-account-token-row:first-child {
+  border-top: 0;
+}
+
+.al-account-token-name {
+  display: grid;
+  gap: 0.14rem;
+}
+
+.al-account-token-name strong,
+.al-account-position-token strong {
+  font-size: 1rem;
+}
+
+.al-account-token-meta,
+.al-account-data-label {
+  color: var(--al-muted);
+  font-size: 0.78rem;
+}
+
+.al-account-data-stack {
+  display: grid;
+  gap: 0.14rem;
+}
+
+.al-account-data-stack strong {
+  font-size: 1rem;
+}
+
+.al-account-positions-panel {
+  padding: 1rem;
+  border-radius: 1.45rem;
+}
+
+.al-account-positions-topline {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.al-account-metric-strip {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.al-account-metric-card {
+  display: grid;
+  gap: 0.18rem;
+  min-height: 5.9rem;
+  padding: 0.9rem 0.95rem;
+  border-radius: 1.2rem;
+  border: 1px solid color-mix(in srgb, var(--al-border) 82%, white 18%);
+  background: color-mix(in srgb, var(--al-panel-strong) 76%, white 24%);
+}
+
+.al-account-metric-card strong {
+  font-family: var(--al-font-display);
+  font-size: clamp(1.3rem, 2.1vw, 1.8rem);
+  line-height: 1;
+}
+
+.al-account-metric-card p,
+.al-account-metric-card span {
+  margin: 0;
+}
+
+.al-account-filter-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(14rem, 19rem);
+  gap: 0.8rem;
+  align-items: center;
+}
+
+.al-account-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.al-account-pill {
+  padding: 0.62rem 1rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--al-border) 82%, white 18%);
+  background: color-mix(in srgb, var(--al-panel-strong) 74%, white 26%);
+  color: var(--al-muted);
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.al-account-pill:hover,
+.al-account-pill:focus-visible {
+  color: var(--al-text);
+  transform: translateY(-1px);
+}
+
+.al-account-pill.is-active {
+  background: linear-gradient(135deg, #2b69ff, #1e56e2);
+  border-color: transparent;
+  color: white;
+  box-shadow: 0 16px 34px -24px rgba(39, 97, 255, 0.72);
+}
+
+.al-account-search {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.al-account-search input,
+.al-account-search select {
+  width: 100%;
+  min-height: 2.95rem;
+  padding: 0.78rem 0.95rem;
+  border-radius: 1rem;
+  border: 1px solid color-mix(in srgb, var(--al-border) 82%, white 18%);
+  background: color-mix(in srgb, var(--al-panel-strong) 76%, white 24%);
+  color: var(--al-text);
+}
+
+.al-account-position-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.al-account-position-table thead th {
+  padding: 0.85rem 0.8rem;
+  text-align: left;
+  color: var(--al-muted);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.al-account-position-table tbody td {
+  padding: 0.85rem 0.8rem;
+  border-top: 1px solid color-mix(in srgb, var(--al-border) 78%, white 22%);
+  vertical-align: top;
+}
+
+.al-account-position-token {
+  display: grid;
+  gap: 0.16rem;
+}
+
+.al-account-position-stack {
+  display: grid;
+  gap: 0.12rem;
+}
+
+.al-account-position-stack strong {
+  font-size: 0.98rem;
+}
+
+.al-account-next-step {
+  display: grid;
+  gap: 0.16rem;
+}
+
+.al-account-next-step strong {
+  font-size: 0.95rem;
+}
+
+.al-account-table-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  justify-content: flex-end;
+}
+
+.al-account-table-actions .al-ghost,
+.al-account-table-actions .al-submit {
+  min-width: 8rem;
+  justify-content: center;
+}
+
+.al-account-footer-link {
+  display: flex;
+  justify-content: center;
+  padding-top: 0.85rem;
+}
+
+@media (max-width: 1100px) {
+  .al-account-overview,
+  .al-account-section-grid,
+  .al-account-filter-row {
+    grid-template-columns: 1fr;
+  }
+
+  .al-account-summary-grid,
+  .al-account-metric-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .al-account-banner {
+    grid-template-columns: 1fr;
+  }
+
+  .al-account-banner-actions {
+    justify-items: start;
+  }
+
+  .al-account-token-row {
+    grid-template-columns: 1fr;
+  }
+
+  .al-account-table-shell {
+    overflow-x: auto;
+  }
+
+  .al-account-position-table {
+    min-width: 62rem;
+  }
+}
+
+@media (max-width: 720px) {
+  .al-account-summary-grid,
+  .al-account-metric-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .al-account-identity {
+    grid-template-columns: 1fr;
+  }
+
+  .al-account-topline,
+  .al-account-utility {
+    align-items: stretch;
+  }
+
+  .al-account-tabs {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .al-account-tab {
+    flex: 1;
+  }
+}

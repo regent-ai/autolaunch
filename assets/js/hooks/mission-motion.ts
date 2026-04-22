@@ -3,7 +3,7 @@ import type { Hook } from "phoenix_live_view"
 import {
   prefersReducedMotion,
   revealSequence,
-} from "../../../../packages/regent_ui/assets/js/regent_motion"
+} from "../regent_motion"
 
 interface MotionRoot extends HTMLElement {}
 

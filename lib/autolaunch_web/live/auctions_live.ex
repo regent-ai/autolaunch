@@ -7,6 +7,9 @@ defmodule AutolaunchWeb.AuctionsLive do
   alias Decimal, as: D
 
   @poll_ms 15_000
+  @auctions_css_path Path.expand("../../../assets/css/auctions-live.css", __DIR__)
+  @external_resource @auctions_css_path
+  @auctions_css File.read!(@auctions_css_path)
   @default_filters %{"mode" => "biddable", "network" => "all", "search" => "", "sort" => "newest"}
   @allowed_modes ~w(biddable live)
   @allowed_sorts ~w(newest oldest market_cap_desc market_cap_asc)
@@ -15,7 +18,7 @@ defmodule AutolaunchWeb.AuctionsLive do
     {:ok,
      socket
      |> Refreshable.schedule(@poll_ms)
-     |> assign(:page_title, "Tokens")
+     |> assign(:page_title, "Auctions")
      |> assign(:active_view, "auctions")
      |> assign_directory(@default_filters)}
   end
@@ -33,37 +36,76 @@ defmodule AutolaunchWeb.AuctionsLive do
   def render(assigns) do
     ~H"""
     <.shell current_human={@current_human} active_view={@active_view}>
-      <section id="auctions-market" class="al-panel al-auctions-market-shell" phx-hook="AuctionsMarketMotion">
-        <div class="al-auctions-market-strip">
+      <style id="auctions-live-css">
+        <%= raw(route_css()) %>
+      </style>
+
+      <div class="al-auctions-route">
+        <section
+          id="auctions-market"
+          class="al-panel al-auctions-market-shell"
+          phx-hook="AuctionsMarketMotion"
+        >
+          <div class="al-auctions-market-topline" data-market-reveal>
+            <div>
+              <p class="al-kicker">Auctions</p>
+              <p class="al-subcopy">Scan the market, compare active launches, and move fast when a bid window opens.</p>
+            </div>
+            <div class="al-auctions-market-links">
+              <.link navigate={~p"/how-auctions-work"} class="al-ghost">
+                How auctions work
+              </.link>
+              <.link navigate={~p"/auction-returns"} class="al-cta-link">
+                Auction returns
+              </.link>
+            </div>
+          </div>
+
+          <div class="al-auctions-market-strip">
           <article class="al-auctions-market-stat" data-market-reveal>
-            <span>Open now</span>
+            <div class="al-auctions-market-stat-head">
+              <span class="al-auctions-market-dot is-open"></span>
+              <span>Open now</span>
+            </div>
             <strong
               data-market-counter={Integer.to_string(@market_totals.open_count)}
               data-market-decimals="0"
             >
               {@market_totals.open_count}
             </strong>
+            <p>Live auctions</p>
           </article>
           <article class="al-auctions-market-stat" data-market-reveal>
-            <span>Finished</span>
+            <div class="al-auctions-market-stat-head">
+              <span class="al-auctions-market-dot is-finished"></span>
+              <span>Finished</span>
+            </div>
             <strong
               data-market-counter={Integer.to_string(@market_totals.finished_count)}
               data-market-decimals="0"
             >
               {@market_totals.finished_count}
             </strong>
+            <p>Completed</p>
           </article>
           <article class="al-auctions-market-stat" data-market-reveal>
-            <span>Shown</span>
+            <div class="al-auctions-market-stat-head">
+              <span class="al-auctions-market-dot is-shown"></span>
+              <span>Shown</span>
+            </div>
             <strong
               data-market-counter={Integer.to_string(@market_totals.shown_count)}
               data-market-decimals="0"
             >
               {@market_totals.shown_count}
             </strong>
+            <p>On this page</p>
           </article>
           <article class="al-auctions-market-stat is-volume" data-market-reveal>
-            <span>Bid volume shown</span>
+            <div class="al-auctions-market-stat-head">
+              <span class="al-auctions-market-dot is-volume"></span>
+              <span>Bid volume shown</span>
+            </div>
             <strong
               data-market-counter={@market_totals.visible_bid_volume_raw || "0"}
               data-market-prefix="$"
@@ -72,38 +114,38 @@ defmodule AutolaunchWeb.AuctionsLive do
             >
               {@market_totals.visible_bid_volume}
             </strong>
+            <p>Across the visible list</p>
           </article>
         </div>
 
         <div class="al-auctions-market-grid">
           <article class="al-auctions-feature" data-market-reveal>
             <%= if @featured_auction do %>
-              <div class="al-auctions-feature-head">
-                <div>
-                  <p class="al-kicker">Featured market</p>
-                  <h2>{@featured_auction.agent_name}</h2>
-                  <p class="al-subcopy">
-                    {featured_copy(@featured_auction.phase)}
-                  </p>
+              <div class="al-auctions-feature-toprow">
+                <div class="al-auctions-feature-id">
+                  <div class="al-auctions-feature-mark">{agent_monogram(@featured_auction.agent_name)}</div>
+                  <div class="al-auctions-feature-name">
+                    <p class="al-kicker">Featured market</p>
+                    <h2>{@featured_auction.agent_name}</h2>
+                    <div class="al-auctions-feature-badges">
+                      <span class={["al-status-badge", phase_badge_class(@featured_auction.phase)]}>
+                        {phase_label(@featured_auction.phase)}
+                      </span>
+                      <span class="al-network-badge">{network_label(@featured_auction)}</span>
+                    </div>
+                  </div>
                 </div>
-                <div class="al-auctions-feature-meta">
-                  <span class={["al-status-badge", phase_badge_class(@featured_auction.phase)]}>
-                    {phase_label(@featured_auction.phase)}
-                  </span>
-                  <span class="al-network-badge">{network_label(@featured_auction)}</span>
-                </div>
-              </div>
 
-              <div class="al-auctions-feature-tape">
-                <span>{@featured_auction.symbol}</span>
-                <span>{trust_summary(@featured_auction.trust)}</span>
-                <span>{humanize_price_source(@featured_auction.price_source)}</span>
-                <span>{LaunchComponents.time_left_label(@featured_auction.ends_at)}</span>
+                <div class="al-auctions-feature-endcap">
+                  <span>{time_label(@featured_auction)}</span>
+                  <strong>{LaunchComponents.time_left_label(@featured_auction.ends_at)}</strong>
+                  <span class="al-auctions-feature-live-dot"></span>
+                </div>
               </div>
 
               <div class="al-auctions-feature-stats">
                 <article>
-                  <span>Price</span>
+                  <span>Current price</span>
                   <strong>{format_price(@featured_auction.current_price_usdc)}</strong>
                 </article>
                 <article>
@@ -135,26 +177,36 @@ defmodule AutolaunchWeb.AuctionsLive do
                 </div>
               </div>
 
-              <div class="al-hero-actions">
-                <.link navigate={primary_action_href(@featured_auction)} class="al-submit">
-                  {primary_action_label(@featured_auction)}
-                </.link>
-                <.link
-                  :if={secondary_subject_href(@featured_auction)}
-                  navigate={secondary_subject_href(@featured_auction)}
-                  class="al-ghost"
-                >
-                  Open token page
-                </.link>
-                <a
-                  :if={@featured_auction.uniswap_url}
-                  href={@featured_auction.uniswap_url}
-                  class="al-ghost"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Uniswap
-                </a>
+              <div class="al-auctions-feature-footer">
+                <div class="al-hero-actions">
+                  <.link navigate={primary_action_href(@featured_auction)} class="al-submit">
+                    {primary_action_label(@featured_auction)}
+                  </.link>
+                  <.link
+                    :if={secondary_subject_href(@featured_auction)}
+                    navigate={secondary_subject_href(@featured_auction)}
+                    class="al-ghost"
+                  >
+                    Open token page
+                  </.link>
+                  <a
+                    :if={@featured_auction.uniswap_url}
+                    href={@featured_auction.uniswap_url}
+                    class="al-ghost"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Uniswap
+                  </a>
+                </div>
+
+                <div class="al-auctions-feature-trust">
+                  <span class="al-auctions-feature-chip">{@featured_auction.symbol}</span>
+                  <span class="al-auctions-feature-chip">
+                    {humanize_price_source(@featured_auction.price_source)}
+                  </span>
+                  <span class="al-auctions-feature-chip">{trust_summary(@featured_auction.trust)}</span>
+                </div>
               </div>
             <% else %>
               <div class="al-auctions-feature-empty">
@@ -181,7 +233,7 @@ defmodule AutolaunchWeb.AuctionsLive do
                 <p class="al-kicker">Leaderboard</p>
                 <h3>Largest visible markets</h3>
               </div>
-              <span class="al-inline-note">Top 5 by market cap</span>
+              <a href="#auctions-list" class="al-auctions-inline-link">View all</a>
             </div>
 
             <div class="al-auctions-leaderboard-list">
@@ -194,24 +246,37 @@ defmodule AutolaunchWeb.AuctionsLive do
                   class="al-auctions-leaderboard-row"
                 >
                   <span class="al-auctions-leaderboard-rank">{index}</span>
-                  <div class="al-auctions-leaderboard-copy">
-                    <strong>{auction.agent_name}</strong>
-                    <span>{auction.symbol} • {phase_label(auction.phase)}</span>
+                  <div class="al-auctions-leaderboard-main">
+                    <div class="al-auctions-leaderboard-mark">{agent_monogram(auction.agent_name)}</div>
+                    <div class="al-auctions-leaderboard-copy">
+                      <strong>{auction.agent_name}</strong>
+                      <span>{auction.symbol}</span>
+                    </div>
                   </div>
                   <div class="al-auctions-leaderboard-value">
                     <strong>{format_large_currency(auction.implied_market_cap_usdc)}</strong>
-                    <span>{format_price(auction.current_price_usdc)}</span>
+                    <span class={["al-status-badge", phase_badge_class(auction.phase)]}>
+                      {phase_label(auction.phase)}
+                    </span>
                   </div>
                 </.link>
               <% end %>
             </div>
+
+            <div class="al-auctions-leaderboard-foot">Market cap (USDC)</div>
           </aside>
         </div>
-      </section>
+        </section>
 
-      <section id="auctions-controls" class="al-panel al-directory-controls" phx-hook="MissionMotion">
-        <form phx-change="filters_changed" class="al-auctions-control-form">
-          <div class="al-auctions-control-bar">
+        <section
+          id="auctions-controls"
+          class="al-panel al-directory-controls"
+          phx-hook="MissionMotion"
+        >
+          <form phx-change="filters_changed" class="al-auctions-control-form">
+            <div class="al-auctions-toolbar">
+              <div class="al-auctions-control-field">
+                <span class="al-auctions-control-label">View</span>
             <div class="al-segmented" role="group" aria-label="Auction phase">
               <label class={["al-segmented-option", @filters["mode"] == "biddable" && "is-active"]}>
                 <input type="radio" name="filters[mode]" value="biddable" checked={@filters["mode"] == "biddable"} />
@@ -222,121 +287,149 @@ defmodule AutolaunchWeb.AuctionsLive do
                 <span>Live</span>
               </label>
             </div>
+              </div>
 
-            <div class="al-hero-actions">
-              <.link navigate={~p"/how-auctions-work"} class="al-cta-link">
-                How auctions work
-              </.link>
-              <.link navigate={~p"/auction-returns"} class="al-ghost">
-                Auction returns
-              </.link>
+              <label class="al-auctions-search">
+                <span class="al-auctions-control-label">Search</span>
+                <input
+                  type="search"
+                  name="filters[search]"
+                  value={@filters["search"]}
+                  placeholder="Search by name, symbol, agent ID, or ENS"
+                />
+              </label>
+
+              <label :if={@show_network_filter} class="al-auctions-filter-field">
+                <span class="al-auctions-control-label">Network</span>
+                <select name="filters[network]">
+                  <option value="all" selected={@filters["network"] == "all"}>All networks</option>
+                  <option
+                    :for={option <- @network_options}
+                    value={option.value}
+                    selected={@filters["network"] == option.value}
+                  >
+                    {option.label}
+                  </option>
+                </select>
+              </label>
+
+              <label class="al-auctions-filter-field">
+                <span class="al-auctions-control-label">Sort</span>
+                <select name="filters[sort]">
+                  <option value="newest" selected={@filters["sort"] == "newest"}>
+                    Newest first
+                  </option>
+                  <option value="oldest" selected={@filters["sort"] == "oldest"}>
+                    Oldest first
+                  </option>
+                  <option
+                    value="market_cap_desc"
+                    selected={@filters["sort"] == "market_cap_desc"}
+                  >
+                    Market cap high to low
+                  </option>
+                  <option value="market_cap_asc" selected={@filters["sort"] == "market_cap_asc"}>
+                    Market cap low to high
+                  </option>
+                </select>
+              </label>
             </div>
-          </div>
+          </form>
+        </section>
 
-          <label class="al-auctions-search">
-            <span>Search</span>
-            <input
-              type="search"
-              name="filters[search]"
-              value={@filters["search"]}
-              placeholder="Search by name, symbol, agent ID, or ENS"
-            />
-          </label>
-
-          <label :if={@show_network_filter} class="al-auctions-filter-field">
-            <span>Network</span>
-            <select name="filters[network]">
-              <option value="all" selected={@filters["network"] == "all"}>All networks</option>
-              <option
-                :for={option <- @network_options}
-                value={option.value}
-                selected={@filters["network"] == option.value}
-              >
-                {option.label}
-              </option>
-            </select>
-          </label>
-
-          <label class="al-auctions-filter-field">
-            <span>Sort</span>
-            <select name="filters[sort]">
-              <option value="newest" selected={@filters["sort"] == "newest"}>Newest first</option>
-              <option value="oldest" selected={@filters["sort"] == "oldest"}>Oldest first</option>
-              <option value="market_cap_desc" selected={@filters["sort"] == "market_cap_desc"}>Market cap high to low</option>
-              <option value="market_cap_asc" selected={@filters["sort"] == "market_cap_asc"}>Market cap low to high</option>
-            </select>
-          </label>
-        </form>
-      </section>
-
-      <%= if @visible_rows == [] do %>
-        <.empty_state
-          title="No auctions match this view yet."
-          body="Try a different search, switch between Biddable and Live, or clear the network filter."
-        />
-      <% else %>
-        <section id="auctions-list" class="al-panel al-auctions-list-shell" phx-hook="MissionMotion">
+        <section
+          id="auctions-list"
+          class="al-panel al-auctions-list-shell"
+          phx-hook="MissionMotion"
+        >
           <div class="al-auctions-list-head">
             <div>
               <p class="al-kicker">Market list</p>
-              <h3>Scan the market, then open the auction you want.</h3>
+              <h3>Compare price, size, trust, and timing at a glance.</h3>
             </div>
             <p class="al-subcopy">
-              The list stays compact so you can compare price, size, trust, and timing without opening every auction.
+              Showing {@market_totals.shown_count} of {length(@directory)} auctions in this view.
             </p>
           </div>
 
-          <div class="al-table-shell al-auctions-table-shell">
-            <table class="al-table al-auctions-table">
-              <thead>
-                <tr>
-                  <th>Token</th>
-                  <th>Phase</th>
-                  <th>Price</th>
-                  <th>Market cap</th>
-                  <th>Bid volume</th>
-                  <th>Time</th>
-                  <th>Trust</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr :for={token <- @visible_rows} id={"auction-row-#{token.id}"}>
-                  <td>
-                    <div class="al-auctions-token-cell">
-                      <div>
-                        <strong>{token.agent_name}</strong>
-                        <p>{token.symbol} • {token.agent_id}</p>
+          <%= if @visible_rows == [] do %>
+            <div class="al-auctions-empty-state">
+              <h3>No auctions match this view yet.</h3>
+              <p>
+                Try a different search, switch between Biddable and Live, or clear the network
+                filter.
+              </p>
+            </div>
+          <% else %>
+            <div class="al-table-shell al-auctions-table-shell">
+              <table class="al-table al-auctions-table">
+                <thead>
+                  <tr>
+                    <th>Token</th>
+                    <th>Phase</th>
+                    <th>Price</th>
+                    <th>Market cap</th>
+                    <th>Bid volume</th>
+                    <th>Time</th>
+                    <th>Trust</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr :for={token <- @visible_rows} id={"auction-row-#{token.id}"}>
+                    <td>
+                      <div class="al-auctions-token-cell">
+                        <div class="al-auctions-token-mark">{agent_monogram(token.agent_name)}</div>
+                        <div class="al-auctions-token-meta">
+                          <div class="al-auctions-token-line">
+                            <strong class="al-auctions-token-name">{token.agent_name}</strong>
+                            <span class="al-auctions-token-symbol">{token.symbol}</span>
+                          </div>
+                          <p class="al-auctions-table-meta">
+                            {token.agent_id} • {network_label(token)}
+                          </p>
+                        </div>
                       </div>
-                      <span class="al-network-badge">{network_label(token)}</span>
-                    </div>
-                  </td>
-                  <td>
-                    <span class={["al-status-badge", phase_badge_class(token.phase)]}>
-                      {phase_label(token.phase)}
-                    </span>
-                  </td>
-                  <td>
-                    <div class="al-auctions-value-cell">
-                      <strong>{format_price(token.current_price_usdc)}</strong>
-                      <span>{humanize_price_source(token.price_source)}</span>
-                    </div>
-                  </td>
-                  <td>{format_large_currency(token.implied_market_cap_usdc)}</td>
-                  <td>{format_volume(token.total_bid_volume)}</td>
-                  <td>{LaunchComponents.time_left_label(token.ends_at)}</td>
-                  <td>{trust_summary(token.trust)}</td>
-                  <td>
-                    <.link navigate={primary_action_href(token)} class="al-auctions-row-action">
-                      {primary_action_label(token)}
-                    </.link>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+                    </td>
+                    <td>
+                      <span class={["al-status-badge", phase_badge_class(token.phase)]}>
+                        {phase_label(token.phase)}
+                      </span>
+                    </td>
+                    <td>
+                      <div class="al-auctions-value-cell">
+                        <strong>{format_price(token.current_price_usdc)}</strong>
+                        <p class="al-auctions-table-note">
+                          {humanize_price_source(token.price_source)}
+                        </p>
+                      </div>
+                    </td>
+                    <td>{format_large_currency(token.implied_market_cap_usdc)}</td>
+                    <td>{format_volume(token.total_bid_volume)}</td>
+                    <td class="al-auctions-time">{LaunchComponents.time_left_label(token.ends_at)}</td>
+                    <td>
+                      <span
+                        class={[
+                          "al-auctions-trust-pill",
+                          trust_compact(token.trust) == "Optional links" && "is-optional"
+                        ]}
+                      >
+                        <span class="al-auctions-trust-dot"></span>
+                        <span>{trust_compact(token.trust)}</span>
+                      </span>
+                    </td>
+                    <td>
+                      <.link navigate={primary_action_href(token)} class="al-auctions-row-action">
+                        {primary_action_label(token)}
+                      </.link>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          <% end %>
         </section>
-      <% end %>
+      </div>
 
       <.flash_group flash={@flash} />
     </.shell>
@@ -575,15 +668,9 @@ defmodule AutolaunchWeb.AuctionsLive do
 
   defp secondary_subject_href(_row), do: nil
 
-  defp featured_copy("biddable"),
-    do:
-      "Watch the live clearing price, compare size, and move straight to the bid page when it looks right."
-
-  defp featured_copy("live"),
-    do:
-      "The auction window has ended. Use the token page for claim, staking, and revenue follow-up."
-
-  defp featured_copy(_phase), do: "Review the latest state before you open the auction."
+  defp time_label(%{phase: "biddable"}), do: "Ends in"
+  defp time_label(%{phase: "live"}), do: "Ended"
+  defp time_label(_row), do: "Time"
 
   defp phase_label(phase) do
     phase
@@ -609,6 +696,23 @@ defmodule AutolaunchWeb.AuctionsLive do
   defp humanize_price_source("uniswap_spot"), do: "Uniswap spot"
   defp humanize_price_source("uniswap_spot_unavailable"), do: "Quote pending"
   defp humanize_price_source(_), do: "Unavailable"
+
+  defp trust_compact(%{ens: %{connected: true}, world: %{connected: true}}), do: "ENS + World"
+  defp trust_compact(%{ens: %{connected: true}}), do: "ENS linked"
+  defp trust_compact(%{world: %{connected: true}}), do: "World linked"
+  defp trust_compact(_), do: "Optional links"
+
+  defp agent_monogram(name) when is_binary(name) do
+    name
+    |> String.split(~r/[\s-]+/, trim: true)
+    |> Enum.map(&String.first/1)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.take(2)
+    |> Enum.join()
+    |> String.upcase()
+  end
+
+  defp agent_monogram(_name), do: "AL"
 
   defp trust_summary(%{ens: %{connected: true, name: name}, world: %{connected: true}})
        when is_binary(name),
@@ -640,4 +744,6 @@ defmodule AutolaunchWeb.AuctionsLive do
     |> Application.get_env(:auctions_live, [])
     |> Keyword.get(:launch_module, Launch)
   end
+
+  defp route_css, do: @auctions_css
 end

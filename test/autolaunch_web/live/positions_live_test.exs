@@ -88,8 +88,11 @@ defmodule AutolaunchWeb.PositionsLiveTest do
 
   test "signed-in positions render exit and claim actions", %{conn: conn, human: human} do
     conn = init_test_session(conn, privy_user_id: human.privy_user_id)
-    {:ok, _view, html} = live(conn, "/positions")
+    {:ok, view, html} = live(conn, "/positions")
 
+    assert has_element?(view, "nav[aria-label='Account workspace']")
+    assert html =~ "Positions triage"
+    assert html =~ "Search by token or auction ID"
     assert html =~ "Exit bid"
     assert html =~ "Claim tokens"
     assert html =~ "Atlas"
@@ -102,12 +105,26 @@ defmodule AutolaunchWeb.PositionsLiveTest do
 
     html =
       view
-      |> form("form[phx-change='filters_changed']", %{"filters" => %{"status" => "claimable"}})
-      |> render_change()
+      |> element("button[phx-value-status='claimable']")
+      |> render_click()
 
     assert html =~ "Nova"
     refute html =~ "Atlas"
     assert html =~ "Claim tokens"
     refute html =~ "Exit bid"
+  end
+
+  test "search narrows the positions table", %{conn: conn, human: human} do
+    conn = init_test_session(conn, privy_user_id: human.privy_user_id)
+    {:ok, view, _html} = live(conn, "/positions")
+
+    html =
+      view
+      |> form("form[phx-change='filters_changed']", %{"filters" => %{"search" => "auc_1"}})
+      |> render_change()
+
+    assert html =~ "Atlas"
+    refute html =~ "Nova"
+    assert html =~ "Exit bid"
   end
 end

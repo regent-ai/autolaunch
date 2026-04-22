@@ -2,6 +2,7 @@ defmodule AutolaunchWeb.ProfileLive do
   use AutolaunchWeb, :live_view
 
   alias Autolaunch.Portfolio
+  alias AutolaunchWeb.Live.AccountWorkspace
   alias AutolaunchWeb.Live.Refreshable
 
   @poll_ms 15_000
@@ -38,153 +39,177 @@ defmodule AutolaunchWeb.ProfileLive do
   def render(assigns) do
     ~H"""
     <.shell current_human={@current_human} active_view={@active_view}>
-      <section id="profile-hero" class="al-hero al-panel al-profile-hero" phx-hook="MissionMotion">
-        <div>
-          <p class="al-kicker">Profile</p>
-          <h2>Your launch and staking snapshot, without the extra noise.</h2>
-          <p class="al-subcopy">
-            This is a cached portfolio read. Use it to confirm what you launched, what is staked,
-            and what needs attention before you jump into a token page.
-          </p>
-        </div>
+      <AccountWorkspace.styles active_tab="profile" />
 
-        <div class="al-stat-grid">
-          <.stat_card title="Launched" value={Integer.to_string(length(@snapshot.launched_tokens || []))} />
-          <.stat_card title="Staked" value={Integer.to_string(length(@snapshot.staked_tokens || []))} />
-          <.stat_card title="Status" value={String.capitalize(@snapshot.status || "pending")} />
-        </div>
-      </section>
+      <section class="al-account-page">
+        <header class="al-account-topline">
+          <AccountWorkspace.tabs active_tab="profile" />
 
-      <%= if is_nil(@current_human) do %>
-        <.empty_state
-          title="Sign in to see your token portfolio."
-          body="The profile snapshot is built from the wallets linked to your Privy session."
-        />
-      <% else %>
-        <section class="al-panel al-profile-toolbar">
-          <div>
-            <p class="al-kicker">Snapshot</p>
-            <h3>Last refreshed {format_datetime(@snapshot.refreshed_at)}</h3>
-            <p class="al-inline-note">
-              {snapshot_copy(@snapshot.status)}
-            </p>
+          <div :if={!is_nil(@current_human)} class="al-account-utility">
+            <span class="al-account-utility-note">
+              Last updated {format_datetime(@snapshot.refreshed_at)}
+            </span>
+            <button
+              type="button"
+              class="al-submit"
+              phx-click="refresh_profile"
+              disabled={refresh_disabled?(@snapshot.next_manual_refresh_at)}
+            >
+              {refresh_label(@snapshot.next_manual_refresh_at)}
+            </button>
           </div>
+        </header>
 
-          <button
-            type="button"
-            class="al-submit"
-            phx-click="refresh_profile"
-            disabled={refresh_disabled?(@snapshot.next_manual_refresh_at)}
-          >
-            {refresh_label(@snapshot.next_manual_refresh_at)}
-          </button>
-        </section>
-
-        <section id="profile-sections" class="al-profile-stack" phx-hook="MissionMotion">
-          <section :if={(@snapshot.launched_tokens || []) != []} id="profile-launched" class="al-panel al-profile-section">
-            <div class="al-section-head">
-              <div>
-                <p class="al-kicker">Launched Tokens</p>
-                <h3>Tokens launched from your linked wallets.</h3>
-              </div>
-            </div>
-
-            <div class="al-table-shell al-desktop-only">
-              <table class="al-table">
-                <thead>
-                  <tr>
-                    <th>Token</th>
-                    <th>Phase</th>
-                    <th>Price</th>
-                    <th>Market cap</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr :for={token <- @snapshot.launched_tokens}>
-                    <td>
-                      <strong>{token.agent_name}</strong>
-                      <p class="al-inline-note">{token.symbol}</p>
-                    </td>
-                    <td>{String.capitalize(token.phase)}</td>
-                    <td>{display_money(token.current_price_usdc)}</td>
-                    <td>{display_money(token.implied_market_cap_usdc)}</td>
-                    <td><.link navigate={token.detail_url} class="al-ghost">Open auction view</.link></td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <div class="al-mobile-card-list al-mobile-only">
-              <article :for={token <- @snapshot.launched_tokens} class="al-note-card al-mobile-summary-card">
-                <span>{token.symbol}</span>
-                <strong>{token.agent_name}</strong>
-                <p>{String.capitalize(token.phase)} • {display_money(token.current_price_usdc)}</p>
-                <p>Market cap {display_money(token.implied_market_cap_usdc)}</p>
-                <div class="al-action-row">
-                  <.link navigate={token.detail_url} class="al-ghost">Open auction view</.link>
-                </div>
-              </article>
-            </div>
-          </section>
-
-          <section id="profile-staked" class="al-panel al-profile-section">
-          <div class="al-section-head">
-            <div>
-              <p class="al-kicker">Staked Tokens</p>
-              <h3>Your active revenue positions.</h3>
-            </div>
-          </div>
-
-          <%= if (@snapshot.staked_tokens || []) == [] do %>
-            <.empty_state
-              title="No staked token positions yet."
-              body="Stake from a token detail page after launch if you want your portfolio to show ongoing token exposure and claimable USDC."
+        <%= if is_nil(@current_human) do %>
+          <.empty_state
+            title="Sign in to see your token portfolio."
+            body="This workspace is built from the wallets linked to your account."
+          />
+        <% else %>
+          <section id="profile-overview" class="al-panel al-account-overview" phx-hook="MissionMotion">
+            <AccountWorkspace.identity
+              current_human={@current_human}
+              eyebrow="Profile"
+              title={profile_title(@current_human)}
+              subtitle="Review launched tokens, staked exposure, and the next pages worth opening."
             />
-          <% else %>
-            <div class="al-table-shell al-desktop-only">
-              <table class="al-table">
-                <thead>
-                  <tr>
-                    <th>Token</th>
-                    <th>Staked tokens</th>
-                    <th>Stake value</th>
-                    <th>Claimable USDC</th>
-                    <th>Market cap</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr :for={token <- @snapshot.staked_tokens}>
-                    <td>
-                      <strong>{token.agent_name}</strong>
-                      <p class="al-inline-note">{token.symbol} • {String.capitalize(token.phase)}</p>
-                    </td>
-                    <td>{token.staked_token_amount}</td>
-                    <td>{display_money(token.staked_usdc_value)}</td>
-                    <td>{display_money(token.claimable_usdc)}</td>
-                    <td>{display_money(token.implied_market_cap_usdc)}</td>
-                    <td><.link navigate={token.detail_url} class="al-submit">Open token page</.link></td>
-                  </tr>
-                </tbody>
-              </table>
+
+            <div class="al-account-summary-grid">
+              <AccountWorkspace.summary_card
+                title="Launched"
+                value={Integer.to_string(length(@snapshot.launched_tokens || []))}
+                hint="Tokens launched"
+                tone="blue"
+              />
+              <AccountWorkspace.summary_card
+                title="Staked"
+                value={Integer.to_string(length(@snapshot.staked_tokens || []))}
+                hint="Tokens staked"
+                tone="green"
+              />
+              <AccountWorkspace.summary_card
+                title="Status"
+                value={snapshot_status_label(@snapshot.status)}
+                hint={snapshot_status_hint(@snapshot.status)}
+                tone={snapshot_status_tone(@snapshot.status)}
+              />
+            </div>
+          </section>
+
+          <section id="profile-banner" class="al-account-banner" phx-hook="MissionMotion">
+            <div class="al-account-banner-copy">
+              <p class="al-kicker">Snapshot</p>
+              <h3>Your launch and staking snapshot</h3>
+              <p>{snapshot_copy(@snapshot.status)}</p>
             </div>
 
-            <div class="al-mobile-card-list al-mobile-only">
-              <article :for={token <- @snapshot.staked_tokens} class="al-note-card al-mobile-summary-card">
-                <span>{token.symbol}</span>
-                <strong>{token.agent_name}</strong>
-                <p>{token.staked_token_amount} staked • {display_money(token.claimable_usdc)} claimable</p>
-                <p>Stake value {display_money(token.staked_usdc_value)} • Market cap {display_money(token.implied_market_cap_usdc)}</p>
-                <div class="al-action-row">
-                  <.link navigate={token.detail_url} class="al-submit">Open token page</.link>
-                </div>
-              </article>
+            <div class="al-account-banner-actions">
+              <.link navigate={~p"/positions"} class="al-ghost">Open positions workspace</.link>
+              <span class="al-account-note">
+                Auto-refresh every {poll_seconds()}s
+              </span>
             </div>
-          <% end %>
           </section>
-        </section>
-      <% end %>
+
+          <section id="profile-sections" class="al-account-section-grid" phx-hook="MissionMotion">
+            <section id="profile-launched" class="al-panel al-account-section">
+              <div class="al-account-section-head">
+                <div>
+                  <p class="al-kicker">Launched tokens</p>
+                  <h3>Tokens launched from your linked wallets.</h3>
+                </div>
+                <.link navigate={~p"/auctions"} class="al-account-link">Open auction view</.link>
+              </div>
+
+              <%= if (@snapshot.launched_tokens || []) == [] do %>
+                <.empty_state
+                  title="No launched tokens yet."
+                  body="Launch a token first, then come back here to keep the market and post-launch pages close."
+                />
+              <% else %>
+                <div class="al-account-token-list">
+                  <article
+                    :for={token <- @snapshot.launched_tokens}
+                    class="al-account-token-row"
+                  >
+                    <div class="al-account-token-name">
+                      <strong>{token.agent_name}</strong>
+                      <span class="al-account-token-meta">{token.symbol}</span>
+                    </div>
+
+                    <div class="al-account-data-stack">
+                      <.status_badge status={token.phase} />
+                      <span class="al-account-data-label">Current phase</span>
+                    </div>
+
+                    <div class="al-account-data-stack">
+                      <strong>{display_money(token.implied_market_cap_usdc)}</strong>
+                      <span class="al-account-data-label">Market cap</span>
+                    </div>
+
+                    <div class="al-account-data-stack">
+                      <strong>{display_money(token.current_price_usdc)}</strong>
+                      <span class="al-account-data-label">Token price</span>
+                    </div>
+
+                    <div class="al-action-row">
+                      <.link navigate={token.detail_url} class="al-ghost">Open auction view</.link>
+                    </div>
+                  </article>
+                </div>
+              <% end %>
+            </section>
+
+            <section id="profile-staked" class="al-panel al-account-section">
+              <div class="al-account-section-head">
+                <div>
+                  <p class="al-kicker">Staked tokens</p>
+                  <h3>Your active revenue positions.</h3>
+                </div>
+                <.link navigate={~p"/positions"} class="al-account-link">Open positions view</.link>
+              </div>
+
+              <%= if (@snapshot.staked_tokens || []) == [] do %>
+                <.empty_state
+                  title="No staked token positions yet."
+                  body="Stake from a token page after launch if you want your ongoing exposure and claimable balance in one place."
+                />
+              <% else %>
+                <div class="al-account-token-list">
+                  <article
+                    :for={token <- @snapshot.staked_tokens}
+                    class="al-account-token-row"
+                  >
+                    <div class="al-account-token-name">
+                      <strong>{token.agent_name}</strong>
+                      <span class="al-account-token-meta">{token.symbol}</span>
+                    </div>
+
+                    <div class="al-account-data-stack">
+                      <strong>{token.staked_token_amount}</strong>
+                      <span class="al-account-data-label">Your stake</span>
+                    </div>
+
+                    <div class="al-account-data-stack">
+                      <strong>{display_money(token.claimable_usdc)}</strong>
+                      <span class="al-account-data-label">Claimable USDC</span>
+                    </div>
+
+                    <div class="al-account-data-stack">
+                      <strong>{display_money(token.staked_usdc_value)}</strong>
+                      <span class="al-account-data-label">Stake value</span>
+                    </div>
+
+                    <div class="al-action-row">
+                      <.link navigate={token.detail_url} class="al-submit">Open token page</.link>
+                    </div>
+                  </article>
+                </div>
+              <% end %>
+            </section>
+          </section>
+        <% end %>
+      </section>
 
       <.flash_group flash={@flash} />
     </.shell>
@@ -257,6 +282,36 @@ defmodule AutolaunchWeb.ProfileLive do
 
   defp snapshot_copy(_),
     do: "The first snapshot will appear as soon as the background rebuild finishes."
+
+  defp snapshot_status_label("running"), do: "Refreshing"
+  defp snapshot_status_label("ready"), do: "Active"
+  defp snapshot_status_label("error"), do: "Needs retry"
+  defp snapshot_status_label(_), do: "Pending"
+
+  defp snapshot_status_hint("running"), do: "Snapshot in progress"
+  defp snapshot_status_hint("ready"), do: "All systems normal"
+  defp snapshot_status_hint("error"), do: "Try another refresh"
+  defp snapshot_status_hint(_), do: "First snapshot pending"
+
+  defp snapshot_status_tone("running"), do: "amber"
+  defp snapshot_status_tone("ready"), do: "green"
+  defp snapshot_status_tone("error"), do: "slate"
+  defp snapshot_status_tone(_), do: "blue"
+
+  defp profile_title(%{display_name: display_name})
+       when is_binary(display_name) and display_name != "",
+       do: display_name
+
+  defp profile_title(%{wallet_address: wallet_address}) when is_binary(wallet_address),
+    do: short_wallet(wallet_address)
+
+  defp profile_title(_), do: "Autolaunch operator"
+
+  defp short_wallet(wallet_address) do
+    "#{String.slice(wallet_address, 0, 6)}...#{String.slice(wallet_address, -4, 4)}"
+  end
+
+  defp poll_seconds, do: div(@poll_ms, 1_000)
 
   defp display_money(nil), do: "Unavailable"
   defp display_money(value), do: "#{value} USDC"

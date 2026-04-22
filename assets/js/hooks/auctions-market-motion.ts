@@ -5,7 +5,7 @@ import { animate } from "../../vendor/anime.esm.js"
 import {
   prefersReducedMotion,
   revealSequence,
-} from "../../../../packages/regent_ui/assets/js/regent_motion"
+} from "../regent_motion"
 
 interface MarketRoot extends HTMLElement {}
 interface AnimatedCounterState {
