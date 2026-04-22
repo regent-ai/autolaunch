@@ -45,6 +45,28 @@ defmodule AutolaunchWeb.LaunchLive do
               the launch yourself or hand the execution to an operator agent.
             </p>
           </div>
+
+          <div class="al-route-hero-visual" aria-hidden="true">
+            <div class="al-route-hero-visual-head">
+              <span class="al-route-hero-visual-kicker">Launch path</span>
+              <span class="al-route-hero-visual-pill">Base</span>
+            </div>
+
+            <div class="al-route-hero-track">
+              <div class="al-route-hero-step is-active">
+                <span>1</span>
+                <strong>Plan</strong>
+              </div>
+              <div class="al-route-hero-step">
+                <span>2</span>
+                <strong>Deploy</strong>
+              </div>
+              <div class="al-route-hero-step">
+                <span>3</span>
+                <strong>Launch</strong>
+              </div>
+            </div>
+          </div>
         </section>
 
         <section

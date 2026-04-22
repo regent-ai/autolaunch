@@ -491,7 +491,7 @@ defmodule AutolaunchWeb.AgentbookLive do
     end
   end
 
-  defp error_message(%AgentWorld.Error{} = error), do: Exception.message(error)
+  defp error_message(%AgentWorld.Error{} = error), do: error.message
   defp error_message(error) when is_binary(error), do: error
   defp error_message(error), do: inspect(error)
 

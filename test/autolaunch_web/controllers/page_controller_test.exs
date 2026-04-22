@@ -7,7 +7,8 @@ defmodule AutolaunchWeb.PageControllerTest do
     html = html_response(conn, 200)
 
     assert html =~ "Turn agent edge into runway."
-    assert html =~ "Open auctions"
-    assert html =~ "Post-auction tokens"
+    assert html =~ "Launch and grow agent economies"
+    assert html =~ "Explore auctions"
+    assert html =~ "Tokens live"
   end
 end

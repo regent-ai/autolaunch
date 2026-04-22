@@ -132,9 +132,9 @@ function animatePulse(root: MarketRootState): void {
 function animateRoot(root: MarketRootState): void {
   if (!reducedMotion()) {
     revealSequence(root, "[data-market-reveal]", {
-      translateY: 18,
-      delay: 70,
-      duration: 560,
+      translateY: 14,
+      delay: 45,
+      duration: 420,
     })
   }
 

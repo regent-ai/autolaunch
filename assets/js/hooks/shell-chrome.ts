@@ -9,6 +9,7 @@ import {
 
 interface ShellRoot extends HTMLElement {
   _shellChromeClick?: (event: Event) => void
+  _shellChromeKeydown?: (event: KeyboardEvent) => void
 }
 
 interface CopyButton extends HTMLElement {
@@ -64,6 +65,25 @@ function toggleTheme(button: HTMLElement): void {
   window.dispatchEvent(new CustomEvent("autolaunch:set-theme", { detail: { theme: next } }))
 }
 
+function focusGlobalSearch(event: KeyboardEvent): void {
+  const key = event.key.toLowerCase()
+  if (key !== "k" || !(event.metaKey || event.ctrlKey) || event.altKey || event.shiftKey) {
+    return
+  }
+
+  const target = event.target as HTMLElement | null
+  if (target && (target.matches("input, textarea, select") || target.isContentEditable)) {
+    return
+  }
+
+  const search = document.getElementById("autolaunch-global-search") as HTMLInputElement | null
+  if (!search) return
+
+  event.preventDefault()
+  search.focus()
+  search.select()
+}
+
 export const ShellChrome: Hook = {
   mounted() {
     const root = this.el as ShellRoot
@@ -89,6 +109,12 @@ export const ShellChrome: Hook = {
     }
 
     root.addEventListener("click", root._shellChromeClick)
+
+    root._shellChromeKeydown = (event: KeyboardEvent) => focusGlobalSearch(event)
+
+    if (typeof window.addEventListener === "function") {
+      window.addEventListener("keydown", root._shellChromeKeydown)
+    }
   },
 
   destroyed() {
@@ -96,6 +122,10 @@ export const ShellChrome: Hook = {
 
     if (root._shellChromeClick) {
       root.removeEventListener("click", root._shellChromeClick)
+    }
+
+    if (root._shellChromeKeydown && typeof window.removeEventListener === "function") {
+      window.removeEventListener("keydown", root._shellChromeKeydown)
     }
 
     delete root.dataset.shellChromeRoot

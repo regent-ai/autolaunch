@@ -75,7 +75,7 @@ defmodule AutolaunchWeb.Api.EnsLinkController do
     do: ApiError.render(conn, :unprocessable_entity, "ens_name_required", "ENS name is required")
 
   defp render_error(conn, %AgentEns.Error{} = error) do
-    ApiError.render(conn, :unprocessable_entity, "ens_link_invalid", Exception.message(error))
+    ApiError.render(conn, :unprocessable_entity, "ens_link_invalid", error.message)
   end
 
   defp render_error(conn, reason) do

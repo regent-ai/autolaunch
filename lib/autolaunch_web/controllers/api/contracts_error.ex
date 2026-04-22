@@ -4,9 +4,8 @@ defmodule AutolaunchWeb.Api.ContractsError do
   alias AutolaunchWeb.ApiError
 
   def render(conn, {:error, reason}) do
-    case translate(reason) do
-      {status, code, message} -> ApiError.render(conn, status, code, message)
-    end
+    {status, code, message} = translate(reason)
+    ApiError.render(conn, status, code, message)
   end
 
   def translate(:not_found),

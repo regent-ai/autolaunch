@@ -34,8 +34,9 @@ defmodule AutolaunchWeb.Layouts do
           <div class="al-shell-brand-block">
             <.link navigate={~p"/"} class="al-shell-brand">
               <img
-                src={~p"/images/autolaunch-logo-large.png"}
-                alt="Autolaunch"
+                src="/regent/regent-sigil-preview.svg"
+                alt=""
+                aria-hidden="true"
                 width="44"
                 height="44"
               />
@@ -87,6 +88,7 @@ defmodule AutolaunchWeb.Layouts do
                 type="search"
                 placeholder="Search tokens, auctions, docs..."
                 autocomplete="off"
+                aria-keyshortcuts="Meta+K Control+K"
               />
               <span class="al-shell-search-shortcut" aria-hidden="true">
                 <kbd class="kbd kbd-sm">⌘</kbd>
@@ -227,8 +229,9 @@ defmodule AutolaunchWeb.Layouts do
             <div class="al-shell-footer-brand">
               <.link navigate={~p"/"} class="al-shell-footer-logo">
                 <img
-                  src={~p"/images/autolaunch-logo-large.png"}
-                  alt="Autolaunch"
+                  src="/regent/regent-sigil-preview.svg"
+                  alt=""
+                  aria-hidden="true"
                   width="38"
                   height="38"
                 />

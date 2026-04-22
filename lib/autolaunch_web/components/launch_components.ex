@@ -353,9 +353,4 @@ defmodule AutolaunchWeb.LaunchComponents do
         |> Enum.map_join(" ", &String.capitalize/1)
     end
   end
-
-  defp privy_app_id do
-    Application.get_env(:autolaunch, :privy, [])
-    |> Keyword.get(:app_id, "")
-  end
 end

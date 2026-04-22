@@ -497,7 +497,7 @@ defmodule AutolaunchWeb.EnsLinkLive do
       {:ok, prepared}
     else
       {:error, message} when is_binary(message) -> {:error, message}
-      {:error, %Error{} = error} -> {:error, Exception.message(error)}
+      {:error, %Error{} = error} -> {:error, error.message}
       {:error, reason} -> {:error, inspect(reason)}
     end
   end

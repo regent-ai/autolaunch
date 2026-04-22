@@ -110,12 +110,10 @@ defmodule AutolaunchWeb.Live.AccountWorkspace do
   def initials(_), do: "AL"
 
   def wallet_label(%{wallet_address: wallet_address}) when is_binary(wallet_address) do
-    cond do
-      String.length(wallet_address) <= 12 ->
-        wallet_address
-
-      true ->
-        "#{String.slice(wallet_address, 0, 6)}...#{String.slice(wallet_address, -4, 4)}"
+    if String.length(wallet_address) <= 12 do
+      wallet_address
+    else
+      "#{String.slice(wallet_address, 0, 6)}...#{String.slice(wallet_address, -4, 4)}"
     end
   end
 

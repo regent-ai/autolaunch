@@ -15,7 +15,7 @@
 
 #autolaunch-home-dashboard .al-home-dashboard-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
+  grid-template-columns: minmax(0, 1.18fr) minmax(300px, 0.82fr);
   gap: 1rem;
   align-items: center;
   padding: clamp(1.2rem, 3vw, 2rem);
@@ -30,7 +30,7 @@
 
 #autolaunch-home-dashboard .al-home-dashboard-copy h2 {
   margin: 0;
-  max-width: 9ch;
+  max-width: 11ch;
   font-size: clamp(2.8rem, 5.5vw, 5rem);
   line-height: 0.92;
   letter-spacing: -0.06em;
@@ -111,7 +111,7 @@
 
 #autolaunch-home-dashboard .al-home-dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: 1rem;
 }
 
@@ -119,6 +119,23 @@
   display: grid;
   gap: 1rem;
   padding: 1.2rem;
+}
+
+#autolaunch-home-dashboard .al-home-dashboard-card:nth-child(1) {
+  grid-column: span 5;
+}
+
+#autolaunch-home-dashboard .al-home-dashboard-card:nth-child(2) {
+  grid-column: span 3;
+}
+
+#autolaunch-home-dashboard .al-home-dashboard-card:nth-child(3) {
+  grid-column: span 4;
+  border-color: color-mix(in oklab, var(--al-accent) 18%, var(--al-border));
+  box-shadow: 0 26px 68px -48px color-mix(in oklab, var(--al-accent) 26%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in oklab, var(--al-panel-strong) 90%, white 10%), var(--al-panel)),
+    linear-gradient(135deg, color-mix(in oklab, var(--al-accent) 10%, transparent), transparent 72%);
 }
 
 #autolaunch-home-dashboard .al-home-card-head {
@@ -274,7 +291,7 @@
 
 #autolaunch-home-dashboard .al-home-dashboard-bottom {
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(320px, 0.95fr);
+  grid-template-columns: minmax(0, 1.25fr) minmax(340px, 0.95fr);
   gap: 1rem;
 }
 
@@ -338,8 +355,26 @@
     grid-template-columns: 1fr;
   }
 
+  #autolaunch-home-dashboard .al-home-dashboard-visual {
+    min-height: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: center;
+  }
+
+  #autolaunch-home-dashboard .al-home-dashboard-chip {
+    position: static;
+  }
+
   #autolaunch-home-dashboard .al-home-market-mini-grid,
   #autolaunch-home-dashboard .al-home-metric-strip {
     grid-template-columns: 1fr;
+  }
+
+  #autolaunch-home-dashboard .al-home-dashboard-card:nth-child(1),
+  #autolaunch-home-dashboard .al-home-dashboard-card:nth-child(2),
+  #autolaunch-home-dashboard .al-home-dashboard-card:nth-child(3) {
+    grid-column: auto;
   }
 }

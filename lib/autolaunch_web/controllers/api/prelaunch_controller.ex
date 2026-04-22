@@ -2,8 +2,8 @@ defmodule AutolaunchWeb.Api.PrelaunchController do
   use AutolaunchWeb, :controller
 
   alias Autolaunch.Prelaunch
-  alias AutolaunchWeb.ClientIp
   alias AutolaunchWeb.ApiError
+  alias AutolaunchWeb.ClientIp
 
   def index(conn, _params) do
     render_result(conn, context_module().list_plans(conn.assigns[:current_human]), :plans)

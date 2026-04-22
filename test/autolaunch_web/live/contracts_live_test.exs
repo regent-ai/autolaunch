@@ -24,8 +24,10 @@ defmodule AutolaunchWeb.ContractsLiveTest do
          job: %{
            job_id: "job_contracts",
            owner_address: "0x2222222222222222222222222222222222222222",
+           agent_safe_address: "0x5555555555555555555555555555555555555555",
            token_address: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
          },
+         current_block: 1_234,
          controller: %{
            deploy_binary: "forge",
            deploy_workdir: "/tmp/contracts",
@@ -40,11 +42,21 @@ defmodule AutolaunchWeb.ContractsLiveTest do
            address: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
            auction_address: "0xcccccccccccccccccccccccccccccccccccccccc",
            migrated: false,
+           currency_balance: 12,
+           token_balance: 50,
            migrated_pool_id: "0x" <> String.duplicate("d", 64),
            migrated_position_id: 0,
            migrated_liquidity: 0,
            migrated_currency_for_lp: 0,
-           migrated_token_for_lp: 0
+           migrated_token_for_lp: 0,
+           migration_block: 1_000,
+           sweep_block: 2_000
+         },
+         auction: %{
+           address: "0xcccccccccccccccccccccccccccccccccccccccc",
+           graduated: true,
+           token_balance: 20,
+           currency_balance: 30
          },
          vesting: %{
            address: "0xdddddddddddddddddddddddddddddddddddddddd",
@@ -56,6 +68,9 @@ defmodule AutolaunchWeb.ContractsLiveTest do
          },
          fee_registry: %{
            address: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+           owner: "0x4444444444444444444444444444444444444444",
+           pending_owner: "0x5555555555555555555555555555555555555555",
+           ownership_status: "pending_acceptance",
            pool_id: "0x" <> String.duplicate("f", 64),
            pool_config: %{
              hook_enabled: true,
@@ -68,12 +83,32 @@ defmodule AutolaunchWeb.ContractsLiveTest do
          fee_vault: %{
            address: "0xffffffffffffffffffffffffffffffffffffffff",
            hook: "0x1212121212121212121212121212121212121212",
+           owner: "0x4444444444444444444444444444444444444444",
+           pending_owner: "0x5555555555555555555555555555555555555555",
+           ownership_status: "pending_acceptance",
            treasury_accrued: %{token: 1, usdc: 2},
            regent_accrued: %{token: 3, usdc: 4}
          },
          hook: %{
            address: "0x3434343434343434343434343434343434343434",
+           owner: "0x4444444444444444444444444444444444444444",
+           pending_owner: nil,
+           ownership_status: "unexpected_owner",
            pool_id: "0x" <> String.duplicate("e", 64)
+         },
+         settlement: %{
+           settlement_state: "awaiting_auction_asset_return",
+           blocked_reason: "Auction balances still need to be returned before migration.",
+           recommended_action: "auction_sweep_currency",
+           allowed_actions: ["auction_sweep_currency", "auction_sweep_unsold_tokens"],
+           required_actor: "operator",
+           balance_snapshot: %{
+             strategy: %{usdc_balance: 12, token_balance: 50},
+             auction: %{usdc_balance: 30, token_balance: 20}
+           },
+           ownership_status: %{
+             all_accepted: false
+           }
          }
        }}
     end
@@ -224,7 +259,10 @@ defmodule AutolaunchWeb.ContractsLiveTest do
     assert html =~ "Open one subject"
 
     assert html =~ "Review mode"
+    assert html =~ "Current post-auction branch"
     assert html =~ "LBP runtime state"
+    assert html =~ "Prepare failed-auction recovery"
+    assert html =~ "Prepare auction currency return"
     assert html =~ "Advanced revenue controls"
     assert html =~ "Prepared action"
     assert html =~ "Protocol skim bps"

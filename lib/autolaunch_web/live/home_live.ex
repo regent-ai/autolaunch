@@ -326,9 +326,8 @@ defmodule AutolaunchWeb.HomeLive do
   defp parse_decimal(""), do: nil
 
   defp parse_decimal(value) when is_binary(value) do
-    try do
-      D.new(value)
-    rescue
+    case D.parse(value) do
+      {decimal, ""} -> decimal
       _ -> nil
     end
   end
@@ -387,8 +386,7 @@ defmodule AutolaunchWeb.HomeLive do
     |> String.reverse()
     |> String.graphemes()
     |> Enum.chunk_every(3)
-    |> Enum.map(&Enum.join/1)
-    |> Enum.join(",")
+    |> Enum.map_join(",", &Enum.join/1)
     |> String.reverse()
   end
 

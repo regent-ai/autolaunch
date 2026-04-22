@@ -537,8 +537,7 @@ defmodule AutolaunchWeb.AuctionsLive do
       ens_name(row.trust)
     ]
     |> Enum.filter(&is_binary/1)
-    |> Enum.map(&String.downcase/1)
-    |> Enum.join(" ")
+    |> Enum.map_join(" ", &String.downcase/1)
   end
 
   defp ens_name(%{ens: %{connected: true, name: name}}) when is_binary(name), do: name
@@ -620,9 +619,8 @@ defmodule AutolaunchWeb.AuctionsLive do
   defp parse_decimal(""), do: nil
 
   defp parse_decimal(value) when is_binary(value) do
-    try do
-      D.new(value)
-    rescue
+    case D.parse(value) do
+      {decimal, ""} -> decimal
       _ -> nil
     end
   end
@@ -682,8 +680,7 @@ defmodule AutolaunchWeb.AuctionsLive do
     |> String.reverse()
     |> String.graphemes()
     |> Enum.chunk_every(3)
-    |> Enum.map(&Enum.join/1)
-    |> Enum.join(",")
+    |> Enum.map_join(",", &Enum.join/1)
     |> String.reverse()
   end
 

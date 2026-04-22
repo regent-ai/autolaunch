@@ -21,9 +21,9 @@ function animateIntro(root: MotionRoot): void {
   }
 
   revealSequence(root, ":scope > *", {
-    translateY: 18,
-    delay: 70,
-    duration: 560,
+    translateY: 14,
+    delay: 40,
+    duration: 380,
   })
 }
 

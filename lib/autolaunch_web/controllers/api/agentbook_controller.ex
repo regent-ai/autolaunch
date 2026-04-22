@@ -72,7 +72,7 @@ defmodule AutolaunchWeb.Api.AgentbookController do
   end
 
   defp render_error(conn, %Error{} = error) do
-    ApiError.render(conn, :unprocessable_entity, "agentbook_invalid", Exception.message(error))
+    ApiError.render(conn, :unprocessable_entity, "agentbook_invalid", error.message)
   end
 
   defp render_error(conn, {:transaction_pending, tx_hash}) do

@@ -19,6 +19,7 @@ defmodule AutolaunchWeb.ContractsLive do
      |> assign(:job_id, Map.get(params, "job_id"))
      |> assign(:subject_id, Map.get(params, "subject_id"))
      |> assign(:job_scope, nil)
+     |> assign(:settlement_summary, nil)
      |> assign(:subject_scope, nil)
      |> assign(:admin_scope, nil)
      |> assign(:wallet_switch, nil)
@@ -177,6 +178,29 @@ defmodule AutolaunchWeb.ContractsLive do
       <%= if @job_scope do %>
         <section id="contracts-job" class="al-contract-grid" phx-hook="MissionMotion">
           <article class="al-panel al-contract-card">
+            <p class="al-kicker">Settlement</p>
+            <h3>Current post-auction branch</h3>
+            <div class="al-contract-kv">
+              <div><span>Settlement state</span><strong>{humanize_key(@settlement_summary.settlement_state)}</strong></div>
+              <div><span>Recommended next move</span><strong>{humanize_key(@settlement_summary.recommended_action)}</strong></div>
+              <div><span>Required signer</span><strong>{humanize_key(@settlement_summary.required_actor || "none")}</strong></div>
+              <div><span>Fee ownership accepted</span><strong>{yes_no(@settlement_summary.ownership_status.all_accepted)}</strong></div>
+            </div>
+            <p :if={@settlement_summary.blocked_reason} class="al-inline-note">
+              {@settlement_summary.blocked_reason}
+            </p>
+            <div class="al-contract-list">
+              <div
+                :for={action <- @settlement_summary.allowed_actions}
+                class="al-contract-list-item"
+              >
+                <span>Allowed now</span>
+                <strong>{humanize_key(action)}</strong>
+              </div>
+            </div>
+          </article>
+
+          <article class="al-panel al-contract-card">
             <p class="al-kicker">Launch deployment</p>
             <h3>Controller result and provenance</h3>
             <div class="al-contract-kv">
@@ -200,6 +224,8 @@ defmodule AutolaunchWeb.ContractsLive do
               <div><span>Strategy</span><strong>{short_address(@job_scope.strategy.address)}</strong></div>
               <div><span>Auction</span><strong>{short_address(@job_scope.strategy.auction_address)}</strong></div>
               <div><span>Migrated</span><strong>{yes_no(@job_scope.strategy.migrated)}</strong></div>
+              <div><span>Strategy USDC</span><strong>{display_uint(@settlement_summary.balance_snapshot.strategy.usdc_balance)}</strong></div>
+              <div><span>Strategy token</span><strong>{display_uint(@settlement_summary.balance_snapshot.strategy.token_balance)}</strong></div>
               <div><span>Pool id</span><strong>{short_hash(@job_scope.strategy.migrated_pool_id)}</strong></div>
               <div><span>Position id</span><strong>{display_uint(@job_scope.strategy.migrated_position_id)}</strong></div>
               <div><span>Liquidity</span><strong>{display_uint(@job_scope.strategy.migrated_liquidity)}</strong></div>
@@ -208,8 +234,24 @@ defmodule AutolaunchWeb.ContractsLive do
             </div>
             <div class="al-contract-action-row">
               <button type="button" class="al-submit" phx-click="prepare_action" phx-value-scope="job" phx-value-resource="strategy" phx-value-action="migrate" phx-value-form_name="strategy_migrate">Prepare migrate</button>
+              <button type="button" class="al-ghost" phx-click="prepare_action" phx-value-scope="job" phx-value-resource="strategy" phx-value-action="recover_failed_auction" phx-value-form_name="strategy_recover_failed_auction">Prepare failed-auction recovery</button>
               <button type="button" class="al-ghost" phx-click="prepare_action" phx-value-scope="job" phx-value-resource="strategy" phx-value-action="sweep_token" phx-value-form_name="strategy_sweep_token">Prepare sweep token</button>
               <button type="button" class="al-ghost" phx-click="prepare_action" phx-value-scope="job" phx-value-resource="strategy" phx-value-action="sweep_currency" phx-value-form_name="strategy_sweep_currency">Prepare sweep currency</button>
+            </div>
+          </article>
+
+          <article class="al-panel al-contract-card">
+            <p class="al-kicker">Auction</p>
+            <h3>Auction-side balances and return actions</h3>
+            <div class="al-contract-kv">
+              <div><span>Auction</span><strong>{short_address(@job_scope.auction.address)}</strong></div>
+              <div><span>Graduated</span><strong>{yes_no(@job_scope.auction.graduated)}</strong></div>
+              <div><span>Auction USDC</span><strong>{display_uint(@job_scope.auction.currency_balance)}</strong></div>
+              <div><span>Auction token</span><strong>{display_uint(@job_scope.auction.token_balance)}</strong></div>
+            </div>
+            <div class="al-contract-action-row">
+              <button type="button" class="al-submit" phx-click="prepare_action" phx-value-scope="job" phx-value-resource="auction" phx-value-action="sweep_currency" phx-value-form_name="auction_sweep_currency">Prepare auction currency return</button>
+              <button type="button" class="al-ghost" phx-click="prepare_action" phx-value-scope="job" phx-value-resource="auction" phx-value-action="sweep_unsold_tokens" phx-value-form_name="auction_sweep_unsold_tokens">Prepare unsold token return</button>
             </div>
           </article>
 
@@ -241,12 +283,18 @@ defmodule AutolaunchWeb.ContractsLive do
             <h3>Pool registration and locked hook state</h3>
             <div class="al-contract-kv">
               <div><span>Registry</span><strong>{short_address(@job_scope.fee_registry.address)}</strong></div>
+              <div><span>Owner</span><strong>{short_address(@job_scope.fee_registry.owner)}</strong></div>
+              <div><span>Pending owner</span><strong>{short_address(@job_scope.fee_registry.pending_owner)}</strong></div>
+              <div><span>Ownership status</span><strong>{humanize_key(@job_scope.fee_registry.ownership_status)}</strong></div>
               <div><span>Pool id</span><strong>{short_hash(@job_scope.fee_registry.pool_id)}</strong></div>
               <div :if={@job_scope.fee_registry.pool_config}><span>Hook enabled</span><strong>{yes_no(@job_scope.fee_registry.pool_config.hook_enabled)}</strong></div>
               <div :if={@job_scope.fee_registry.pool_config}><span>Pool fee</span><strong>{display_uint(@job_scope.fee_registry.pool_config.pool_fee)}</strong></div>
               <div :if={@job_scope.fee_registry.pool_config}><span>Tick spacing</span><strong>{display_int(@job_scope.fee_registry.pool_config.tick_spacing)}</strong></div>
               <div :if={@job_scope.fee_registry.pool_config}><span>Treasury</span><strong>{short_address(@job_scope.fee_registry.pool_config.treasury)}</strong></div>
               <div :if={@job_scope.fee_registry.pool_config}><span>Regent recipient</span><strong>{short_address(@job_scope.fee_registry.pool_config.regent_recipient)}</strong></div>
+            </div>
+            <div class="al-contract-action-row">
+              <button type="button" class="al-submit" phx-click="prepare_action" phx-value-scope="job" phx-value-resource="fee_registry" phx-value-action="accept_ownership" phx-value-form_name="fee_registry_accept_ownership">Prepare ownership acceptance</button>
             </div>
           </article>
 
@@ -256,6 +304,9 @@ defmodule AutolaunchWeb.ContractsLive do
             <div class="al-contract-kv">
               <div><span>Vault</span><strong>{short_address(@job_scope.fee_vault.address)}</strong></div>
               <div><span>Hook</span><strong>{short_address(@job_scope.fee_vault.hook)}</strong></div>
+              <div><span>Owner</span><strong>{short_address(@job_scope.fee_vault.owner)}</strong></div>
+              <div><span>Pending owner</span><strong>{short_address(@job_scope.fee_vault.pending_owner)}</strong></div>
+              <div><span>Ownership status</span><strong>{humanize_key(@job_scope.fee_vault.ownership_status)}</strong></div>
               <div><span>Treasury token</span><strong>{display_uint(@job_scope.fee_vault.treasury_accrued.token)}</strong></div>
               <div><span>Treasury USDC</span><strong>{display_uint(@job_scope.fee_vault.treasury_accrued.usdc)}</strong></div>
               <div><span>Regent token</span><strong>{display_uint(@job_scope.fee_vault.regent_accrued.token)}</strong></div>
@@ -279,6 +330,22 @@ defmodule AutolaunchWeb.ContractsLive do
             <div class="al-contract-action-row">
               <button type="button" class="al-submit" phx-click="prepare_action" phx-value-scope="job" phx-value-resource="fee_vault" phx-value-action="withdraw_treasury" phx-value-form_name="fee_vault_withdraw_treasury">Prepare treasury withdrawal</button>
               <button type="button" class="al-ghost" phx-click="prepare_action" phx-value-scope="job" phx-value-resource="fee_vault" phx-value-action="withdraw_regent_share" phx-value-form_name="fee_vault_withdraw_regent">Prepare Regent withdrawal</button>
+              <button type="button" class="al-ghost" phx-click="prepare_action" phx-value-scope="job" phx-value-resource="fee_vault" phx-value-action="accept_ownership" phx-value-form_name="fee_vault_accept_ownership">Prepare ownership acceptance</button>
+            </div>
+          </article>
+
+          <article class="al-panel al-contract-card">
+            <p class="al-kicker">Hook</p>
+            <h3>Hook ownership handoff</h3>
+            <div class="al-contract-kv">
+              <div><span>Hook</span><strong>{short_address(@job_scope.hook.address)}</strong></div>
+              <div><span>Owner</span><strong>{short_address(@job_scope.hook.owner)}</strong></div>
+              <div><span>Pending owner</span><strong>{short_address(@job_scope.hook.pending_owner)}</strong></div>
+              <div><span>Ownership status</span><strong>{humanize_key(@job_scope.hook.ownership_status)}</strong></div>
+              <div><span>Pool id</span><strong>{short_hash(@job_scope.hook.pool_id)}</strong></div>
+            </div>
+            <div class="al-contract-action-row">
+              <button type="button" class="al-submit" phx-click="prepare_action" phx-value-scope="job" phx-value-resource="hook" phx-value-action="accept_ownership" phx-value-form_name="hook_accept_ownership">Prepare ownership acceptance</button>
             </div>
           </article>
         </section>
@@ -530,6 +597,7 @@ defmodule AutolaunchWeb.ContractsLive do
     assign(socket,
       admin_scope: load_admin_scope(),
       job_scope: job_scope,
+      settlement_summary: job_scope && Map.get(job_scope, :settlement),
       subject_scope: subject_scope,
       wallet_switch: wallet_switch_prompt(socket.assigns.current_human, job_scope, subject_scope)
     )

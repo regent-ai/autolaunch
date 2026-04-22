@@ -2,9 +2,9 @@ defmodule AutolaunchWeb.Api.LaunchController do
   use AutolaunchWeb, :controller
 
   alias Autolaunch.Launch
-  alias AutolaunchWeb.ClientIp
   alias AutolaunchWeb.ApiError
   alias AutolaunchWeb.ApiErrorTranslator
+  alias AutolaunchWeb.ClientIp
 
   def preview(conn, params) do
     case launch_module().preview_launch(params, conn.assigns[:current_human]) do

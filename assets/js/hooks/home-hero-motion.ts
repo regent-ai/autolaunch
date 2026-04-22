@@ -59,9 +59,9 @@ export const HomeHeroMotion: Hook = {
     if (reducedMotion()) return
 
     revealSequence(root, "[data-home-hero-reveal]", {
-      translateY: 22,
-      delay: 90,
-      duration: 620,
+      translateY: 16,
+      delay: 50,
+      duration: 440,
     })
 
     animateOrbit(root, ".al-homepage-orbit", 42000, 1)
