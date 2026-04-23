@@ -72,36 +72,80 @@ defmodule AutolaunchWeb.AuctionsLive do
             </div>
           </div>
 
+          <div :if={!is_nil(@current_human)} class="al-auctions-attention-band" data-market-reveal>
+            <div class="al-auctions-attention-copy">
+              <p class="al-kicker">Your attention</p>
+              <h2>Start where this wallet needs you most.</h2>
+            </div>
+            <div class="al-auctions-attention-grid">
+              <.link navigate={~p"/positions?status=active"} class="al-auctions-attention-card">
+                <span>Active bids</span>
+                <strong>{@attention_summary.active_bid_count}</strong>
+                <p>Still moving with open markets</p>
+              </.link>
+              <.link navigate={~p"/positions?status=claimable"} class="al-auctions-attention-card">
+                <span>Claimable</span>
+                <strong>{@attention_summary.claimable_count}</strong>
+                <p>Ready to collect</p>
+              </.link>
+              <.link navigate={~p"/positions?status=closing_soon"} class="al-auctions-attention-card">
+                <span>Closing soon</span>
+                <strong>{@attention_summary.closing_soon_count}</strong>
+                <p>Active bids near the finish</p>
+              </.link>
+              <.link navigate={~p"/positions?status=needs_attention"} class="al-auctions-attention-card is-hot">
+                <span>Needs attention</span>
+                <strong>{@attention_summary.needs_attention_count}</strong>
+                <p>Claims, returns, or bids to review</p>
+              </.link>
+            </div>
+          </div>
+
           <div class="al-auctions-market-strip">
           <article class="al-auctions-market-stat" data-market-reveal>
             <div class="al-auctions-market-stat-head">
               <span class="al-auctions-market-dot is-open"></span>
-              <span>Total market cap</span>
+              <span>Whole market cap</span>
             </div>
             <strong
-              data-market-counter={@market_totals.total_market_cap_raw || "0"}
+              data-market-counter={@market_totals.whole_market_cap_raw || "0"}
               data-market-prefix="$"
               data-market-suffix=""
               data-market-decimals="0"
             >
-              {@market_totals.total_market_cap}
+              {@market_totals.whole_market_cap}
             </strong>
-            <p>Across this view</p>
+            <p>All tracked auctions</p>
           </article>
           <article class="al-auctions-market-stat" data-market-reveal>
             <div class="al-auctions-market-stat-head">
               <span class="al-auctions-market-dot is-volume"></span>
-              <span>Total bid volume</span>
+              <span>This view cap</span>
             </div>
             <strong
-              data-market-counter={@market_totals.visible_bid_volume_raw || "0"}
+              data-market-counter={@market_totals.filtered_market_cap_raw || "0"}
               data-market-prefix="$"
               data-market-suffix=""
               data-market-decimals="0"
             >
-              {@market_totals.visible_bid_volume}
+              {@market_totals.filtered_market_cap}
             </strong>
-            <p>Visible auctions</p>
+            <p>After filters</p>
+          </article>
+          <article class="al-auctions-market-stat" data-market-reveal>
+            <div class="al-auctions-market-stat-head">
+              <span class="al-auctions-market-dot is-volume"></span>
+              <span>This view bids</span>
+            </div>
+            <strong
+              data-market-counter={@market_totals.filtered_bid_volume_raw || "0"}
+              data-market-prefix="$"
+              data-market-suffix=""
+              data-market-decimals="0"
+            >
+              {@market_totals.filtered_bid_volume}
+            </strong>
+            <p>After filters</p>
           </article>
           <article class="al-auctions-market-stat" data-market-reveal>
             <div class="al-auctions-market-stat-head">
@@ -132,15 +176,15 @@ defmodule AutolaunchWeb.AuctionsLive do
           <article class="al-auctions-market-stat" data-market-reveal>
             <div class="al-auctions-market-stat-head">
               <span class="al-auctions-market-dot is-volume"></span>
-              <span>Returns ready</span>
+              <span>Needs attention</span>
             </div>
             <strong
-              data-market-counter={Integer.to_string(@market_totals.returns_ready_count)}
+              data-market-counter={Integer.to_string(@attention_summary.needs_attention_count)}
               data-market-decimals="0"
             >
-              {@market_totals.returns_ready_count}
+              {@attention_summary.needs_attention_count}
             </strong>
-            <p>Ready to claim</p>
+            <p>This wallet</p>
           </article>
         </div>
 
@@ -476,6 +520,7 @@ defmodule AutolaunchWeb.AuctionsLive do
         socket.assigns[:current_human]
       )
 
+    positions = positions_for_attention(socket.assigns[:current_human])
     network_options = network_options(directory)
     sanitized_filters = sanitize_filters(filters, network_options)
     visible_rows = visible_rows(directory, sanitized_filters)
@@ -490,6 +535,7 @@ defmodule AutolaunchWeb.AuctionsLive do
     |> assign(:network_options, network_options)
     |> assign(:show_network_filter, length(network_options) > 1)
     |> assign(:market_totals, market_totals(directory, visible_rows))
+    |> assign(:attention_summary, attention_summary(positions))
   end
 
   defp reload_directory(socket), do: assign_directory(socket, socket.assigns.filters)
@@ -593,43 +639,79 @@ defmodule AutolaunchWeb.AuctionsLive do
   end
 
   defp market_totals(directory, visible_rows) do
-    visible_bid_volume_raw =
-      visible_rows
-      |> Enum.map(&parse_decimal(&1.total_bid_volume))
-      |> Enum.reject(&is_nil/1)
-      |> case do
-        [] -> nil
-        [first | rest] -> Enum.reduce(rest, first, &D.add/2)
-      end
-
-    total_market_cap_raw =
-      visible_rows
-      |> Enum.map(&parse_decimal(&1.implied_market_cap_usdc))
-      |> Enum.reject(&is_nil/1)
-      |> case do
-        [] -> nil
-        [first | rest] -> Enum.reduce(rest, first, &D.add/2)
-      end
+    whole_market_cap_raw = decimal_sum(directory, :implied_market_cap_usdc)
+    filtered_market_cap_raw = decimal_sum(visible_rows, :implied_market_cap_usdc)
+    filtered_bid_volume_raw = decimal_sum(visible_rows, :total_bid_volume)
 
     %{
       open_count: Enum.count(directory, &(&1.phase == "biddable")),
       shown_count: length(visible_rows),
       ending_soon_count: Enum.count(visible_rows, &ending_soon?/1),
       returns_ready_count: Enum.count(directory, &truthy?(Map.get(&1, :returns_enabled))),
-      total_market_cap_raw:
-        if(total_market_cap_raw, do: D.to_string(total_market_cap_raw, :normal), else: nil),
-      total_market_cap:
+      whole_market_cap_raw:
+        if(whole_market_cap_raw, do: D.to_string(whole_market_cap_raw, :normal), else: nil),
+      whole_market_cap:
         format_large_currency(
-          if(total_market_cap_raw, do: D.to_string(total_market_cap_raw, :normal), else: "0")
+          if(whole_market_cap_raw, do: D.to_string(whole_market_cap_raw, :normal), else: "0")
         ),
-      visible_bid_volume_raw:
-        if(visible_bid_volume_raw, do: D.to_string(visible_bid_volume_raw, :normal), else: nil),
-      visible_bid_volume:
+      filtered_market_cap_raw:
+        if(filtered_market_cap_raw, do: D.to_string(filtered_market_cap_raw, :normal), else: nil),
+      filtered_market_cap:
         format_large_currency(
-          if(visible_bid_volume_raw, do: D.to_string(visible_bid_volume_raw, :normal), else: "0")
+          if(filtered_market_cap_raw,
+            do: D.to_string(filtered_market_cap_raw, :normal),
+            else: "0"
+          )
+        ),
+      filtered_bid_volume_raw:
+        if(filtered_bid_volume_raw, do: D.to_string(filtered_bid_volume_raw, :normal), else: nil),
+      filtered_bid_volume:
+        format_large_currency(
+          if(filtered_bid_volume_raw,
+            do: D.to_string(filtered_bid_volume_raw, :normal),
+            else: "0"
+          )
         )
     }
   end
+
+  defp decimal_sum(rows, key) do
+    rows
+    |> Enum.map(&(Map.get(&1, key) |> parse_decimal()))
+    |> Enum.reject(&is_nil/1)
+    |> case do
+      [] -> nil
+      [first | rest] -> Enum.reduce(rest, first, &D.add/2)
+    end
+  end
+
+  defp positions_for_attention(nil), do: []
+
+  defp positions_for_attention(current_human) do
+    launch_module().list_positions(current_human, %{"status" => ""})
+  end
+
+  defp attention_summary(positions) do
+    claimable_count = Enum.count(positions, &(&1.status == "claimable"))
+    returnable_count = Enum.count(positions, &(&1.status == "returnable"))
+    active_bid_count = Enum.count(positions, &(&1.status in ["active", "borderline"]))
+    closing_soon_count = Enum.count(positions, &position_closing_soon?/1)
+    inactive_count = Enum.count(positions, &(&1.status == "inactive"))
+
+    %{
+      active_bid_count: active_bid_count,
+      claimable_count: claimable_count,
+      closing_soon_count: closing_soon_count,
+      needs_attention_count:
+        claimable_count + returnable_count + inactive_count + closing_soon_count
+    }
+  end
+
+  defp position_closing_soon?(%{status: status, auction: auction})
+       when status in ["active", "borderline"] and is_map(auction),
+       do: ending_soon?(auction)
+
+  defp position_closing_soon?(_position), do: false
 
   defp parse_decimal(nil), do: nil
   defp parse_decimal(""), do: nil

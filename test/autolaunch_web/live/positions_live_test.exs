@@ -57,6 +57,25 @@ defmodule AutolaunchWeb.PositionsLiveTest do
               }
             }
           }
+        },
+        %{
+          bid_id: "bid_soon",
+          auction_id: "auc_3",
+          agent_name: "Ember",
+          chain: "Base Sepolia",
+          status: "active",
+          amount: "50.0",
+          max_price: "0.0070",
+          current_clearing_price: "0.0068",
+          inactive_above_price: "0.0067",
+          next_action_label: "Bid is still participating.",
+          auction: %{
+            ends_at: DateTime.add(DateTime.utc_now(), 1_200, :second) |> DateTime.to_iso8601()
+          },
+          tx_actions: %{
+            exit: nil,
+            claim: nil
+          }
         }
       ]
 
@@ -108,12 +127,15 @@ defmodule AutolaunchWeb.PositionsLiveTest do
 
     assert html =~ "Portfolio overview"
     assert html =~ "Returns available"
+    assert html =~ "Closing soon"
+    assert html =~ "Needs attention"
     assert html =~ "Recent activity"
     assert html =~ "Search by token or auction ID"
     assert html =~ "Exit bid"
     assert html =~ "Claim tokens"
     assert html =~ "Atlas"
     assert html =~ "Nova"
+    assert html =~ "Ember"
   end
 
   test "status filters narrow the signed-in positions list", %{conn: conn, human: human} do
@@ -155,5 +177,19 @@ defmodule AutolaunchWeb.PositionsLiveTest do
     assert has_element?(view, "#position-row-bid_claim")
     refute has_element?(view, "#position-row-bid_exit")
     assert html =~ "Review claims"
+  end
+
+  test "attention filters show bids closing soon", %{conn: conn, human: human} do
+    conn = init_test_session(conn, privy_user_id: human.privy_user_id)
+    {:ok, view, _html} = live(conn, "/positions")
+
+    html =
+      view
+      |> element(".al-positions-filter-row button[phx-value-status='closing_soon']")
+      |> render_click()
+
+    assert html =~ "Ember"
+    refute has_element?(view, "#position-row-bid_exit")
+    refute has_element?(view, "#position-row-bid_claim")
   end
 end

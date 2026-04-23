@@ -87,6 +87,22 @@ defmodule AutolaunchWeb.AuctionsLiveTest do
       |> maybe_sort(filters["sort"])
     end
 
+    def list_positions(nil, _filters), do: []
+
+    def list_positions(_human, _filters) do
+      [
+        %{
+          status: "active",
+          auction: %{
+            ends_at: DateTime.add(DateTime.utc_now(), 1_800, :second) |> DateTime.to_iso8601()
+          }
+        },
+        %{status: "claimable", auction: %{}},
+        %{status: "returnable", auction: %{}},
+        %{status: "inactive", auction: %{}}
+      ]
+    end
+
     defp maybe_filter_mode(items, nil), do: Enum.filter(items, &(&1.phase == "biddable"))
     defp maybe_filter_mode(items, ""), do: Enum.filter(items, &(&1.phase == "biddable"))
     defp maybe_filter_mode(items, "all"), do: items
@@ -132,6 +148,9 @@ defmodule AutolaunchWeb.AuctionsLiveTest do
         }
       ]
     end
+
+    def list_positions(nil, _filters), do: []
+    def list_positions(_human, _filters), do: []
   end
 
   setup do
@@ -160,8 +179,11 @@ defmodule AutolaunchWeb.AuctionsLiveTest do
     {:ok, _view, html} = live(conn, "/auctions")
 
     assert html =~ "Open markets"
-    assert html =~ "Total market cap"
-    assert html =~ "Total bid volume"
+    assert html =~ "Whole market cap"
+    assert html =~ "This view cap"
+    assert html =~ "This view bids"
+    assert html =~ "Your attention"
+    assert html =~ "Needs attention"
     assert html =~ "Featured market"
     assert html =~ "Top markets"
     assert html =~ "Atlas"

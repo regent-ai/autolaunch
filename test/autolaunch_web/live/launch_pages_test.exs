@@ -399,8 +399,8 @@ defmodule AutolaunchWeb.LaunchPagesTest do
     {:ok, _view, html} = live(conn, "/auctions")
 
     assert html =~ "Open markets"
-    assert html =~ "Total market cap"
-    assert html =~ "Total bid volume"
+    assert html =~ "Whole market cap"
+    assert html =~ "This view bids"
   end
 
   test "positions page renders sign-in guidance for guests", %{conn: conn} do

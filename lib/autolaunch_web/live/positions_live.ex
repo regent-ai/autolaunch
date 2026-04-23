@@ -129,9 +129,15 @@ defmodule AutolaunchWeb.PositionsLive do
             </article>
 
             <article class="al-panel al-positions-summary-card">
-              <span>Auction wins</span>
-              <strong>{@summary.won_total_count}</strong>
-              <p>Settled or claimable</p>
+              <span>Closing soon</span>
+              <strong>{@summary.closing_soon_count}</strong>
+              <p>Bids near the finish</p>
+            </article>
+
+            <article class="al-panel al-positions-summary-card">
+              <span>Needs attention</span>
+              <strong>{@summary.needs_attention_count}</strong>
+              <p>Review before bidding again</p>
             </article>
           </section>
 
@@ -267,6 +273,22 @@ defmodule AutolaunchWeb.PositionsLive do
                       phx-value-status="borderline"
                     >
                       Borderline
+                    </button>
+                    <button
+                      type="button"
+                      class={["al-account-pill", @filters["status"] == "closing_soon" && "is-active"]}
+                      phx-click="quick_filter"
+                      phx-value-status="closing_soon"
+                    >
+                      Closing soon
+                    </button>
+                    <button
+                      type="button"
+                      class={["al-account-pill", @filters["status"] == "needs_attention" && "is-active"]}
+                      phx-click="quick_filter"
+                      phx-value-status="needs_attention"
+                    >
+                      Needs attention
                     </button>
                   </div>
 
@@ -456,7 +478,16 @@ defmodule AutolaunchWeb.PositionsLive do
   end
 
   defp sanitize_status(status)
-       when status in ["", "active", "borderline", "claimable", "returnable", "inactive"],
+       when status in [
+              "",
+              "active",
+              "borderline",
+              "claimable",
+              "returnable",
+              "inactive",
+              "closing_soon",
+              "needs_attention"
+            ],
        do: status
 
   defp sanitize_status(_status), do: ""
@@ -472,6 +503,11 @@ defmodule AutolaunchWeb.PositionsLive do
 
   defp filter_by_status(positions, nil), do: positions
   defp filter_by_status(positions, ""), do: positions
+  defp filter_by_status(positions, "closing_soon"), do: Enum.filter(positions, &closing_soon?/1)
+
+  defp filter_by_status(positions, "needs_attention"),
+    do: Enum.filter(positions, &needs_attention?/1)
+
   defp filter_by_status(positions, status), do: Enum.filter(positions, &(&1.status == status))
 
   defp filter_by_search(positions, nil), do: positions
@@ -499,17 +535,46 @@ defmodule AutolaunchWeb.PositionsLive do
   defp positions_summary(positions) do
     active = Enum.count(positions, &(&1.status == "active"))
     borderline = Enum.count(positions, &(&1.status == "borderline"))
-    ending_soon = Enum.count(positions, &(&1.status == "ending-soon"))
+    closing_soon = Enum.count(positions, &closing_soon?/1)
 
     %{
       total_count: length(positions),
       claimable_count: Enum.count(positions, &(&1.status == "claimable")),
       returnable_count: Enum.count(positions, &(&1.status == "returnable")),
-      active_total_count: active + borderline + ending_soon,
+      active_total_count: active + borderline,
+      closing_soon_count: closing_soon,
+      needs_attention_count: Enum.count(positions, &needs_attention?/1),
       won_total_count: Enum.count(positions, &(&1.status in ["claimable", "claimed", "settled"])),
       tracked_exposure: positions_total(positions)
     }
   end
+
+  defp needs_attention?(position) do
+    position.status in ["claimable", "returnable", "inactive", "borderline"] or
+      closing_soon?(position)
+  end
+
+  defp closing_soon?(%{status: status, auction: auction})
+       when status in ["active", "borderline"] and is_map(auction) do
+    auction
+    |> Map.get(:ends_at)
+    |> closing_soon_time?()
+  end
+
+  defp closing_soon?(_position), do: false
+
+  defp closing_soon_time?(value) when is_binary(value) do
+    case DateTime.from_iso8601(value) do
+      {:ok, datetime, _} ->
+        seconds = DateTime.diff(datetime, DateTime.utc_now(), :second)
+        seconds > 0 and seconds <= 7_200
+
+      _ ->
+        false
+    end
+  end
+
+  defp closing_soon_time?(_value), do: false
 
   defp positions_total(positions) do
     Enum.reduce(positions, Decimal.new(0), fn position, acc ->
@@ -584,6 +649,9 @@ defmodule AutolaunchWeb.PositionsLive do
   defp positions_action_title(%{returnable_count: count}) when count > 0,
     do: "Clear failed-auction returns."
 
+  defp positions_action_title(%{closing_soon_count: count}) when count > 0,
+    do: "Review auctions closing soon."
+
   defp positions_action_title(%{active_total_count: count}) when count > 0,
     do: "Watch active bids."
 
@@ -595,6 +663,9 @@ defmodule AutolaunchWeb.PositionsLive do
   defp positions_action_body(%{returnable_count: count}) when count > 0,
     do: "#{count} positions can return USDC from failed raises."
 
+  defp positions_action_body(%{closing_soon_count: count}) when count > 0,
+    do: "#{count} active bids are near the finish. Check them before the market closes."
+
   defp positions_action_body(%{active_total_count: count}) when count > 0,
     do: "#{count} active bids are still moving with the market."
 
@@ -603,10 +674,15 @@ defmodule AutolaunchWeb.PositionsLive do
 
   defp positions_primary_status(%{claimable_count: count}) when count > 0, do: "claimable"
   defp positions_primary_status(%{returnable_count: count}) when count > 0, do: "returnable"
+  defp positions_primary_status(%{closing_soon_count: count}) when count > 0, do: "closing_soon"
   defp positions_primary_status(_summary), do: ""
 
   defp positions_primary_label(%{claimable_count: count}) when count > 0, do: "Review claims"
   defp positions_primary_label(%{returnable_count: count}) when count > 0, do: "Review returns"
+
+  defp positions_primary_label(%{closing_soon_count: count}) when count > 0,
+    do: "Review closing soon"
+
   defp positions_primary_label(_summary), do: "Show all positions"
 
   defp status_copy("active"), do: "Active — receiving tokens at the current clearing price."
