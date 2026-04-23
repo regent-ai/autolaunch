@@ -1,0 +1,558 @@
+
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{amsmath, amssymb}
+\usepackage{booktabs, tabularx, array, longtable}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{parskip}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,calc,decorations.pathreplacing,positioning,shapes.geometric,shapes.symbols}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!50!black,
+  urlcolor=blue!50!black,
+  pdftitle={Autolaunch: Capital Formation for Agent Businesses},
+  pdfauthor={Regents Labs}
+}
+
+\newcommand{\REGENT}{\texttt{\$REGENT}}
+\newcommand{\USDC}{\textsc{USDC}}
+\graphicspath{{/Users/sean/Documents/regent/images/litepapers/autolaunch/}{../Documents/regent/images/litepapers/autolaunch/}}
+\newcommand{\paperdiagram}[1]{%
+\begin{center}
+\includegraphics[width=0.96\linewidth]{#1}
+\end{center}
+}
+
+\title{\textbf{Autolaunch: Capital Formation for Agent Businesses}\\[4pt]
+\large The market and revenue layer of the Regents stack}
+\author{Regents Labs\\[3pt]Author: Sean Brennan \texttt{@seanwbren}}
+\date{April 23, 2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Autolaunch is the capital and market layer of the Regents stack. It is designed for agents and agent-native teams that already have real edge but need runway before revenue fully arrives. The core design pairs a continuous clearing auction with stablecoin-first treasury formation and onchain revenue rails. In the Regents view, launches should finance the next phase of work, not merely price a story. Autolaunch serves crypto-native readers, agent users, AI builders, and AI-for-science teams who want a cleaner path from agent capability to durable business formation.
+\end{abstract}
+
+\clearpage
+\tableofcontents
+
+\section{Executive Summary}
+
+Autolaunch is how Regents turns agent edge into runway.
+
+Useful agents do not fail because they lack imagination. They fail because costs arrive before durable revenue. Model calls, compute, storage, evaluations, distribution, retries, and human oversight all cost money long before a good agent becomes a real business. Most token launches do not solve that problem. They distribute supply, attract attention, and leave treasury design, revenue routing, and post-launch alignment as an afterthought.
+
+Autolaunch is built to solve the whole path, not just the launch moment. It gives an agent business a way to prepare a launch, run a continuous clearing auction, seed liquidity, create treasury runway in stable units, and route future recognized revenue through onchain rails that remain legible after launch day.
+
+That is the center of the product:
+
+\begin{quote}
+\textbf{Launches should finance the next phase of work, not merely price a story.}
+\end{quote}
+
+Autolaunch is also part of a larger Regents company thesis. Regents makes an agent operable. Techtree makes an agent's work public and legible. Autolaunch makes that agent fundable. Together, they form a stack for agent-native companies: identity, runtime, public proof, capital, and revenue.
+
+The strongest claim is simple. Tokens are excellent coordination tools. Stablecoins pay the bills. Durable agent businesses need both. Autolaunch is designed to connect them.
+
+\paperdiagram{agentflywheel.png}
+
+\section{Why Autolaunch Exists}
+
+An agent business has a structural mismatch.
+
+Proof compounds slowly. Costs do not.
+
+A strong coding agent may need months of compute, infra, evals, and distribution before revenue becomes steady. A research agent may need repeated experiments, public review, reruns, and tooling before its work becomes monetizable. A market-facing agent may have clear product edge but still need time, trust, and liquidity before users or buyers show up at scale.
+
+This is where most existing systems break.
+
+A chat product can make an agent useful, but it does not give that agent a treasury.
+
+A private software workflow can make an agent productive, but it does not give that agent a public market.
+
+A token launch can create price and attention, but it often does not create durable business alignment.
+
+Autolaunch starts from a stricter premise: a serious agent business needs capital before revenue, liquidity after launch, and a post-launch relationship that is stronger than pure speculation.
+
+That means Autolaunch is solving three linked problems at once:
+
+\begin{enumerate}[leftmargin=1.5em]
+  \item \textbf{Initial capital formation.} How does an agent with a real edge raise working capital for compute, distribution, tooling, and growth?
+  \item \textbf{Market structure.} How do you price that opportunity without turning launch day into a pure speed game?
+  \item \textbf{Post-launch alignment.} Once the token exists, why should anyone continue to care after the first spike in attention?
+\end{enumerate}
+
+Autolaunch exists because the answer to those three questions should be one system, not three disconnected hacks.
+
+\section{The Core Idea}
+
+The core idea behind Autolaunch fits in one line:
+
+\begin{quote}
+\textbf{Tokens bootstrap belief. Stablecoins sustain businesses.}
+\end{quote}
+
+A launch can do an important job. It can gather aligned capital, create an initial market, and give an agent treasury room to operate. But a launch alone is not enough. On its own, a launch can still be just a cleaner way to tell a story.
+
+The deeper Autolaunch thesis is that the story becomes much stronger once real stablecoin revenue reaches a contract-defined lane onchain.
+
+That point matters because agent businesses spend in stable units. Compute, API usage, researchers, operators, reviewers, and infrastructure are not paid in vibes. A token may coordinate a community. A stablecoin treasury keeps the system alive.
+
+This is why the recognized-revenue rule matters so much in Autolaunch. Only Base \USDC{} that reaches the subject revsplit counts as recognized revenue. That creates a hard line between narrative and measurable economic activity.
+
+Once that line exists, the launch becomes the beginning of an operating loop rather than the end of a sale:
+
+\begin{center}
+business raises capital $\rightarrow$ business builds $\rightarrow$ business earns stablecoin revenue $\rightarrow$ revenue reaches a visible onchain lane $\rightarrow$ stakers and treasury remain connected
+\end{center}
+
+That is the full idea. Not a token for its own sake. A token as one part of a larger capital-and-revenue system for agents.
+
+\section{Why This Window Matters}
+
+Autolaunch makes the most sense now because three things are finally true at the same time.
+
+First, agents are useful enough to justify persistent businesses. Coding agents, research agents, and operator agents can already perform real work repeatedly. That does not mean every agent deserves a market. It does mean the category is no longer hypothetical.
+
+Second, wallet and stablecoin infrastructure are finally good enough to serve as operating rails rather than side experiments. Base flows and \USDC{} rails make it practical to talk about treasury, revenue, and settlement in the same environment where the product already lives.
+
+Third, people are increasingly comfortable with mixed operating surfaces: browser flows for humans, CLI flows for operators, and shared onchain rails for value transfer. The Regents stack is built around exactly that split.
+
+This combination creates a narrow but powerful opportunity. Agents can now produce real work. Wallet-backed identity is workable. Stablecoin flows are practical. Public proof is possible. That is the first real moment when an ``agent business'' can be more than a metaphor.
+
+Autolaunch is built for that moment.
+
+\section{What Autolaunch Is}
+
+Autolaunch is not just a launchpad.
+
+It is a launch system, a market system, and a revenue system for agent businesses.
+
+In the Regents stack, a launched agent or launched business is the \textbf{subject}. That word appears throughout the contract system. In plain English, it simply means the agent business that is being launched, funded, and tracked.
+
+Autolaunch includes a public market surface and a contract system underneath it.
+
+On the product side, it includes public auction pages, launch preparation, subject pages, position views, trust follow-up, and an operator path that is explicitly CLI-first.
+
+On the contract side, it includes the machinery for launch deployment, liquidity formation, vesting, subject registration, revenue ingress, revsplit accounting, and a separate company-level \REGENT{} staking rail.
+
+That distinction matters. The browser product does not pretend to be the launch engine itself. The app stores workflow state, shows market state, prepares actions, tracks lifecycle progress, and helps humans understand what is happening. The contracts are where the money path and the final economic rules live.
+
+A good public description of Autolaunch is this:
+
+\begin{quote}
+\textbf{Autolaunch is capital formation for agent businesses with an onchain path from launch to recognized revenue.}
+\end{quote}
+
+That is a much more specific claim than ``token launchpad,'' and it is the right one.
+
+\section{How a Launch Works}
+
+The current Autolaunch design is best understood as a sequence.
+
+\subsection{Phase 1: Prepare the launch}
+
+An operator prepares a prelaunch plan, metadata, identity links, and readiness checks. Serious launches require more than contract deployment. They require public context, operator discipline, and a coherent story around what the agent actually does.
+
+\subsection{Phase 2: Deploy the launch stack}
+
+The deployment flow creates the launch-side contract stack for the subject. That includes the token, the auction strategy, the vesting path, fee plumbing, subject registration, and default revenue-ingress configuration.
+
+\subsection{Phase 3: Run the auction}
+
+Autolaunch sells the auction allocation through a continuous clearing auction. Buyers do not simply race to be first. They choose a total budget and a maximum price they are willing to pay, and the order participates across the remaining launch window.
+
+\subsection{Phase 4: Form liquidity and treasury}
+
+The launch routes raised funds and retained supply according to the launch parameters. If total token supply is \(N\) and total \USDC{} raised in the auction is \(A\), the high-level launch split is
+
+\begin{align}
+N_{\text{auction}} &= 0.10N, \\
+N_{\text{LP}} &= 0.05N, \\
+N_{\text{vested}} &= 0.85N,
+\end{align}
+
+and the raise is routed as
+
+\begin{align}
+A_{\text{LP}} &= \tfrac{1}{2}A, \\
+A_{\text{safe}} &= \tfrac{1}{2}A.
+\end{align}
+
+This is where Autolaunch becomes more than a sale page. The launch creates not just a token, but a business scaffold: a market, a treasury, a vesting schedule, a registry record, and a revenue lane.
+
+\subsection{Phase 5: Activate the post-launch relationship}
+
+After launch, the subject continues to exist as an operating business with a public market and a revenue path. Holders can follow the subject, stake when relevant, claim when relevant, and observe future recognized revenue as it reaches the contract-defined lane.
+
+This is the key design move. The token does not end at distribution. The token stays attached to an operating system for the launched agent business.
+
+\paperdiagram{auctionlaunch.png}
+
+\section{Continuous Clearing Auctions}
+
+Autolaunch's auction design is one of its strongest differentiators.
+
+Most launches quietly reward speed, timing, and specialized reflexes. That creates an environment where launch day belongs to the fastest actors, the best bots, or the people most willing to play timing games. It may still produce a price, but it often produces a poor one.
+
+Autolaunch uses a continuous clearing auction instead.
+
+The buyer experience is conceptually simple:
+
+\begin{itemize}[leftmargin=1.5em]
+  \item choose a total budget
+  \item choose the highest token price you are willing to pay
+  \item let the order participate across the remaining blocks
+  \item receive tokens only while the clearing price stays at or below your chosen cap
+\end{itemize}
+
+That is a cleaner mental model than ``win the opening millisecond.''
+
+It also changes the dominant strategy. The design is meant to reward truthful demand more than tactical delay. Waiting does not magically improve your price path. It usually shortens your participation window.
+
+For crypto-native readers, the easiest way to think about this is as a bounded, launch-window TWAP order embedded inside the primary market rather than a pure reflex race.
+
+For AI-native readers, the important point is simpler: the mechanism tries to preserve information. A buyer can express conviction with budget and max price. The system can then clear demand over time rather than flattening everything into a single latency contest.
+
+\subsection{A stylized auction formulation}
+
+The equations below are schematic. They are meant to make the economic design legible, not to serve as line-by-line contract pseudocode.
+
+Let bidder \(i\) choose a total budget \(B_i\) and a maximum acceptable token price \(\bar{p}_i\). Let \(p_t\) be the clearing price in block \(t\), and let \(x_{i,t}\) be the amount of the bidder's budget that clears in that block. Then the order can only clear while the market price is at or below the bidder's cap:
+
+\begin{align}
+x_{i,t} > 0 &\implies p_t \le \bar{p}_i, \\
+\sum_{t=1}^{T} x_{i,t} &\le B_i.
+\end{align}
+
+If a spend amount \(x_{i,t}\) clears at price \(p_t\), then the token output for that block is
+
+\begin{align}
+q_{i,t} &= \frac{x_{i,t}}{p_t}, \\
+Q_i &= \sum_{t=1}^{T} q_{i,t}.
+\end{align}
+
+A simple launch-window pacing rule can be written as
+
+\begin{equation}
+\hat{x}_{i,t} = \frac{B_i^{\mathrm{rem}}(t)}{N^{\mathrm{rem}}(t)},
+\end{equation}
+
+where \(B_i^{\mathrm{rem}}(t)\) is the bidder's remaining budget and \(N^{\mathrm{rem}}(t)\) is the number of blocks remaining in the launch window. The practical intuition is straightforward: the order is spread through time, bounded by a buyer-specified ceiling price, instead of collapsing into a one-second reflex race.
+
+This does not make markets perfect. Large buyers still matter. Demand can still be wrong. External sentiment can still overwhelm careful design. But it does improve the starting conditions for price discovery, and that matters.
+
+\paperdiagram{ccamechanics.png}
+
+\section{From Launch Day to Real Business}
+
+The launch is only the first chapter.
+
+The reason Autolaunch matters is what it enables after launch.
+
+\subsection{Stable runway for the builder}
+
+If the only treasury outcome from launch were more volatile token inventory, the business would still face a mismatch between operating costs and treasury assets. Autolaunch solves this by routing a meaningful share of the raise into \USDC{} runway for the subject Safe.
+
+That means the business can pay for the things that actually matter: models, evals, infra, researchers, operators, growth, and retries.
+
+\subsection{A market that remains legible}
+
+The launch creates a subject with a market, a registry record, and a post-launch surface. The project does not disappear into a contract address. It continues as something people can follow, inspect, and act on.
+
+\subsection{A route for real revenue}
+
+The deeper product thesis appears after the launch. Once the subject begins to earn stablecoin revenue and that revenue reaches the defined revsplit lane, the system can route participation in a way that remains visible and measurable onchain.
+
+That matters because it shifts the conversation. The question is no longer only whether buyers believed the story at launch. The question becomes whether the launched agent business can produce real revenue.
+
+That is a harder standard, and it is also a healthier one.
+
+\subsection{A stylized revsplit model}
+
+Again, the equations below are schematic. They capture the economic intent of the revsplit rather than every implementation detail.
+
+Let \(R\) denote recognized subject revenue deposited into the splitter in Base \USDC{}. Let \(\alpha = 0.01\) be the fixed platform skim. Then
+
+\begin{align}
+F_{\text{Regents}}^{\text{rev}} &= \alpha R = 0.01R, \\
+D_{\text{subj}} &= (1-\alpha)R = 0.99R.
+\end{align}
+
+Let \(\beta \in [0,1]\) denote the share of the subject lane allocated to stakers for a given accounting window. The remainder stays with the subject treasury. Then
+
+\begin{align}
+D_{\text{stakers}} &= \beta D_{\text{subj}}, \\
+D_{\text{treasury}} &= (1-\beta) D_{\text{subj}}.
+\end{align}
+
+If staker \(i\) has active stake \(s_i\) out of total active stake \(S\), then a simple pro-rata claim model is
+
+\begin{equation}
+c_i = D_{\text{stakers}} \cdot \frac{s_i}{S}.
+\end{equation}
+
+The point of writing the revsplit this way is not to imply that every subject will immediately generate revenue. It is to show what changes once revenue arrives: the token stops being only a symbol of launch-day enthusiasm and becomes attached to a measurable economic lane.
+
+\paperdiagram{agentrevsplit.png}
+
+\subsection{Why this matters for AI and science builders}
+
+This matters especially for AI-native builders and research teams.
+
+A research agent may need repeated experimental runs, benchmark cycles, reviews, and public proof before its edge compounds into a product. A coding agent may need long stretches of iteration before it becomes a dependable business. In both cases, runway is everything.
+
+Autolaunch gives those teams a way to turn visible edge into operating time.
+
+\section{Autolaunch Inside the Regents Stack}
+
+Autolaunch is one part of a larger company thesis.
+
+Regents Labs builds infrastructure for agent-native companies rather than another isolated crypto app.
+
+The stack has three core product roles:
+
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Regents} makes the agent operable through identity, runtime, billing, and operator control.
+  \item \textbf{Techtree} makes the work public and legible through research trees, review, rooms, and publish flows.
+  \item \textbf{Autolaunch} makes the business fundable and market-facing through launch, liquidity, and revenue rails.
+\end{itemize}
+
+That stack matters because capital formation is much stronger when it is attached to real work.
+
+A launched agent is more credible when people can inspect what it has actually done.
+
+A public research trail is more powerful when it can lead to runway.
+
+A runtime is more durable when it can be funded.
+
+Autolaunch is part of the Regents company vision rather than a standalone token product. Regents Labs is building the full stack for agent identity, public proof, and capital formation. Autolaunch is the market layer of that thesis.
+
+\paperdiagram{regentsstack.png}
+
+\section{What Is Enforced Onchain}
+
+Autolaunch makes the most sense when the division of labor is clear.
+
+\begin{quote}
+\textbf{Workflow lives in the product. Money paths live onchain.}
+\end{quote}
+
+The product owns launch planning, public pages, saved jobs, lifecycle monitoring, trust follow-up, and operator visibility.
+
+The contract system owns the harder economic boundaries: supply creation, auction behavior, vesting, fee lanes, subject registration, recognized-revenue ingress, and revenue splitting.
+
+That separation is one of the strongest parts of the design. It reduces the amount of trust users must place in a dashboard or backend explanation of what happened.
+
+At a high level, the contract system enforces five things:
+
+\begin{enumerate}[leftmargin=1.5em]
+  \item the launch stack is deployed in a coherent way
+  \item the retained supply follows a vesting path
+  \item fees are routed to the intended destinations
+  \item each launched subject has a canonical registry and revenue lane
+  \item recognized revenue enters a contract-defined split rather than a vague offchain promise
+\end{enumerate}
+
+For technical readers, the key idea is not just that the contracts exist. It is that they narrow the surface area where the app can misrepresent the money path.
+
+That is what makes the system legible.
+
+\section{Two Economic Layers: Subject Tokens and \texorpdfstring{\REGENT}{\$REGENT}}
+
+Autolaunch includes two distinct economic layers, and keeping them separate is a feature, not a bug.
+
+The first layer is the \textbf{subject token}. This is the token for one launched agent business. It is tied to that subject's launch, its revenue lane, and its holder or staker relationship.
+
+The second layer is \textbf{\REGENT}, the wider company token for the Regents platform.
+
+These are not the same thing.
+
+A subject token represents participation in the economics of one launched agent business.
+
+\REGENT{} represents participation in the wider Regents system and its broader revenue rails.
+
+This separation matters for clarity. It means Regents does not have to flatten every launched agent into one company-wide pool, and it means a strong launched subject can have its own economics without pretending to be the entire platform.
+
+For public readers, the important takeaway is straightforward: Autolaunch supports both subject-level markets and a distinct platform-level token rail, without confusing one for the other.
+
+\section{Platform Fee Sources and \texorpdfstring{\REGENT}{\$REGENT} Tokenomics}
+
+At the company level, \REGENT{} is the Regents Labs platform revsplit token. It is fed by multiple revenue rails across the stack, not just by one product.
+
+Let total protocol revenue entering the Regents Labs revsplit system over some accounting window be \(P\). At a high level,
+
+\begin{equation}
+P = P_{\text{Autolaunch}} + P_{\text{Techtree}} + P_{\text{stablecoin skim}} + P_{\text{Platform}}.
+\end{equation}
+
+In plain English, revenue enters the system from four current sources.
+
+\begin{table}[ht]
+\centering
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{0.22\textwidth}X@{}}
+\toprule
+\textbf{Revenue rail} & \textbf{Current fee source} \\
+\midrule
+Autolaunch & Hook + auction fees. This includes 1\% of every agent token's trading fees from the Uniswap v4 fee hook, plus 2\% of raised \USDC{} in continuous clearing auctions. \\
+Techtree & Agent token earnings. Regents Labs takes 1\% of agent token earnings. \\
+Stablecoin revenues & Revsplit-tracked gross revenue. Regents Labs takes 1\% of gross revenue for all agents, from x402, MPP, and other sources, tracked onchain through the revsplit contract. \\
+Regents Platform & Hosted agent margin fees. This includes OpenClaw and Hermes agent hosting, with Stripe LLM billing for margin fees on hosted Regents. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+For readers who want the launch mechanics expressed compactly, the fee model can be summarized as follows.
+
+If \(A\) is \USDC{} raised in the continuous clearing auction, then the auction fee is
+
+\begin{equation}
+F_{\text{CCA}} = 0.02A.
+\end{equation}
+
+If \(V\) is notional swap volume in the official launch pool, then the launch-pool fee model is
+
+\begin{align}
+F_{\text{pool}} &= 0.02V, \\
+F_{\text{Regents}}^{\text{pool}} &= 0.01V, \\
+F_{\text{subj}}^{\text{pool}} &= 0.01V.
+\end{align}
+
+The broader point is that \REGENT{} is not meant to be a vague ecosystem badge. It is the company-level token that sits above the product stack and accumulates value from real fee rails across Autolaunch, Techtree, stablecoin revenue flows, and the hosted Regents platform.
+
+\section{\texorpdfstring{\REGENT}{\$REGENT} Staking Flow}
+
+The \REGENT{} staking flow is simple at the user level.
+
+\begin{enumerate}[leftmargin=1.5em]
+  \item Stake \REGENT{} in the protocol revsplit contract.
+  \item Claim your stablecoin share of Regents Labs revenue at any time.
+  \item After the staker share is accounted for, the remaining balance is used to buy back \REGENT.
+  \item During the first year, an emissions stream equal to 20\% of staked \REGENT{} is paid to stakers.
+\end{enumerate}
+
+A compact way to write the company-level flow is:
+
+\begin{align}
+P_{\text{stakers}} &= \gamma P, \\
+P_{\text{buyback}} &= (1-\gamma)P,
+\end{align}
+
+where \(P\) is total protocol revenue for the accounting window and \(\gamma\) is the portion owed to stakers under the live staking state. The design intent is explicit: once the staker share is reserved, the remaining balance is used to buy back \REGENT.
+
+At launch, only roughly 20\% of \REGENT{} is circulating. That means the staker-owed portion is expected to be relatively small in the earliest phase, so 80\% or more of protocol skim should flow toward buybacks rather than immediate claims.
+
+The first year also includes a bootstrap incentive for long-term holders. As the protocol builds, an emissions reward equal to 20\% of staked \REGENT{} is streamed to stakers. The staking portal and emission claims are intended to open through Autolaunch.
+
+This creates a three-part holder story:
+
+\begin{itemize}[leftmargin=1.5em]
+  \item stablecoin claims on Regents Labs revenue
+  \item buyback pressure from the residual protocol balance
+  \item a first-year emissions stream that rewards early conviction
+\end{itemize}
+
+\paperdiagram{regentrevsplit.png}
+
+\section{Who This Is For}
+
+Autolaunch is not for every token and not for every agent.
+
+It is strongest when four things are true.
+
+First, the agent has a real edge. There should be a reason this thing exists besides pure attention.
+
+Second, the operator can explain the business. Buyers need to understand what the agent does, why it matters, and how it could generate real revenue.
+
+Third, there is some path to stablecoin inflow. That revenue may come from APIs, tools, subscriptions, research access, execution, or other services, but it needs to be legible enough that the market can imagine it reaching the onchain lane.
+
+Fourth, the team is willing to operate in public. In the full Regents stack, the best version of an Autolaunch subject is paired with visible work, visible proof, or visible progress.
+
+That makes Autolaunch especially compelling for:
+
+\begin{itemize}[leftmargin=1.5em]
+  \item serious crypto-native agent builders
+  \item agent users who want a cleaner way to back real businesses
+  \item AI developers turning useful agents into products
+  \item AI-for-science and research teams that need public proof plus runway
+\end{itemize}
+
+Autolaunch does not make every launch look respectable. It helps high-quality launches deserve capital.
+
+\section{Risks and Constraints}
+
+Autolaunch is ambitious, and the honest way to describe it includes the limits.
+
+The first limit is that this is still a beta design. The architecture is real. The product intent is clear. But proving the full thesis requires live launches, real operators, and real recognized revenue.
+
+The second limit is that better market structure does not guarantee perfect markets. A continuous clearing auction can reduce timing advantages without eliminating concentrated demand, poor assumptions, or bad pricing.
+
+The third limit is that the revenue thesis must be earned. If launched agents do not produce meaningful stablecoin inflow, then the deeper holder story weakens. The launch may still have created capital and liquidity, but the stronger economic loop remains unproven.
+
+The fourth limit is execution complexity. This system spans product workflow, operator tooling, contracts, launch validation, trust follow-up, and post-launch monitoring. Complexity is justified only if it produces better outcomes than simpler launch formats.
+
+The fifth limit is regulatory and market uncertainty. Any system that combines token launches, onchain revenue routing, treasury mechanics, and public market participation should expect scrutiny.
+
+These constraints define the proof Autolaunch must keep earning: useful launches, measurable stablecoin revenue, clear public proof, and simple communication between subject-token economics and \REGENT{} economics.
+
+\section{Conclusion}
+
+Autolaunch is how Regents makes agent businesses fundable.
+
+It is not only a cleaner launch interface. It is a market design for turning edge into runway, price discovery into treasury, and post-launch attention into a path toward real economic alignment.
+
+The core claim is powerful because it is concrete.
+
+A useful agent should be able to raise capital.
+
+A serious launch should create stable runway, not only a chart.
+
+A post-launch token should have a stronger reason to exist than pure momentum.
+
+A real business should be able to route real stablecoin revenue into a visible onchain lane.
+
+Autolaunch matters for more than launch mechanics because it shows how agent businesses can move from demo to company.
+
+That is the larger Regents thesis: agents can become economic actors when they have identity, public proof, capital, and a path to keep going.
+
+\appendix
+
+\section{Launch and Revenue Parameters}
+
+Autolaunch uses the following launch-side and revenue-side parameters.
+
+\begin{table}[ht]
+\centering
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{0.3\textwidth}X@{}}
+\toprule
+\textbf{Parameter} & \textbf{Design} \\
+\midrule
+Total token supply model & 100 billion supply \\
+Auction allocation & 10\% sells in the auction \\
+LP allocation & 5\% reserved for the Uniswap v4 LP position \\
+Treasury split at launch & Half of auction \USDC{} to LP, half of auction \USDC{} to the subject Safe \\
+Retained supply & Remaining 85\% vests to the subject treasury over one year \\
+Official launch pool fee & 2\% \\
+Launch fee split & 1\% to Regents Labs, 1\% to the subject revenue lane \\
+Recognized subject revenue rule & Only Base \USDC{} that reaches the subject revsplit counts as recognized revenue \\
+Recognized subject revenue split & Fixed 1\% skim to Regents Labs, 99\% remains in the subject lane \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+These parameters matter because Autolaunch shapes four things at once: price discovery, liquidity, stablecoin runway, and the post-launch revenue relationship.
+
+\end{document}

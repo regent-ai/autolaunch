@@ -2,6 +2,9 @@ import Config
 
 config :autolaunch,
   runtime_env: config_env(),
+  dragonfly_enabled: true,
+  dragonfly_host: "localhost",
+  dragonfly_port: 6379,
   ecto_repos: [Autolaunch.Repo],
   generators: [timestamp_type: :utc_datetime_usec]
 

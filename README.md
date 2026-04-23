@@ -1,38 +1,50 @@
 # Autolaunch
 
-Autolaunch helps an agent with a real edge turn that edge into runway. It gives the agent a way to raise aligned capital, build treasury room for compute and API spend, and keep supporters engaged after the sale instead of treating launch day as the whole story.
+Autolaunch helps an agent with a real edge turn that edge into runway. It gives the agent a market to raise aligned capital, fund compute and distribution, and keep supporters active after launch.
 
-This repo is the Phoenix LiveView app behind `autolaunch.sh`, and it also holds the canonical local Foundry workspace under `contracts/`. The app owns the launch flow, the public auction surface, AgentBook verification, and the SIWA-backed session path that connects browser auth to onchain actions. The public sale model is a Continuous Clearing Auction designed to help quality teams bootstrap liquidity with healthier market behavior and true price discovery.
+If you already have an agent, use [`regents-cli`](../regents-cli) and start with:
 
-## Agents
+```bash
+regents autolaunch prelaunch wizard
+```
 
-Autolaunch is the browser and server layer for the launch product. The repo now owns both the app surface and the contract workspace, but the Phoenix app itself is still not the CLI. The app reads deployment output from the local `contracts/` workspace, then uses that data to drive launch jobs, bid quoting, and post-launch tracking.
+If you do not have an agent yet, use [regents.sh](https://regents.sh) to make one.
 
-For agents, the short pitch is:
+The sale model is a Continuous Clearing Auction: buyers choose a budget and a max price, the auction clears block by block, and launch capital goes toward liquidity and the agent Safe.
 
-- raise before compute and API costs set the pace
-- keep a treasury that can fund more models, more retries, and more distribution
-- give backers a reason to stay after launch through claims, staking, and recognized revenue
-- let a real edge compound instead of dying on runway
+## Product Direction
 
-What this repo handles:
+Autolaunch centers on a cleaner market and launch workspace:
 
-- Public landing and auction explainer pages
-- Guided launch flow for new launches
-- Auction browsing, quoting, and bid lifecycle actions
-- Agent inventory, launch readiness, and trust follow-up
-- AgentBook registration, lookup, and verification
-- Privy session exchange and SIWA verification
-- Privy-backed XMTP room identity setup and the mirrored Autolaunch public-room sync model shared with Techtree
-- Launch job persistence and onchain launch tracking
+- a modern public site for agent launches, auctions, positions, and subject pages
+- command-first launch planning through `regents-cli`
+- search and filters for live markets, positions, and returns
+- shareable filtered market views
+- real Regent status and staking reads for the connected wallet
+- cleaner subject pages with staking, claims, revenue, ingress, and next actions in one place
+- one action panel pattern for wallet actions and prepared operator actions
+- faster subject reads backed by Dragonfly for hot revenue and position state
+- a slimmer Elixir/Phoenix structure with product areas split by launch, lifecycle, contracts, trust, revenue, staking, and AgentBook
 
-For agent-facing onboarding, start with [`SKILL.md`](SKILL.md) and [`docs/autolaunch_examples.json`](docs/autolaunch_examples.json). They now describe the CLI-first golden path:
+Autolaunch is built for agents that can earn but need capital before revenue catches up. The product should make three things obvious: what is live, what the agent needs next, and what a backer can do now.
 
-- `regent autolaunch prelaunch wizard`
-- `regent autolaunch launch run`
-- `regent autolaunch launch monitor`
-- `regent autolaunch launch finalize`
-- `regent autolaunch vesting status`
+## For Agents
+
+Use `regents-cli` for launch work:
+
+```bash
+regents autolaunch safe wizard
+regents autolaunch safe create
+regents autolaunch prelaunch wizard
+regents autolaunch prelaunch validate
+regents autolaunch prelaunch publish
+regents autolaunch launch run
+regents autolaunch launch monitor
+regents autolaunch launch finalize
+regents autolaunch vesting status
+```
+
+Use the website for market discovery, auction participation, subject pages, staking, claims, trust follow-up, and AgentBook.
 
 For an operator-facing deployment and launch sequence, use [`docs/operator_runbook.md`](docs/operator_runbook.md).
 The canonical product rules live in [`docs/product_invariants.md`](docs/product_invariants.md), and the hardening tracker lives in [`docs/mainnet_readiness_checklist.md`](docs/mainnet_readiness_checklist.md).
@@ -101,26 +113,24 @@ The current fixed fee rules are:
 
 ### What Runs Where
 
-The main LiveView and API routes are:
+The main product routes are:
 
 - `/` and `/how-auctions-work` for the public home and auction explainer
 - `/launch` for the guided launch flow
 - `/contracts` for the operator contract console
-- `/auctions`, `/auctions/:id`, and `/positions` for auction and position views
-- `/subjects/:id` for subject staking, claiming, and ingress actions
+- `/auctions`, `/auctions/:id`, and `/positions` for auction search, shareable filters, and position views
+- `/subjects/:id` for subject status, staking, claims, revenue routing, ingress, and available actions
 - `/agentbook` for the human proof flow
 - `/health` for readiness checks
 - `/v1/agent/siwa/nonce` and `/v1/agent/siwa/verify` for SIWA
-- `/api/auth/privy/session` for browser session exchange
-- `/api/auth/privy/xmtp/complete` for finishing wallet-backed XMTP room setup after the browser session opens
-- `/api/prelaunch/*` for saved launch drafts, hosted metadata, and upload-backed launch assets
-- `/api/lifecycle/*` for launch monitoring, finalize guidance, and vesting status
-- `/api/regent/staking/*` for the separate REGENT staking rail
-- `/api/agents`, `/api/launch/*`, `/api/auctions/*`, `/api/bids/*`, `/api/subjects/*`, `/api/contracts/*`, `/api/agentbook/*`, and `/api/ens/link/*` for the supporting JSON flows
+- `/v1/auth/privy/session` for browser session exchange
+- `/v1/auth/privy/xmtp/complete` for finishing wallet-backed XMTP room setup after the browser session opens
+- `/v1/app/prelaunch/*` for saved launch drafts, hosted metadata, and upload-backed launch assets
+- `/v1/app/lifecycle/*` for launch monitoring, finalize guidance, and vesting status
+- `/v1/app/regent/staking/*` for the separate REGENT staking rail
+- `/v1/app/agents`, `/v1/app/launch/*`, `/v1/app/auctions/*`, `/v1/app/bids/*`, `/v1/app/subjects/*`, `/v1/app/contracts/*`, `/v1/app/agentbook/*`, and `/v1/app/ens/link/*` for the supporting JSON flows
 
-`/api/agents` is the agent inventory. `/api/agents/:id/readiness` is the launch-readiness check. They are related, but they answer different questions.
-
-LiveView owns the page state. TypeScript stays in the browser-auth, wallet-signing, and motion layers.
+`/v1/app/agents` is the agent inventory. `/v1/app/agents/:id/readiness` checks whether an agent is ready to launch.
 
 ### Contract Console
 
@@ -134,9 +144,9 @@ What it shows:
 
 Action modes are intentionally split:
 
-- direct wallet flows stay on the auction and subject pages for bid, stake, unstake, claim, and ingress sweep
-- backend-tracked flows are only the wallet actions the app already registers after a real transaction hash is known
-- prepare-only flows live in `/contracts` and return JSON payloads for multisig or operator submission instead of trying to send from the browser
+- wallet actions stay on auction and subject pages for bid, stake, unstake, claim, and ingress sweep
+- confirmed wallet actions are registered after the transaction hash exists
+- prepared operator actions live in `/contracts` for multisig or operator submission
 
 ### Configuration
 
@@ -162,7 +172,7 @@ If product copy, launch docs, or contract docs disagree about the active rules, 
 
 ### REGENT Staking Rail
 
-Autolaunch now also exposes a separate Regent staking rail for Regent Labs itself.
+Autolaunch exposes a separate Regent staking rail for Regent Labs itself.
 
 - It is not part of the launch flow itself.
 - Its production target is Base mainnet, but local rehearsal can point it at Base Sepolia with `REGENT_STAKING_*`.
@@ -178,9 +188,9 @@ This rail is separate from agent subject splitters:
 
 ### Launch Flow
 
-Autolaunch expects the hard-cut `CCA_RESULT_JSON` payload from the configured deployment script. The contract source of truth lives in the local Foundry workspace under [`contracts/`](contracts).
+Autolaunch expects the current `CCA_RESULT_JSON` payload from the configured deployment script. The contract source of truth lives in the local Foundry workspace under [`contracts/`](contracts).
 
-The preferred operator flow is now CLI-first:
+The operator flow is CLI-first:
 
 1. save a prelaunch plan
 2. validate and publish the hosted metadata draft
@@ -204,10 +214,20 @@ Important launch rules:
 - Mock deploy is opt-in through `AUTOLAUNCH_MOCK_DEPLOY=true`
 - Recognized revenue is Base-family USDC only, and it only counts once it reaches the revsplit
 - The fee hook is the launch-side fee lane, while the revsplit is the ongoing revenue-rights lane
-- `AUTOLAUNCH_DEPLOY_SCRIPT_TARGET` is required at runtime; there is no baked-in example deploy script target anymore
+- `AUTOLAUNCH_DEPLOY_SCRIPT_TARGET` is required at runtime
 - `config/runtime.exs` is the runtime environment path; `config/dev.exs` stays limited to dev-only browser tooling and reload support
 
-The current browser launch flow is still available, but it is no longer the primary operator path. The CLI should be the first stop for launch planning, launch execution, monitoring, finalize guidance, and vesting follow-up.
+The CLI is the first stop for launch planning, launch execution, monitoring, finalize guidance, and vesting follow-up.
+
+### Contributor Rules
+
+- API and CLI changes start in the YAML source-of-truth files, then the app and CLI are updated to match.
+- Autolaunch HTTP behavior lives in [`docs/api-contract.openapiv3.yaml`](docs/api-contract.openapiv3.yaml).
+- Autolaunch CLI behavior lives in [`docs/cli-contract.yaml`](docs/cli-contract.yaml).
+- Shared Regent staking behavior lives in [`../regents-cli/docs/regent-services-contract.openapiv3.yaml`](../regents-cli/docs/regent-services-contract.openapiv3.yaml).
+- Keep one current contract shape. Remove obsolete handling instead of documenting or preserving it.
+- Use Foundry for EVM contract development and testing.
+- Use plain public copy: say what a person can do, what happens next, and why it matters.
 
 ### Commands
 
@@ -252,8 +272,6 @@ Autolaunch is not a static frontend. A working environment needs:
 - the Foundry deploy binary plus the configured deploy workdir and script target on the launch node
   Without those, the backend cannot run the launch deployment at all.
 
-Trust-network configuration is optional. If it is missing, the trust follow-up surfaces degrade gracefully, but the core launch, auction, and subject revenue flows should keep working.
-
 The Phoenix aliases in `mix.exs` also include `ecto.reset` and the usual asset setup flow.
 
 ### Repo Map
@@ -271,7 +289,7 @@ The Phoenix aliases in `mix.exs` also include `ecto.reset` and the usual asset s
 
 ### External Dependencies
 
-- The canonical CLI lives in the standalone [`regent-ai/regents-cli`](https://github.com/regent-ai/regents-cli) repo, with the expected local checkout at `/Users/sean/Documents/regent/regents-cli`, as `regent autolaunch ...`
+- The canonical CLI lives in the standalone [`regents-ai/regents-cli`](https://github.com/regents-ai/regents-cli) repo, with the expected local checkout at `/Users/sean/Documents/regent/regents-cli`, as `regents autolaunch ...`
 - The Autolaunch contracts live in [`contracts/`](contracts)
 - The public guide content for auctions lives in [`AUTOLAUNCH_AUCTIONS_GUIDE.md`](AUTOLAUNCH_AUCTIONS_GUIDE.md)
 

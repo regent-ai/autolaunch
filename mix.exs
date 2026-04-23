@@ -10,7 +10,8 @@ defmodule Autolaunch.MixProject do
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
       deps: deps(),
-      compilers: [:phoenix_live_view] ++ Mix.compilers()
+      compilers: [:phoenix_live_view] ++ Mix.compilers(),
+      listeners: [Phoenix.CodeReloader]
     ]
   end
 
@@ -51,6 +52,8 @@ defmodule Autolaunch.MixProject do
        compile: false,
        depth: 1},
       {:req, "~> 0.5"},
+      {:redix, "~> 1.5"},
+      {:regent_cache, path: "../elixir-utils/cache"},
       {:xmtp_elixir_sdk, path: "../elixir-utils/xmtp"},
       {:ens_elixir, path: "../elixir-utils/ens"},
       {:agent_world, path: "../elixir-utils/world/agentbook"},

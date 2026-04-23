@@ -61,6 +61,10 @@ if config_env() != :test do
 
   config :autolaunch, :internal_shared_secret, env.("AUTOLAUNCH_INTERNAL_SHARED_SECRET", "")
 
+  config :autolaunch, :dragonfly_host, env.("DRAGONFLY_HOST", "localhost")
+  config :autolaunch, :dragonfly_port, env_int.("DRAGONFLY_PORT", 6379)
+  config :autolaunch, :dragonfly_enabled, env_bool.("DRAGONFLY_ENABLED", true)
+
   config :autolaunch, Autolaunch.Xmtp,
     rooms: [
       %{

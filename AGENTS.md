@@ -8,7 +8,8 @@ Keep this file short and current. Use it as the fast start map for new coding ag
 
 - Phoenix + LiveView app for the Autolaunch product
 - TypeScript browser hooks for wallet, auth, and browser-only flows
-- Ecto + Postgres for launch plans, jobs, bids, sessions, and subject actions
+- Ecto + Postgres for launch plans, jobs, bids, sessions, portfolio snapshots, and subject actions
+- Dragonfly-backed cache for hot subject revenue reads, wallet position reads, obligation metrics, ingress accounts, and share history
 - Local Foundry workspace in `contracts/` for launch, fee, splitter, ingress, and staking contracts
 
 ## Contract-First Rule
@@ -28,6 +29,13 @@ Start contract work here, in this order:
 
 Do not define HTTP behavior from Phoenix route files first and “fix the CLI later.” Change the contract files first, then make app code and CLI code match.
 
+Hard cutover applies:
+
+- Do not add fallback behavior, compatibility branches, shims, aliases, dual-shape support, or old-shape rejection tests.
+- Prefer deleting old-shape handling over preserving it.
+- Update producers, consumers, fixtures, docs, and tests to use the current shape only.
+- Keep validation focused on the current contract.
+
 ## Important App Surfaces
 
 Open these files first for product work:
@@ -41,6 +49,9 @@ Open these files first for product work:
 - `lib/autolaunch/agentbook.ex`
 - `lib/autolaunch/trust.ex`
 - `lib/autolaunch/regent_staking.ex`
+- `lib/autolaunch/revenue.ex`
+- `lib/autolaunch/cache.ex`
+- `lib/autolaunch/dragonfly.ex`
 - `lib/autolaunch_web/regent_scenes.ex`
 - `assets/js/app.ts`
 - `assets/js/hooks/index.ts`
@@ -49,11 +60,19 @@ Open these files first for product work:
 
 The main route types are:
 
-- LiveView pages for browser UI: `/`, `/launch`, `/auctions`, `/contracts`, `/subjects/:id`, `/agentbook`, `/ens-link`, `/x-link`
+- LiveView pages for browser UI: `/`, `/launch`, `/auctions`, `/positions`, `/contracts`, `/subjects/:id`, `/agentbook`, `/ens-link`, `/x-link`
 - Product JSON APIs under `/api/*`
 - SIWA agent auth under `/v1/agent/siwa/*`
 - Privy browser session exchange under `/api/auth/privy/session`
 - Wallet-backed XMTP room identity completion under `/api/auth/privy/xmtp/complete`
+
+Current browser capabilities:
+
+- Modern home and launch direction with a command-first CTA
+- Auction and position search with shareable filters
+- Real Regent staking status for connected wallets
+- Subject pages cleaned up around status, revenue, staking, claims, ingress, and next actions
+- Unified action panel behavior for wallet actions and prepared operator actions
 
 ## Major Backend Areas
 
@@ -65,6 +84,7 @@ The main route types are:
 - `Trust` owns agent trust reads and X-link follow-up
 - `RegentStaking` owns the shared staking rail
 - `XMTPMirror` owns the mirrored Autolaunch public-room model and stays aligned with Techtree's room flow
+- `Cache` and `Dragonfly` own short-lived hot reads. Cache keys include a product prefix, chain/job/subject identifiers where relevant, a digest for wallet address lists, and a subject cache epoch. Mutating subject actions bump the subject epoch instead of carrying stale reads forward.
 
 ## Settlement Flow
 
@@ -106,14 +126,16 @@ Start Solidity work with:
 - The browser wizard exists, but the preferred operator flow is CLI-first.
 - `regent-staking` is a separate shared rail and should stay distinct from the Base-family launch flow.
 - The Autolaunch public room now follows the same mirrored XMTP group-chat model as Techtree. Keep room identity, membership command queueing, and internal sync endpoints aligned across both repos.
+- Main public CTA: if the reader already has an agent, use `regents-cli`; if they do not have an agent yet, send them to `regents.sh`.
+- Public copy should describe what a person can do, what happens next, and why it matters. Do not expose framework names, internal route wiring, cache mechanics, signing internals, legacy behavior, or compatibility plans in public UI text.
 
 ## Agent Operator Path
 
 For launch work, treat `regents-cli` as the default operator surface.
 
 - Read `/Users/sean/Documents/regent/regents-cli/docs/autolaunch-cli.md` before changing or operating the guided flow.
-- Use `regent autolaunch prelaunch wizard`, `validate`, `publish`, `launch run`, `launch monitor`, `launch finalize`, and `vesting status` as the main path.
-- Use `regent autolaunch safe wizard` and `safe create` before launch planning if the agent Safe does not exist yet.
+- Use `regents autolaunch prelaunch wizard`, `validate`, `publish`, `launch run`, `launch monitor`, `launch finalize`, and `vesting status` as the main path.
+- Use `regents autolaunch safe wizard` and `safe create` before launch planning if the agent Safe does not exist yet.
 - Keep raw `launch create`, strategy, splitter, ingress, and registry commands for debugging or incident recovery only.
 
 The CLI auth path for Autolaunch expects:
@@ -169,3 +191,6 @@ For cross-repo API or CLI changes, also validate `/Users/sean/Documents/regent/r
 - Use Foundry for contract development and testing.
 - Keep LiveView as the owner of page state; use TypeScript only for browser-only concerns.
 - Prefer small pure helpers for validation, normalization, and decision logic. Keep side effects at the edges.
+- For Python tasks, use `uv`.
+- Never read `.env` files. `.env.example` is allowed.
+- Keep public docs and UI text concise, crypto-native, and plain. Avoid implementation language in customer-facing copy.
