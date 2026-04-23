@@ -1,13 +1,15 @@
 defmodule AutolaunchWeb.RegentStatus do
   @moduledoc false
 
-  alias Autolaunch.Cache
   alias Autolaunch.RegentStaking
 
   @ttl_seconds 15
+  @cache_app :autolaunch
 
   def snapshot(current_human \\ nil) do
-    case Cache.fetch(cache_key(current_human), @ttl_seconds, fn -> read_status(current_human) end) do
+    case RegentCache.fetch(@cache_app, cache_key(current_human), @ttl_seconds, fn ->
+           read_status(current_human)
+         end) do
       {:ok, status} -> normalize_status(status)
       {:error, reason} -> unavailable_status(reason)
     end

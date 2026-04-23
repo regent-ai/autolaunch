@@ -4,7 +4,6 @@ defmodule Autolaunch.Revenue.Core do
   import Ecto.Query, warn: false
 
   alias Autolaunch.Accounts.HumanUser
-  alias Autolaunch.Cache
   alias Autolaunch.CCA.Rpc
   alias Autolaunch.Launch.Job
   alias Autolaunch.Repo
@@ -13,6 +12,7 @@ defmodule Autolaunch.Revenue.Core do
 
   @usdc_decimals 6
   @token_decimals 18
+  @cache_app :autolaunch
   @eligible_share_proposed_topic0 "0xdea1cf6e658a0d5758b71519980315f6a1dd1377c7de69e48adc4a4f318a1283"
   @eligible_share_cancelled_topic0 "0x10cb96b400282a7ceaa5f8861808ae2919fd8925eb8ee66c751afc59e7c8fb5d"
   @eligible_share_activated_topic0 "0x95e2f1f3cbaa769cf148172e455a445e635b5b48a17e2fe9937e89a6b96066bb"
@@ -28,9 +28,14 @@ defmodule Autolaunch.Revenue.Core do
          {:ok, job} <- fetch_subject_job(normalized_subject_id),
          owner_address = primary_wallet_address(current_human),
          {:ok, subject} <-
-           Cache.fetch(subject_cache_key(job, normalized_subject_id, owner_address), 15, fn ->
-             build_subject(job, normalized_subject_id, owner_address)
-           end) do
+           RegentCache.fetch(
+             @cache_app,
+             subject_cache_key(job, normalized_subject_id, owner_address),
+             15,
+             fn ->
+               build_subject(job, normalized_subject_id, owner_address)
+             end
+           ) do
       {:ok, %{subject: subject, job: job}}
     end
   rescue
@@ -59,9 +64,14 @@ defmodule Autolaunch.Revenue.Core do
     with {:ok, normalized_subject_id} <- normalize_subject_id(subject_id),
          {:ok, job} <- fetch_subject_job(normalized_subject_id),
          {:ok, addresses} <- normalize_address_list(wallet_addresses) do
-      Cache.fetch(wallet_positions_cache_key(job, normalized_subject_id, addresses), 10, fn ->
-        build_wallet_positions(job, addresses)
-      end)
+      RegentCache.fetch(
+        @cache_app,
+        wallet_positions_cache_key(job, normalized_subject_id, addresses),
+        10,
+        fn ->
+          build_wallet_positions(job, addresses)
+        end
+      )
     else
       {:error, _} = error -> error
     end
@@ -81,9 +91,14 @@ defmodule Autolaunch.Revenue.Core do
     with {:ok, normalized_subject_id} <- normalize_subject_id(subject_id),
          {:ok, job} <- fetch_subject_job(normalized_subject_id),
          {:ok, addresses} <- normalize_address_list(staker_addresses) do
-      Cache.fetch(obligation_metrics_cache_key(job, normalized_subject_id, addresses), 15, fn ->
-        build_subject_obligation_metrics(job, normalized_subject_id, addresses)
-      end)
+      RegentCache.fetch(
+        @cache_app,
+        obligation_metrics_cache_key(job, normalized_subject_id, addresses),
+        15,
+        fn ->
+          build_subject_obligation_metrics(job, normalized_subject_id, addresses)
+        end
+      )
     else
       {:error, _} = error -> error
     end
@@ -1049,7 +1064,7 @@ defmodule Autolaunch.Revenue.Core do
   end
 
   defp load_ingress_accounts(job, subject_id) do
-    case Cache.fetch(ingress_accounts_cache_key(job, subject_id), 30, fn ->
+    case RegentCache.fetch(@cache_app, ingress_accounts_cache_key(job, subject_id), 30, fn ->
            {:ok, read_ingress_accounts(job, subject_id)}
          end) do
       {:ok, accounts} -> accounts
@@ -1118,7 +1133,7 @@ defmodule Autolaunch.Revenue.Core do
   end
 
   defp load_share_change_history(job) do
-    case Cache.fetch(share_history_cache_key(job), 60, fn ->
+    case RegentCache.fetch(@cache_app, share_history_cache_key(job), 60, fn ->
            {:ok, read_share_change_history(job)}
          end) do
       {:ok, history} -> history
@@ -1243,7 +1258,7 @@ defmodule Autolaunch.Revenue.Core do
   defp block_timestamp(chain_id, block_number) when is_integer(block_number) do
     key = "autolaunch:block:#{chain_id}:#{block_number}:timestamp"
 
-    case Cache.fetch(key, 86_400, fn ->
+    case RegentCache.fetch(@cache_app, key, 86_400, fn ->
            case Rpc.block_by_number(chain_id, block_number) do
              {:ok, %{timestamp: timestamp}} when is_integer(timestamp) -> {:ok, timestamp}
              _ -> {:ok, nil}
@@ -1544,7 +1559,7 @@ defmodule Autolaunch.Revenue.Core do
         normalize_address(job.revenue_share_splitter_address),
         normalize_address(subject_id),
         "wallets",
-        Cache.digest(addresses),
+        RegentCache.digest(addresses),
         "v",
         subject_cache_epoch(subject_id)
       ],
@@ -1561,7 +1576,7 @@ defmodule Autolaunch.Revenue.Core do
         normalize_address(job.revenue_share_splitter_address),
         normalize_address(subject_id),
         "obligations",
-        Cache.digest(addresses),
+        RegentCache.digest(addresses),
         "v",
         subject_cache_epoch(subject_id)
       ],
@@ -1603,14 +1618,14 @@ defmodule Autolaunch.Revenue.Core do
   defp subject_cache_epoch(subject_id) do
     key = subject_epoch_key(subject_id)
 
-    case Autolaunch.Dragonfly.get(key) do
+    case RegentCache.Dragonfly.get(@cache_app, key) do
       {:ok, value} when is_binary(value) -> value
       _ -> "0"
     end
   end
 
   defp bump_subject_cache_epoch(subject_id) do
-    _ = Autolaunch.Dragonfly.command(["INCR", subject_epoch_key(subject_id)])
+    _ = RegentCache.Dragonfly.command(@cache_app, ["INCR", subject_epoch_key(subject_id)])
     :ok
   end
 

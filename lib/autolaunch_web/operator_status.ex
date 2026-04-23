@@ -1,9 +1,10 @@
 defmodule AutolaunchWeb.OperatorStatus do
   @moduledoc false
 
-  alias Autolaunch.Dragonfly
   alias Autolaunch.Repo
   alias Autolaunch.Siwa.Config, as: SiwaConfig
+
+  @cache_app :autolaunch
 
   def snapshot do
     checks = [
@@ -30,7 +31,7 @@ defmodule AutolaunchWeb.OperatorStatus do
   end
 
   defp dragonfly_check do
-    case Dragonfly.status() do
+    case RegentCache.Dragonfly.status(@cache_app) do
       :ready -> check(:ready, "Dragonfly", "Hot read cache is ready.")
       :disabled -> check(:muted, "Dragonfly", "Cache is disabled in this environment.")
       {:error, _reason} -> check(:blocked, "Dragonfly", "Cache is not reachable.")
