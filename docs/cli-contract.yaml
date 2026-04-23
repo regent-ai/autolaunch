@@ -138,11 +138,15 @@ command_groups:
       - autolaunch splitter show
       - autolaunch splitter set-paused
       - autolaunch splitter set-label
+      - autolaunch splitter propose-eligible-revenue-share
+      - autolaunch splitter cancel-eligible-revenue-share
+      - autolaunch splitter activate-eligible-revenue-share
       - autolaunch splitter propose-treasury-recipient-rotation
       - autolaunch splitter cancel-treasury-recipient-rotation
       - autolaunch splitter execute-treasury-recipient-rotation
       - autolaunch splitter set-protocol-recipient
       - autolaunch splitter sweep-treasury-residual
+      - autolaunch splitter sweep-treasury-reserved
       - autolaunch splitter sweep-protocol-reserve
       - autolaunch splitter reassign-dust
       - autolaunch ingress create

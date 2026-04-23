@@ -4,6 +4,7 @@ pragma solidity ^0.8.26;
 import {Test} from "forge-std/Test.sol";
 
 import {RevenueIngressAccount} from "src/revenue/RevenueIngressAccount.sol";
+import {RevenueIngressFactory} from "src/revenue/RevenueIngressFactory.sol";
 import {RevenueShareFactory} from "src/revenue/RevenueShareFactory.sol";
 import {RevenueShareSplitter} from "src/revenue/RevenueShareSplitter.sol";
 import {SubjectRegistry} from "src/revenue/SubjectRegistry.sol";
@@ -19,6 +20,7 @@ contract RevenueIngressAccountTest is Test {
     MintableERC20Mock internal stakeToken;
     SubjectRegistry internal subjectRegistry;
     RevenueShareFactory internal revenueShareFactory;
+    RevenueIngressFactory internal ingressFactory;
     RevenueShareSplitter internal splitter;
     RevenueIngressAccount internal ingress;
 
@@ -28,12 +30,15 @@ contract RevenueIngressAccountTest is Test {
         stakeToken.mint(address(this), 1000e18);
         subjectRegistry = new SubjectRegistry(address(this));
         revenueShareFactory = new RevenueShareFactory(address(this), address(usdc), subjectRegistry);
+        ingressFactory =
+            new RevenueIngressFactory(address(usdc), address(subjectRegistry), address(this));
         subjectRegistry.transferOwnership(address(revenueShareFactory));
         revenueShareFactory.acceptSubjectRegistryOwnership();
 
         address splitterAddress = revenueShareFactory.createSubjectSplitter(
             SUBJECT_ID,
             address(stakeToken),
+            address(ingressFactory),
             TREASURY_SAFE,
             REGENT_RECIPIENT,
             1000e18,
@@ -43,8 +48,9 @@ contract RevenueIngressAccountTest is Test {
             42
         );
         splitter = RevenueShareSplitter(splitterAddress);
-        ingress = new RevenueIngressAccount(
-            address(usdc), splitterAddress, SUBJECT_ID, "default-usdc-ingress", TREASURY_SAFE
+        vm.prank(TREASURY_SAFE);
+        ingress = RevenueIngressAccount(
+            payable(ingressFactory.createIngressAccount(SUBJECT_ID, "default-usdc-ingress", true))
         );
     }
 

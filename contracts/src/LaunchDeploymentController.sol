@@ -152,18 +152,19 @@ contract LaunchDeploymentController is Owned {
             "AUCTION_NOT_CREATED"
         );
 
-        bytes32 poolId = feeInfra.launchFeeRegistry.registerPool(
-            LaunchFeeRegistry.PoolRegistration({
-                launchToken: token,
-                quoteToken: cfg.usdcToken,
-                treasury: revenueSubject.revenueShareSplitter,
-                regentRecipient: cfg.regentRecipient,
-                poolFee: cfg.officialPoolFee,
-                tickSpacing: cfg.officialPoolTickSpacing,
-                poolManager: cfg.poolManager,
-                hook: address(feeInfra.hook)
-            })
-        );
+        bytes32 poolId = feeInfra.launchFeeRegistry
+            .registerPool(
+                LaunchFeeRegistry.PoolRegistration({
+                    launchToken: token,
+                    quoteToken: cfg.usdcToken,
+                    treasury: revenueSubject.revenueShareSplitter,
+                    regentRecipient: cfg.regentRecipient,
+                    poolFee: cfg.officialPoolFee,
+                    tickSpacing: cfg.officialPoolTickSpacing,
+                    poolManager: cfg.poolManager,
+                    hook: address(feeInfra.hook)
+                })
+            );
         feeInfra.feeVault.setCanonicalTokens(token, cfg.usdcToken);
 
         feeInfra.launchFeeRegistry.transferOwnership(cfg.agentSafe);
@@ -222,8 +223,13 @@ contract LaunchDeploymentController is Owned {
         );
     }
 
-    function _allocationData(uint256 totalSupply) internal pure returns (AllocationData memory data) {
-        data.publicSaleAmount = (totalSupply * PUBLIC_SALE_BPS) / BPS_DENOMINATOR;
+    function _allocationData(uint256 totalSupply)
+        internal
+        pure
+        returns (AllocationData memory data)
+    {
+        data.publicSaleAmount =
+            (totalSupply * PUBLIC_SALE_BPS) / BPS_DENOMINATOR;
         data.lpReserveAmount = (totalSupply * LP_RESERVE_BPS) / BPS_DENOMINATOR;
         data.vestingAmount = totalSupply - data.publicSaleAmount - data.lpReserveAmount;
         data.strategySupply = data.publicSaleAmount + data.lpReserveAmount;
@@ -250,21 +256,21 @@ contract LaunchDeploymentController is Owned {
     {
         subjectRegistry = RevenueShareFactory(revenueShareFactory).subjectRegistry();
         require(
-            subjectRegistry.owner() == revenueShareFactory,
-            "SUBJECT_REGISTRY_NOT_OWNED_BY_FACTORY"
+            subjectRegistry.owner() == revenueShareFactory, "SUBJECT_REGISTRY_NOT_OWNED_BY_FACTORY"
         );
     }
 
     function _createToken(DeploymentConfig memory cfg) internal returns (address token) {
-        token = ITokenFactory(cfg.tokenFactory).createToken(
-            cfg.tokenName,
-            cfg.tokenSymbol,
-            18,
-            cfg.totalSupply,
-            address(this),
-            cfg.tokenFactoryData,
-            cfg.tokenFactorySalt
-        );
+        token = ITokenFactory(cfg.tokenFactory)
+            .createToken(
+                cfg.tokenName,
+                cfg.tokenSymbol,
+                18,
+                cfg.totalSupply,
+                address(this),
+                cfg.tokenFactoryData,
+                cfg.tokenFactorySalt
+            );
         require(token != address(0), "TOKEN_NOT_CREATED");
     }
 
@@ -277,10 +283,12 @@ contract LaunchDeploymentController is Owned {
         );
     }
 
-    function _deployFeeInfra(DeploymentConfig memory cfg) internal returns (FeeInfra memory feeInfra) {
+    function _deployFeeInfra(DeploymentConfig memory cfg)
+        internal
+        returns (FeeInfra memory feeInfra)
+    {
         feeInfra.launchFeeRegistry = new LaunchFeeRegistry(address(this));
-        feeInfra.feeVault =
-            new LaunchFeeVault(address(this), address(feeInfra.launchFeeRegistry));
+        feeInfra.feeVault = new LaunchFeeVault(address(this), address(feeInfra.launchFeeRegistry));
 
         // slither-disable-next-line too-many-digits
         (bytes32 hookSalt, address expectedHookAddress) = HookMiner.find(
@@ -311,10 +319,11 @@ contract LaunchDeploymentController is Owned {
         returns (RevenueSubject memory revenueSubject)
     {
         revenueSubject.subjectId = keccak256(abi.encode(block.chainid, token));
-        revenueSubject.revenueShareSplitter =
-            RevenueShareFactory(cfg.revenueShareFactory).createSubjectSplitter(
+        revenueSubject.revenueShareSplitter = RevenueShareFactory(cfg.revenueShareFactory)
+            .createSubjectSplitter(
                 revenueSubject.subjectId,
                 token,
+                cfg.revenueIngressFactory,
                 cfg.agentSafe,
                 cfg.regentRecipient,
                 cfg.totalSupply,
@@ -336,34 +345,35 @@ contract LaunchDeploymentController is Owned {
         LaunchPoolFeeHook hook,
         AllocationData memory allocation
     ) internal returns (IDistributionContract strategy) {
-        strategy = IDistributionStrategy(cfg.strategyFactory).initializeDistribution(
-            token,
-            allocation.strategySupply,
-            abi.encode(
-                RegentLBPStrategyFactory.RegentLBPStrategyConfig({
-                    usdc: cfg.usdcToken,
-                    auctionInitializerFactory: cfg.auctionInitializerFactory,
-                    auctionParameters: _auctionParameters(cfg),
-                    officialPoolHook: address(hook),
-                    agentSafe: cfg.agentSafe,
-                    vestingWallet: address(vestingWallet),
-                    operator: cfg.strategyOperator,
-                    positionRecipient: cfg.positionRecipient,
-                    positionManager: cfg.positionManager,
-                    poolManager: cfg.poolManager,
-                    officialPoolFee: cfg.officialPoolFee,
-                    officialPoolTickSpacing: cfg.officialPoolTickSpacing,
-                    migrationBlock: cfg.migrationBlock,
-                    sweepBlock: cfg.sweepBlock,
-                    lpCurrencyBps: LP_CURRENCY_BPS,
-                    tokenSplitToAuctionMps: allocation.tokenSplitToAuctionMps,
-                    auctionTokenAmount: uint128(allocation.publicSaleAmount),
-                    reserveTokenAmount: uint128(allocation.lpReserveAmount),
-                    maxCurrencyAmountForLP: cfg.maxCurrencyAmountForLP
-                })
-            ),
-            bytes32(0)
-        );
+        strategy = IDistributionStrategy(cfg.strategyFactory)
+            .initializeDistribution(
+                token,
+                allocation.strategySupply,
+                abi.encode(
+                    RegentLBPStrategyFactory.RegentLBPStrategyConfig({
+                        usdc: cfg.usdcToken,
+                        auctionInitializerFactory: cfg.auctionInitializerFactory,
+                        auctionParameters: _auctionParameters(cfg),
+                        officialPoolHook: address(hook),
+                        agentSafe: cfg.agentSafe,
+                        vestingWallet: address(vestingWallet),
+                        operator: cfg.strategyOperator,
+                        positionRecipient: cfg.positionRecipient,
+                        positionManager: cfg.positionManager,
+                        poolManager: cfg.poolManager,
+                        officialPoolFee: cfg.officialPoolFee,
+                        officialPoolTickSpacing: cfg.officialPoolTickSpacing,
+                        migrationBlock: cfg.migrationBlock,
+                        sweepBlock: cfg.sweepBlock,
+                        lpCurrencyBps: LP_CURRENCY_BPS,
+                        tokenSplitToAuctionMps: allocation.tokenSplitToAuctionMps,
+                        auctionTokenAmount: uint128(allocation.publicSaleAmount),
+                        reserveTokenAmount: uint128(allocation.lpReserveAmount),
+                        maxCurrencyAmountForLP: cfg.maxCurrencyAmountForLP
+                    })
+                ),
+                bytes32(0)
+            );
     }
 
     function _auctionParameters(DeploymentConfig memory cfg)

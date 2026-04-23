@@ -3104,11 +3104,83 @@ components:
           anyOf:
             - { $ref: "#/components/schemas/DecimalString" }
             - { type: "null" }
+        eligible_revenue_share_bps:
+          anyOf:
+            - { type: integer }
+            - { type: "null" }
+        eligible_revenue_share_percent:
+          anyOf:
+            - { $ref: "#/components/schemas/DecimalString" }
+            - { type: "null" }
+        pending_eligible_revenue_share_bps:
+          anyOf:
+            - { type: integer }
+            - { type: "null" }
+        pending_eligible_revenue_share_percent:
+          anyOf:
+            - { $ref: "#/components/schemas/DecimalString" }
+            - { type: "null" }
+        pending_eligible_revenue_share_eta_raw:
+          anyOf:
+            - { type: integer }
+            - { type: "null" }
+        pending_eligible_revenue_share_eta:
+          anyOf:
+            - { $ref: "#/components/schemas/DateTime" }
+            - { type: "null" }
+        eligible_revenue_share_cooldown_end_raw:
+          anyOf:
+            - { type: integer }
+            - { type: "null" }
+        eligible_revenue_share_cooldown_end:
+          anyOf:
+            - { $ref: "#/components/schemas/DateTime" }
+            - { type: "null" }
+        gross_inflow_usdc_raw:
+          anyOf:
+            - { type: integer }
+            - { type: "null" }
+        gross_inflow_usdc:
+          anyOf:
+            - { $ref: "#/components/schemas/DecimalString" }
+            - { type: "null" }
+        regent_skim_usdc_raw:
+          anyOf:
+            - { type: integer }
+            - { type: "null" }
+        regent_skim_usdc:
+          anyOf:
+            - { $ref: "#/components/schemas/DecimalString" }
+            - { type: "null" }
+        staker_eligible_inflow_usdc_raw:
+          anyOf:
+            - { type: integer }
+            - { type: "null" }
+        staker_eligible_inflow_usdc:
+          anyOf:
+            - { $ref: "#/components/schemas/DecimalString" }
+            - { type: "null" }
+        treasury_reserved_inflow_usdc_raw:
+          anyOf:
+            - { type: integer }
+            - { type: "null" }
+        treasury_reserved_inflow_usdc:
+          anyOf:
+            - { $ref: "#/components/schemas/DecimalString" }
+            - { type: "null" }
         treasury_residual_usdc_raw:
           anyOf:
             - { type: integer }
             - { type: "null" }
         treasury_residual_usdc:
+          anyOf:
+            - { $ref: "#/components/schemas/DecimalString" }
+            - { type: "null" }
+        treasury_reserved_usdc_raw:
+          anyOf:
+            - { type: integer }
+            - { type: "null" }
+        treasury_reserved_usdc:
           anyOf:
             - { $ref: "#/components/schemas/DecimalString" }
             - { type: "null" }
@@ -3168,6 +3240,11 @@ components:
           anyOf:
             - { type: boolean }
             - { type: "null" }
+        share_change_history:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
       additionalProperties: false
     SubjectEnvelope:
       type: object

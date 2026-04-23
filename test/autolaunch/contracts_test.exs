@@ -101,6 +101,10 @@ defmodule Autolaunch.ContractsTest do
 
     assert subject.subject_id == @subject_id
     assert subject.splitter_address == @splitter
+    assert subject.eligible_revenue_share_bps == 10_000
+    assert subject.gross_inflow_usdc_raw == 125_000_000
+    assert subject.treasury_reserved_usdc_raw == 12_000_000
+    assert subject.share_change_history == []
     assert registry.address == @registry
 
     assert {:error, :forbidden} = Contracts.subject_state(@subject_id, wrong_human)
@@ -208,7 +212,16 @@ defmodule Autolaunch.ContractsTest do
     def eth_call(84_532, @splitter, data) do
       case String.slice(data, 0, 10) do
         "0x817b1cd2" -> {:ok, uint(250 * Integer.pow(10, 18))}
+        "0x549b5d48" -> {:ok, uint(10_000)}
+        "0xb663660a" -> {:ok, uint(0)}
+        "0x8c37a52f" -> {:ok, uint(0)}
+        "0x5cc76060" -> {:ok, uint(0)}
+        "0x8064d80c" -> {:ok, uint(125 * Integer.pow(10, 6))}
+        "0x1aa91287" -> {:ok, uint(10 * Integer.pow(10, 6))}
+        "0x08c23673" -> {:ok, uint(90 * Integer.pow(10, 6))}
+        "0xddffd82a" -> {:ok, uint(25 * Integer.pow(10, 6))}
         "0x966ed108" -> {:ok, uint(25 * Integer.pow(10, 6))}
+        "0xe76bcce9" -> {:ok, uint(12 * Integer.pow(10, 6))}
         "0x76459dd5" -> {:ok, uint(10 * Integer.pow(10, 6))}
         "0x5f78d5f4" -> {:ok, uint(1 * Integer.pow(10, 6))}
         "0x60217267" -> {:ok, uint(12 * Integer.pow(10, 18))}

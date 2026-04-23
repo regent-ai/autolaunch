@@ -70,7 +70,7 @@ defmodule Autolaunch.Contracts do
            subject:
              ~w(stake unstake claim_usdc claim_emissions claim_and_stake_emissions sweep_ingress),
            splitter:
-             ~w(set_paused set_label propose_treasury_recipient_rotation cancel_treasury_recipient_rotation execute_treasury_recipient_rotation set_protocol_recipient sweep_treasury_residual sweep_protocol_reserve reassign_dust),
+             ~w(set_paused set_label propose_eligible_revenue_share cancel_eligible_revenue_share activate_eligible_revenue_share propose_treasury_recipient_rotation cancel_treasury_recipient_rotation execute_treasury_recipient_rotation set_protocol_recipient sweep_treasury_residual sweep_treasury_reserved sweep_protocol_reserve reassign_dust),
            ingress_factory: ~w(create set_default),
            ingress_account: ~w(set_label rescue sweep),
            registry: ~w(set_subject_manager link_identity rotate_safe)
@@ -438,8 +438,37 @@ defmodule Autolaunch.Contracts do
         safe_address_call(subject.chain_id, subject.splitter_address, :protocol_recipient),
       protocol_skim_bps:
         safe_uint_call(subject.chain_id, subject.splitter_address, :protocol_skim_bps),
+      eligible_revenue_share_bps:
+        safe_uint_call(subject.chain_id, subject.splitter_address, :eligible_revenue_share_bps),
+      pending_eligible_revenue_share_bps:
+        safe_uint_call(
+          subject.chain_id,
+          subject.splitter_address,
+          :pending_eligible_revenue_share_bps
+        ),
+      pending_eligible_revenue_share_eta:
+        safe_uint_call(
+          subject.chain_id,
+          subject.splitter_address,
+          :pending_eligible_revenue_share_eta
+        ),
+      eligible_revenue_share_cooldown_end:
+        safe_uint_call(
+          subject.chain_id,
+          subject.splitter_address,
+          :eligible_revenue_share_cooldown_end
+        ),
+      gross_inflow_usdc_raw:
+        safe_uint_call(subject.chain_id, subject.splitter_address, :gross_inflow_usdc),
+      regent_skim_usdc_raw:
+        safe_uint_call(subject.chain_id, subject.splitter_address, :regent_skim_usdc),
+      staker_eligible_inflow_usdc_raw:
+        safe_uint_call(subject.chain_id, subject.splitter_address, :staker_eligible_inflow_usdc),
+      treasury_reserved_inflow_usdc_raw:
+        safe_uint_call(subject.chain_id, subject.splitter_address, :treasury_reserved_inflow_usdc),
       total_staked_raw: subject.total_staked_raw,
       treasury_residual_usdc_raw: subject.treasury_residual_usdc_raw,
+      treasury_reserved_usdc_raw: subject.treasury_reserved_usdc_raw,
       protocol_reserve_usdc_raw: subject.protocol_reserve_usdc_raw,
       undistributed_dust_usdc_raw: subject.undistributed_dust_usdc_raw
     }

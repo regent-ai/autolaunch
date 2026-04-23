@@ -57,6 +57,7 @@ contract RevenueShareFactory is Owned {
     function createSubjectSplitter(
         bytes32 subjectId,
         address stakeToken,
+        address ingressFactory,
         address agentSafe,
         address protocolRecipient,
         uint256 revenueShareSupplyDenominator,
@@ -67,6 +68,7 @@ contract RevenueShareFactory is Owned {
     ) external onlyAuthorizedCreator returns (address splitter) {
         require(subjectId != bytes32(0), "SUBJECT_ZERO");
         require(stakeToken != address(0), "STAKE_TOKEN_ZERO");
+        require(ingressFactory != address(0), "INGRESS_FACTORY_ZERO");
         require(agentSafe != address(0), "AGENT_SAFE_ZERO");
         require(protocolRecipient != address(0), "PROTOCOL_RECIPIENT_ZERO");
         require(splitterOfStakeToken[stakeToken] == address(0), "SPLITTER_EXISTS_FOR_TOKEN");
@@ -83,6 +85,7 @@ contract RevenueShareFactory is Owned {
         RevenueShareSplitter deployed = new RevenueShareSplitter(
             stakeToken,
             usdc,
+            ingressFactory,
             address(subjectRegistry),
             subjectId,
             agentSafe,
@@ -97,13 +100,7 @@ contract RevenueShareFactory is Owned {
         splitterOfSubject[subjectId] = splitter;
 
         emit SplitterDeployed(
-            subjectId,
-            stakeToken,
-            splitter,
-            agentSafe,
-            agentSafe,
-            protocolRecipient,
-            label
+            subjectId, stakeToken, splitter, agentSafe, agentSafe, protocolRecipient, label
         );
 
         subjectRegistry.createSubject(subjectId, stakeToken, splitter, agentSafe, true, label);

@@ -9,6 +9,14 @@ defmodule Autolaunch.CCA.Rpc do
     call_adapter(:block_number, [chain_id], opts)
   end
 
+  def block_by_number(chain_id, block_number) do
+    block_by_number(chain_id, block_number, [])
+  end
+
+  def block_by_number(chain_id, block_number, opts) do
+    call_adapter(:block_by_number, [chain_id, block_number], opts)
+  end
+
   def eth_call(chain_id, to, data) do
     eth_call(chain_id, to, data, [])
   end
@@ -76,6 +84,22 @@ defmodule Autolaunch.CCA.Rpc do
       chain_id
       |> call("eth_blockNumber", [], opts)
       |> decode_quantity()
+    end
+
+    def block_by_number(chain_id, block_number) do
+      block_by_number(chain_id, block_number, [])
+    end
+
+    def block_by_number(chain_id, block_number, opts)
+        when is_integer(block_number) and block_number >= 0 do
+      quantity = "0x" <> Integer.to_string(block_number, 16)
+
+      case call(chain_id, "eth_getBlockByNumber", [quantity, false], opts) do
+        {:ok, nil} -> {:ok, nil}
+        {:ok, %{} = block} -> {:ok, normalize_block(block)}
+        {:error, _} = error -> error
+        _ -> {:error, :invalid_rpc_response}
+      end
     end
 
     def eth_call(chain_id, to, data) do
@@ -235,6 +259,13 @@ defmodule Autolaunch.CCA.Rpc do
         input: Map.get(tx, "input", "0x"),
         value: Map.get(tx, "value", "0x0"),
         block_number: decode_optional_quantity(Map.get(tx, "blockNumber"))
+      }
+    end
+
+    defp normalize_block(block) do
+      %{
+        number: decode_optional_quantity(Map.get(block, "number")),
+        timestamp: decode_optional_quantity(Map.get(block, "timestamp"))
       }
     end
 

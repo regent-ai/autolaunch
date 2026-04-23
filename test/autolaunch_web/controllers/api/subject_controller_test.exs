@@ -25,7 +25,16 @@ defmodule AutolaunchWeb.Api.SubjectControllerTest do
 
       case selector do
         "0x817b1cd2" -> {:ok, encode_uint(250 * Integer.pow(10, 18))}
+        "0x549b5d48" -> {:ok, encode_uint(10_000)}
+        "0xb663660a" -> {:ok, encode_uint(0)}
+        "0x8c37a52f" -> {:ok, encode_uint(0)}
+        "0x5cc76060" -> {:ok, encode_uint(0)}
+        "0x8064d80c" -> {:ok, encode_uint(125 * Integer.pow(10, 6))}
+        "0x1aa91287" -> {:ok, encode_uint(10 * Integer.pow(10, 6))}
+        "0x08c23673" -> {:ok, encode_uint(90 * Integer.pow(10, 6))}
+        "0xddffd82a" -> {:ok, encode_uint(25 * Integer.pow(10, 6))}
         "0x966ed108" -> {:ok, encode_uint(25 * Integer.pow(10, 6))}
+        "0xe76bcce9" -> {:ok, encode_uint(12 * Integer.pow(10, 6))}
         "0x76459dd5" -> {:ok, encode_uint(10 * Integer.pow(10, 6))}
         "0x5f78d5f4" -> {:ok, encode_uint(1 * Integer.pow(10, 6))}
         "0x60217267" -> {:ok, encode_uint(12 * Integer.pow(10, 18))}
@@ -166,7 +175,21 @@ defmodule AutolaunchWeb.Api.SubjectControllerTest do
 
   test "show returns subject state", %{conn: conn} do
     conn = get(conn, "/api/subjects/#{@subject_id}")
-    assert %{"ok" => true, "subject" => %{"subject_id" => @subject_id}} = json_response(conn, 200)
+
+    assert %{
+             "ok" => true,
+             "subject" => %{
+               "subject_id" => @subject_id,
+               "eligible_revenue_share_bps" => 10_000,
+               "pending_eligible_revenue_share_bps" => nil,
+               "gross_inflow_usdc_raw" => 125_000_000,
+               "regent_skim_usdc_raw" => 10_000_000,
+               "staker_eligible_inflow_usdc_raw" => 90_000_000,
+               "treasury_reserved_inflow_usdc_raw" => 25_000_000,
+               "treasury_reserved_usdc_raw" => 12_000_000,
+               "share_change_history" => []
+             }
+           } = json_response(conn, 200)
   end
 
   test "show accepts uppercase subject ids", %{conn: conn} do

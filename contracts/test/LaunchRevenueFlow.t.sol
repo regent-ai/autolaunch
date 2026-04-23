@@ -29,6 +29,7 @@ contract LaunchRevenueFlowTest is Test {
     address internal constant OWNER = address(0xA11CE);
     address internal constant PROTOCOL_TREASURY = address(0xBEEF);
     address internal constant SUBJECT_TREASURY = address(0x7EAD);
+    address internal constant INGRESS_FACTORY = address(0x5151);
     address internal constant ALICE = address(0xA1);
     address internal constant LAUNCH_TOKEN = address(0x1001);
     address internal constant TRADER = address(0xB0B);
@@ -62,6 +63,7 @@ contract LaunchRevenueFlowTest is Test {
         splitter = new RevenueShareSplitter(
             address(stakeToken),
             address(usdc),
+            INGRESS_FACTORY,
             address(subjectRegistry),
             SUBJECT_ID,
             SUBJECT_TREASURY,
@@ -71,7 +73,12 @@ contract LaunchRevenueFlowTest is Test {
             OWNER
         );
         subjectRegistry.createSubject(
-            SUBJECT_ID, address(stakeToken), address(splitter), SUBJECT_TREASURY, true, "Atlas splitter"
+            SUBJECT_ID,
+            address(stakeToken),
+            address(splitter),
+            SUBJECT_TREASURY,
+            true,
+            "Atlas splitter"
         );
 
         poolId = registry.registerPool(

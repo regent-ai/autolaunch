@@ -100,6 +100,11 @@ defmodule Autolaunch.RevenueTest do
     assert subject.materialized_outstanding == "3"
     assert subject.available_reward_inventory == "8"
     assert subject.total_claimed_so_far == "6"
+    assert subject.eligible_revenue_share_bps == 10_000
+    assert subject.gross_inflow_usdc == "125"
+    assert subject.treasury_reserved_inflow_usdc == "25"
+    assert subject.treasury_reserved_usdc == "12"
+    assert subject.share_change_history == []
     assert subject.default_ingress_address == @ingress
     assert Enum.any?(subject.ingress_accounts, &(&1.address == @ingress and &1.is_default))
   end
@@ -367,7 +372,16 @@ defmodule Autolaunch.RevenueTest do
 
       case selector do
         "0x817b1cd2" -> {:ok, encode_uint(250 * Integer.pow(10, 18))}
+        "0x549b5d48" -> {:ok, encode_uint(10_000)}
+        "0xb663660a" -> {:ok, encode_uint(0)}
+        "0x8c37a52f" -> {:ok, encode_uint(0)}
+        "0x5cc76060" -> {:ok, encode_uint(0)}
+        "0x8064d80c" -> {:ok, encode_uint(125 * Integer.pow(10, 6))}
+        "0x1aa91287" -> {:ok, encode_uint(10 * Integer.pow(10, 6))}
+        "0x08c23673" -> {:ok, encode_uint(90 * Integer.pow(10, 6))}
+        "0xddffd82a" -> {:ok, encode_uint(25 * Integer.pow(10, 6))}
         "0x966ed108" -> {:ok, encode_uint(25 * Integer.pow(10, 6))}
+        "0xe76bcce9" -> {:ok, encode_uint(12 * Integer.pow(10, 6))}
         "0x76459dd5" -> {:ok, encode_uint(10 * Integer.pow(10, 6))}
         "0x5f78d5f4" -> {:ok, encode_uint(1 * Integer.pow(10, 6))}
         "0x60217267" -> {:ok, encode_uint(12 * Integer.pow(10, 18))}
@@ -412,6 +426,9 @@ defmodule Autolaunch.RevenueTest do
 
     def tx_receipt(_chain_id, _tx_hash), do: {:ok, Process.get(:fake_rpc_receipt)}
     def get_logs(_chain_id, _filter), do: {:ok, []}
+
+    def block_by_number(_chain_id, block_number),
+      do: {:ok, %{number: block_number, timestamp: 1_700_000_000}}
 
     defp encode_uint(value) do
       value

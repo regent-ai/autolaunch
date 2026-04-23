@@ -64,10 +64,8 @@ contract RevenueIngressAccount is Owned {
         balance = IERC20SupplyMinimal(usdc).balanceOf(address(this));
         require(balance != 0, "NOTHING_TO_SWEEP");
 
-        usdc.forceApprove(splitter, balance);
-        recognized = IRevenueShareSplitter(splitter)
-            .depositUSDC(balance, bytes32("ingress_sweep"), sourceRef);
-        usdc.forceApprove(splitter, 0);
+        usdc.safeTransfer(splitter, balance);
+        recognized = IRevenueShareSplitter(splitter).recordIngressSweep(balance, sourceRef);
 
         emit USDCSwept(msg.sender, balance, recognized, sourceRef);
     }

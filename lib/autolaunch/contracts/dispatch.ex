@@ -210,6 +210,60 @@ defmodule Autolaunch.Contracts.Dispatch do
         subject,
         _registry,
         "splitter",
+        "propose_eligible_revenue_share",
+        attrs,
+        _config
+      ) do
+    with {:ok, share_bps} <- ActionParams.uint_param(attrs, "share_bps") do
+      ActionParams.prepare_tx(
+        subject.chain_id,
+        subject.splitter_address,
+        Abi.encode_call(:propose_eligible_revenue_share, [{:uint16, share_bps}]),
+        "splitter",
+        "propose_eligible_revenue_share",
+        %{share_bps: Integer.to_string(share_bps)}
+      )
+    end
+  end
+
+  def build_subject_action(
+        subject,
+        _registry,
+        "splitter",
+        "cancel_eligible_revenue_share",
+        _attrs,
+        _config
+      ) do
+    ActionParams.prepare_tx(
+      subject.chain_id,
+      subject.splitter_address,
+      Abi.encode_call(:cancel_eligible_revenue_share),
+      "splitter",
+      "cancel_eligible_revenue_share"
+    )
+  end
+
+  def build_subject_action(
+        subject,
+        _registry,
+        "splitter",
+        "activate_eligible_revenue_share",
+        _attrs,
+        _config
+      ) do
+    ActionParams.prepare_tx(
+      subject.chain_id,
+      subject.splitter_address,
+      Abi.encode_call(:activate_eligible_revenue_share),
+      "splitter",
+      "activate_eligible_revenue_share"
+    )
+  end
+
+  def build_subject_action(
+        subject,
+        _registry,
+        "splitter",
         "propose_treasury_recipient_rotation",
         attrs,
         _config
@@ -295,6 +349,26 @@ defmodule Autolaunch.Contracts.Dispatch do
         Abi.encode_call(:sweep_treasury_residual_usdc, [{:uint256, amount}]),
         "splitter",
         "sweep_treasury_residual",
+        %{amount: Integer.to_string(amount)}
+      )
+    end
+  end
+
+  def build_subject_action(
+        subject,
+        _registry,
+        "splitter",
+        "sweep_treasury_reserved",
+        attrs,
+        _config
+      ) do
+    with {:ok, amount} <- ActionParams.uint_param(attrs, "amount") do
+      ActionParams.prepare_tx(
+        subject.chain_id,
+        subject.splitter_address,
+        Abi.encode_call(:sweep_treasury_reserved_usdc, [{:uint256, amount}]),
+        "splitter",
+        "sweep_treasury_reserved",
         %{amount: Integer.to_string(amount)}
       )
     end

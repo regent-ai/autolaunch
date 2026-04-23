@@ -3,6 +3,8 @@ pragma solidity ^0.8.26;
 
 import {Test} from "forge-std/Test.sol";
 
+import {RevenueIngressAccount} from "src/revenue/RevenueIngressAccount.sol";
+import {RevenueIngressFactory} from "src/revenue/RevenueIngressFactory.sol";
 import {RevenueShareSplitter} from "src/revenue/RevenueShareSplitter.sol";
 import {SubjectRegistry} from "src/revenue/SubjectRegistry.sol";
 import {MintableBurnableERC20Mock} from "test/mocks/MintableBurnableERC20Mock.sol";
@@ -39,6 +41,7 @@ contract RevenueShareSplitterTest is Test {
     address internal constant EVE = address(0xE5);
     address internal constant FUNDER = address(0xF00D);
     address internal constant NEXT_TREASURY = address(0xACCE55);
+    address internal constant INGRESS_FACTORY = address(0x5151);
     uint64 internal constant TREASURY_ROTATION_DELAY = 3 days;
 
     function setUp() external {
@@ -276,6 +279,7 @@ contract RevenueShareSplitterTest is Test {
         RevenueShareSplitter rotatedSplitter = new RevenueShareSplitter(
             address(stakeToken),
             address(usdc),
+            INGRESS_FACTORY,
             address(registry),
             subjectId,
             TREASURY,
@@ -303,7 +307,9 @@ contract RevenueShareSplitterTest is Test {
             rotatedSplitter.previewClaimableStakeToken(ALICE), expectedBeforeRotation, 1e14
         );
 
-        registry.updateSubject(subjectId, address(rotatedSplitter), TREASURY, false, "XYZ splitter v2");
+        registry.updateSubject(
+            subjectId, address(rotatedSplitter), TREASURY, false, "XYZ splitter v2"
+        );
         assertEq(rotatedSplitter.lastEmissionUpdate(), inactiveRotationTimestamp);
 
         assertApproxEqAbs(
@@ -315,10 +321,14 @@ contract RevenueShareSplitterTest is Test {
             rotatedSplitter.previewClaimableStakeToken(ALICE), expectedBeforeRotation, 1e14
         );
 
-        registry.updateSubject(subjectId, address(rotatedSplitter), TREASURY, true, "XYZ splitter v2");
+        registry.updateSubject(
+            subjectId, address(rotatedSplitter), TREASURY, true, "XYZ splitter v2"
+        );
         assertEq(rotatedSplitter.lastEmissionUpdate(), reactivationTimestamp);
 
-        assertApproxEqAbs(rotatedSplitter.previewClaimableStakeToken(ALICE), expectedBeforeRotation, 1e14);
+        assertApproxEqAbs(
+            rotatedSplitter.previewClaimableStakeToken(ALICE), expectedBeforeRotation, 1e14
+        );
 
         vm.warp(postReactivationTimestamp);
         uint256 expectedAfterReactivate =
@@ -337,13 +347,12 @@ contract RevenueShareSplitterTest is Test {
 
         vm.warp(block.timestamp + 1 days);
         uint256 expectedBeforeRotation = _expectedEmission(ALICE_STAKE, MAX_APR_BPS, 1 days);
-        assertApproxEqAbs(
-            splitter.previewClaimableStakeToken(ALICE), expectedBeforeRotation, 1e14
-        );
+        assertApproxEqAbs(splitter.previewClaimableStakeToken(ALICE), expectedBeforeRotation, 1e14);
 
         RevenueShareSplitter rotatedSplitter = new RevenueShareSplitter(
             address(stakeToken),
             address(usdc),
+            INGRESS_FACTORY,
             address(registry),
             subjectId,
             TREASURY,
@@ -354,31 +363,29 @@ contract RevenueShareSplitterTest is Test {
         );
 
         uint256 rotationTime = block.timestamp;
-        registry.updateSubject(subjectId, address(rotatedSplitter), TREASURY, true, "XYZ splitter v2");
+        registry.updateSubject(
+            subjectId, address(rotatedSplitter), TREASURY, true, "XYZ splitter v2"
+        );
 
         assertEq(splitter.lastEmissionUpdate(), rotationTime);
-        assertApproxEqAbs(
-            splitter.previewClaimableStakeToken(ALICE), expectedBeforeRotation, 1e14
+        assertApproxEqAbs(splitter.previewClaimableStakeToken(ALICE), expectedBeforeRotation, 1e14);
+
+        vm.warp(block.timestamp + 30 days);
+        assertApproxEqAbs(splitter.previewClaimableStakeToken(ALICE), expectedBeforeRotation, 1e14);
+
+        registry.updateSubject(
+            subjectId, address(rotatedSplitter), TREASURY, false, "XYZ splitter v2"
         );
 
         vm.warp(block.timestamp + 30 days);
-        assertApproxEqAbs(
-            splitter.previewClaimableStakeToken(ALICE), expectedBeforeRotation, 1e14
+        assertApproxEqAbs(splitter.previewClaimableStakeToken(ALICE), expectedBeforeRotation, 1e14);
+
+        registry.updateSubject(
+            subjectId, address(rotatedSplitter), TREASURY, true, "XYZ splitter v2"
         );
-
-        registry.updateSubject(subjectId, address(rotatedSplitter), TREASURY, false, "XYZ splitter v2");
-
-        vm.warp(block.timestamp + 30 days);
-        assertApproxEqAbs(
-            splitter.previewClaimableStakeToken(ALICE), expectedBeforeRotation, 1e14
-        );
-
-        registry.updateSubject(subjectId, address(rotatedSplitter), TREASURY, true, "XYZ splitter v2");
 
         vm.warp(block.timestamp + 1 days);
-        assertApproxEqAbs(
-            splitter.previewClaimableStakeToken(ALICE), expectedBeforeRotation, 1e14
-        );
+        assertApproxEqAbs(splitter.previewClaimableStakeToken(ALICE), expectedBeforeRotation, 1e14);
     }
 
     function testStakeRejectsInboundFeeOnTransferToken() external {
@@ -454,9 +461,137 @@ contract RevenueShareSplitterTest is Test {
         assertEq(splitter.protocolSkimBps(), 100);
     }
 
+    function testEligibleRevenueShareProposalRulesAndCooldowns() external {
+        vm.expectRevert("ELIGIBLE_SHARE_TOO_LOW");
+        splitter.proposeEligibleRevenueShare(999);
+
+        vm.expectRevert("ELIGIBLE_SHARE_STEP_TOO_LARGE");
+        splitter.proposeEligibleRevenueShare(7000);
+
+        splitter.proposeEligibleRevenueShare(8000);
+        assertEq(splitter.pendingEligibleRevenueShareBps(), 8000);
+        assertEq(splitter.pendingEligibleRevenueShareEta(), block.timestamp + 30 days);
+
+        vm.expectRevert("PENDING_SHARE_EXISTS");
+        splitter.proposeEligibleRevenueShare(9000);
+
+        vm.expectRevert("SHARE_NOT_READY");
+        splitter.activateEligibleRevenueShare();
+
+        uint256 cancelTime = block.timestamp;
+        splitter.cancelEligibleRevenueShare();
+        assertEq(splitter.pendingEligibleRevenueShareBps(), 0);
+        assertEq(splitter.eligibleRevenueShareCooldownEnd(), cancelTime + 30 days);
+
+        vm.expectRevert("SHARE_COOLDOWN_ACTIVE");
+        splitter.proposeEligibleRevenueShare(9000);
+
+        vm.warp(block.timestamp + 30 days);
+        splitter.proposeEligibleRevenueShare(9000);
+
+        uint256 activationTime = splitter.pendingEligibleRevenueShareEta();
+        vm.warp(activationTime);
+        vm.prank(ALICE);
+        splitter.activateEligibleRevenueShare();
+
+        assertEq(splitter.eligibleRevenueShareBps(), 9000);
+        assertEq(splitter.pendingEligibleRevenueShareBps(), 0);
+        assertEq(splitter.currentRevenuePolicyEpoch(), 2);
+        assertEq(splitter.eligibleRevenueShareCooldownEnd(), activationTime + 30 days);
+    }
+
+    function testTenPercentEligibleShareRoutesIntoReserveLane() external {
+        MintableBurnableERC20Mock fullStake = new MintableBurnableERC20Mock("Full", "FULL", 18);
+        RevenueShareSplitter fullSplitter = _deploySplitter(fullStake, 100 * XYZ, "full-stake");
+
+        fullStake.mint(ALICE, 100 * XYZ);
+        _stake(fullSplitter, fullStake, ALICE, 100 * XYZ);
+
+        _stepEligibleRevenueShare(fullSplitter, 8000);
+        _stepEligibleRevenueShare(fullSplitter, 6000);
+        _stepEligibleRevenueShare(fullSplitter, 4000);
+        _stepEligibleRevenueShare(fullSplitter, 2000);
+        _stepEligibleRevenueShare(fullSplitter, 1000);
+
+        usdc.mint(address(this), 1000 * USDC);
+        usdc.approve(address(fullSplitter), type(uint256).max);
+        fullSplitter.depositUSDC(1000 * USDC, bytes32("direct"), bytes32("ten-percent"));
+
+        assertEq(fullSplitter.eligibleRevenueShareBps(), 1000);
+        assertEq(fullSplitter.protocolReserveUsdc(), 10 * USDC);
+        assertEq(fullSplitter.stakerEligibleInflowUsdc(), 99 * USDC);
+        assertEq(fullSplitter.treasuryReservedInflowUsdc(), 891 * USDC);
+        assertEq(fullSplitter.treasuryReservedUsdc(), 891 * USDC);
+        assertEq(fullSplitter.previewClaimableUSDC(ALICE), 99 * USDC);
+    }
+
+    function testCheckpointedIngressBalanceKeepsOldShareAfterActivation() external {
+        (
+            RevenueShareSplitter ingressSplitter,
+            SubjectRegistry registry,
+            RevenueIngressFactory ingressFactory,
+            bytes32 subjectId
+        ) = _deploySplitterWithIngressFactory("checkpoint");
+        registryOfSplitter[address(ingressSplitter)] = registry;
+        subjectIdOfSplitter[address(ingressSplitter)] = subjectId;
+
+        address ingress = ingressFactory.createIngressAccount(subjectId, "default", true);
+        usdc.mint(ingress, 1000 * USDC);
+
+        ingressSplitter.proposeEligibleRevenueShare(8000);
+        vm.warp(block.timestamp + 30 days);
+        vm.prank(ALICE);
+        ingressSplitter.activateEligibleRevenueShare();
+
+        assertEq(ingressSplitter.ingressCarryoverUsdc(ingress, 1), 1000 * USDC);
+
+        usdc.mint(ingress, 500 * USDC);
+        RevenueIngressAccount(payable(ingress)).sweepUSDC(bytes32("checkpoint"));
+
+        assertEq(ingressSplitter.eligibleRevenueShareBps(), 8000);
+        assertEq(ingressSplitter.protocolReserveUsdc(), 15 * USDC);
+        assertEq(ingressSplitter.stakerEligibleInflowUsdc(), 1386 * USDC);
+        assertEq(ingressSplitter.treasuryReservedInflowUsdc(), 99 * USDC);
+        assertEq(ingressSplitter.treasuryReservedUsdc(), 99 * USDC);
+        assertEq(ingressSplitter.treasuryResidualUsdc(), 1386 * USDC);
+    }
+
+    function testActivationCheckpointsMultipleIngressAccounts() external {
+        (
+            RevenueShareSplitter ingressSplitter,
+            SubjectRegistry registry,
+            RevenueIngressFactory ingressFactory,
+            bytes32 subjectId
+        ) = _deploySplitterWithIngressFactory("multi-ingress");
+        registryOfSplitter[address(ingressSplitter)] = registry;
+        subjectIdOfSplitter[address(ingressSplitter)] = subjectId;
+
+        address ingressA = ingressFactory.createIngressAccount(subjectId, "default", true);
+        address ingressB = ingressFactory.createIngressAccount(subjectId, "backup", false);
+        usdc.mint(ingressA, 1000 * USDC);
+        usdc.mint(ingressB, 500 * USDC);
+
+        ingressSplitter.proposeEligibleRevenueShare(8000);
+        vm.warp(block.timestamp + 30 days);
+        ingressSplitter.activateEligibleRevenueShare();
+
+        assertEq(ingressSplitter.ingressCarryoverUsdc(ingressA, 1), 1000 * USDC);
+        assertEq(ingressSplitter.ingressCarryoverUsdc(ingressB, 1), 500 * USDC);
+
+        usdc.mint(ingressA, 100 * USDC);
+        usdc.mint(ingressB, 100 * USDC);
+
+        RevenueIngressAccount(payable(ingressA)).sweepUSDC(bytes32("ingress-a"));
+        RevenueIngressAccount(payable(ingressB)).sweepUSDC(bytes32("ingress-b"));
+
+        assertEq(ingressSplitter.protocolReserveUsdc(), 17 * USDC);
+        assertEq(ingressSplitter.treasuryReservedInflowUsdc(), 39_600_000);
+        assertEq(ingressSplitter.treasuryReservedUsdc(), 39_600_000);
+        assertEq(ingressSplitter.stakerEligibleInflowUsdc(), 1_643_400_000);
+    }
+
     function testRewardClaimsRecoverAfterFundingArrivesLater() external {
-        MintableBurnableERC20Mock customStake =
-            new MintableBurnableERC20Mock("Recover", "RCV", 18);
+        MintableBurnableERC20Mock customStake = new MintableBurnableERC20Mock("Recover", "RCV", 18);
         RevenueShareSplitter custom = _deploySplitter(customStake, 1000 * XYZ, "recover");
 
         customStake.mint(ALICE, 200 * XYZ);
@@ -806,10 +941,13 @@ contract RevenueShareSplitterTest is Test {
         returns (RevenueShareSplitter deployed, SubjectRegistry registry, bytes32 subjectId)
     {
         registry = new SubjectRegistry(address(this));
+        RevenueIngressFactory ingressFactory =
+            new RevenueIngressFactory(address(usdc), address(registry), address(this));
         subjectId = keccak256(abi.encodePacked(splitterLabel, token, denominator, block.timestamp));
         deployed = new RevenueShareSplitter(
             token,
             address(usdc),
+            address(ingressFactory),
             address(registry),
             subjectId,
             TREASURY,
@@ -820,6 +958,49 @@ contract RevenueShareSplitterTest is Test {
         );
 
         registry.createSubject(subjectId, token, address(deployed), TREASURY, true, splitterLabel);
+    }
+
+    function _deploySplitterWithIngressFactory(string memory splitterLabel)
+        internal
+        returns (
+            RevenueShareSplitter deployed,
+            SubjectRegistry registry,
+            RevenueIngressFactory ingressFactory,
+            bytes32 subjectId
+        )
+    {
+        registry = new SubjectRegistry(address(this));
+        ingressFactory = new RevenueIngressFactory(address(usdc), address(registry), address(this));
+        subjectId =
+            keccak256(abi.encodePacked(splitterLabel, address(ingressFactory), block.timestamp));
+        deployed = new RevenueShareSplitter(
+            address(stakeToken),
+            address(usdc),
+            address(ingressFactory),
+            address(registry),
+            subjectId,
+            TREASURY,
+            PROTOCOL_TREASURY,
+            INITIAL_SUPPLY_DENOMINATOR,
+            splitterLabel,
+            address(this)
+        );
+
+        registry.createSubject(
+            subjectId, address(stakeToken), address(deployed), TREASURY, true, splitterLabel
+        );
+    }
+
+    function _stepEligibleRevenueShare(RevenueShareSplitter targetSplitter, uint16 nextShareBps)
+        internal
+    {
+        uint256 cooldownEnd = targetSplitter.eligibleRevenueShareCooldownEnd();
+        if (cooldownEnd > block.timestamp) {
+            vm.warp(cooldownEnd);
+        }
+        targetSplitter.proposeEligibleRevenueShare(nextShareBps);
+        vm.warp(targetSplitter.pendingEligibleRevenueShareEta());
+        targetSplitter.activateEligibleRevenueShare();
     }
 
     function _stake(

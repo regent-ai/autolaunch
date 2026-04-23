@@ -6,6 +6,12 @@ import {SafeTransferLib} from "src/libraries/SafeTransferLib.sol";
 import {FullMath} from "@uniswap/v4-core/src/libraries/FullMath.sol";
 import {IERC20SupplyMinimal} from "src/revenue/interfaces/IERC20SupplyMinimal.sol";
 import {ILaunchFeeVaultMinimal} from "src/revenue/interfaces/ILaunchFeeVaultMinimal.sol";
+import {
+    IRevenueIngressAccountMinimal
+} from "src/revenue/interfaces/IRevenueIngressAccountMinimal.sol";
+import {
+    IRevenueIngressFactoryMinimal
+} from "src/revenue/interfaces/IRevenueIngressFactoryMinimal.sol";
 import {IRevenueShareSplitter} from "src/revenue/interfaces/IRevenueShareSplitter.sol";
 import {ISubjectRegistry} from "src/revenue/interfaces/ISubjectRegistry.sol";
 import {ISubjectLifecycleSync} from "src/revenue/interfaces/ISubjectLifecycleSync.sol";
@@ -17,13 +23,18 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
     uint256 public constant ACC_PRECISION = 1e27;
     uint256 public constant MAX_EMISSION_APR_BPS = 10_000;
     uint16 public constant protocolSkimBps = 100;
+    uint16 public constant MIN_ELIGIBLE_REVENUE_SHARE_BPS = 1000;
+    uint16 public constant MAX_ELIGIBLE_REVENUE_SHARE_STEP_BPS = 2000;
+    uint16 public constant DEFAULT_ELIGIBLE_REVENUE_SHARE_BPS = 10_000;
     uint256 internal constant SECONDS_PER_YEAR = 365 days;
     uint64 internal constant DEFAULT_TREASURY_ROTATION_DELAY = 3 days;
+    uint64 internal constant ELIGIBLE_REVENUE_SHARE_DELAY = 30 days;
 
     address public immutable override stakeToken;
     address public immutable override usdc;
+    address public immutable ingressFactory;
     address public immutable subjectRegistry;
-    bytes32 public immutable subjectId;
+    bytes32 public immutable override subjectId;
     uint256 public immutable revenueShareSupplyDenominator;
 
     string public label;
@@ -34,6 +45,11 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
     uint64 public immutable treasuryRotationDelay;
     address public override protocolRecipient;
     uint16 public emissionAprBps;
+    uint16 public eligibleRevenueShareBps;
+    uint16 public pendingEligibleRevenueShareBps;
+    uint64 public pendingEligibleRevenueShareEta;
+    uint64 public eligibleRevenueShareCooldownEnd;
+    uint64 public currentRevenuePolicyEpoch;
 
     bool public paused;
     bool public subjectLifecycleRetired;
@@ -42,18 +58,26 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
     uint256 public accRewardPerTokenStakeToken;
     uint256 public lastEmissionUpdate;
     uint256 public treasuryResidualUsdc;
+    uint256 public treasuryReservedUsdc;
     uint256 public protocolReserveUsdc;
     uint256 public undistributedDustUsdc;
     uint256 public unclaimedStakeTokenLiability;
     uint256 public totalEmittedStakeToken;
     uint256 public totalFundedStakeToken;
     uint256 public totalClaimedStakeToken;
+    uint256 public grossInflowUsdc;
+    uint256 public regentSkimUsdc;
+    uint256 public stakerEligibleInflowUsdc;
+    uint256 public treasuryReservedInflowUsdc;
 
     mapping(address => uint256) public stakedBalance;
     mapping(address => uint256) public rewardDebtUsdc;
     mapping(address => uint256) public storedClaimableUsdc;
     mapping(address => uint256) public rewardDebtStakeToken;
     mapping(address => uint256) public storedClaimableStakeToken;
+    mapping(uint64 => uint16) public revenueShareBpsByEpoch;
+    mapping(address => uint64) public ingressNextUnsweptEpoch;
+    mapping(address => mapping(uint64 => uint256)) public ingressCarryoverUsdc;
 
     uint256 private _reentrancyGuard = 1;
 
@@ -70,12 +94,38 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
     event ProtocolRecipientSet(address indexed protocolRecipient);
     event EmissionAprBpsSet(uint16 previousBps, uint16 newBps);
     event LabelSet(string label);
+    event EligibleRevenueShareProposed(
+        uint16 indexed currentBps, uint16 indexed pendingBps, uint64 eta
+    );
+    event EligibleRevenueShareCancelled(uint16 indexed cancelledBps, uint64 cooldownEnd);
+    event EligibleRevenueShareActivated(
+        uint16 indexed previousBps,
+        uint16 indexed newBps,
+        uint64 activatedAt,
+        uint64 cooldownEnd,
+        uint64 newEpoch
+    );
+    event IngressCheckpointRecorded(
+        address indexed ingress, uint64 indexed epoch, uint16 shareBps, uint256 amount
+    );
+    event IngressCarryoverConsumed(
+        address indexed ingress,
+        uint64 indexed epoch,
+        uint16 shareBps,
+        uint256 amountConsumed,
+        uint256 amountRemaining,
+        bytes32 indexed sourceRef
+    );
     event StakeUpdated(address indexed account, uint256 newStakeBalance, uint256 totalStaked);
     event USDCRevenueDeposited(
         uint256 amountReceived,
         uint256 protocolAmount,
+        uint16 eligibleShareBps,
+        uint64 policyEpoch,
+        uint256 stakerEligibleAmount,
+        uint256 treasuryReservedAmount,
         uint256 stakerEntitlement,
-        uint256 treasuryPortion,
+        uint256 treasuryResidualAmount,
         bytes32 indexed sourceTag,
         bytes32 indexed sourceRef
     );
@@ -86,12 +136,14 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
         address indexed account, uint256 amount, uint256 newStakeBalance, uint256 totalStaked
     );
     event USDCTreasuryResidualWithdrawn(uint256 amount, address indexed recipient);
+    event USDCTreasuryReservedWithdrawn(uint256 amount, address indexed recipient);
     event USDCProtocolReserveWithdrawn(uint256 amount, address indexed recipient);
     event USDCDustReassigned(uint256 amount, address indexed recipient);
 
     constructor(
         address stakeToken_,
         address usdc_,
+        address ingressFactory_,
         address subjectRegistry_,
         bytes32 subjectId_,
         address treasuryRecipient_,
@@ -102,6 +154,7 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
     ) Owned(owner_) {
         require(stakeToken_ != address(0), "STAKE_TOKEN_ZERO");
         require(usdc_ != address(0), "USDC_ZERO");
+        require(ingressFactory_ != address(0), "INGRESS_FACTORY_ZERO");
         require(subjectRegistry_ != address(0), "SUBJECT_REGISTRY_ZERO");
         require(subjectId_ != bytes32(0), "SUBJECT_ZERO");
         require(treasuryRecipient_ != address(0), "TREASURY_ZERO");
@@ -110,6 +163,7 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
 
         stakeToken = stakeToken_;
         usdc = usdc_;
+        ingressFactory = ingressFactory_;
         subjectRegistry = subjectRegistry_;
         subjectId = subjectId_;
         revenueShareSupplyDenominator = revenueShareSupplyDenominator_;
@@ -118,6 +172,9 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
         protocolRecipient = protocolRecipient_;
         label = label_;
         lastEmissionUpdate = block.timestamp;
+        eligibleRevenueShareBps = DEFAULT_ELIGIBLE_REVENUE_SHARE_BPS;
+        currentRevenuePolicyEpoch = 1;
+        revenueShareBpsByEpoch[1] = DEFAULT_ELIGIBLE_REVENUE_SHARE_BPS;
     }
 
     modifier whenNotPaused() {
@@ -189,6 +246,85 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
         pendingTreasuryRecipientEta = 0;
 
         emit TreasuryRecipientRotationExecuted(oldRecipient, newRecipient);
+    }
+
+    function proposeEligibleRevenueShare(uint16 newBps) external onlyOwner {
+        require(pendingEligibleRevenueShareEta == 0, "PENDING_SHARE_EXISTS");
+        require(block.timestamp >= eligibleRevenueShareCooldownEnd, "SHARE_COOLDOWN_ACTIVE");
+        require(newBps >= MIN_ELIGIBLE_REVENUE_SHARE_BPS, "ELIGIBLE_SHARE_TOO_LOW");
+        require(newBps <= BPS_DENOMINATOR, "ELIGIBLE_SHARE_TOO_HIGH");
+        require(
+            _absDiff(eligibleRevenueShareBps, newBps) <= MAX_ELIGIBLE_REVENUE_SHARE_STEP_BPS,
+            "ELIGIBLE_SHARE_STEP_TOO_LARGE"
+        );
+
+        uint64 eta = uint64(block.timestamp) + ELIGIBLE_REVENUE_SHARE_DELAY;
+        pendingEligibleRevenueShareBps = newBps;
+        pendingEligibleRevenueShareEta = eta;
+
+        emit EligibleRevenueShareProposed(eligibleRevenueShareBps, newBps, eta);
+    }
+
+    function cancelEligibleRevenueShare() external onlyOwner {
+        uint16 cancelledBps = pendingEligibleRevenueShareBps;
+        require(cancelledBps != 0, "PENDING_SHARE_ZERO");
+
+        pendingEligibleRevenueShareBps = 0;
+        pendingEligibleRevenueShareEta = 0;
+        eligibleRevenueShareCooldownEnd = uint64(block.timestamp) + ELIGIBLE_REVENUE_SHARE_DELAY;
+
+        emit EligibleRevenueShareCancelled(cancelledBps, eligibleRevenueShareCooldownEnd);
+    }
+
+    function activateEligibleRevenueShare() external whenNotPaused onlyActiveSubject nonReentrant {
+        uint16 newBps = pendingEligibleRevenueShareBps;
+        uint64 eta = pendingEligibleRevenueShareEta;
+        require(newBps != 0, "PENDING_SHARE_ZERO");
+        require(block.timestamp >= eta, "SHARE_NOT_READY");
+
+        _settleStakeTokenEmissions();
+
+        uint16 previousBps = eligibleRevenueShareBps;
+        uint64 previousEpoch = currentRevenuePolicyEpoch;
+        uint256 ingressCount =
+            IRevenueIngressFactoryMinimal(ingressFactory).ingressAccountCount(subjectId);
+
+        for (uint256 i; i < ingressCount; ++i) {
+            address ingress =
+                IRevenueIngressFactoryMinimal(ingressFactory).ingressAccountAt(subjectId, i);
+            uint256 balance = IERC20SupplyMinimal(usdc).balanceOf(ingress);
+            uint256 priorCarryover = _totalOutstandingIngressCarryover(ingress, previousEpoch);
+            require(balance >= priorCarryover, "INGRESS_CARRYOVER_OVERFLOW");
+
+            uint256 checkpointAmount = balance - priorCarryover;
+            if (checkpointAmount == 0) {
+                continue;
+            }
+
+            ingressCarryoverUsdc[ingress][previousEpoch] += checkpointAmount;
+            uint64 nextEpoch = ingressNextUnsweptEpoch[ingress];
+            if (nextEpoch == 0 || nextEpoch > previousEpoch) {
+                ingressNextUnsweptEpoch[ingress] = previousEpoch;
+            }
+
+            emit IngressCheckpointRecorded(ingress, previousEpoch, previousBps, checkpointAmount);
+        }
+
+        uint64 newEpoch = previousEpoch + 1;
+        currentRevenuePolicyEpoch = newEpoch;
+        eligibleRevenueShareBps = newBps;
+        revenueShareBpsByEpoch[newEpoch] = newBps;
+        pendingEligibleRevenueShareBps = 0;
+        pendingEligibleRevenueShareEta = 0;
+        eligibleRevenueShareCooldownEnd = uint64(block.timestamp) + ELIGIBLE_REVENUE_SHARE_DELAY;
+
+        emit EligibleRevenueShareActivated(
+            previousBps,
+            newBps,
+            _toUint64(block.timestamp),
+            eligibleRevenueShareCooldownEnd,
+            newEpoch
+        );
     }
 
     function setProtocolRecipient(address protocolRecipient_) external onlyOwner {
@@ -265,7 +401,73 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
         uint256 afterBalance = IERC20SupplyMinimal(usdc).balanceOf(address(this));
         received = afterBalance - beforeBalance;
 
-        _recordRevenue(received, sourceTag, sourceRef);
+        _recordRevenue(
+            received, eligibleRevenueShareBps, currentRevenuePolicyEpoch, sourceTag, sourceRef
+        );
+    }
+
+    function recordIngressSweep(uint256 amount, bytes32 sourceRef)
+        external
+        override
+        whenNotPaused
+        onlyActiveSubject
+        nonReentrant
+        returns (uint256 recognized)
+    {
+        require(amount != 0, "AMOUNT_ZERO");
+        require(_isKnownIngress(msg.sender), "ONLY_INGRESS_ACCOUNT");
+
+        _settleStakeTokenEmissions();
+
+        recognized = amount;
+        uint256 remaining = amount;
+        uint64 epoch = ingressNextUnsweptEpoch[msg.sender];
+        if (epoch == 0) {
+            epoch = 1;
+        }
+
+        uint64 liveEpoch = currentRevenuePolicyEpoch;
+        while (remaining > 0 && epoch < liveEpoch) {
+            uint256 carryover = ingressCarryoverUsdc[msg.sender][epoch];
+            if (carryover == 0) {
+                unchecked {
+                    ++epoch;
+                }
+                continue;
+            }
+
+            uint256 consumed = carryover > remaining ? remaining : carryover;
+            uint256 amountRemaining = carryover - consumed;
+            ingressCarryoverUsdc[msg.sender][epoch] = amountRemaining;
+
+            _recordRevenue(
+                consumed, revenueShareBpsByEpoch[epoch], epoch, bytes32("ingress_sweep"), sourceRef
+            );
+
+            emit IngressCarryoverConsumed(
+                msg.sender,
+                epoch,
+                revenueShareBpsByEpoch[epoch],
+                consumed,
+                amountRemaining,
+                sourceRef
+            );
+
+            remaining -= consumed;
+            if (amountRemaining == 0) {
+                unchecked {
+                    ++epoch;
+                }
+            }
+        }
+
+        ingressNextUnsweptEpoch[msg.sender] = epoch;
+
+        if (remaining > 0) {
+            _recordRevenue(
+                remaining, eligibleRevenueShareBps, liveEpoch, bytes32("ingress_sweep"), sourceRef
+            );
+        }
     }
 
     function pullTreasuryShareFromLaunchVault(
@@ -284,7 +486,13 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
         uint256 afterBalance = IERC20SupplyMinimal(usdc).balanceOf(address(this));
         received = afterBalance - beforeBalance;
 
-        _recordRevenue(received, bytes32("launch_treasury"), sourceRef);
+        _recordRevenue(
+            received,
+            eligibleRevenueShareBps,
+            currentRevenuePolicyEpoch,
+            bytes32("launch_treasury"),
+            sourceRef
+        );
     }
 
     function sync(address account) external whenNotPaused nonReentrant {
@@ -404,6 +612,19 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
         usdc.safeTransfer(treasuryRecipient, amount);
     }
 
+    function sweepTreasuryReservedUSDC(uint256 amount)
+        external
+        whenNotPaused
+        onlyTreasurySweepCaller
+        nonReentrant
+    {
+        require(treasuryReservedUsdc >= amount, "TREASURY_RESERVED_BALANCE_LOW");
+
+        treasuryReservedUsdc -= amount;
+        emit USDCTreasuryReservedWithdrawn(amount, treasuryRecipient);
+        usdc.safeTransfer(treasuryRecipient, amount);
+    }
+
     function sweepProtocolReserveUSDC(uint256 amount)
         external
         whenNotPaused
@@ -476,6 +697,10 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
         }
     }
 
+    function totalOutstandingIngressCarryover(address ingress) external view returns (uint256) {
+        return _totalOutstandingIngressCarryover(ingress, currentRevenuePolicyEpoch);
+    }
+
     function _isProtectedToken(address token) internal view override returns (bool) {
         return token == usdc || token == stakeToken;
     }
@@ -512,7 +737,13 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
         rewardDebtUsdc[account] = currentAcc;
     }
 
-    function _recordRevenue(uint256 received, bytes32 sourceTag, bytes32 sourceRef) internal {
+    function _recordRevenue(
+        uint256 received,
+        uint16 shareBps,
+        uint64 policyEpoch,
+        bytes32 sourceTag,
+        bytes32 sourceRef
+    ) internal {
         require(received > 0, "NOTHING_RECEIVED");
 
         uint256 protocolAmount = 0;
@@ -520,33 +751,52 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
             protocolAmount = FullMath.mulDiv(received, protocolSkimBps, BPS_DENOMINATOR);
         }
         uint256 net = received - protocolAmount;
+        uint256 treasuryReservedAmount =
+            FullMath.mulDiv(net, BPS_DENOMINATOR - shareBps, BPS_DENOMINATOR);
+        uint256 stakerEligibleAmount = net - treasuryReservedAmount;
 
         uint256 deltaAcc = 0;
-        if (net > 0) {
-            deltaAcc = FullMath.mulDiv(net, ACC_PRECISION, revenueShareSupplyDenominator);
+        if (stakerEligibleAmount > 0) {
+            deltaAcc =
+                FullMath.mulDiv(stakerEligibleAmount, ACC_PRECISION, revenueShareSupplyDenominator);
         }
         if (deltaAcc > 0) {
             accRewardPerTokenUsdc += deltaAcc;
         }
 
         uint256 stakerEntitlement = 0;
-        if (net > 0 && totalStaked > 0) {
-            stakerEntitlement = FullMath.mulDiv(net, totalStaked, revenueShareSupplyDenominator);
+        if (stakerEligibleAmount > 0 && totalStaked > 0) {
+            stakerEntitlement =
+                FullMath.mulDiv(stakerEligibleAmount, totalStaked, revenueShareSupplyDenominator);
         }
-        uint256 treasuryPortion = net - stakerEntitlement;
+        uint256 treasuryResidualAmount = stakerEligibleAmount - stakerEntitlement;
         uint256 creditedByAccumulator = 0;
         if (deltaAcc > 0 && totalStaked > 0) {
             creditedByAccumulator = FullMath.mulDiv(deltaAcc, totalStaked, ACC_PRECISION);
         }
 
-        treasuryResidualUsdc += treasuryPortion;
+        grossInflowUsdc += received;
+        regentSkimUsdc += protocolAmount;
+        stakerEligibleInflowUsdc += stakerEligibleAmount;
+        treasuryReservedInflowUsdc += treasuryReservedAmount;
+        treasuryResidualUsdc += treasuryResidualAmount;
+        treasuryReservedUsdc += treasuryReservedAmount;
         protocolReserveUsdc += protocolAmount;
         if (stakerEntitlement > creditedByAccumulator) {
             undistributedDustUsdc += stakerEntitlement - creditedByAccumulator;
         }
 
         emit USDCRevenueDeposited(
-            received, protocolAmount, stakerEntitlement, treasuryPortion, sourceTag, sourceRef
+            received,
+            protocolAmount,
+            shareBps,
+            policyEpoch,
+            stakerEligibleAmount,
+            treasuryReservedAmount,
+            stakerEntitlement,
+            treasuryResidualAmount,
+            sourceTag,
+            sourceRef
         );
     }
 
@@ -597,11 +847,74 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
     }
 
     function _subjectIsActive() internal view returns (bool) {
-        return !subjectLifecycleRetired && ISubjectRegistry(subjectRegistry).getSubject(subjectId).active;
+        return
+            !subjectLifecycleRetired
+                && ISubjectRegistry(subjectRegistry).getSubject(subjectId).active;
+    }
+
+    function _isKnownIngress(address ingress) internal view returns (bool) {
+        if (ingress.code.length == 0) {
+            return false;
+        }
+        if (!IRevenueIngressFactoryMinimal(ingressFactory).isIngressAccount(ingress)) {
+            return false;
+        }
+
+        try IRevenueIngressAccountMinimal(ingress).splitter() returns (address splitterAddress) {
+            if (splitterAddress != address(this)) {
+                return false;
+            }
+        } catch {
+            return false;
+        }
+
+        try IRevenueIngressAccountMinimal(ingress).subjectId() returns (bytes32 ingressSubjectId) {
+            if (ingressSubjectId != subjectId) {
+                return false;
+            }
+        } catch {
+            return false;
+        }
+
+        try IRevenueIngressAccountMinimal(ingress).usdc() returns (address ingressUsdc) {
+            return ingressUsdc == usdc;
+        } catch {
+            return false;
+        }
+    }
+
+    function _totalOutstandingIngressCarryover(address ingress, uint64 liveEpoch)
+        internal
+        view
+        returns (uint256 outstanding)
+    {
+        uint64 epoch = ingressNextUnsweptEpoch[ingress];
+        if (epoch == 0) {
+            epoch = 1;
+        }
+
+        while (epoch < liveEpoch) {
+            outstanding += ingressCarryoverUsdc[ingress][epoch];
+            unchecked {
+                ++epoch;
+            }
+        }
+    }
+
+    function _absDiff(uint16 left, uint16 right) internal pure returns (uint16) {
+        return left >= right ? left - right : right - left;
+    }
+
+    function _toUint64(uint256 value) internal pure returns (uint64) {
+        require(value <= type(uint64).max, "UINT64_OVERFLOW");
+        return uint64(value);
     }
 
     // slither-disable-next-line reentrancy-balance
-    function _pullExactStakeToken(address from, uint256 amount) internal returns (uint256 received) {
+    function _pullExactStakeToken(address from, uint256 amount)
+        internal
+        returns (uint256 received)
+    {
         uint256 beforeBalance = IERC20SupplyMinimal(stakeToken).balanceOf(address(this));
         stakeToken.safeTransferFrom(from, address(this), amount);
         uint256 afterBalance = IERC20SupplyMinimal(stakeToken).balanceOf(address(this));

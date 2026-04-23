@@ -12,6 +12,9 @@ defmodule Autolaunch.Revenue do
 
   @usdc_decimals 6
   @token_decimals 18
+  @eligible_share_proposed_topic0 "0xdea1cf6e658a0d5758b71519980315f6a1dd1377c7de69e48adc4a4f318a1283"
+  @eligible_share_cancelled_topic0 "0x10cb96b400282a7ceaa5f8861808ae2919fd8925eb8ee66c751afc59e7c8fb5d"
+  @eligible_share_activated_topic0 "0x95e2f1f3cbaa769cf148172e455a445e635b5b48a17e2fe9937e89a6b96066bb"
 
   def get_subject(subject_id, current_human \\ nil) do
     with {:ok, %{subject: subject}} <- subject_scope(subject_id, current_human) do
@@ -761,6 +764,7 @@ defmodule Autolaunch.Revenue do
   defp build_subject(job, subject_id, owner_address) do
     ingress_accounts = load_ingress_accounts(job, subject_id)
     can_manage = owner_address && can_manage_subject?(job, subject_id, owner_address)
+    share_change_history = load_share_change_history(job)
 
     total_staked =
       call_uint(
@@ -776,11 +780,74 @@ defmodule Autolaunch.Revenue do
         Abi.encode_no_args(:treasury_residual_usdc)
       )
 
+    treasury_reserved_usdc =
+      call_uint(
+        job.chain_id,
+        job.revenue_share_splitter_address,
+        Abi.encode_no_args(:treasury_reserved_usdc)
+      )
+
     protocol_reserve_usdc =
       call_uint(
         job.chain_id,
         job.revenue_share_splitter_address,
         Abi.encode_no_args(:protocol_reserve_usdc)
+      )
+
+    eligible_revenue_share_bps =
+      call_uint(
+        job.chain_id,
+        job.revenue_share_splitter_address,
+        Abi.encode_no_args(:eligible_revenue_share_bps)
+      )
+
+    pending_eligible_revenue_share_bps =
+      call_uint(
+        job.chain_id,
+        job.revenue_share_splitter_address,
+        Abi.encode_no_args(:pending_eligible_revenue_share_bps)
+      )
+
+    pending_eligible_revenue_share_eta_raw =
+      call_uint(
+        job.chain_id,
+        job.revenue_share_splitter_address,
+        Abi.encode_no_args(:pending_eligible_revenue_share_eta)
+      )
+
+    eligible_revenue_share_cooldown_end_raw =
+      call_uint(
+        job.chain_id,
+        job.revenue_share_splitter_address,
+        Abi.encode_no_args(:eligible_revenue_share_cooldown_end)
+      )
+
+    gross_inflow_usdc =
+      call_uint(
+        job.chain_id,
+        job.revenue_share_splitter_address,
+        Abi.encode_no_args(:gross_inflow_usdc)
+      )
+
+    regent_skim_usdc =
+      call_uint(
+        job.chain_id,
+        job.revenue_share_splitter_address,
+        Abi.encode_no_args(:regent_skim_usdc)
+      )
+
+    staker_eligible_inflow_usdc =
+      call_uint(
+        job.chain_id,
+        job.revenue_share_splitter_address,
+        Abi.encode_no_args(:staker_eligible_inflow_usdc)
+      )
+
+    treasury_reserved_inflow_usdc =
+      call_uint(
+        job.chain_id,
+        job.revenue_share_splitter_address,
+        Abi.encode_no_args(:treasury_reserved_inflow_usdc)
       )
 
     undistributed_dust_usdc =
@@ -857,12 +924,35 @@ defmodule Autolaunch.Revenue do
        ingress_accounts: ingress_accounts.accounts,
        total_staked_raw: total_staked,
        total_staked: format_units(total_staked, @token_decimals),
+       eligible_revenue_share_bps: eligible_revenue_share_bps,
+       eligible_revenue_share_percent: bps_to_percent_string(eligible_revenue_share_bps),
+       pending_eligible_revenue_share_bps: zero_to_nil(pending_eligible_revenue_share_bps),
+       pending_eligible_revenue_share_percent: percent_or_nil(pending_eligible_revenue_share_bps),
+       pending_eligible_revenue_share_eta_raw:
+         zero_to_nil(pending_eligible_revenue_share_eta_raw),
+       pending_eligible_revenue_share_eta:
+         format_unix_timestamp(zero_to_nil(pending_eligible_revenue_share_eta_raw)),
+       eligible_revenue_share_cooldown_end_raw:
+         zero_to_nil(eligible_revenue_share_cooldown_end_raw),
+       eligible_revenue_share_cooldown_end:
+         format_unix_timestamp(zero_to_nil(eligible_revenue_share_cooldown_end_raw)),
+       gross_inflow_usdc_raw: gross_inflow_usdc,
+       gross_inflow_usdc: format_units(gross_inflow_usdc, @usdc_decimals),
+       regent_skim_usdc_raw: regent_skim_usdc,
+       regent_skim_usdc: format_units(regent_skim_usdc, @usdc_decimals),
+       staker_eligible_inflow_usdc_raw: staker_eligible_inflow_usdc,
+       staker_eligible_inflow_usdc: format_units(staker_eligible_inflow_usdc, @usdc_decimals),
+       treasury_reserved_inflow_usdc_raw: treasury_reserved_inflow_usdc,
+       treasury_reserved_inflow_usdc: format_units(treasury_reserved_inflow_usdc, @usdc_decimals),
        treasury_residual_usdc_raw: treasury_residual_usdc,
        treasury_residual_usdc: format_units(treasury_residual_usdc, @usdc_decimals),
+       treasury_reserved_usdc_raw: treasury_reserved_usdc,
+       treasury_reserved_usdc: format_units(treasury_reserved_usdc, @usdc_decimals),
        protocol_reserve_usdc_raw: protocol_reserve_usdc,
        protocol_reserve_usdc: format_units(protocol_reserve_usdc, @usdc_decimals),
        undistributed_dust_usdc_raw: undistributed_dust_usdc,
        undistributed_dust_usdc: format_units(undistributed_dust_usdc, @usdc_decimals),
+       share_change_history: share_change_history,
        wallet_address: owner_address,
        wallet_stake_balance_raw: wallet_stake_balance_raw,
        wallet_stake_balance:
@@ -1000,6 +1090,127 @@ defmodule Autolaunch.Revenue do
             Map.put(account, :is_default, account.address == default_address)
           end)
       }
+    end
+  end
+
+  defp load_share_change_history(job) do
+    from_block = splitter_history_start_block(job)
+
+    case Rpc.get_logs(job.chain_id, %{
+           "address" => job.revenue_share_splitter_address,
+           "fromBlock" => encode_block_number(from_block),
+           "toBlock" => "latest"
+         }) do
+      {:ok, logs} ->
+        logs
+        |> Enum.map(&decode_share_change_log(job.chain_id, &1))
+        |> Enum.reject(&is_nil/1)
+        |> Enum.sort_by(&{&1.block_number || 0, &1.log_index || 0})
+
+      _ ->
+        []
+    end
+  end
+
+  defp splitter_history_start_block(job) do
+    case normalize_tx_hash(job.tx_hash || "") do
+      {:ok, tx_hash} ->
+        case Rpc.tx_receipt(job.chain_id, tx_hash) do
+          {:ok, %{block_number: block_number}}
+          when is_integer(block_number) and block_number >= 0 ->
+            block_number
+
+          _ ->
+            0
+        end
+
+      _ ->
+        0
+    end
+  end
+
+  defp decode_share_change_log(chain_id, %{topics: [topic0 | _]} = log)
+       when topic0 in [
+              @eligible_share_proposed_topic0,
+              @eligible_share_cancelled_topic0,
+              @eligible_share_activated_topic0
+            ] do
+    timestamp = block_timestamp(chain_id, log.block_number)
+
+    case topic0 do
+      @eligible_share_proposed_topic0 ->
+        with {:ok, current_bps} <- decode_indexed_uint16(Enum.at(log.topics, 1)),
+             {:ok, pending_bps} <- decode_indexed_uint16(Enum.at(log.topics, 2)),
+             {:ok, eta_raw} <- Abi.decode_uint256_word(log.data) do
+          %{
+            type: "proposed",
+            current_share_bps: current_bps,
+            current_share_percent: bps_to_percent_string(current_bps),
+            pending_share_bps: pending_bps,
+            pending_share_percent: bps_to_percent_string(pending_bps),
+            activation_eta_raw: eta_raw,
+            activation_eta: format_unix_timestamp(eta_raw),
+            happened_at: timestamp && format_unix_timestamp(timestamp),
+            happened_at_raw: timestamp,
+            transaction_hash: log.transaction_hash,
+            block_number: log.block_number,
+            log_index: log.log_index
+          }
+        end
+
+      @eligible_share_cancelled_topic0 ->
+        with {:ok, cancelled_bps} <- decode_indexed_uint16(Enum.at(log.topics, 1)),
+             {:ok, cooldown_end_raw} <- Abi.decode_uint256_word(log.data) do
+          %{
+            type: "cancelled",
+            cancelled_share_bps: cancelled_bps,
+            cancelled_share_percent: bps_to_percent_string(cancelled_bps),
+            cooldown_end_raw: cooldown_end_raw,
+            cooldown_end: format_unix_timestamp(cooldown_end_raw),
+            happened_at: timestamp && format_unix_timestamp(timestamp),
+            happened_at_raw: timestamp,
+            transaction_hash: log.transaction_hash,
+            block_number: log.block_number,
+            log_index: log.log_index
+          }
+        end
+
+      @eligible_share_activated_topic0 ->
+        with {:ok, previous_bps} <- decode_indexed_uint16(Enum.at(log.topics, 1)),
+             {:ok, new_bps} <- decode_indexed_uint16(Enum.at(log.topics, 2)),
+             {:ok, [activated_at_raw, cooldown_end_raw, policy_epoch]} <-
+               decode_uint_words(log.data, 3) do
+          %{
+            type: "activated",
+            previous_share_bps: previous_bps,
+            previous_share_percent: bps_to_percent_string(previous_bps),
+            new_share_bps: new_bps,
+            new_share_percent: bps_to_percent_string(new_bps),
+            activation_raw: activated_at_raw,
+            activation: format_unix_timestamp(activated_at_raw),
+            cooldown_end_raw: cooldown_end_raw,
+            cooldown_end: format_unix_timestamp(cooldown_end_raw),
+            policy_epoch: policy_epoch,
+            happened_at: timestamp && format_unix_timestamp(timestamp),
+            happened_at_raw: timestamp,
+            transaction_hash: log.transaction_hash,
+            block_number: log.block_number,
+            log_index: log.log_index
+          }
+        end
+    end
+  rescue
+    _ -> nil
+  end
+
+  defp decode_share_change_log(_chain_id, _log), do: nil
+
+  defp block_timestamp(_chain_id, nil), do: nil
+
+  defp block_timestamp(chain_id, block_number) when is_integer(block_number) do
+    case Rpc.block_by_number(chain_id, block_number) do
+      {:ok, %{timestamp: timestamp}} when is_integer(timestamp) -> timestamp
+      _ -> nil
     end
   end
 
@@ -1141,6 +1352,71 @@ defmodule Autolaunch.Revenue do
     |> Decimal.div(Decimal.new(integer_pow10(decimals)))
     |> Decimal.normalize()
     |> Decimal.to_string(:normal)
+  end
+
+  defp bps_to_percent_string(value) when is_integer(value) and value >= 0 do
+    value
+    |> Decimal.new()
+    |> Decimal.div(Decimal.new(100))
+    |> Decimal.normalize()
+    |> Decimal.to_string(:normal)
+  end
+
+  defp percent_or_nil(0), do: nil
+  defp percent_or_nil(value) when is_integer(value), do: bps_to_percent_string(value)
+  defp percent_or_nil(_value), do: nil
+
+  defp format_unix_timestamp(nil), do: nil
+
+  defp format_unix_timestamp(value) when is_integer(value) and value > 0 do
+    value
+    |> DateTime.from_unix!()
+    |> DateTime.to_iso8601()
+  end
+
+  defp format_unix_timestamp(_value), do: nil
+
+  defp zero_to_nil(0), do: nil
+  defp zero_to_nil(value), do: value
+
+  defp encode_block_number(value) when is_integer(value) and value >= 0 do
+    "0x" <> Integer.to_string(value, 16)
+  end
+
+  defp decode_indexed_uint16(topic) when is_binary(topic) do
+    case Abi.decode_uint256_word(topic) do
+      {:ok, value} when value <= 65_535 -> {:ok, value}
+      _ -> {:error, :invalid_indexed_uint16}
+    end
+  end
+
+  defp decode_indexed_uint16(_topic), do: {:error, :invalid_indexed_uint16}
+
+  defp decode_uint_words("0x" <> hex, count) when is_integer(count) and count >= 0 do
+    if byte_size(hex) == count * 64 do
+      hex
+      |> split_words(count, [])
+      |> Enum.map(&Abi.decode_uint256_word/1)
+      |> Enum.reduce_while({:ok, []}, fn
+        {:ok, value}, {:ok, acc} -> {:cont, {:ok, [value | acc]}}
+        _error, _acc -> {:halt, {:error, :invalid_word_data}}
+      end)
+      |> case do
+        {:ok, values} -> {:ok, Enum.reverse(values)}
+        {:error, _} = error -> error
+      end
+    else
+      {:error, :invalid_word_data}
+    end
+  end
+
+  defp decode_uint_words(_value, _count), do: {:error, :invalid_word_data}
+
+  defp split_words(_hex, 0, acc), do: Enum.reverse(acc)
+
+  defp split_words(hex, count, acc) when count > 0 do
+    <<word::binary-size(64), rest::binary>> = hex
+    split_words(rest, count - 1, ["0x" <> word | acc])
   end
 
   defp positive_difference(left, right) when left > right, do: left - right

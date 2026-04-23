@@ -12,6 +12,7 @@ contract RevenueShareFactoryTest is Test {
     address internal constant CREATOR = address(0xB0B);
     address internal constant ATTACKER = address(0xBAD);
     address internal constant USDC = address(0x2222);
+    address internal constant INGRESS_FACTORY = address(0x3333);
     address internal constant TREASURY_SAFE = address(0xCAFE);
     address internal constant TREASURY = address(0x7000);
     address internal constant PROTOCOL = address(0x9000);
@@ -38,6 +39,7 @@ contract RevenueShareFactoryTest is Test {
         factory.createSubjectSplitter(
             SUBJECT_ID,
             address(stakeToken),
+            INGRESS_FACTORY,
             TREASURY_SAFE,
             PROTOCOL,
             1000 ether,
@@ -56,6 +58,7 @@ contract RevenueShareFactoryTest is Test {
         address splitter = factory.createSubjectSplitter(
             SUBJECT_ID,
             address(stakeToken),
+            INGRESS_FACTORY,
             TREASURY_SAFE,
             PROTOCOL,
             1000 ether,
@@ -80,6 +83,7 @@ contract RevenueShareFactoryTest is Test {
         factory.createSubjectSplitter(
             SUBJECT_ID,
             address(stakeToken),
+            INGRESS_FACTORY,
             TREASURY_SAFE,
             PROTOCOL,
             1000 ether,
@@ -99,6 +103,7 @@ contract RevenueShareFactoryTest is Test {
         factory.createSubjectSplitter(
             SUBJECT_ID,
             address(stakeToken),
+            INGRESS_FACTORY,
             address(0),
             PROTOCOL,
             1000 ether,
@@ -113,6 +118,7 @@ contract RevenueShareFactoryTest is Test {
         factory.createSubjectSplitter(
             SUBJECT_ID,
             address(stakeToken),
+            INGRESS_FACTORY,
             TREASURY_SAFE,
             address(0),
             1000 ether,
