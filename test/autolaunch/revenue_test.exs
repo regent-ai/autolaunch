@@ -13,6 +13,7 @@ defmodule Autolaunch.RevenueTest do
   @token "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
   @ingress "0x7777777777777777777777777777777777777777"
   @wallet "0x1111111111111111111111111111111111111111"
+  @eligible_share_activated_topic0 "0x58af83b8600b3af6bd5ced17057404f562a686f59299b9e65067534837eb13f5"
 
   setup do
     previous_adapter = Application.get_env(:autolaunch, :cca_rpc_adapter)
@@ -49,6 +50,7 @@ defmodule Autolaunch.RevenueTest do
       restore_env(:dragonfly_command_module, previous_dragonfly_command_module)
       Process.delete(:revenue_dragonfly_values)
       Process.delete(:revenue_dragonfly_commands)
+      Process.delete(:fake_rpc_logs)
     end)
 
     human =
@@ -124,6 +126,37 @@ defmodule Autolaunch.RevenueTest do
 
     assert subject.subject_id == @subject_id
     assert job.job_id == "job_subject"
+  end
+
+  test "share change history decodes current activation events", %{human: human} do
+    activation_time = 1_700_000_100
+    cooldown_end = 1_702_592_100
+
+    Process.put(:fake_rpc_logs, [
+      %{
+        topics: [
+          @eligible_share_activated_topic0,
+          encode_word(10_000),
+          encode_word(8000)
+        ],
+        data: encode_words([activation_time, cooldown_end]),
+        transaction_hash: "0x" <> String.duplicate("f", 64),
+        block_number: 42,
+        log_index: 0
+      }
+    ])
+
+    assert {:ok, subject} = Revenue.get_subject(@subject_id, human)
+    assert [entry] = subject.share_change_history
+
+    assert entry.type == "activated"
+    assert entry.previous_share_bps == 10_000
+    assert entry.previous_share_percent == "100"
+    assert entry.new_share_bps == 8000
+    assert entry.new_share_percent == "80"
+    assert entry.activation_raw == activation_time
+    assert entry.cooldown_end_raw == cooldown_end
+    refute Map.has_key?(entry, :policy_epoch)
   end
 
   test "subject_scope returns not found when the subject has no ready job", %{human: human} do
@@ -473,7 +506,7 @@ defmodule Autolaunch.RevenueTest do
     end
 
     def tx_receipt(_chain_id, _tx_hash, _opts), do: {:ok, Process.get(:fake_rpc_receipt)}
-    def get_logs(_chain_id, _filter, _opts), do: {:ok, []}
+    def get_logs(_chain_id, _filter, _opts), do: {:ok, Process.get(:fake_rpc_logs, [])}
 
     def block_by_number(_chain_id, block_number, _opts),
       do: {:ok, %{number: block_number, timestamp: 1_700_000_000}}
@@ -510,6 +543,26 @@ defmodule Autolaunch.RevenueTest do
 
   defp restore_env(key, nil), do: Application.delete_env(:autolaunch, key)
   defp restore_env(key, value), do: Application.put_env(:autolaunch, key, value)
+
+  defp encode_word(value) do
+    value
+    |> Integer.to_string(16)
+    |> String.pad_leading(64, "0")
+    |> then(&("0x" <> &1))
+  end
+
+  defp encode_words(values) do
+    encoded =
+      values
+      |> Enum.map(fn value ->
+        value
+        |> Integer.to_string(16)
+        |> String.pad_leading(64, "0")
+      end)
+      |> Enum.join()
+
+    "0x" <> encoded
+  end
 
   defmodule FakeRedix do
     def command(_owner, command) do

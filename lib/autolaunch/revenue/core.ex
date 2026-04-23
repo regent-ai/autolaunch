@@ -15,7 +15,7 @@ defmodule Autolaunch.Revenue.Core do
   @cache_app :autolaunch
   @eligible_share_proposed_topic0 "0xdea1cf6e658a0d5758b71519980315f6a1dd1377c7de69e48adc4a4f318a1283"
   @eligible_share_cancelled_topic0 "0x10cb96b400282a7ceaa5f8861808ae2919fd8925eb8ee66c751afc59e7c8fb5d"
-  @eligible_share_activated_topic0 "0x95e2f1f3cbaa769cf148172e455a445e635b5b48a17e2fe9937e89a6b96066bb"
+  @eligible_share_activated_topic0 "0x58af83b8600b3af6bd5ced17057404f562a686f59299b9e65067534837eb13f5"
 
   def get_subject(subject_id, current_human \\ nil) do
     with {:ok, %{subject: subject}} <- subject_scope(subject_id, current_human) do
@@ -1226,8 +1226,7 @@ defmodule Autolaunch.Revenue.Core do
       @eligible_share_activated_topic0 ->
         with {:ok, previous_bps} <- decode_indexed_uint16(Enum.at(log.topics, 1)),
              {:ok, new_bps} <- decode_indexed_uint16(Enum.at(log.topics, 2)),
-             {:ok, [activated_at_raw, cooldown_end_raw, policy_epoch]} <-
-               decode_uint_words(log.data, 3) do
+             {:ok, [activated_at_raw, cooldown_end_raw]} <- decode_uint_words(log.data, 2) do
           %{
             type: "activated",
             previous_share_bps: previous_bps,
@@ -1238,7 +1237,6 @@ defmodule Autolaunch.Revenue.Core do
             activation: format_unix_timestamp(activated_at_raw),
             cooldown_end_raw: cooldown_end_raw,
             cooldown_end: format_unix_timestamp(cooldown_end_raw),
-            policy_epoch: policy_epoch,
             happened_at: timestamp && format_unix_timestamp(timestamp),
             happened_at_raw: timestamp,
             transaction_hash: log.transaction_hash,
