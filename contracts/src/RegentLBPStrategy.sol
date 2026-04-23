@@ -43,6 +43,7 @@ contract RegentLBPStrategy is IDistributionContract {
     uint24 public immutable officialPoolFee;
     int24 public immutable officialPoolTickSpacing;
 
+    address public immutable auctionCreator;
     uint64 public immutable migrationBlock;
     uint64 public immutable sweepBlock;
     uint16 public immutable lpCurrencyBps;
@@ -50,7 +51,6 @@ contract RegentLBPStrategy is IDistributionContract {
     uint128 public immutable totalStrategySupply;
     uint128 public immutable auctionTokenAmount;
     uint128 public immutable reserveTokenAmount;
-    uint128 public immutable maxCurrencyAmountForLP;
 
     AuctionParameters public auctionParameters;
     address public auctionAddress;
@@ -77,6 +77,7 @@ contract RegentLBPStrategy is IDistributionContract {
         address poolManager;
         uint24 officialPoolFee;
         int24 officialPoolTickSpacing;
+        address auctionCreator;
         uint64 migrationBlock;
         uint64 sweepBlock;
         uint16 lpCurrencyBps;
@@ -84,7 +85,6 @@ contract RegentLBPStrategy is IDistributionContract {
         uint128 totalStrategySupply;
         uint128 auctionTokenAmount;
         uint128 reserveTokenAmount;
-        uint128 maxCurrencyAmountForLP;
     }
 
     event AuctionCreated(address indexed auction, uint128 auctionTokenAmount);
@@ -127,13 +127,17 @@ contract RegentLBPStrategy is IDistributionContract {
         require(cfg.positionRecipient != address(0), "POSITION_RECIPIENT_ZERO");
         require(cfg.positionManager != address(0), "POSITION_MANAGER_ZERO");
         require(cfg.poolManager != address(0), "POOL_MANAGER_ZERO");
+        require(cfg.auctionCreator != address(0), "AUCTION_CREATOR_ZERO");
         require(cfg.officialPoolTickSpacing > 0, "POOL_TICK_SPACING_INVALID");
         require(cfg.officialPoolFee <= 1_000_000, "POOL_FEE_INVALID");
         require(cfg.auctionParameters.currency == cfg.usdc, "AUCTION_CURRENCY_MISMATCH");
         require(
-            cfg.auctionParameters.startBlock < cfg.auctionParameters.endBlock, "AUCTION_BLOCKS_INVALID"
+            cfg.auctionParameters.startBlock < cfg.auctionParameters.endBlock,
+            "AUCTION_BLOCKS_INVALID"
         );
-        require(cfg.auctionParameters.claimBlock >= cfg.auctionParameters.endBlock, "CLAIM_BEFORE_END");
+        require(
+            cfg.auctionParameters.claimBlock >= cfg.auctionParameters.endBlock, "CLAIM_BEFORE_END"
+        );
         require(cfg.migrationBlock > cfg.auctionParameters.endBlock, "MIGRATION_BEFORE_END");
         require(cfg.sweepBlock > cfg.migrationBlock, "SWEEP_BEFORE_MIGRATION");
         require(cfg.lpCurrencyBps <= BPS_DENOMINATOR, "LP_BPS_INVALID");
@@ -147,7 +151,6 @@ contract RegentLBPStrategy is IDistributionContract {
         );
         require(cfg.auctionTokenAmount != 0, "AUCTION_SUPPLY_ZERO");
         require(cfg.reserveTokenAmount != 0, "RESERVE_SUPPLY_ZERO");
-        require(cfg.maxCurrencyAmountForLP != 0, "MAX_CCY_FOR_LP_ZERO");
 
         token = cfg.token;
         usdc = cfg.usdc;
@@ -161,6 +164,7 @@ contract RegentLBPStrategy is IDistributionContract {
         poolManager = cfg.poolManager;
         officialPoolFee = cfg.officialPoolFee;
         officialPoolTickSpacing = cfg.officialPoolTickSpacing;
+        auctionCreator = cfg.auctionCreator;
         migrationBlock = cfg.migrationBlock;
         sweepBlock = cfg.sweepBlock;
         lpCurrencyBps = cfg.lpCurrencyBps;
@@ -168,11 +172,11 @@ contract RegentLBPStrategy is IDistributionContract {
         totalStrategySupply = cfg.totalStrategySupply;
         auctionTokenAmount = cfg.auctionTokenAmount;
         reserveTokenAmount = cfg.reserveTokenAmount;
-        maxCurrencyAmountForLP = cfg.maxCurrencyAmountForLP;
         auctionParameters = cfg.auctionParameters;
     }
 
     function onTokensReceived() external nonReentrant {
+        require(msg.sender == auctionCreator, "ONLY_AUCTION_CREATOR");
         require(auctionAddress == address(0), "AUCTION_ALREADY_CREATED");
         require(
             IERC20SupplyMinimal(token).balanceOf(address(this)) >= totalStrategySupply,
@@ -205,15 +209,13 @@ contract RegentLBPStrategy is IDistributionContract {
         require(!migrated, "ALREADY_MIGRATED");
         require(auctionAddress != address(0), "AUCTION_NOT_CREATED");
 
+        IContinuousClearingAuction auction = IContinuousClearingAuction(auctionAddress);
+        require(auction.isGraduated(), "AUCTION_NOT_GRADUATED");
+
         uint256 currencyBalance = IERC20SupplyMinimal(usdc).balanceOf(address(this));
         require(currencyBalance != 0, "NO_CURRENCY_RAISED");
 
-        uint256 cappedCurrency = currencyBalance;
-        if (cappedCurrency > maxCurrencyAmountForLP) {
-            cappedCurrency = maxCurrencyAmountForLP;
-        }
-
-        uint256 currencyForLP = (cappedCurrency * lpCurrencyBps) / BPS_DENOMINATOR;
+        uint256 currencyForLP = (currencyBalance * lpCurrencyBps) / BPS_DENOMINATOR;
         require(currencyForLP != 0, "LP_CURRENCY_ZERO");
 
         uint256 tokenBalance = IERC20SupplyMinimal(token).balanceOf(address(this));

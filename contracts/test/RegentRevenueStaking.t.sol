@@ -29,11 +29,7 @@ contract RegentRevenueStakingTest is Test {
         usdc = new MintableBurnableERC20Mock("USD Coin", "USDC", 6);
 
         staking = new RegentRevenueStaking(
-            address(regent),
-            address(usdc),
-            TREASURY,
-            REVENUE_SHARE_SUPPLY_DENOMINATOR,
-            OWNER
+            address(regent), address(usdc), TREASURY, REVENUE_SHARE_SUPPLY_DENOMINATOR, OWNER
         );
 
         regent.mint(ALICE, 200 * REGENT);
@@ -110,6 +106,25 @@ contract RegentRevenueStakingTest is Test {
         assertEq(staking.treasuryResidualUsdc(), 200 * USDC);
     }
 
+    function testFuzzSingleStakerUsdcAccountingConservesDeposits(
+        uint256 stakeAmount,
+        uint256 depositAmount
+    ) external {
+        stakeAmount = bound(stakeAmount, 1, REVENUE_SHARE_SUPPLY_DENOMINATOR);
+        depositAmount = bound(depositAmount, 1, 1_000_000_000 * USDC);
+
+        regent.mint(ALICE, stakeAmount);
+        _stake(ALICE, stakeAmount);
+
+        usdc.mint(address(this), depositAmount);
+        usdc.approve(address(staking), type(uint256).max);
+        staking.depositUSDC(depositAmount, bytes32("fuzz"), bytes32("single"));
+
+        uint256 tracked = staking.treasuryResidualUsdc() + staking.previewClaimableUSDC(ALICE);
+        assertEq(usdc.balanceOf(address(staking)), tracked);
+        assertEq(staking.totalRecognizedRewardsUsdc(), depositAmount);
+    }
+
     function testTreasuryWithdrawalIsRestricted() external {
         _stake(ALICE, 100 * REGENT);
         usdc.mint(address(this), 100 * USDC);
@@ -149,9 +164,11 @@ contract RegentRevenueStakingTest is Test {
     }
 
     function testStakeRejectsInboundFeeOnTransferToken() external {
-        TransferFeeERC20Mock taxed = new TransferFeeERC20Mock("Taxed Regent", "tREG", 18, address(0));
-        RegentRevenueStaking taxedStaking =
-            new RegentRevenueStaking(address(taxed), address(usdc), TREASURY, REVENUE_SHARE_SUPPLY_DENOMINATOR, OWNER);
+        TransferFeeERC20Mock taxed =
+            new TransferFeeERC20Mock("Taxed Regent", "tREG", 18, address(0));
+        RegentRevenueStaking taxedStaking = new RegentRevenueStaking(
+            address(taxed), address(usdc), TREASURY, REVENUE_SHARE_SUPPLY_DENOMINATOR, OWNER
+        );
 
         taxed.setFeeBps(500);
         taxed.setFeeTriggers(address(taxedStaking), false, true);
@@ -165,9 +182,11 @@ contract RegentRevenueStakingTest is Test {
     }
 
     function testClaimRejectsOutboundFeeOnTransferToken() external {
-        TransferFeeERC20Mock taxed = new TransferFeeERC20Mock("Taxed Regent", "tREG", 18, address(0));
-        RegentRevenueStaking taxedStaking =
-            new RegentRevenueStaking(address(taxed), address(usdc), TREASURY, REVENUE_SHARE_SUPPLY_DENOMINATOR, OWNER);
+        TransferFeeERC20Mock taxed =
+            new TransferFeeERC20Mock("Taxed Regent", "tREG", 18, address(0));
+        RegentRevenueStaking taxedStaking = new RegentRevenueStaking(
+            address(taxed), address(usdc), TREASURY, REVENUE_SHARE_SUPPLY_DENOMINATOR, OWNER
+        );
 
         taxed.mint(ALICE, 100 * REGENT);
         taxed.mint(FUNDER, 1000 * REGENT);

@@ -13,6 +13,10 @@ import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
 import {PoolId, PoolIdLibrary} from "@uniswap/v4-core/src/types/PoolId.sol";
 import {ModifyLiquidityParams, SwapParams} from "@uniswap/v4-core/src/types/PoolOperation.sol";
 import {BalanceDelta, BalanceDeltaLibrary} from "@uniswap/v4-core/src/types/BalanceDelta.sol";
+import {
+    BeforeSwapDelta,
+    BeforeSwapDeltaLibrary
+} from "@uniswap/v4-core/src/types/BeforeSwapDelta.sol";
 import {TickMath} from "@uniswap/v4-core/src/libraries/TickMath.sol";
 import {PoolManager} from "@uniswap/v4-core/src/PoolManager.sol";
 import {LaunchFeeRegistry} from "src/LaunchFeeRegistry.sol";
@@ -133,8 +137,9 @@ contract LaunchPoolFeeHookTest is Test {
         realPoolManager = new PoolManager(OWNER);
         realRegistry = new LaunchFeeRegistry(OWNER);
         realVault = new LaunchFeeVault(OWNER, address(realRegistry));
-        realHook =
-            hookDeployer.deploy(OWNER, address(realPoolManager), address(realRegistry), address(realVault));
+        realHook = hookDeployer.deploy(
+            OWNER, address(realPoolManager), address(realRegistry), address(realVault)
+        );
         realVault.setHook(address(realHook));
         realLaunchToken = new MintableERC20Mock("Real Launch", "RLAUNCH");
         realQuoteToken = new MintableERC20Mock("Real Quote", "RQUOTE");
@@ -153,7 +158,8 @@ contract LaunchPoolFeeHookTest is Test {
         vm.stopPrank();
 
         poolKey = _poolKey(address(launchToken), address(quoteToken));
-        realPoolKey = _sortedPoolKey(address(realLaunchToken), address(realQuoteToken), address(realHook));
+        realPoolKey =
+            _sortedPoolKey(address(realLaunchToken), address(realQuoteToken), address(realHook));
         launchToken.mint(address(poolManager), 1000e18);
         quoteToken.mint(address(poolManager), 1000e18);
         realHarness = new RealPoolManagerHarness(realPoolManager);
@@ -163,24 +169,24 @@ contract LaunchPoolFeeHookTest is Test {
         realHarness.modifyLiquidity(
             realPoolKey,
             ModifyLiquidityParams({
-                tickLower: -120, tickUpper: 120, liquidityDelta: 1_000e18, salt: bytes32(0)
+                tickLower: -120, tickUpper: 120, liquidityDelta: 1000e18, salt: bytes32(0)
             })
         );
     }
 
-    function testZeroForOneExactInputChargesCurrency1() external {
+    function testZeroForOneExactInputChargesQuoteToken() external {
         _assertSwapFee(poolKey, true, -100e18, -100e18, 80e18);
     }
 
-    function testZeroForOneExactOutputChargesCurrency0() external {
+    function testZeroForOneExactOutputChargesQuoteToken() external {
         _assertSwapFee(poolKey, true, 90e18, -120e18, 90e18);
     }
 
-    function testOneForZeroExactInputChargesCurrency0() external {
+    function testOneForZeroExactInputChargesQuoteToken() external {
         _assertSwapFee(poolKey, false, -100e18, 70e18, -100e18);
     }
 
-    function testOneForZeroExactOutputChargesCurrency1() external {
+    function testOneForZeroExactOutputChargesQuoteToken() external {
         _assertSwapFee(poolKey, false, 80e18, 80e18, -110e18);
     }
 
@@ -211,14 +217,38 @@ contract LaunchPoolFeeHookTest is Test {
         _assertSwapFee(poolKey, true, -100e18, -100e18, 80e18);
     }
 
-    function testTreasuryWithdrawIsAccessControlled() external {
+    function testOddSmallFeeIsFullyAssignedToWithdrawableShares() external {
+        _simulateSwap(poolKey, true, -100, -100, 99);
+
+        assertEq(poolManager.lastTakeAmount(), 1);
+        assertEq(quoteToken.balanceOf(address(vault)), 1);
+        assertEq(vault.treasuryAccrued(poolId, address(quoteToken)), 0);
+        assertEq(vault.regentAccrued(poolId, address(quoteToken)), 1);
+    }
+
+    function testFuzzQuoteFeesAreFullyWithdrawable(uint128 amountSeed) external {
+        uint256 amount = bound(uint256(amountSeed), 50, 1_000_000e18);
+        uint256 expectedFee = amount * FEE_BPS / 10_000;
+        quoteToken.mint(address(poolManager), expectedFee);
+
+        uint256 treasuryBefore = vault.treasuryAccrued(poolId, address(quoteToken));
+        uint256 regentBefore = vault.regentAccrued(poolId, address(quoteToken));
+        uint256 vaultBalanceBefore = quoteToken.balanceOf(address(vault));
+
         _simulateSwap(
-            poolKey,
-            true,
-            -100e18,
-            -100e18,
-            80e18
+            poolKey, true, -int256(amount), -int128(int256(amount)), int128(int256(amount))
         );
+
+        uint256 treasuryDelta = vault.treasuryAccrued(poolId, address(quoteToken)) - treasuryBefore;
+        uint256 regentDelta = vault.regentAccrued(poolId, address(quoteToken)) - regentBefore;
+        uint256 vaultBalanceDelta = quoteToken.balanceOf(address(vault)) - vaultBalanceBefore;
+
+        assertEq(vaultBalanceDelta, expectedFee);
+        assertEq(treasuryDelta + regentDelta, expectedFee);
+    }
+
+    function testTreasuryWithdrawIsAccessControlled() external {
+        _simulateSwap(poolKey, true, -100e18, -100e18, 80e18);
 
         uint256 halfFee = (80e18 * FEE_BPS / 10_000) / 2;
 
@@ -243,7 +273,7 @@ contract LaunchPoolFeeHookTest is Test {
             })
         );
 
-        _assertRealSwapFee(realPoolKey, realPoolId, true, true, vm.getRecordedLogs());
+        _assertRealSwapFee(realPoolId, true, vm.getRecordedLogs());
     }
 
     function testRealPoolManagerExactOutputSwapAccruesExpectedFee() external {
@@ -257,7 +287,7 @@ contract LaunchPoolFeeHookTest is Test {
             })
         );
 
-        _assertRealSwapFee(realPoolKey, realPoolId, false, false, vm.getRecordedLogs());
+        _assertRealSwapFee(realPoolId, false, vm.getRecordedLogs());
     }
 
     function _registerPool(address launchTokenAddress, address quoteTokenAddress)
@@ -311,7 +341,15 @@ contract LaunchPoolFeeHookTest is Test {
         int256 amountSpecified,
         int128 amount0,
         int128 amount1
-    ) internal returns (bytes4 selector, int128 feeDelta) {
+    )
+        internal
+        returns (
+            bytes4 beforeSelector,
+            BeforeSwapDelta beforeDelta,
+            bytes4 afterSelector,
+            int128 afterDelta
+        )
+    {
         return poolManager.simulateSwap(
             address(hook),
             TRADER,
@@ -331,37 +369,57 @@ contract LaunchPoolFeeHookTest is Test {
         int128 amount0,
         int128 amount1
     ) internal {
-        (address expectedCurrency, uint256 baseAmount) =
-            _expectedChargedCurrencyAndAmount(key, zeroForOne, amountSpecified < 0, amount0, amount1);
+        (uint256 baseAmount, bool quoteIsSpecified) =
+            _expectedQuoteFeeBaseAmount(key, zeroForOne, amountSpecified, amount0, amount1);
         uint256 expectedFee = baseAmount * FEE_BPS / 10_000;
 
         bytes32 id = PoolId.unwrap(key.toId());
-        (bytes4 selector, int128 feeDelta) =
-            _simulateSwap(key, zeroForOne, amountSpecified, amount0, amount1);
+        (
+            bytes4 beforeSelector,
+            BeforeSwapDelta beforeDelta,
+            bytes4 afterSelector,
+            int128 afterDelta
+        ) = _simulateSwap(key, zeroForOne, amountSpecified, amount0, amount1);
 
-        assertEq(selector, IHooks.afterSwap.selector);
-        assertEq(uint128(feeDelta), expectedFee);
-        assertEq(poolManager.lastTakeCurrency(), expectedCurrency);
+        assertEq(beforeSelector, IHooks.beforeSwap.selector);
+        assertEq(afterSelector, IHooks.afterSwap.selector);
+        if (quoteIsSpecified) {
+            assertEq(uint128(BeforeSwapDeltaLibrary.getSpecifiedDelta(beforeDelta)), expectedFee);
+            assertEq(uint128(afterDelta), 0);
+        } else {
+            assertEq(uint128(BeforeSwapDeltaLibrary.getSpecifiedDelta(beforeDelta)), 0);
+            assertEq(uint128(afterDelta), expectedFee);
+        }
+        assertEq(BeforeSwapDeltaLibrary.getUnspecifiedDelta(beforeDelta), 0);
+        assertEq(poolManager.lastTakeCurrency(), address(quoteToken));
         assertEq(poolManager.lastTakeRecipient(), address(vault));
         assertEq(poolManager.lastTakeAmount(), expectedFee);
-        assertEq(
-            MintableERC20Mock(expectedCurrency).balanceOf(address(vault)),
-            expectedFee
-        );
+        assertEq(quoteToken.balanceOf(address(vault)), expectedFee);
 
-        _assertSplitFee(id, expectedCurrency, expectedFee / 2);
+        _assertSplitFee(id, address(quoteToken), expectedFee / 2);
+        _assertSplitFee(id, address(launchToken), 0);
     }
 
-    function _expectedChargedCurrencyAndAmount(
+    function _expectedQuoteFeeBaseAmount(
         PoolKey memory key,
         bool zeroForOne,
-        bool exactInput,
+        int256 amountSpecified,
         int128 amount0,
         int128 amount1
-    ) internal pure returns (address currency, uint256 amount) {
-        bool chargeCurrency0 = exactInput ? !zeroForOne : zeroForOne;
-        currency = chargeCurrency0 ? Currency.unwrap(key.currency0) : Currency.unwrap(key.currency1);
-        int128 chargedAmount = chargeCurrency0 ? amount0 : amount1;
+    ) internal view returns (uint256 amount, bool quoteIsSpecified) {
+        bool exactInput = amountSpecified < 0;
+        bool specifiedCurrency0 = exactInput == zeroForOne;
+        address specifiedCurrency =
+            specifiedCurrency0 ? Currency.unwrap(key.currency0) : Currency.unwrap(key.currency1);
+        quoteIsSpecified = specifiedCurrency == address(quoteToken);
+
+        if (quoteIsSpecified) {
+            return
+                (amountSpecified < 0 ? uint256(-amountSpecified) : uint256(amountSpecified), true);
+        }
+
+        bool unspecifiedCurrency0 = !specifiedCurrency0;
+        int128 chargedAmount = unspecifiedCurrency0 ? amount0 : amount1;
         if (chargedAmount < 0) {
             chargedAmount = -chargedAmount;
         }
@@ -373,15 +431,10 @@ contract LaunchPoolFeeHookTest is Test {
         assertEq(vault.regentAccrued(id, token), share);
     }
 
-    function _assertRealSwapFee(
-        PoolKey memory key,
-        bytes32 id,
-        bool zeroForOne,
-        bool exactInput,
-        Vm.Log[] memory entries
-    ) internal view {
-        address expectedCurrency =
-            Currency.unwrap((exactInput ? !zeroForOne : zeroForOne) ? key.currency0 : key.currency1);
+    function _assertRealSwapFee(bytes32 id, bool exactInput, Vm.Log[] memory entries)
+        internal
+        view
+    {
         bytes32 eventTopic = keccak256(
             "SwapFeeAccrued(bytes32,address,address,uint256,uint256,uint256,uint256,bool)"
         );
@@ -398,24 +451,19 @@ contract LaunchPoolFeeHookTest is Test {
             ) {
                 found = true;
                 assertEq(entries[i].topics[1], id);
-                assertEq(address(uint160(uint256(entries[i].topics[3]))), expectedCurrency);
-                (, totalFee, treasuryFee, regentFee, eventExactInput) = abi.decode(
-                    entries[i].data, (uint256, uint256, uint256, uint256, bool)
-                );
+                assertEq(address(uint160(uint256(entries[i].topics[3]))), address(realQuoteToken));
+                (, totalFee, treasuryFee, regentFee, eventExactInput) =
+                    abi.decode(entries[i].data, (uint256, uint256, uint256, uint256, bool));
                 assertEq(eventExactInput, exactInput);
                 break;
             }
         }
 
         assertTrue(found);
-        assertEq(realVault.treasuryAccrued(id, expectedCurrency), treasuryFee);
-        assertEq(realVault.regentAccrued(id, expectedCurrency), regentFee);
-        assertEq(MintableERC20Mock(expectedCurrency).balanceOf(address(realVault)), totalFee);
-
-        address otherCurrency = expectedCurrency == address(realLaunchToken)
-            ? address(realQuoteToken)
-            : address(realLaunchToken);
-        assertEq(realVault.treasuryAccrued(id, otherCurrency), 0);
-        assertEq(realVault.regentAccrued(id, otherCurrency), 0);
+        assertEq(realVault.treasuryAccrued(id, address(realQuoteToken)), treasuryFee);
+        assertEq(realVault.regentAccrued(id, address(realQuoteToken)), regentFee);
+        assertEq(realQuoteToken.balanceOf(address(realVault)), totalFee);
+        assertEq(realVault.treasuryAccrued(id, address(realLaunchToken)), 0);
+        assertEq(realVault.regentAccrued(id, address(realLaunchToken)), 0);
     }
 }

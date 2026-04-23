@@ -590,6 +590,21 @@ contract RevenueShareSplitterTest is Test {
         assertEq(ingressSplitter.stakerEligibleInflowUsdc(), 1_643_400_000);
     }
 
+    function testIngressFactoryCapsAccountsPerSubject() external {
+        (,, RevenueIngressFactory ingressFactory, bytes32 subjectId) =
+            _deploySplitterWithIngressFactory("ingress-cap");
+
+        uint256 maxAccounts = ingressFactory.MAX_INGRESS_ACCOUNTS_PER_SUBJECT();
+        for (uint256 i; i < maxAccounts; ++i) {
+            ingressFactory.createIngressAccount(subjectId, "account", i == 0);
+        }
+
+        assertEq(ingressFactory.ingressAccountCount(subjectId), maxAccounts);
+
+        vm.expectRevert("INGRESS_ACCOUNT_LIMIT");
+        ingressFactory.createIngressAccount(subjectId, "overflow", false);
+    }
+
     function testRewardClaimsRecoverAfterFundingArrivesLater() external {
         MintableBurnableERC20Mock customStake = new MintableBurnableERC20Mock("Recover", "RCV", 18);
         RevenueShareSplitter custom = _deploySplitter(customStake, 1000 * XYZ, "recover");
@@ -922,6 +937,35 @@ contract RevenueShareSplitterTest is Test {
         assertEq(emptySplitter.protocolReserveUsdc(), 10 * USDC);
         assertEq(emptySplitter.treasuryResidualUsdc(), 990 * USDC);
         assertEq(emptySplitter.previewClaimableUSDC(ALICE), 0);
+    }
+
+    function testFuzzSingleStakerUsdcAccountingConservesDeposits(
+        uint256 stakeAmount,
+        uint256 depositAmount
+    ) external {
+        stakeAmount = bound(stakeAmount, 1, INITIAL_SUPPLY_DENOMINATOR);
+        depositAmount = bound(depositAmount, 1, 1_000_000_000 * USDC);
+
+        MintableBurnableERC20Mock customStake =
+            new MintableBurnableERC20Mock("Fuzz Agent", "FUZ", 18);
+        RevenueShareSplitter fuzzSplitter =
+            _deploySplitter(customStake, INITIAL_SUPPLY_DENOMINATOR, "fuzz");
+
+        customStake.mint(ALICE, stakeAmount);
+        _stake(fuzzSplitter, customStake, ALICE, stakeAmount);
+
+        usdc.mint(address(this), depositAmount);
+        usdc.approve(address(fuzzSplitter), type(uint256).max);
+        fuzzSplitter.depositUSDC(depositAmount, bytes32("fuzz"), bytes32("single"));
+
+        uint256 tracked = fuzzSplitter.protocolReserveUsdc() + fuzzSplitter.treasuryResidualUsdc()
+            + fuzzSplitter.previewClaimableUSDC(ALICE);
+        assertEq(usdc.balanceOf(address(fuzzSplitter)), tracked);
+        assertEq(
+            fuzzSplitter.protocolReserveUsdc() + fuzzSplitter.stakerEligibleInflowUsdc()
+                + fuzzSplitter.treasuryReservedInflowUsdc(),
+            depositAmount
+        );
     }
 
     function _deploySplitter(

@@ -41,15 +41,14 @@ contract ExampleCCADeploymentScriptTest is Test {
 
     function setUp() external {
         script = new ExampleCCADeploymentScript();
-        vm.chainId(84532);
+        vm.chainId(84_532);
         auctionFactory = new MockContinuousClearingAuctionFactory();
         poolManager = new MockHookPoolManager();
         subjectRegistry = new SubjectRegistry(address(this));
-        revenueShareFactory =
-            new RevenueShareFactory(address(script), USDC, subjectRegistry);
+        revenueShareFactory = new RevenueShareFactory(address(script), USDC, subjectRegistry);
         revenueIngressFactory =
             new RevenueIngressFactory(USDC, address(subjectRegistry), address(script));
-        strategyFactory = new RegentLBPStrategyFactory();
+        strategyFactory = new RegentLBPStrategyFactory(address(script));
         tokenFactory = new MockTokenFactory();
         subjectRegistry.transferOwnership(address(revenueShareFactory));
         revenueShareFactory.acceptSubjectRegistryOwnership();
@@ -57,17 +56,13 @@ contract ExampleCCADeploymentScriptTest is Test {
         _setEnvAddress("AUTOLAUNCH_AGENT_SAFE_ADDRESS", AGENT_SAFE);
         _setEnvAddress("REGENT_MULTISIG_ADDRESS", REGENT_MULTISIG);
         vm.setEnv(
-            "AUTOLAUNCH_REVENUE_SHARE_FACTORY_ADDRESS",
-            vm.toString(address(revenueShareFactory))
+            "AUTOLAUNCH_REVENUE_SHARE_FACTORY_ADDRESS", vm.toString(address(revenueShareFactory))
         );
         vm.setEnv(
             "AUTOLAUNCH_REVENUE_INGRESS_FACTORY_ADDRESS",
             vm.toString(address(revenueIngressFactory))
         );
-        vm.setEnv(
-            "AUTOLAUNCH_LBP_STRATEGY_FACTORY_ADDRESS",
-            vm.toString(address(strategyFactory))
-        );
+        vm.setEnv("AUTOLAUNCH_LBP_STRATEGY_FACTORY_ADDRESS", vm.toString(address(strategyFactory)));
         vm.setEnv("AUTOLAUNCH_TOKEN_FACTORY_ADDRESS", vm.toString(address(tokenFactory)));
         vm.setEnv("AUTOLAUNCH_CCA_FACTORY_ADDRESS", vm.toString(address(auctionFactory)));
         vm.setEnv("AUTOLAUNCH_UNISWAP_V4_POOL_MANAGER", vm.toString(address(poolManager)));
@@ -131,6 +126,7 @@ contract ExampleCCADeploymentScriptTest is Test {
         assertEq(splitter.treasuryRecipient(), AGENT_SAFE);
         assertEq(splitter.protocolRecipient(), REGENT_MULTISIG);
         assertEq(splitter.protocolSkimBps(), 100);
+        assertEq(strategyFactory.owner(), address(script));
 
         assertEq(
             subjectRegistry.subjectForIdentity(block.chainid, IDENTITY_REGISTRY, IDENTITY_AGENT_ID),

@@ -158,6 +158,18 @@ contract RegentLBPStrategyTest is Test {
         strategy.migrate();
     }
 
+    function testMigrateRequiresGraduatedAuctionEvenWhenStrategyHoldsUsdc() external {
+        RegentLBPStrategy failedStrategy = new RegentLBPStrategy(_strategyConfig(100e18));
+        token.mint(address(failedStrategy), AUCTION_AMOUNT + RESERVE_AMOUNT);
+        failedStrategy.onTokensReceived();
+        usdc.mint(address(failedStrategy), 200e18);
+
+        vm.roll(202);
+        vm.prank(OPERATOR);
+        vm.expectRevert("AUCTION_NOT_GRADUATED");
+        failedStrategy.migrate();
+    }
+
     function testConstructorRejectsCriticalZeroAddresses() external {
         RegentLBPStrategy.StrategyConfig memory cfg = _strategyConfig(0);
 
@@ -178,7 +190,7 @@ contract RegentLBPStrategyTest is Test {
 
     function testMigrateCreatesRealV4PositionAndSweepsRemainders() external {
         strategy.onTokensReceived();
-        usdc.mint(address(strategy), 200e18);
+        usdc.mint(address(strategy), 201e18);
 
         uint256 expectedPositionId = positionManager.nextTokenId();
         PoolKey memory expectedPoolKey = _expectedPoolKey();
@@ -193,7 +205,7 @@ contract RegentLBPStrategyTest is Test {
         assertTrue(strategy.migrated());
         assertEq(strategy.migratedPoolId(), expectedPoolId);
         assertEq(strategy.migratedPositionId(), expectedPositionId);
-        assertEq(strategy.migratedCurrencyForLP(), 100e18);
+        assertEq(strategy.migratedCurrencyForLP(), 1005e17);
         assertEq(strategy.migratedTokenForLP(), RESERVE_AMOUNT);
         assertTrue(strategy.migratedLiquidity() != 0);
 
@@ -263,6 +275,12 @@ contract RegentLBPStrategyTest is Test {
         failingStrategy.migrate();
     }
 
+    function testOnTokensReceivedRequiresAuctionCreator() external {
+        vm.prank(address(0xBAD));
+        vm.expectRevert("ONLY_AUCTION_CREATOR");
+        strategy.onTokensReceived();
+    }
+
     function testSweepsRequireMigrationToFinish() external {
         strategy.onTokensReceived();
         token.mint(address(strategy), 12e18);
@@ -300,7 +318,8 @@ contract RegentLBPStrategyTest is Test {
         token.mint(address(graduatedStrategy), AUCTION_AMOUNT + RESERVE_AMOUNT);
         graduatedStrategy.onTokensReceived();
 
-        MockDistributionContract auction = MockDistributionContract(graduatedStrategy.auctionAddress());
+        MockDistributionContract auction =
+            MockDistributionContract(graduatedStrategy.auctionAddress());
         usdc.mint(address(auction), 200e18);
 
         vm.expectRevert("AUCTION_NOT_ENDED");
@@ -320,6 +339,38 @@ contract RegentLBPStrategyTest is Test {
         assertTrue(graduatedStrategy.migrated());
         assertEq(graduatedStrategy.migratedCurrencyForLP(), 100e18);
         assertEq(graduatedStrategy.migratedTokenForLP(), RESERVE_AMOUNT);
+    }
+
+    function testFuzzGraduatedMigrationUsesHalfRaisedCurrency(uint128 raisedSeed) external {
+        uint256 raised = bound(uint256(raisedSeed), 2e18, 1000e18);
+        RegentLBPStrategy graduatedStrategy =
+            new RegentLBPStrategy(_strategyConfig(uint128(raised)));
+        token.mint(address(graduatedStrategy), AUCTION_AMOUNT + RESERVE_AMOUNT);
+        graduatedStrategy.onTokensReceived();
+
+        MockDistributionContract auction =
+            MockDistributionContract(graduatedStrategy.auctionAddress());
+        usdc.mint(address(auction), raised);
+
+        vm.roll(102);
+        auction.sweepCurrency();
+        auction.sweepUnsoldTokens();
+
+        vm.roll(202);
+        vm.prank(OPERATOR);
+        graduatedStrategy.migrate();
+
+        assertEq(graduatedStrategy.migratedCurrencyForLP(), raised / 2);
+
+        uint256 treasuryBefore = usdc.balanceOf(AGENT_TREASURY);
+        uint256 remainder = usdc.balanceOf(address(graduatedStrategy));
+
+        vm.roll(303);
+        vm.prank(OPERATOR);
+        graduatedStrategy.sweepCurrency();
+
+        assertEq(usdc.balanceOf(address(graduatedStrategy)), 0);
+        assertEq(usdc.balanceOf(AGENT_TREASURY), treasuryBefore + remainder);
     }
 
     function testRecoverFailedAuctionRevertsForGraduatedAuction() external {
@@ -422,14 +473,14 @@ contract RegentLBPStrategyTest is Test {
             poolManager: address(poolManager),
             officialPoolFee: OFFICIAL_POOL_FEE,
             officialPoolTickSpacing: OFFICIAL_POOL_TICK_SPACING,
+            auctionCreator: address(this),
             migrationBlock: 202,
             sweepBlock: 303,
             lpCurrencyBps: 5000,
             tokenSplitToAuctionMps: 6_666_666,
             totalStrategySupply: AUCTION_AMOUNT + RESERVE_AMOUNT,
             auctionTokenAmount: AUCTION_AMOUNT,
-            reserveTokenAmount: RESERVE_AMOUNT,
-            maxCurrencyAmountForLP: type(uint128).max
+            reserveTokenAmount: RESERVE_AMOUNT
         });
     }
 }

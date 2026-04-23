@@ -26,8 +26,8 @@ contract LaunchDeploymentController is Owned {
     uint16 internal constant VESTING_BPS = 8500;
     uint16 internal constant LP_CURRENCY_BPS = 5000;
     uint24 internal constant MAX_POOL_FEE = 1_000_000;
-    uint160 internal constant REQUIRED_HOOK_FLAGS =
-        Hooks.AFTER_SWAP_FLAG | Hooks.AFTER_SWAP_RETURNS_DELTA_FLAG;
+    uint160 internal constant REQUIRED_HOOK_FLAGS = Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG
+        | Hooks.BEFORE_SWAP_RETURNS_DELTA_FLAG | Hooks.AFTER_SWAP_RETURNS_DELTA_FLAG;
 
     struct DeploymentConfig {
         address agentSafe;
@@ -58,7 +58,6 @@ contract LaunchDeploymentController is Owned {
         uint64 vestingDurationSeconds;
         uint256 floorPrice;
         uint128 requiredCurrencyRaised;
-        uint128 maxCurrencyAmountForLP;
         string tokenName;
         string tokenSymbol;
         string subjectLabel;
@@ -189,7 +188,7 @@ contract LaunchDeploymentController is Owned {
         _emitLaunchStackDeployed(result, cfg.agentSafe);
     }
 
-    function _validateConfig(DeploymentConfig memory cfg) internal pure {
+    function _validateConfig(DeploymentConfig memory cfg) internal view {
         require(cfg.agentSafe != address(0), "AGENT_SAFE_ZERO");
         require(cfg.revenueShareFactory != address(0), "REVENUE_SHARE_FACTORY_ZERO");
         require(cfg.revenueIngressFactory != address(0), "REVENUE_INGRESS_FACTORY_ZERO");
@@ -212,11 +211,18 @@ contract LaunchDeploymentController is Owned {
         require(cfg.claimBlock >= cfg.endBlock, "CLAIM_BEFORE_END");
         require(cfg.migrationBlock > cfg.endBlock, "MIGRATION_BEFORE_END");
         require(cfg.sweepBlock > cfg.migrationBlock, "SWEEP_BEFORE_MIGRATION");
-        require(cfg.maxCurrencyAmountForLP != 0, "MAX_CCY_FOR_LP_ZERO");
         require(cfg.vestingDurationSeconds != 0, "VESTING_DURATION_ZERO");
         require(cfg.floorPrice > 0, "FLOOR_PRICE_ZERO");
         require(bytes(cfg.tokenName).length != 0, "NAME_EMPTY");
         require(bytes(cfg.tokenSymbol).length != 0, "SYMBOL_EMPTY");
+        require(
+            RevenueShareFactory(cfg.revenueShareFactory).usdc() == cfg.usdcToken,
+            "REVENUE_SHARE_USDC_MISMATCH"
+        );
+        require(
+            RevenueIngressFactory(cfg.revenueIngressFactory).usdc() == cfg.usdcToken,
+            "REVENUE_INGRESS_USDC_MISMATCH"
+        );
         require(
             PUBLIC_SALE_BPS + LP_RESERVE_BPS + VESTING_BPS == BPS_DENOMINATOR,
             "ALLOCATION_BPS_INVALID"
@@ -368,8 +374,7 @@ contract LaunchDeploymentController is Owned {
                         lpCurrencyBps: LP_CURRENCY_BPS,
                         tokenSplitToAuctionMps: allocation.tokenSplitToAuctionMps,
                         auctionTokenAmount: uint128(allocation.publicSaleAmount),
-                        reserveTokenAmount: uint128(allocation.lpReserveAmount),
-                        maxCurrencyAmountForLP: cfg.maxCurrencyAmountForLP
+                        reserveTokenAmount: uint128(allocation.lpReserveAmount)
                     })
                 ),
                 bytes32(0)

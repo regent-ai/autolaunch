@@ -2,6 +2,7 @@
 pragma solidity ^0.8.26;
 
 import {IHooks} from "@uniswap/v4-core/src/interfaces/IHooks.sol";
+import {BeforeSwapDelta} from "@uniswap/v4-core/src/types/BeforeSwapDelta.sol";
 import {toBalanceDelta} from "@uniswap/v4-core/src/types/BalanceDelta.sol";
 import {Currency, CurrencyLibrary} from "@uniswap/v4-core/src/types/Currency.sol";
 import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
@@ -30,7 +31,17 @@ contract MockHookPoolManager {
         SwapParams memory params,
         int128 amount0,
         int128 amount1
-    ) external returns (bytes4, int128) {
-        return IHooks(hook).afterSwap(sender, key, params, toBalanceDelta(amount0, amount1), "");
+    )
+        external
+        returns (
+            bytes4 beforeSelector,
+            BeforeSwapDelta beforeDelta,
+            bytes4 afterSelector,
+            int128 afterDelta
+        )
+    {
+        (beforeSelector, beforeDelta,) = IHooks(hook).beforeSwap(sender, key, params, "");
+        (afterSelector, afterDelta) =
+            IHooks(hook).afterSwap(sender, key, params, toBalanceDelta(amount0, amount1), "");
     }
 }

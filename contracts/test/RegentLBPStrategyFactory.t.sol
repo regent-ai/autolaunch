@@ -9,7 +9,7 @@ import {RegentLBPStrategyFactory} from "src/RegentLBPStrategyFactory.sol";
 
 contract RegentLBPStrategyFactoryTest is Test {
     function testInitializeDistributionCreatesStrategy() external {
-        RegentLBPStrategyFactory factory = new RegentLBPStrategyFactory();
+        RegentLBPStrategyFactory factory = new RegentLBPStrategyFactory(address(this));
 
         RegentLBPStrategyFactory.RegentLBPStrategyConfig memory cfg =
             RegentLBPStrategyFactory.RegentLBPStrategyConfig({
@@ -42,8 +42,7 @@ contract RegentLBPStrategyFactoryTest is Test {
                 lpCurrencyBps: 5000,
                 tokenSplitToAuctionMps: 6_666_666,
                 auctionTokenAmount: 100,
-                reserveTokenAmount: 50,
-                maxCurrencyAmountForLP: 1000
+                reserveTokenAmount: 50
             });
 
         address strategyAddress = address(
@@ -56,11 +55,54 @@ contract RegentLBPStrategyFactoryTest is Test {
         assertEq(strategy.auctionInitializerFactory(), address(0x3333));
         assertEq(strategy.agentSafe(), address(0x5555));
         assertEq(strategy.vestingWallet(), address(0x6666));
+        assertEq(strategy.auctionCreator(), address(this));
         assertEq(strategy.operator(), address(0x7777));
         assertEq(strategy.officialPoolFee(), 3000);
         assertEq(strategy.officialPoolTickSpacing(), 60);
         assertEq(strategy.totalStrategySupply(), 150);
         assertEq(strategy.auctionTokenAmount(), 100);
         assertEq(strategy.reserveTokenAmount(), 50);
+    }
+
+    function testRejectsUnauthorizedCreator() external {
+        RegentLBPStrategyFactory factory = new RegentLBPStrategyFactory(address(this));
+
+        RegentLBPStrategyFactory.RegentLBPStrategyConfig memory cfg =
+            RegentLBPStrategyFactory.RegentLBPStrategyConfig({
+                usdc: address(0x2222),
+                auctionInitializerFactory: address(0x3333),
+                auctionParameters: AuctionParameters({
+                    currency: address(0x2222),
+                    tokensRecipient: address(0),
+                    fundsRecipient: address(0),
+                    startBlock: 1,
+                    endBlock: 10,
+                    claimBlock: 10,
+                    tickSpacing: 100,
+                    validationHook: address(0),
+                    floorPrice: 100,
+                    requiredCurrencyRaised: 0,
+                    auctionStepsData: bytes("")
+                }),
+                officialPoolHook: address(0x4444),
+                agentSafe: address(0x5555),
+                vestingWallet: address(0x6666),
+                operator: address(0x7777),
+                positionRecipient: address(0x8888),
+                positionManager: address(0x9999),
+                poolManager: address(0xAAAA),
+                officialPoolFee: 3000,
+                officialPoolTickSpacing: 60,
+                migrationBlock: 20,
+                sweepBlock: 30,
+                lpCurrencyBps: 5000,
+                tokenSplitToAuctionMps: 6_666_666,
+                auctionTokenAmount: 100,
+                reserveTokenAmount: 50
+            });
+
+        vm.prank(address(0xBAD));
+        vm.expectRevert("ONLY_AUTHORIZED_CREATOR");
+        factory.initializeDistribution(address(0x1111), 150, abi.encode(cfg), bytes32(0));
     }
 }

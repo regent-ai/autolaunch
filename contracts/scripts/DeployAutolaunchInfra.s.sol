@@ -11,7 +11,7 @@ import {RegentLBPStrategyFactory} from "src/RegentLBPStrategyFactory.sol";
 
 contract DeployAutolaunchInfraScript is Script {
     uint256 internal constant BASE_MAINNET_CHAIN_ID = 8453;
-    uint256 internal constant BASE_SEPOLIA_CHAIN_ID = 84532;
+    uint256 internal constant BASE_SEPOLIA_CHAIN_ID = 84_532;
 
     struct ScriptConfig {
         address owner;
@@ -49,7 +49,7 @@ contract DeployAutolaunchInfraScript is Script {
         revenueShareFactory = new RevenueShareFactory(cfg.owner, cfg.usdc, subjectRegistry);
         revenueIngressFactory =
             new RevenueIngressFactory(cfg.usdc, address(subjectRegistry), cfg.owner);
-        strategyFactory = new RegentLBPStrategyFactory();
+        strategyFactory = new RegentLBPStrategyFactory(cfg.owner);
         subjectRegistry.transferOwnership(address(revenueShareFactory));
         revenueShareFactory.acceptSubjectRegistryOwnership();
         vm.stopBroadcast();

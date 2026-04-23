@@ -13,7 +13,11 @@ import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
 import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
 import {PoolId, PoolIdLibrary} from "@uniswap/v4-core/src/types/PoolId.sol";
 import {ModifyLiquidityParams, SwapParams} from "@uniswap/v4-core/src/types/PoolOperation.sol";
-import {BeforeSwapDelta} from "@uniswap/v4-core/src/types/BeforeSwapDelta.sol";
+import {
+    BeforeSwapDelta,
+    BeforeSwapDeltaLibrary,
+    toBeforeSwapDelta
+} from "@uniswap/v4-core/src/types/BeforeSwapDelta.sol";
 
 contract LaunchPoolFeeHook is Owned, IHooks {
     using Hooks for IHooks;
@@ -25,8 +29,8 @@ contract LaunchPoolFeeHook is Owned, IHooks {
     uint256 public constant TREASURY_FEE_BPS = 100;
     uint256 public constant REGENT_MULTISIG_FEE_BPS = 100;
     uint256 public constant BPS_DENOMINATOR = 10_000;
-    uint160 public constant REQUIRED_HOOK_FLAGS =
-        Hooks.AFTER_SWAP_FLAG | Hooks.AFTER_SWAP_RETURNS_DELTA_FLAG;
+    uint160 public constant REQUIRED_HOOK_FLAGS = Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG
+        | Hooks.BEFORE_SWAP_RETURNS_DELTA_FLAG | Hooks.AFTER_SWAP_RETURNS_DELTA_FLAG;
 
     struct SwapFeeComputation {
         address chargedCurrency;
@@ -120,12 +124,28 @@ contract LaunchPoolFeeHook is Owned, IHooks {
         revert HookNotImplemented();
     }
 
-    function beforeSwap(address, PoolKey calldata, SwapParams calldata, bytes calldata)
-        external
-        pure
-        returns (bytes4, BeforeSwapDelta, uint24)
-    {
-        revert HookNotImplemented();
+    function beforeSwap(
+        address sender,
+        PoolKey calldata key,
+        SwapParams calldata params,
+        bytes calldata
+    ) external returns (bytes4, BeforeSwapDelta, uint24) {
+        require(msg.sender == address(poolManagerContract), "ONLY_POOL_MANAGER");
+
+        bytes32 poolId = PoolId.unwrap(key.toId());
+        LaunchFeeRegistry.PoolConfig memory config = _validatePool(poolId);
+        if (!_quoteTokenIsSpecified(key, params, config.quoteToken)) {
+            return (IHooks.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
+        }
+
+        SwapFeeComputation memory feeData = _computeSpecifiedQuoteFee(params, config.quoteToken);
+        if (feeData.totalFee == 0) {
+            return (IHooks.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
+        }
+
+        _accrueQuoteFee(poolId, sender, feeData);
+
+        return (IHooks.beforeSwap.selector, toBeforeSwapDelta(feeData.totalFee.toInt128(), 0), 0);
     }
 
     function afterSwap(
@@ -139,28 +159,17 @@ contract LaunchPoolFeeHook is Owned, IHooks {
 
         bytes32 poolId = PoolId.unwrap(key.toId());
         LaunchFeeRegistry.PoolConfig memory config = _validatePool(poolId);
-        SwapFeeComputation memory feeData = _computeSwapFee(key, params, delta, config.quoteToken);
+        if (!_quoteTokenIsUnspecified(key, params, config.quoteToken)) {
+            return (IHooks.afterSwap.selector, 0);
+        }
+
+        SwapFeeComputation memory feeData =
+            _computeUnspecifiedQuoteFee(key, params, delta, config.quoteToken);
         if (feeData.totalFee == 0) {
             return (IHooks.afterSwap.selector, 0);
         }
 
-        _emitSwapFeeAccrued(
-            poolId,
-            sender,
-            feeData.chargedCurrency,
-            feeData.chargedAmount,
-            feeData.totalFee,
-            feeData.treasuryFee,
-            feeData.regentFee,
-            feeData.exactInput
-        );
-
-        poolManagerContract.take(
-            Currency.wrap(feeData.chargedCurrency), address(vaultContract), feeData.totalFee
-        );
-        vaultContract.recordAccrual(
-            poolId, feeData.chargedCurrency, feeData.treasuryFee, feeData.regentFee
-        );
+        _accrueQuoteFee(poolId, sender, feeData);
 
         return (IHooks.afterSwap.selector, feeData.totalFee.toInt128());
     }
@@ -182,31 +191,100 @@ contract LaunchPoolFeeHook is Owned, IHooks {
     }
 
     function _permissions() internal pure returns (Hooks.Permissions memory permissions) {
+        permissions.beforeSwap = true;
         permissions.afterSwap = true;
+        permissions.beforeSwapReturnDelta = true;
         permissions.afterSwapReturnDelta = true;
     }
 
-    function _computeSwapFee(
+    function _computeSpecifiedQuoteFee(SwapParams calldata params, address quoteToken)
+        internal
+        pure
+        returns (SwapFeeComputation memory feeData)
+    {
+        uint256 chargedAmount = params.amountSpecified < 0
+            ? uint256(-params.amountSpecified)
+            : uint256(params.amountSpecified);
+        feeData = _feeData(quoteToken, chargedAmount, params.amountSpecified < 0);
+    }
+
+    function _computeUnspecifiedQuoteFee(
         PoolKey calldata key,
         SwapParams calldata params,
         BalanceDelta delta,
-        address
+        address quoteToken
     ) internal pure returns (SwapFeeComputation memory feeData) {
-        bool exactInput = params.amountSpecified < 0;
-        bool chargeCurrency0 = exactInput ? !params.zeroForOne : params.zeroForOne;
+        bool chargeCurrency0 = _unspecifiedCurrency0(params);
         int128 chargedDelta = chargeCurrency0 ? delta.amount0() : delta.amount1();
         if (chargedDelta < 0) chargedDelta = -chargedDelta;
 
-        feeData.chargedCurrency =
+        address chargedCurrency =
             chargeCurrency0 ? Currency.unwrap(key.currency0) : Currency.unwrap(key.currency1);
-        feeData.chargedAmount = uint128(chargedDelta);
+        require(chargedCurrency == quoteToken, "QUOTE_TOKEN_MISMATCH");
+        feeData = _feeData(quoteToken, uint128(chargedDelta), params.amountSpecified < 0);
+    }
+
+    function _feeData(address quoteToken, uint256 chargedAmount, bool exactInput)
+        internal
+        pure
+        returns (SwapFeeComputation memory feeData)
+    {
+        feeData.chargedCurrency = quoteToken;
+        feeData.chargedAmount = chargedAmount;
         feeData.totalFee = feeData.chargedAmount * TOTAL_FEE_BPS / BPS_DENOMINATOR;
-        feeData.treasuryFee = feeData.chargedAmount * TREASURY_FEE_BPS / BPS_DENOMINATOR;
-        feeData.regentFee = feeData.chargedAmount * REGENT_MULTISIG_FEE_BPS / BPS_DENOMINATOR;
-        if (feeData.treasuryFee + feeData.regentFee > feeData.totalFee) {
-            feeData.regentFee = feeData.totalFee - feeData.treasuryFee;
-        }
+        feeData.treasuryFee = feeData.totalFee * TREASURY_FEE_BPS / TOTAL_FEE_BPS;
+        feeData.regentFee = feeData.totalFee - feeData.treasuryFee;
         feeData.exactInput = exactInput;
+    }
+
+    function _accrueQuoteFee(bytes32 poolId, address sender, SwapFeeComputation memory feeData)
+        internal
+    {
+        _emitSwapFeeAccrued(
+            poolId,
+            sender,
+            feeData.chargedCurrency,
+            feeData.chargedAmount,
+            feeData.totalFee,
+            feeData.treasuryFee,
+            feeData.regentFee,
+            feeData.exactInput
+        );
+
+        poolManagerContract.take(
+            Currency.wrap(feeData.chargedCurrency), address(vaultContract), feeData.totalFee
+        );
+        vaultContract.recordAccrual(
+            poolId, feeData.chargedCurrency, feeData.treasuryFee, feeData.regentFee
+        );
+    }
+
+    function _quoteTokenIsSpecified(
+        PoolKey calldata key,
+        SwapParams calldata params,
+        address quoteToken
+    ) internal pure returns (bool) {
+        return (_specifiedCurrency0(params)
+                    ? Currency.unwrap(key.currency0)
+                    : Currency.unwrap(key.currency1)) == quoteToken;
+    }
+
+    function _quoteTokenIsUnspecified(
+        PoolKey calldata key,
+        SwapParams calldata params,
+        address quoteToken
+    ) internal pure returns (bool) {
+        return (_unspecifiedCurrency0(params)
+                    ? Currency.unwrap(key.currency0)
+                    : Currency.unwrap(key.currency1)) == quoteToken;
+    }
+
+    function _specifiedCurrency0(SwapParams calldata params) internal pure returns (bool) {
+        return (params.amountSpecified < 0) == params.zeroForOne;
+    }
+
+    function _unspecifiedCurrency0(SwapParams calldata params) internal pure returns (bool) {
+        return !_specifiedCurrency0(params);
     }
 
     function _validatePool(bytes32 poolId)

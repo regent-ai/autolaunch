@@ -51,7 +51,7 @@ contract LaunchDeploymentControllerTest is Test {
         auctionFactory = new MockContinuousClearingAuctionFactory();
         poolManager = new MockHookPoolManager();
         tokenFactory = new MockTokenFactory();
-        strategyFactory = new RegentLBPStrategyFactory();
+        strategyFactory = new RegentLBPStrategyFactory(address(this));
         usdc = new MintableERC20Mock("USD Coin", "USDC");
         subjectRegistry = new SubjectRegistry(address(this));
         revenueShareFactory = new RevenueShareFactory(address(this), address(usdc), subjectRegistry);
@@ -61,6 +61,7 @@ contract LaunchDeploymentControllerTest is Test {
         revenueShareFactory.acceptSubjectRegistryOwnership();
         revenueShareFactory.setAuthorizedCreator(address(controller), true);
         revenueIngressFactory.setAuthorizedCreator(address(controller), true);
+        strategyFactory.setAuthorizedCreator(address(controller), true);
     }
 
     function testRejectsMissingRevenueIngressFactory() external {
@@ -76,14 +77,6 @@ contract LaunchDeploymentControllerTest is Test {
         cfg.migrationBlock = cfg.endBlock;
 
         vm.expectRevert("MIGRATION_BEFORE_END");
-        controller.deploy(cfg);
-    }
-
-    function testRejectsZeroLpCurrencyCap() external {
-        LaunchDeploymentController.DeploymentConfig memory cfg = defaultConfig();
-        cfg.maxCurrencyAmountForLP = 0;
-
-        vm.expectRevert("MAX_CCY_FOR_LP_ZERO");
         controller.deploy(cfg);
     }
 
@@ -119,6 +112,30 @@ contract LaunchDeploymentControllerTest is Test {
         controller.deploy(cfg);
     }
 
+    function testRejectsRevenueShareUsdcMismatch() external {
+        MintableERC20Mock otherUsdc = new MintableERC20Mock("Other USD", "oUSD");
+        RevenueShareFactory mismatchedRevenueShareFactory =
+            new RevenueShareFactory(address(this), address(otherUsdc), subjectRegistry);
+
+        LaunchDeploymentController.DeploymentConfig memory cfg = defaultConfig();
+        cfg.revenueShareFactory = address(mismatchedRevenueShareFactory);
+
+        vm.expectRevert("REVENUE_SHARE_USDC_MISMATCH");
+        controller.deploy(cfg);
+    }
+
+    function testRejectsRevenueIngressUsdcMismatch() external {
+        MintableERC20Mock otherUsdc = new MintableERC20Mock("Other USD", "oUSD");
+        RevenueIngressFactory mismatchedRevenueIngressFactory =
+            new RevenueIngressFactory(address(otherUsdc), address(subjectRegistry), address(this));
+
+        LaunchDeploymentController.DeploymentConfig memory cfg = defaultConfig();
+        cfg.revenueIngressFactory = address(mismatchedRevenueIngressFactory);
+
+        vm.expectRevert("REVENUE_INGRESS_USDC_MISMATCH");
+        controller.deploy(cfg);
+    }
+
     function testDeploysModelBLaunchStack() external {
         LaunchDeploymentController.DeploymentResult memory result =
             controller.deploy(defaultConfig());
@@ -138,6 +155,7 @@ contract LaunchDeploymentControllerTest is Test {
 
         RegentLBPStrategy strategy = RegentLBPStrategy(result.strategyAddress);
         assertEq(strategy.auctionAddress(), result.auctionAddress);
+        assertEq(strategy.auctionCreator(), address(controller));
         assertEq(strategy.totalStrategySupply(), expectedAuctionAmount + expectedReserveAmount);
         assertEq(strategy.auctionTokenAmount(), expectedAuctionAmount);
         assertEq(strategy.reserveTokenAmount(), expectedReserveAmount);
@@ -305,7 +323,6 @@ contract LaunchDeploymentControllerTest is Test {
         cfg.validationHook = address(0);
         cfg.floorPrice = AUCTION_TICK_SPACING;
         cfg.requiredCurrencyRaised = 0;
-        cfg.maxCurrencyAmountForLP = type(uint128).max;
         cfg.tokenName = "Agent Coin";
         cfg.tokenSymbol = "AGENT";
         cfg.subjectLabel = "Agent Coin";

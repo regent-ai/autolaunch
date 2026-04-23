@@ -6,6 +6,8 @@ import {RevenueIngressAccount} from "src/revenue/RevenueIngressAccount.sol";
 import {ISubjectRegistry} from "src/revenue/interfaces/ISubjectRegistry.sol";
 
 contract RevenueIngressFactory is Owned {
+    uint256 public constant MAX_INGRESS_ACCOUNTS_PER_SUBJECT = 64;
+
     address public immutable usdc;
     address public immutable subjectRegistry;
 
@@ -73,6 +75,10 @@ contract RevenueIngressFactory is Owned {
         require(cfg.stakeToken != address(0), "SUBJECT_UNKNOWN");
         require(cfg.splitter != address(0), "SPLITTER_ZERO");
         require(cfg.active, "SUBJECT_INACTIVE");
+        require(
+            ingressAccountsBySubject[subjectId].length < MAX_INGRESS_ACCOUNTS_PER_SUBJECT,
+            "INGRESS_ACCOUNT_LIMIT"
+        );
 
         RevenueIngressAccount account =
             new RevenueIngressAccount(usdc, cfg.splitter, subjectId, label, cfg.treasurySafe);

@@ -12,7 +12,8 @@ contract MockHookDeployer {
     {
         (bytes32 salt,) = HookMiner.find(
             address(this),
-            Hooks.AFTER_SWAP_FLAG | Hooks.AFTER_SWAP_RETURNS_DELTA_FLAG,
+            Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG | Hooks.BEFORE_SWAP_RETURNS_DELTA_FLAG
+                | Hooks.AFTER_SWAP_RETURNS_DELTA_FLAG,
             type(LaunchPoolFeeHook).creationCode,
             abi.encode(owner_, poolManager_, registry_, vault_)
         );

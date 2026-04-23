@@ -18,7 +18,7 @@ contract DeployAutolaunchInfraScriptTest is Test {
 
     function setUp() external {
         script = new DeployAutolaunchInfraScript();
-        vm.chainId(84532);
+        vm.chainId(84_532);
     }
 
     function testDeployCreatesInfraAndTransfersRegistryOwnership() external {
@@ -35,6 +35,7 @@ contract DeployAutolaunchInfraScriptTest is Test {
         assertEq(subjectRegistry.owner(), address(revenueShareFactory));
         assertEq(revenueShareFactory.owner(), OWNER);
         assertEq(revenueIngressFactory.owner(), OWNER);
+        assertEq(strategyFactory.owner(), OWNER);
         assertEq(revenueShareFactory.usdc(), USDC);
         assertEq(revenueIngressFactory.usdc(), USDC);
         assertEq(address(revenueShareFactory.subjectRegistry()), address(subjectRegistry));
@@ -46,11 +47,16 @@ contract DeployAutolaunchInfraScriptTest is Test {
         DeployAutolaunchInfraScript.ScriptConfig memory cfg =
             DeployAutolaunchInfraScript.ScriptConfig({owner: DEPLOYER, usdc: USDC});
 
-        (, RevenueShareFactory revenueShareFactory, RevenueIngressFactory revenueIngressFactory,) =
-            script.deploy(cfg);
+        (
+            ,
+            RevenueShareFactory revenueShareFactory,
+            RevenueIngressFactory revenueIngressFactory,
+            RegentLBPStrategyFactory strategyFactory
+        ) = script.deploy(cfg);
 
         assertEq(revenueShareFactory.owner(), DEPLOYER);
         assertEq(revenueIngressFactory.owner(), DEPLOYER);
+        assertEq(strategyFactory.owner(), DEPLOYER);
     }
 
     function testLoadConfigFromEnvReadsExplicitOwnerAndUsdc() external {
@@ -77,6 +83,7 @@ contract DeployAutolaunchInfraScriptTest is Test {
         assertEq(subjectRegistry.owner(), address(revenueShareFactory));
         assertEq(revenueShareFactory.owner(), OWNER);
         assertEq(revenueIngressFactory.owner(), OWNER);
+        assertEq(strategyFactory.owner(), OWNER);
         assertEq(revenueShareFactory.usdc(), USDC);
         assertTrue(address(strategyFactory) != address(0));
     }

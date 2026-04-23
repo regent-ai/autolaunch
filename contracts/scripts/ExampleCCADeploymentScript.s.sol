@@ -5,6 +5,7 @@ import {Script} from "forge-std/Script.sol";
 import {console2} from "forge-std/console2.sol";
 
 import {LaunchDeploymentController} from "src/LaunchDeploymentController.sol";
+import {RegentLBPStrategyFactory} from "src/RegentLBPStrategyFactory.sol";
 import {RevenueIngressFactory} from "src/revenue/RevenueIngressFactory.sol";
 import {RevenueShareFactory} from "src/revenue/RevenueShareFactory.sol";
 
@@ -38,7 +39,6 @@ contract ExampleCCADeploymentScript is Script {
         uint64 vestingDurationSeconds;
         uint256 floorPrice;
         uint128 requiredCurrencyRaised;
-        uint128 maxCurrencyAmountForLP;
         string tokenName;
         string tokenSymbol;
         string subjectLabel;
@@ -55,7 +55,7 @@ contract ExampleCCADeploymentScript is Script {
     uint64 internal constant DEFAULT_SWEEP_BLOCK_OFFSET = 256;
     uint64 internal constant DEFAULT_VESTING_DURATION_SECONDS = 365 days;
     uint256 internal constant BASE_MAINNET_CHAIN_ID = 8453;
-    uint256 internal constant BASE_SEPOLIA_CHAIN_ID = 84532;
+    uint256 internal constant BASE_SEPOLIA_CHAIN_ID = 84_532;
 
     function _loadConfig() internal view returns (ScriptConfig memory cfg) {
         require(
@@ -142,10 +142,6 @@ contract ExampleCCADeploymentScript is Script {
         uint64 vestingDurationSeconds =
             uint64(vm.envOr("VESTING_DURATION_SECONDS", uint256(DEFAULT_VESTING_DURATION_SECONDS)));
 
-        uint256 maxCurrencyAmountForLPRaw =
-            vm.envOr("MAX_CURRENCY_AMOUNT_FOR_LP", type(uint128).max);
-        require(maxCurrencyAmountForLPRaw <= type(uint128).max, "MAX_CCY_FOR_LP_TOO_LARGE");
-
         cfg.positionRecipient = cfg.agentSafe;
         cfg.startBlock = uint64(block.number);
         cfg.endBlock = uint64(block.number + auctionDurationBlocks);
@@ -155,7 +151,6 @@ contract ExampleCCADeploymentScript is Script {
         cfg.vestingStartTimestamp = vestingStartTimestamp;
         cfg.vestingDurationSeconds = vestingDurationSeconds;
         cfg.requiredCurrencyRaised = uint128(requiredCurrencyRaisedRaw);
-        cfg.maxCurrencyAmountForLP = uint128(maxCurrencyAmountForLPRaw);
         cfg.tokenName = vm.envOr("AUTOLAUNCH_TOKEN_NAME", string("Regent Agent Token"));
         cfg.tokenSymbol = vm.envOr("AUTOLAUNCH_TOKEN_SYMBOL", string("RAGENT"));
         cfg.subjectLabel = vm.envOr("AUTOLAUNCH_SUBJECT_LABEL", cfg.tokenName);
@@ -177,6 +172,8 @@ contract ExampleCCADeploymentScript is Script {
         LaunchDeploymentController controller = new LaunchDeploymentController();
         RevenueShareFactory(cfg.revenueShareFactory).setAuthorizedCreator(address(controller), true);
         RevenueIngressFactory(cfg.revenueIngressFactory)
+            .setAuthorizedCreator(address(controller), true);
+        RegentLBPStrategyFactory(cfg.strategyFactory)
             .setAuthorizedCreator(address(controller), true);
         result = controller.deploy(
             LaunchDeploymentController.DeploymentConfig({
@@ -208,7 +205,6 @@ contract ExampleCCADeploymentScript is Script {
                 vestingDurationSeconds: cfg.vestingDurationSeconds,
                 floorPrice: cfg.floorPrice,
                 requiredCurrencyRaised: cfg.requiredCurrencyRaised,
-                maxCurrencyAmountForLP: cfg.maxCurrencyAmountForLP,
                 tokenName: cfg.tokenName,
                 tokenSymbol: cfg.tokenSymbol,
                 subjectLabel: cfg.subjectLabel,
@@ -219,6 +215,8 @@ contract ExampleCCADeploymentScript is Script {
         RevenueShareFactory(cfg.revenueShareFactory)
             .setAuthorizedCreator(address(controller), false);
         RevenueIngressFactory(cfg.revenueIngressFactory)
+            .setAuthorizedCreator(address(controller), false);
+        RegentLBPStrategyFactory(cfg.strategyFactory)
             .setAuthorizedCreator(address(controller), false);
     }
 
