@@ -39,3 +39,9 @@ RECENT_AUTOLAUNCH_MESSAGES.md
 /yarn-error.log*
 /layer2.md
 /layer3.md
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.toc
