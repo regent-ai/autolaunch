@@ -79,7 +79,7 @@ defmodule AutolaunchWeb.AuctionGuideLive do
       title:
         "When the auction ends, you claim the filled tokens, then stake if you want revenue exposure.",
       body:
-        "The page should make the outcome obvious: what filled, what was refunded, and what still needs to be claimed. After claim, tokens must be staked before they participate in recognized USDC revenue on Base, and that revenue only counts once it reaches the subject splitter.",
+        "The page should make the outcome obvious: what filled, what was refunded, and what still needs to be claimed. After claim, tokens must be staked before they participate in Base USDC revenue for that subject.",
       note: "The sale ends at claim. Earning starts only after staking.",
       stat: "Claim, then stake"
     }

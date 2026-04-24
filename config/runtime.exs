@@ -23,6 +23,12 @@ end
 
 if config_env() != :test do
   launch_chain_id_default = if config_env() == :prod, do: 8_453, else: 84_532
+  launch_chain_id = env_int.("AUTOLAUNCH_CHAIN_ID", launch_chain_id_default)
+
+  canonical_usdc_addresses = %{
+    8_453 => "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+    84_532 => "0x036cbd53842c5426634e7929541ec2318f3dcf7e"
+  }
 
   if config_env() == :dev do
     database_url =
@@ -91,7 +97,7 @@ if config_env() != :test do
     http_receive_timeout_ms: env_int.("SIWA_HTTP_RECEIVE_TIMEOUT_MS", 5_000)
 
   config :autolaunch, :launch,
-    chain_id: env_int.("AUTOLAUNCH_CHAIN_ID", launch_chain_id_default),
+    chain_id: launch_chain_id,
     allow_unverified_owner: env_bool.("AUTOLAUNCH_ALLOW_UNVERIFIED_OWNER", false),
     deploy_binary: env.("AUTOLAUNCH_DEPLOY_BINARY", "forge"),
     deploy_workdir: env.("AUTOLAUNCH_DEPLOY_WORKDIR", ""),
@@ -103,7 +109,7 @@ if config_env() != :test do
       env.("AUTOLAUNCH_CCA_FACTORY_ADDRESS", "0xCCccCcCAE7503Cac057829BF2811De42E16e0bD5"),
     pool_manager_address: env.("AUTOLAUNCH_UNISWAP_V4_POOL_MANAGER", ""),
     position_manager_address: env.("AUTOLAUNCH_UNISWAP_V4_POSITION_MANAGER", ""),
-    usdc_address: env.("AUTOLAUNCH_USDC_ADDRESS", ""),
+    usdc_address: Map.get(canonical_usdc_addresses, launch_chain_id, ""),
     revenue_share_factory_address: env.("AUTOLAUNCH_REVENUE_SHARE_FACTORY_ADDRESS", ""),
     revenue_ingress_factory_address: env.("AUTOLAUNCH_REVENUE_INGRESS_FACTORY_ADDRESS", ""),
     pool_manager_addresses: %{
@@ -111,8 +117,8 @@ if config_env() != :test do
       84_532 => env.("AUTOLAUNCH_BASE_SEPOLIA_UNISWAP_V4_POOL_MANAGER", "")
     },
     usdc_addresses: %{
-      8_453 => env.("AUTOLAUNCH_BASE_MAINNET_USDC_ADDRESS", ""),
-      84_532 => env.("AUTOLAUNCH_BASE_SEPOLIA_USDC_ADDRESS", "")
+      8_453 => Map.fetch!(canonical_usdc_addresses, 8_453),
+      84_532 => Map.fetch!(canonical_usdc_addresses, 84_532)
     },
     revenue_share_factory_addresses: %{
       8_453 => env.("AUTOLAUNCH_BASE_MAINNET_REVENUE_SHARE_FACTORY_ADDRESS", ""),

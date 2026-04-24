@@ -1,6 +1,7 @@
 defmodule Autolaunch.Launch.Deployment do
   @moduledoc false
 
+  alias Autolaunch.BaseFamily
   alias Autolaunch.Launch.Auction
   alias Autolaunch.Launch.External.TokenLaunch
   alias Autolaunch.Launch.Job
@@ -502,7 +503,12 @@ defmodule Autolaunch.Launch.Deployment do
   defp deploy_position_manager_address(chain_id),
     do: config_value_for_chain(chain_id, :position_manager_address)
 
-  defp deploy_usdc_address(chain_id), do: config_value_for_chain(chain_id, :usdc_address)
+  defp deploy_usdc_address(chain_id) do
+    case BaseFamily.canonical_usdc_address(chain_id) do
+      {:ok, address} -> address
+      {:error, _reason} -> ""
+    end
+  end
 
   defp deploy_env_error(chain_id) do
     with {:ok, chain} <- fetch_chain_config(chain_id) do
@@ -530,9 +536,6 @@ defmodule Autolaunch.Launch.Deployment do
 
         blank?(deploy_factory_address(chain_id)) ->
           "Missing #{chain.label} CCA factory address."
-
-        blank?(deploy_usdc_address(chain_id)) ->
-          "Missing #{chain.label} USDC address."
 
         true ->
           nil

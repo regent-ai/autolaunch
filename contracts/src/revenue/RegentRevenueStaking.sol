@@ -9,6 +9,10 @@ import {IERC20SupplyMinimal} from "src/revenue/interfaces/IERC20SupplyMinimal.so
 contract RegentRevenueStaking is Owned {
     using SafeTransferLib for address;
 
+    enum RevenueSourceKind {
+        DirectDeposit
+    }
+
     uint256 public constant BPS_DENOMINATOR = 10_000;
     uint256 public constant ACC_PRECISION = 1e27;
     uint256 public constant MAX_EMISSION_APR_BPS = 2000;
@@ -26,7 +30,8 @@ contract RegentRevenueStaking is Owned {
     uint16 public emissionAprBps;
     uint256 public lastEmissionUpdate;
     uint256 public treasuryResidualUsdc;
-    uint256 public totalRecognizedRewardsUsdc;
+    uint256 public totalUsdcReceived;
+    uint256 public directDepositUsdc;
     uint256 public unclaimedRegentLiability;
     uint256 public totalEmittedRegent;
     uint256 public totalFundedRegent;
@@ -48,7 +53,9 @@ contract RegentRevenueStaking is Owned {
         uint256 amountReceived,
         uint256 stakerRewardsCredited,
         uint256 treasuryResidualIncrease,
-        bytes32 indexed sourceTag,
+        RevenueSourceKind indexed sourceKind,
+        address indexed depositor,
+        bytes32 sourceTag,
         bytes32 indexed sourceRef
     );
     event USDCRewardClaimed(address indexed account, uint256 amount, address recipient);
@@ -179,6 +186,12 @@ contract RegentRevenueStaking is Owned {
         return claimable + FullMath.mulDiv(stakeBal, currentAcc - priorAcc, ACC_PRECISION);
     }
 
+    function previewFundedClaimableRegent(address account) public view returns (uint256) {
+        uint256 claimable = previewClaimableRegent(account);
+        uint256 available = availableRegentRewardInventory();
+        return claimable <= available ? claimable : available;
+    }
+
     function claimUSDC(address recipient)
         external
         whenNotPaused
@@ -255,7 +268,7 @@ contract RegentRevenueStaking is Owned {
         uint256 afterBalance = IERC20SupplyMinimal(usdc).balanceOf(address(this));
         received = afterBalance - beforeBalance;
 
-        _recordRevenue(received, sourceTag, sourceRef);
+        _recordRevenue(received, RevenueSourceKind.DirectDeposit, msg.sender, sourceTag, sourceRef);
     }
 
     function fundRegentRewards(uint256 amount)
@@ -345,10 +358,19 @@ contract RegentRevenueStaking is Owned {
         rewardDebtUsdc[account] = currentAcc;
     }
 
-    function _recordRevenue(uint256 received, bytes32 sourceTag, bytes32 sourceRef) internal {
+    function _recordRevenue(
+        uint256 received,
+        RevenueSourceKind sourceKind,
+        address depositor,
+        bytes32 sourceTag,
+        bytes32 sourceRef
+    ) internal {
         require(received > 0, "NOTHING_RECEIVED");
 
-        totalRecognizedRewardsUsdc += received;
+        totalUsdcReceived += received;
+        if (sourceKind == RevenueSourceKind.DirectDeposit) {
+            directDepositUsdc += received;
+        }
 
         uint256 stakerPool = received;
 
@@ -369,7 +391,13 @@ contract RegentRevenueStaking is Owned {
         treasuryResidualUsdc += treasuryIncrease;
 
         emit USDCRevenueDeposited(
-            received, creditedToStakers, treasuryIncrease, sourceTag, sourceRef
+            received,
+            creditedToStakers,
+            treasuryIncrease,
+            sourceKind,
+            depositor,
+            sourceTag,
+            sourceRef
         );
     }
 
@@ -416,7 +444,10 @@ contract RegentRevenueStaking is Owned {
     }
 
     // slither-disable-next-line reentrancy-balance
-    function _pullExactStakeToken(address from, uint256 amount) internal returns (uint256 received) {
+    function _pullExactStakeToken(address from, uint256 amount)
+        internal
+        returns (uint256 received)
+    {
         uint256 beforeBalance = IERC20SupplyMinimal(stakeToken).balanceOf(address(this));
         stakeToken.safeTransferFrom(from, address(this), amount);
         uint256 afterBalance = IERC20SupplyMinimal(stakeToken).balanceOf(address(this));

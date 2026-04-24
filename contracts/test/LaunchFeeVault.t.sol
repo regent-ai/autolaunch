@@ -39,13 +39,13 @@ contract LaunchFeeVaultTest is Test {
 
     function setUp() external {
         vm.startPrank(OWNER);
-        registry = new LaunchFeeRegistry(OWNER);
+        quoteToken = new MintableERC20Mock("Quote", "Q");
+        registry = new LaunchFeeRegistry(OWNER, address(quoteToken));
         vault = new LaunchFeeVault(OWNER, address(registry));
         hookDeployer = new MockHookDeployer();
         poolManager = new MockHookPoolManager();
         hook = hookDeployer.deploy(OWNER, address(poolManager), address(registry), address(vault));
         vault.setHook(address(hook));
-        quoteToken = new MintableERC20Mock("Quote", "Q");
         poolId = _registerPool(PRIMARY_LAUNCH_TOKEN, address(quoteToken));
         vault.setCanonicalTokens(PRIMARY_LAUNCH_TOKEN, address(quoteToken));
         vm.stopPrank();
@@ -53,6 +53,9 @@ contract LaunchFeeVaultTest is Test {
         poolKey = _poolKey(PRIMARY_LAUNCH_TOKEN, address(quoteToken));
 
         quoteToken.mint(address(poolManager), 1000e18);
+    }
+
+    function testTreasuryAndRegentSharesAreTrackedSeparately() external {
         _simulateSwap(
             poolKey,
             true,
@@ -60,14 +63,20 @@ contract LaunchFeeVaultTest is Test {
             -int128(int256(SWAP_AMOUNT)),
             int128(int256(SWAP_AMOUNT))
         );
-    }
 
-    function testTreasuryAndRegentSharesAreTrackedSeparately() external view {
         assertEq(vault.treasuryAccrued(poolId, address(quoteToken)), ACCRUED_SHARE);
         assertEq(vault.regentAccrued(poolId, address(quoteToken)), ACCRUED_SHARE);
     }
 
     function testRegentShareWithdrawalIsAccessControlled() external {
+        _simulateSwap(
+            poolKey,
+            true,
+            -int256(SWAP_AMOUNT),
+            -int128(int256(SWAP_AMOUNT)),
+            int128(int256(SWAP_AMOUNT))
+        );
+
         vm.expectRevert("ONLY_REGENT_RECIPIENT");
         vault.withdrawRegentShare(poolId, address(quoteToken), ACCRUED_SHARE, REGENT_MULTISIG);
 

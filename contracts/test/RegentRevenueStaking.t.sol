@@ -45,7 +45,8 @@ contract RegentRevenueStakingTest is Test {
         usdc.approve(address(staking), type(uint256).max);
         staking.depositUSDC(1000 * USDC, bytes32("manual"), bytes32("round-1"));
 
-        assertEq(staking.totalRecognizedRewardsUsdc(), 1000 * USDC);
+        assertEq(staking.totalUsdcReceived(), 1000 * USDC);
+        assertEq(staking.directDepositUsdc(), 1000 * USDC);
         assertEq(staking.previewClaimableUSDC(ALICE), 200 * USDC);
         assertEq(staking.treasuryResidualUsdc(), 800 * USDC);
 
@@ -122,7 +123,8 @@ contract RegentRevenueStakingTest is Test {
 
         uint256 tracked = staking.treasuryResidualUsdc() + staking.previewClaimableUSDC(ALICE);
         assertEq(usdc.balanceOf(address(staking)), tracked);
-        assertEq(staking.totalRecognizedRewardsUsdc(), depositAmount);
+        assertEq(staking.totalUsdcReceived(), depositAmount);
+        assertEq(staking.directDepositUsdc(), depositAmount);
     }
 
     function testTreasuryWithdrawalIsRestricted() external {
@@ -254,6 +256,9 @@ contract RegentRevenueStakingTest is Test {
 
         vm.warp(block.timestamp + 365 days);
 
+        assertGt(staking.previewClaimableRegent(ALICE), 0);
+        assertEq(staking.previewFundedClaimableRegent(ALICE), 0);
+
         vm.expectRevert("REWARD_INVENTORY_LOW");
         vm.prank(ALICE);
         staking.claimRegent(ALICE);
@@ -266,6 +271,9 @@ contract RegentRevenueStakingTest is Test {
         staking.setEmissionAprBps(MAX_APR_BPS);
 
         vm.warp(block.timestamp + 365 days);
+
+        assertGt(staking.previewClaimableRegent(ALICE), 0);
+        assertEq(staking.previewFundedClaimableRegent(ALICE), 0);
 
         vm.expectRevert("REWARD_INVENTORY_LOW");
         vm.prank(ALICE);
@@ -286,10 +294,13 @@ contract RegentRevenueStakingTest is Test {
 
         _fundRegentRewards(bobExpected);
 
+        assertEq(staking.previewFundedClaimableRegent(BOB), bobExpected);
+
         vm.prank(BOB);
         uint256 bobClaim = staking.claimRegent(BOB);
         assertEq(bobClaim, bobExpected);
 
+        assertEq(staking.previewFundedClaimableRegent(ALICE), 0);
         vm.prank(ALICE);
         vm.expectRevert("REWARD_INVENTORY_LOW");
         staking.claimRegent(ALICE);

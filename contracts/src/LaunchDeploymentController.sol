@@ -17,6 +17,7 @@ import {RegentLBPStrategy} from "src/RegentLBPStrategy.sol";
 import {RegentLBPStrategyFactory} from "src/RegentLBPStrategyFactory.sol";
 import {ITokenFactory} from "src/interfaces/ITokenFactory.sol";
 import {IDistributionStrategy} from "src/interfaces/IDistributionStrategy.sol";
+import {BaseFamilyUSDC} from "src/libraries/BaseFamilyUSDC.sol";
 
 contract LaunchDeploymentController is Owned {
     uint256 internal constant BPS_DENOMINATOR = 10_000;
@@ -202,6 +203,7 @@ contract LaunchDeploymentController is Owned {
         require(cfg.positionRecipient == cfg.agentSafe, "POSITION_RECIPIENT_MUST_MATCH_AGENT_SAFE");
         require(cfg.strategyOperator != address(0), "STRATEGY_OPERATOR_ZERO");
         require(cfg.usdcToken != address(0), "USDC_ZERO");
+        BaseFamilyUSDC.requireCanonical(cfg.usdcToken);
         require(cfg.regentRecipient != address(0), "REGENT_RECIPIENT_ZERO");
         require(cfg.identityAgentId != 0, "AGENT_ID_ZERO");
         require(cfg.totalSupply != 0, "SUPPLY_ZERO");
@@ -293,7 +295,7 @@ contract LaunchDeploymentController is Owned {
         internal
         returns (FeeInfra memory feeInfra)
     {
-        feeInfra.launchFeeRegistry = new LaunchFeeRegistry(address(this));
+        feeInfra.launchFeeRegistry = new LaunchFeeRegistry(address(this), cfg.usdcToken);
         feeInfra.feeVault = new LaunchFeeVault(address(this), address(feeInfra.launchFeeRegistry));
 
         // slither-disable-next-line too-many-digits

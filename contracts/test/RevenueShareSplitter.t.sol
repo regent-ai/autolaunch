@@ -72,6 +72,10 @@ contract RevenueShareSplitterTest is Test {
         usdc.approve(address(splitter), INITIAL_INGRESS_DEPOSIT);
         splitter.depositUSDC(INITIAL_INGRESS_DEPOSIT, bytes32("direct"), bytes32("round-1"));
 
+        assertEq(splitter.totalUsdcReceived(), INITIAL_INGRESS_DEPOSIT);
+        assertEq(splitter.directDepositUsdc(), INITIAL_INGRESS_DEPOSIT);
+        assertEq(splitter.verifiedIngressUsdc(), 0);
+        assertEq(splitter.launchFeeUsdc(), 0);
         assertEq(splitter.protocolReserveUsdc(), 100 * USDC);
         assertEq(splitter.treasuryResidualUsdc(), 5940 * USDC);
         assertEq(splitter.previewClaimableUSDC(ALICE), 1980 * USDC);
@@ -437,6 +441,9 @@ contract RevenueShareSplitterTest is Test {
         splitter.setEmissionAprBps(MAX_APR_BPS);
         vm.warp(block.timestamp + 365 days);
 
+        assertGt(splitter.previewClaimableStakeToken(ALICE), 0);
+        assertEq(splitter.previewFundedClaimableStakeToken(ALICE), 0);
+
         vm.expectRevert("REWARD_INVENTORY_LOW");
         vm.prank(ALICE);
         splitter.claimStakeToken(ALICE);
@@ -445,6 +452,9 @@ contract RevenueShareSplitterTest is Test {
     function testClaimAndRestakeStakeTokenRevertsWhenInventoryIsShort() external {
         splitter.setEmissionAprBps(MAX_APR_BPS);
         vm.warp(block.timestamp + 365 days);
+
+        assertGt(splitter.previewClaimableStakeToken(ALICE), 0);
+        assertEq(splitter.previewFundedClaimableStakeToken(ALICE), 0);
 
         vm.expectRevert("REWARD_INVENTORY_LOW");
         vm.prank(ALICE);
@@ -543,6 +553,10 @@ contract RevenueShareSplitterTest is Test {
 
         assertEq(ingressSplitter.eligibleRevenueShareBps(), 10_000);
         assertEq(ingressSplitter.pendingEligibleRevenueShareBps(), 8000);
+        assertEq(ingressSplitter.totalUsdcReceived(), 1000 * USDC);
+        assertEq(ingressSplitter.verifiedIngressUsdc(), 1000 * USDC);
+        assertEq(ingressSplitter.directDepositUsdc(), 0);
+        assertEq(ingressSplitter.launchFeeUsdc(), 0);
         assertEq(ingressSplitter.protocolReserveUsdc(), 10 * USDC);
         assertEq(ingressSplitter.stakerEligibleInflowUsdc(), 990 * USDC);
         assertEq(ingressSplitter.treasuryReservedInflowUsdc(), 0);
@@ -604,7 +618,7 @@ contract RevenueShareSplitterTest is Test {
         vm.clearMockedCalls();
 
         assertEq(ingressSplitter.eligibleRevenueShareBps(), 8000);
-        assertEq(ingressSplitter.grossInflowUsdc(), 0);
+        assertEq(ingressSplitter.totalUsdcReceived(), 0);
         assertEq(usdc.balanceOf(ingressA), 1000 * USDC);
     }
 
@@ -669,10 +683,13 @@ contract RevenueShareSplitterTest is Test {
 
         _fundStakeTokenRewards(custom, customStake, 300 * XYZ);
 
+        assertEq(custom.previewFundedClaimableStakeToken(BOB), 300 * XYZ);
+
         vm.prank(BOB);
         uint256 bobClaim = custom.claimStakeToken(BOB);
         assertEq(bobClaim, 300 * XYZ);
 
+        assertEq(custom.previewFundedClaimableStakeToken(ALICE), 0);
         vm.prank(ALICE);
         vm.expectRevert("REWARD_INVENTORY_LOW");
         custom.claimStakeToken(ALICE);

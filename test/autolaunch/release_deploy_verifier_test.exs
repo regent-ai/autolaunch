@@ -46,6 +46,7 @@ defmodule Autolaunch.ReleaseDeployVerifierTest do
              "controller_owner",
              "revenue_share_factory_controller_auth",
              "revenue_ingress_factory_controller_auth",
+             "revenue_splitter_ownership",
              "fee_registry_ownership",
              "fee_vault_ownership",
              "hook_ownership",
@@ -85,34 +86,33 @@ defmodule Autolaunch.ReleaseDeployVerifierTest do
            )
   end
 
-  test "verifier reports missing per-chain verifier config clearly", %{job: job} do
-    previous_launch = Application.get_env(:autolaunch, :launch, [])
+  test "verifier fails when splitter ownership is still pending", %{job: job} do
+    Support.set_rpc_mode(:pending_splitter_owner)
 
-    Application.put_env(
-      :autolaunch,
-      :launch,
-      Keyword.merge(previous_launch,
-        usdc_addresses: %{
-          84_532 => "",
-          8_453 => Support.address(:mainnet_usdc)
-        }
-      )
-    )
+    assert %{ok: false, checks: checks} = ReleaseDeployVerifier.run(job.job_id)
 
-    on_exit(fn -> Application.put_env(:autolaunch, :launch, previous_launch) end)
+    assert Enum.any?(
+             checks,
+             &(&1.key == "revenue_splitter_ownership" and not &1.ok and
+                 String.contains?(&1.detail, "Pending owner"))
+           )
+  end
+
+  test "verifier fails when launch contracts do not use canonical Base Sepolia USDC", %{job: job} do
+    Support.set_rpc_mode(:wrong_usdc)
 
     assert %{ok: false, checks: checks} = ReleaseDeployVerifier.run(job.job_id)
 
     assert Enum.any?(
              checks,
              &(&1.key == "fee_vault_canonical_tokens" and not &1.ok and
-                 String.contains?(&1.detail, "Verifier config is missing the USDC address"))
+                 String.contains?(&1.detail, "expected #{Support.address(:usdc)}"))
            )
 
     assert Enum.any?(
              checks,
              &(&1.key == "fee_hook_pool_wiring" and not &1.ok and
-                 String.contains?(&1.detail, "Verifier config is missing the USDC address"))
+                 String.contains?(&1.detail, "expected hook wiring"))
            )
   end
 end

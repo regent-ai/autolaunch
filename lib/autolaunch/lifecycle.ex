@@ -20,6 +20,7 @@ defmodule Autolaunch.Lifecycle do
           strategy,
           auction,
           vesting,
+          contract_scope.revenue_splitter || %{},
           contract_scope.fee_registry || %{},
           contract_scope.fee_vault || %{},
           contract_scope.hook || %{},
@@ -85,6 +86,7 @@ defmodule Autolaunch.Lifecycle do
         strategy,
         auction,
         vesting,
+        revenue_splitter,
         fee_registry,
         fee_vault,
         hook,
@@ -95,7 +97,7 @@ defmodule Autolaunch.Lifecycle do
     migration_block_reached? = block_reached?(current_block, strategy[:migration_block])
     sweep_block_reached? = block_reached?(current_block, strategy[:sweep_block])
     vesting_release_ready = positive_uint?(vesting[:releasable_launch_token])
-    ownership_status = ownership_status(job, fee_registry, fee_vault, hook)
+    ownership_status = ownership_status(job, revenue_splitter, fee_registry, fee_vault, hook)
     balance_snapshot = balance_snapshot(strategy, auction)
 
     auction_asset_actions =
@@ -174,7 +176,7 @@ defmodule Autolaunch.Lifecycle do
         ownership_status.pending_actions != [] ->
           {
             "ownership_acceptance_required",
-            "Fee contract ownership still needs to be accepted by the Agent Safe.",
+            "Safe ownership acceptance is still needed before this launch is settled.",
             ownership_status.pending_actions ++ release_actions(vesting_release_ready)
           }
 
@@ -209,6 +211,9 @@ defmodule Autolaunch.Lifecycle do
 
   def prepare_scope_action("sweep_currency"), do: {:ok, {"strategy", "sweep_currency"}}
   def prepare_scope_action("sweep_token"), do: {:ok, {"strategy", "sweep_token"}}
+
+  def prepare_scope_action("accept_revenue_splitter_ownership"),
+    do: {:ok, {"revenue_splitter", "accept_ownership"}}
 
   def prepare_scope_action("accept_fee_registry_ownership"),
     do: {:ok, {"fee_registry", "accept_ownership"}}
@@ -297,6 +302,7 @@ defmodule Autolaunch.Lifecycle do
        when action in [
               "accept_fee_registry_ownership",
               "accept_fee_vault_ownership",
+              "accept_revenue_splitter_ownership",
               "accept_hook_ownership"
             ],
        do: "agent_safe"
@@ -316,8 +322,16 @@ defmodule Autolaunch.Lifecycle do
     }
   end
 
-  defp ownership_status(job, fee_registry, fee_vault, hook) do
-    items = %{
+  defp ownership_status(job, revenue_splitter, fee_registry, fee_vault, hook) do
+    items = [
+      revenue_splitter:
+        ownership_item(
+          revenue_splitter[:address],
+          revenue_splitter[:owner],
+          revenue_splitter[:pending_owner],
+          job.agent_safe_address,
+          "accept_revenue_splitter_ownership"
+        ),
       fee_registry:
         ownership_item(
           fee_registry[:address],
@@ -342,22 +356,23 @@ defmodule Autolaunch.Lifecycle do
           job.agent_safe_address,
           "accept_hook_ownership"
         )
-    }
+    ]
 
     pending_actions =
       items
-      |> Map.values()
+      |> Keyword.values()
       |> Enum.flat_map(fn
         %{action: action, accepted: false, status: "pending_acceptance"} -> [action]
         _ -> []
       end)
 
     %{
-      fee_registry: items.fee_registry,
-      fee_vault: items.fee_vault,
-      hook: items.hook,
+      revenue_splitter: items[:revenue_splitter],
+      fee_registry: items[:fee_registry],
+      fee_vault: items[:fee_vault],
+      hook: items[:hook],
       pending_actions: pending_actions,
-      all_accepted: pending_actions == [] and Enum.all?(Map.values(items), & &1.accepted)
+      all_accepted: pending_actions == [] and Enum.all?(Keyword.values(items), & &1.accepted)
     }
   end
 

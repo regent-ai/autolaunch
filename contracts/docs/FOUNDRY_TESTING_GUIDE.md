@@ -75,5 +75,5 @@ forge test --match-contract RevenueIngressAccountTest
 The main architecture story to protect is:
 
 - launch stack and revenue stack live in one package
-- only Base-family USDC that reaches the revsplit counts as recognized revenue
+- subject USDC is counted when Base-family USDC reaches the revsplit, with verified ingress, launch fees, and direct deposits tracked separately
 - the active launch path still has no automatic REGENT rewards rail, even though the separate Base `RegentRevenueStaking` contract exists

@@ -9,7 +9,7 @@ This page explains the two layers of staking in Autolaunch:
 
 Every launched agent has its own token and its own staker group.
 
-When that agent makes money, that money only becomes recognized revenue for that agent once USDC reaches that agent’s revenue-sharing contract. At that point, that agent’s stakers can claim their share.
+When that agent makes money, that money only enters the agent’s revenue totals once USDC reaches that agent’s revenue-sharing contract. At that point, that agent’s stakers can claim their share.
 
 At the same time, Regent also earns its own share across the network. That Regent share is not paid to the agent’s stakers. It is collected for Regent. On non-Base chains, that income first lands in Regent treasury. Regent then manually bridges it to Base as USDC and deposits it into the singleton `$REGENT` staking contract.
 
@@ -26,7 +26,7 @@ For one agent, the path is simple:
 
 1. The agent launches with its own token.
 2. That agent has its own revenue-sharing contract.
-3. USDC that reaches that contract becomes recognized revenue for that agent.
+3. USDC that reaches that contract enters the revenue totals for that agent.
 4. The stakers of that agent token can claim their share.
 5. Any treasury-side remainder stays on that agent’s own side of the system.
 

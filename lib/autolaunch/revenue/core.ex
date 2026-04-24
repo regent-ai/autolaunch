@@ -852,11 +852,32 @@ defmodule Autolaunch.Revenue.Core do
         Abi.encode_no_args(:eligible_revenue_share_cooldown_end)
       )
 
-    gross_inflow_usdc =
+    total_usdc_received =
       call_uint(
         job.chain_id,
         job.revenue_share_splitter_address,
-        Abi.encode_no_args(:gross_inflow_usdc)
+        Abi.encode_no_args(:total_usdc_received)
+      )
+
+    direct_deposit_usdc =
+      call_uint(
+        job.chain_id,
+        job.revenue_share_splitter_address,
+        Abi.encode_no_args(:direct_deposit_usdc)
+      )
+
+    verified_ingress_usdc =
+      call_uint(
+        job.chain_id,
+        job.revenue_share_splitter_address,
+        Abi.encode_no_args(:verified_ingress_usdc)
+      )
+
+    launch_fee_usdc =
+      call_uint(
+        job.chain_id,
+        job.revenue_share_splitter_address,
+        Abi.encode_no_args(:launch_fee_usdc)
       )
 
     regent_skim_usdc =
@@ -919,6 +940,14 @@ defmodule Autolaunch.Revenue.Core do
           Abi.encode_address_call(:preview_claimable_stake_token, owner_address)
         )
 
+    funded_claimable_stake_token_raw =
+      owner_address &&
+        call_uint(
+          job.chain_id,
+          job.revenue_share_splitter_address,
+          Abi.encode_address_call(:preview_funded_claimable_stake_token, owner_address)
+        )
+
     materialized_outstanding_raw =
       call_uint(
         job.chain_id,
@@ -966,8 +995,14 @@ defmodule Autolaunch.Revenue.Core do
          zero_to_nil(eligible_revenue_share_cooldown_end_raw),
        eligible_revenue_share_cooldown_end:
          format_unix_timestamp(zero_to_nil(eligible_revenue_share_cooldown_end_raw)),
-       gross_inflow_usdc_raw: gross_inflow_usdc,
-       gross_inflow_usdc: format_units(gross_inflow_usdc, @usdc_decimals),
+       total_usdc_received_raw: total_usdc_received,
+       total_usdc_received: format_units(total_usdc_received, @usdc_decimals),
+       direct_deposit_usdc_raw: direct_deposit_usdc,
+       direct_deposit_usdc: format_units(direct_deposit_usdc, @usdc_decimals),
+       verified_ingress_usdc_raw: verified_ingress_usdc,
+       verified_ingress_usdc: format_units(verified_ingress_usdc, @usdc_decimals),
+       launch_fee_usdc_raw: launch_fee_usdc,
+       launch_fee_usdc: format_units(launch_fee_usdc, @usdc_decimals),
        regent_skim_usdc_raw: regent_skim_usdc,
        regent_skim_usdc: format_units(regent_skim_usdc, @usdc_decimals),
        staker_eligible_inflow_usdc_raw: staker_eligible_inflow_usdc,
@@ -995,6 +1030,9 @@ defmodule Autolaunch.Revenue.Core do
        claimable_stake_token_raw: claimable_stake_token_raw,
        claimable_stake_token:
          owner_address && format_units(claimable_stake_token_raw, @token_decimals),
+       funded_claimable_stake_token_raw: funded_claimable_stake_token_raw,
+       funded_claimable_stake_token:
+         owner_address && format_units(funded_claimable_stake_token_raw, @token_decimals),
        materialized_outstanding_raw: materialized_outstanding_raw,
        materialized_outstanding: format_units(materialized_outstanding_raw, @token_decimals),
        available_reward_inventory_raw: available_reward_inventory_raw,
@@ -1027,6 +1065,13 @@ defmodule Autolaunch.Revenue.Core do
         Abi.encode_address_call(:preview_claimable_stake_token, wallet_address)
       )
 
+    funded_claimable_stake_token_raw =
+      call_uint(
+        job.chain_id,
+        job.revenue_share_splitter_address,
+        Abi.encode_address_call(:preview_funded_claimable_stake_token, wallet_address)
+      )
+
     {:ok,
      %{
        wallet_address: wallet_address,
@@ -1035,7 +1080,10 @@ defmodule Autolaunch.Revenue.Core do
        claimable_usdc_raw: claimable_usdc_raw,
        claimable_usdc: format_units(claimable_usdc_raw, @usdc_decimals),
        claimable_stake_token_raw: claimable_stake_token_raw,
-       claimable_stake_token: format_units(claimable_stake_token_raw, @token_decimals)
+       claimable_stake_token: format_units(claimable_stake_token_raw, @token_decimals),
+       funded_claimable_stake_token_raw: funded_claimable_stake_token_raw,
+       funded_claimable_stake_token:
+         format_units(funded_claimable_stake_token_raw, @token_decimals)
      }}
   end
 

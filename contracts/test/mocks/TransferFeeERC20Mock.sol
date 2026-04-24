@@ -17,7 +17,12 @@ contract TransferFeeERC20Mock {
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Approval(address indexed owner, address indexed spender, uint256 value);
 
-    constructor(string memory name_, string memory symbol_, uint8 decimals_, address feeCollector_) {
+    constructor(
+        string memory name_,
+        string memory symbol_,
+        uint8 decimals_,
+        address feeCollector_
+    ) {
         name = name_;
         symbol = symbol_;
         decimals = decimals_;

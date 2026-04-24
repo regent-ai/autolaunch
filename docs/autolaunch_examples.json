@@ -212,6 +212,12 @@
       }
     },
     "ownership_status": {
+      "revenue_splitter": {
+        "owner_address": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "pending_owner_address": null,
+        "accepted": true,
+        "status": "accepted"
+      },
       "fee_registry": {
         "owner_address": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
         "pending_owner_address": null,
@@ -268,6 +274,12 @@
       }
     },
     "ownership_status": {
+      "revenue_splitter": {
+        "owner_address": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "pending_owner_address": null,
+        "accepted": true,
+        "status": "accepted"
+      },
       "fee_registry": {
         "owner_address": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
         "pending_owner_address": null,
@@ -327,8 +339,10 @@
     "paused": false,
     "total_staked_raw": 500000000000000000000,
     "total_staked": "500",
-    "total_recognized_rewards_usdc_raw": 1000000000,
-    "total_recognized_rewards_usdc": "1000",
+    "total_usdc_received_raw": 1000000000,
+    "total_usdc_received": "1000",
+    "direct_deposit_usdc_raw": 1000000000,
+    "direct_deposit_usdc": "1000",
     "treasury_residual_usdc_raw": 150000000,
     "treasury_residual_usdc": "150",
     "wallet_address": "0x6666666666666666666666666666666666666666",

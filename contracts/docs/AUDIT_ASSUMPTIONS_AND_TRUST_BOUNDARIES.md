@@ -5,7 +5,7 @@
 These documents and contracts are consistent on the main operating rules:
 
 - the launch path is Base-family only
-- launch revenue is recognized only when Base-family USDC reaches the subject splitter
+- subject USDC is counted only when Base-family USDC reaches the subject splitter
 - the launch pool fee is split into a subject lane and a Regent lane
 - the separate `RegentRevenueStaking` contract is not part of the per-launch subject path
 
@@ -62,9 +62,9 @@ The strategy receives auction proceeds, caps LP currency usage, initializes the 
 - position manager calls
 - post-migration sweep behavior
 
-### Boundary 3: Revenue ingress to recognized revenue
+### Boundary 3: Revenue ingress to subject accounting
 
-Revenue is only recognized when USDC lands in `RevenueShareSplitter`, either directly or through:
+Subject USDC is counted when it lands in `RevenueShareSplitter`, either directly or through:
 
 - `RevenueIngressAccount.sweepUSDC`
 - `RevenueShareSplitter.pullTreasuryShareFromLaunchVault`

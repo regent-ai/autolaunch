@@ -5,9 +5,11 @@ import {Script} from "forge-std/Script.sol";
 import {console2} from "forge-std/console2.sol";
 
 import {RegentRevenueStaking} from "src/revenue/RegentRevenueStaking.sol";
+import {BaseFamilyUSDC} from "src/libraries/BaseFamilyUSDC.sol";
 
 contract DeployRegentRevenueStakingScript is Script {
     uint256 internal constant BASE_MAINNET_CHAIN_ID = 8453;
+    address internal constant BASE_MAINNET_USDC = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
     uint16 internal constant FULL_STAKER_SHARE_BPS = 10_000;
 
     struct ScriptConfig {
@@ -37,9 +39,11 @@ contract DeployRegentRevenueStakingScript is Script {
         vm.stopBroadcast();
     }
 
-    function validateConfig(ScriptConfig memory cfg) public pure {
+    function validateConfig(ScriptConfig memory cfg) public view {
         require(cfg.regentToken != address(0), "REGENT_TOKEN_ZERO");
         require(cfg.usdc != address(0), "USDC_ZERO");
+        require(cfg.usdc == BASE_MAINNET_USDC, "USDC_NOT_CANONICAL");
+        BaseFamilyUSDC.requireCanonical(cfg.usdc);
         require(cfg.treasuryRecipient != address(0), "TREASURY_ZERO");
         require(cfg.owner != address(0), "OWNER_ZERO");
         require(cfg.revenueShareSupplyDenominator != 0, "SUPPLY_DENOMINATOR_ZERO");

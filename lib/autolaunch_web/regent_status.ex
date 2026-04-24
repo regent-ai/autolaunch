@@ -22,9 +22,9 @@ defmodule AutolaunchWeb.RegentStatus do
          state: if(state.paused, do: "paused", else: "live"),
          chain_label: state.chain_label,
          total_staked: state.total_staked,
-         total_recognized_rewards_usdc: state.total_recognized_rewards_usdc,
+         total_usdc_received: state.total_usdc_received,
          wallet_claimable_usdc: Map.get(state, :wallet_claimable_usdc),
-         wallet_claimable_regent: Map.get(state, :wallet_claimable_regent)
+         wallet_claimable_regent: Map.get(state, :wallet_funded_claimable_regent)
        }}
     end
   end
@@ -76,9 +76,9 @@ defmodule AutolaunchWeb.RegentStatus do
     "Wallet can claim #{compact_decimal(usdc)} USDC and #{compact_decimal(regent)} REGENT."
   end
 
-  defp detail(%{total_recognized_rewards_usdc: rewards, chain_label: chain_label})
+  defp detail(%{total_usdc_received: rewards, chain_label: chain_label})
        when is_binary(rewards) and rewards != "" do
-    "#{compact_decimal(rewards)} USDC recognized on #{chain_label || "Base"}."
+    "#{compact_decimal(rewards)} USDC received on #{chain_label || "Base"}."
   end
 
   defp detail(%{chain_label: chain_label}), do: "Live on #{chain_label || "Base"}."

@@ -29,7 +29,7 @@ contract DeployTestnetMintableERC20Script is Script {
     }
 
     function loadConfigFromEnv() public view returns (ScriptConfig memory cfg) {
-        require(block.chainid == 84532, "BASE_SEPOLIA_ONLY");
+        require(block.chainid == 84_532, "BASE_SEPOLIA_ONLY");
 
         cfg.name = vm.envString("TESTNET_TOKEN_NAME");
         require(bytes(cfg.name).length != 0, "NAME_REQUIRED");

@@ -41,7 +41,7 @@ This package now covers the full Autolaunch contract system, from launch through
   - receives raw USDC and sweeps it into splitter accounting
 - `RevenueShareSplitter`
   - canonical revsplit and staking contract for the launched token
-  - only Base-family USDC that reaches this contract counts as recognized revenue
+  - counts subject USDC when it reaches this contract, with verified ingress, launch fees, and direct deposits tracked separately
 - `RegentRevenueStaking`
   - singleton Base-mainnet staking and Base USDC rewards rail for the existing `$REGENT` token
   - fed manually after Treasury A bridges non-Base income into Base USDC

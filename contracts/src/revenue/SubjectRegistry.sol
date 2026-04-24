@@ -33,14 +33,14 @@ contract SubjectRegistry is Owned, ISubjectRegistry {
         string label
     );
     event SubjectManagerSet(bytes32 indexed subjectId, address indexed account, bool enabled);
-    event IdentityLinked(
+    event ClaimedIdentityLinked(
         bytes32 indexed subjectId,
         bytes32 indexed identityHash,
         uint256 chainId,
         address indexed registry,
         uint256 agentId
     );
-    event IdentityUnlinked(
+    event ClaimedIdentityUnlinked(
         bytes32 indexed subjectId,
         bytes32 indexed identityHash,
         uint256 chainId,
@@ -52,6 +52,11 @@ contract SubjectRegistry is Owned, ISubjectRegistry {
 
     modifier onlySubjectManager(bytes32 subjectId) {
         require(canManageSubject(subjectId, msg.sender), "ONLY_SUBJECT_MANAGER");
+        _;
+    }
+
+    modifier onlySubjectController(bytes32 subjectId) {
+        require(_canControlSubject(subjectId, msg.sender), "ONLY_SUBJECT_CONTROLLER");
         _;
     }
 
@@ -90,7 +95,7 @@ contract SubjectRegistry is Owned, ISubjectRegistry {
         address treasurySafe,
         bool active,
         string calldata label
-    ) external onlySubjectManager(subjectId) {
+    ) external onlySubjectController(subjectId) {
         SubjectConfig storage cfg = _subjectStorage(subjectId);
         address previousSplitter = cfg.splitter;
         require(splitter != address(0), "SPLITTER_ZERO");
@@ -122,11 +127,20 @@ contract SubjectRegistry is Owned, ISubjectRegistry {
 
     function setSubjectManager(bytes32 subjectId, address account, bool enabled)
         external
-        onlySubjectManager(subjectId)
+        onlySubjectController(subjectId)
     {
         require(account != address(0), "ACCOUNT_ZERO");
         subjectManagers[subjectId][account] = enabled;
         emit SubjectManagerSet(subjectId, account, enabled);
+    }
+
+    function setSubjectLabel(bytes32 subjectId, string calldata label)
+        external
+        onlySubjectManager(subjectId)
+    {
+        SubjectConfig storage cfg = _subjectStorage(subjectId);
+        cfg.label = label;
+        emit SubjectUpdated(subjectId, cfg.splitter, cfg.treasurySafe, cfg.active, label);
     }
 
     function linkIdentity(bytes32 subjectId, uint256 chainId, address registry, uint256 agentId)
@@ -148,7 +162,7 @@ contract SubjectRegistry is Owned, ISubjectRegistry {
             identityLinks[subjectId].push(
                 IdentityLink({chainId: chainId, registry: registry, agentId: agentId})
             );
-            emit IdentityLinked(subjectId, identityHash, chainId, registry, agentId);
+            emit ClaimedIdentityLinked(subjectId, identityHash, chainId, registry, agentId);
         }
     }
 
@@ -172,7 +186,7 @@ contract SubjectRegistry is Owned, ISubjectRegistry {
                     links[i] = links[last];
                 }
                 links.pop();
-                emit IdentityUnlinked(subjectId, identityHash, chainId, registry, agentId);
+                emit ClaimedIdentityUnlinked(subjectId, identityHash, chainId, registry, agentId);
                 return;
             }
         }
@@ -234,6 +248,15 @@ contract SubjectRegistry is Owned, ISubjectRegistry {
     function _subjectStorage(bytes32 subjectId) internal view returns (SubjectConfig storage cfg) {
         cfg = subjects[subjectId];
         require(cfg.stakeToken != address(0), "SUBJECT_NOT_FOUND");
+    }
+
+    function _canControlSubject(bytes32 subjectId, address account) internal view returns (bool) {
+        SubjectConfig storage cfg = subjects[subjectId];
+        if (cfg.stakeToken == address(0)) {
+            return false;
+        }
+
+        return account == owner || account == cfg.treasurySafe;
     }
 
     function _identityHash(uint256 chainId, address registry, uint256 agentId)

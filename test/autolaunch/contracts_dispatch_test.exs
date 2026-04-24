@@ -25,6 +25,7 @@ defmodule Autolaunch.ContractsDispatchTest do
       chain_id: 84_532,
       strategy_address: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       auction_address: "0xcccccccccccccccccccccccccccccccccccccccc",
+      revenue_share_splitter_address: "0x4444444444444444444444444444444444444444",
       launch_fee_registry_address: "0x1111111111111111111111111111111111111111",
       launch_fee_vault_address: "0x2222222222222222222222222222222222222222",
       hook_address: "0x3333333333333333333333333333333333333333"
@@ -47,6 +48,11 @@ defmodule Autolaunch.ContractsDispatchTest do
 
     assert auction_tokens.action == "sweep_unsold_tokens"
     assert auction_tokens.tx_request.to == job.auction_address
+
+    assert {:ok, splitter_acceptance} =
+             Dispatch.build_job_action(job, "revenue_splitter", "accept_ownership", %{})
+
+    assert splitter_acceptance.tx_request.to == job.revenue_share_splitter_address
 
     assert {:ok, registry_acceptance} =
              Dispatch.build_job_action(job, "fee_registry", "accept_ownership", %{})

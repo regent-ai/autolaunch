@@ -27,11 +27,12 @@ defmodule Autolaunch.ReleaseDeployVerifierTestSupport do
   def address(:splitter), do: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
   def address(:default_ingress), do: "0xcccccccccccccccccccccccccccccccccccccccc"
   def address(:launch_token), do: "0xdddddddddddddddddddddddddddddddddddddddd"
-  def address(:usdc), do: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+  def address(:usdc), do: "0x036cbd53842c5426634e7929541ec2318f3dcf7e"
+  def address(:wrong_usdc), do: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
   def address(:regent_recipient), do: "0xffffffffffffffffffffffffffffffffffffffff"
   def address(:pool_manager), do: "0x1212121212121212121212121212121212121212"
   def address(:pending_owner), do: "0x1313131313131313131313131313131313131313"
-  def address(:mainnet_usdc), do: "0x1414141414141414141414141414141414141414"
+  def address(:mainnet_usdc), do: "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
   def address(:mainnet_pool_manager), do: "0x1515151515151515151515151515151515151515"
   def address(:mainnet_revenue_share_factory), do: "0x1616161616161616161616161616161616161616"
   def address(:mainnet_revenue_ingress_factory), do: "0x1717171717171717171717171717171717171717"
@@ -126,6 +127,7 @@ defmodule Autolaunch.ReleaseDeployVerifierTestSupport do
           {:ok, encode_address_result(Support.address(:owner))}
 
         address in [
+          Support.address(:splitter),
           Support.address(:fee_registry),
           Support.address(:fee_vault),
           Support.address(:hook)
@@ -135,6 +137,9 @@ defmodule Autolaunch.ReleaseDeployVerifierTestSupport do
 
         address == Support.address(:fee_vault) and selector == Abi.selector(:pending_owner) ->
           {:ok, encode_address_result(pending_owner_for_fee_vault())}
+
+        address == Support.address(:splitter) and selector == Abi.selector(:pending_owner) ->
+          {:ok, encode_address_result(pending_owner_for_splitter())}
 
         address in [Support.address(:fee_registry), Support.address(:hook)] and
             selector == Abi.selector(:pending_owner) ->
@@ -153,7 +158,7 @@ defmodule Autolaunch.ReleaseDeployVerifierTestSupport do
 
         address == Support.address(:fee_vault) and
             selector == Abi.selector(:canonical_quote_token) ->
-          {:ok, encode_address_result(Support.address(:usdc))}
+          {:ok, encode_address_result(quote_token_for_mode())}
 
         address == Support.address(:strategy) and selector == Abi.selector(:migrated) ->
           {:ok, encode_bool_result(true)}
@@ -214,10 +219,24 @@ defmodule Autolaunch.ReleaseDeployVerifierTestSupport do
       end
     end
 
+    defp pending_owner_for_splitter do
+      case Application.get_env(:autolaunch, :release_deploy_verifier_rpc_mode, :healthy) do
+        :pending_splitter_owner -> Support.address(:pending_owner)
+        _ -> zero_address()
+      end
+    end
+
+    defp quote_token_for_mode do
+      case Application.get_env(:autolaunch, :release_deploy_verifier_rpc_mode, :healthy) do
+        :wrong_usdc -> Support.address(:wrong_usdc)
+        _ -> Support.address(:usdc)
+      end
+    end
+
     defp encode_pool_config_result do
       words = [
         encode_address_word(Support.address(:launch_token)),
-        encode_address_word(Support.address(:usdc)),
+        encode_address_word(quote_token_for_mode()),
         encode_address_word(Support.address(:splitter)),
         encode_address_word(Support.address(:regent_recipient)),
         encode_address_word(Support.address(:currency0)),

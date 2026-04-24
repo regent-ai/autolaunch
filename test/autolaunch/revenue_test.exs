@@ -113,7 +113,10 @@ defmodule Autolaunch.RevenueTest do
     assert subject.available_reward_inventory == "8"
     assert subject.total_claimed_so_far == "6"
     assert subject.eligible_revenue_share_bps == 10_000
-    assert subject.gross_inflow_usdc == "125"
+    assert subject.total_usdc_received == "125"
+    assert subject.direct_deposit_usdc == "15"
+    assert subject.verified_ingress_usdc == "90"
+    assert subject.launch_fee_usdc == "20"
     assert subject.treasury_reserved_inflow_usdc == "25"
     assert subject.treasury_reserved_usdc == "12"
     assert subject.share_change_history == []
@@ -457,7 +460,10 @@ defmodule Autolaunch.RevenueTest do
         "0xb663660a" -> {:ok, encode_uint(0)}
         "0x8c37a52f" -> {:ok, encode_uint(0)}
         "0x5cc76060" -> {:ok, encode_uint(0)}
-        "0x8064d80c" -> {:ok, encode_uint(125 * Integer.pow(10, 6))}
+        "0xcf51bfdd" -> {:ok, encode_uint(125 * Integer.pow(10, 6))}
+        "0x6a142340" -> {:ok, encode_uint(15 * Integer.pow(10, 6))}
+        "0x35816a75" -> {:ok, encode_uint(90 * Integer.pow(10, 6))}
+        "0xe8bb5751" -> {:ok, encode_uint(20 * Integer.pow(10, 6))}
         "0x1aa91287" -> {:ok, encode_uint(10 * Integer.pow(10, 6))}
         "0x08c23673" -> {:ok, encode_uint(90 * Integer.pow(10, 6))}
         "0xddffd82a" -> {:ok, encode_uint(25 * Integer.pow(10, 6))}
@@ -468,6 +474,7 @@ defmodule Autolaunch.RevenueTest do
         "0x60217267" -> {:ok, encode_uint(12 * Integer.pow(10, 18))}
         "0xb026ee79" -> {:ok, encode_uint(5 * Integer.pow(10, 6))}
         "0x05e1fd68" -> {:ok, encode_uint(preview_claimable_stake_token(data))}
+        "0xc5c5ae3a" -> {:ok, encode_uint(preview_funded_claimable_stake_token(data))}
         "0x05f15537" -> {:ok, encode_uint(3 * Integer.pow(10, 18))}
         "0xcfb3d0aa" -> {:ok, encode_uint(8 * Integer.pow(10, 18))}
         "0x66ffb8de" -> {:ok, encode_uint(6 * Integer.pow(10, 18))}
@@ -531,6 +538,14 @@ defmodule Autolaunch.RevenueTest do
         _ -> 0
       end
     end
+
+    defp preview_funded_claimable_stake_token(<<"0xc5c5ae3a", encoded::binary>>) do
+      case String.slice(encoded, -40, 40) |> String.downcase() do
+        "1111111111111111111111111111111111111111" -> 2 * Integer.pow(10, 18)
+        "2222222222222222222222222222222222222222" -> 1 * Integer.pow(10, 18)
+        _ -> 0
+      end
+    end
   end
 
   defp configure_dragonfly_cache do
@@ -553,13 +568,11 @@ defmodule Autolaunch.RevenueTest do
 
   defp encode_words(values) do
     encoded =
-      values
-      |> Enum.map(fn value ->
+      Enum.map_join(values, fn value ->
         value
         |> Integer.to_string(16)
         |> String.pad_leading(64, "0")
       end)
-      |> Enum.join()
 
     "0x" <> encoded
   end

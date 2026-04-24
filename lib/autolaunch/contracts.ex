@@ -2,6 +2,7 @@ defmodule Autolaunch.Contracts do
   @moduledoc false
 
   alias Autolaunch.Accounts.HumanUser
+  alias Autolaunch.BaseFamily
   alias Autolaunch.CCA.Rpc
   alias Autolaunch.Contracts.Abi
   alias Autolaunch.Contracts.Dispatch
@@ -19,7 +20,7 @@ defmodule Autolaunch.Contracts do
      %{
        chain_id: chain_id,
        dependencies: %{
-         usdc_address: config_value(launch, :usdc_address),
+         usdc_address: launch_usdc_address(chain_id),
          pool_manager_address: config_value(launch, :pool_manager_address),
          position_manager_address: config_value(launch, :position_manager_address),
          cca_factory_address: config_value(launch, :cca_factory_address)
@@ -150,6 +151,7 @@ defmodule Autolaunch.Contracts do
     strategy = strategy_card(job)
     auction = auction_card(job, Map.get(response, :auction), strategy)
     vesting = vesting_card(job)
+    revenue_splitter = revenue_splitter_card(job)
     fee_registry = fee_registry_card(job)
     fee_vault = fee_vault_card(job)
     hook = hook_card(job)
@@ -162,6 +164,7 @@ defmodule Autolaunch.Contracts do
       strategy: strategy,
       auction: auction,
       vesting: vesting,
+      revenue_splitter: revenue_splitter,
       fee_registry: fee_registry,
       fee_vault: fee_vault,
       hook: hook,
@@ -171,6 +174,7 @@ defmodule Autolaunch.Contracts do
           strategy,
           auction,
           vesting,
+          revenue_splitter,
           fee_registry,
           fee_vault,
           hook,
@@ -183,6 +187,7 @@ defmodule Autolaunch.Contracts do
           ~w(release propose_beneficiary_rotation cancel_beneficiary_rotation execute_beneficiary_rotation),
         fee_registry: ~w(accept_ownership),
         fee_vault: ~w(withdraw_treasury withdraw_regent_share accept_ownership),
+        revenue_splitter: ~w(accept_ownership),
         hook: ~w(accept_ownership)
       }
     }
@@ -213,7 +218,7 @@ defmodule Autolaunch.Contracts do
   end
 
   defp strategy_card(job) do
-    usdc = config_value(launch_config(), :usdc_address)
+    usdc = launch_usdc_address(job.chain_id)
 
     %{
       address: job.strategy_address,
@@ -243,7 +248,7 @@ defmodule Autolaunch.Contracts do
   end
 
   defp auction_card(job, auction_response, strategy) do
-    usdc = config_value(launch_config(), :usdc_address)
+    usdc = launch_usdc_address(job.chain_id)
 
     address =
       normalize_address(job.auction_address || map_value(auction_response, :auction_address))
@@ -310,7 +315,7 @@ defmodule Autolaunch.Contracts do
   end
 
   defp fee_vault_card(job) do
-    usdc = config_value(launch_config(), :usdc_address)
+    usdc = launch_usdc_address(job.chain_id)
 
     %{
       address: job.launch_fee_vault_address,
@@ -363,6 +368,15 @@ defmodule Autolaunch.Contracts do
       pool_id: job.pool_id
     }
     |> Map.merge(ownership_card(job.chain_id, job.hook_address, job.agent_safe_address))
+  end
+
+  defp revenue_splitter_card(job) do
+    %{
+      address: job.revenue_share_splitter_address
+    }
+    |> Map.merge(
+      ownership_card(job.chain_id, job.revenue_share_splitter_address, job.agent_safe_address)
+    )
   end
 
   defp subject_registry_card(job, subject, current_human) do
@@ -458,8 +472,14 @@ defmodule Autolaunch.Contracts do
           subject.splitter_address,
           :eligible_revenue_share_cooldown_end
         ),
-      gross_inflow_usdc_raw:
-        safe_uint_call(subject.chain_id, subject.splitter_address, :gross_inflow_usdc),
+      total_usdc_received_raw:
+        safe_uint_call(subject.chain_id, subject.splitter_address, :total_usdc_received),
+      direct_deposit_usdc_raw:
+        safe_uint_call(subject.chain_id, subject.splitter_address, :direct_deposit_usdc),
+      verified_ingress_usdc_raw:
+        safe_uint_call(subject.chain_id, subject.splitter_address, :verified_ingress_usdc),
+      launch_fee_usdc_raw:
+        safe_uint_call(subject.chain_id, subject.splitter_address, :launch_fee_usdc),
       regent_skim_usdc_raw:
         safe_uint_call(subject.chain_id, subject.splitter_address, :regent_skim_usdc),
       staker_eligible_inflow_usdc_raw:
@@ -673,6 +693,13 @@ defmodule Autolaunch.Contracts do
   defp launch_chain_id do
     launch_config()
     |> Keyword.get(:chain_id, 84_532)
+  end
+
+  defp launch_usdc_address(chain_id) do
+    case BaseFamily.canonical_usdc_address(chain_id) do
+      {:ok, address} -> address
+      {:error, _reason} -> ""
+    end
   end
 
   defp ingress_factory_address(chain_id),

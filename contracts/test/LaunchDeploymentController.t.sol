@@ -32,6 +32,7 @@ contract LaunchDeploymentControllerTest is Test {
     uint96 internal constant IDENTITY_AGENT_ID = 42;
     uint256 internal constant TOTAL_SUPPLY = 1_000_000_000e18;
     uint256 internal constant AUCTION_TICK_SPACING = 79_228_162_514_264_334_008_320;
+    address internal constant BASE_SEPOLIA_USDC = 0x036CbD53842c5426634e7929541eC2318f3dCF7e;
     bytes32 internal constant LAUNCH_STACK_DEPLOYED_TOPIC0 = keccak256(
         "LaunchStackDeployed(address,bytes32,address,address,address,address,address,address,address,address,address,address,bytes32,address)"
     );
@@ -47,12 +48,13 @@ contract LaunchDeploymentControllerTest is Test {
     MintableERC20Mock internal usdc;
 
     function setUp() external {
+        vm.chainId(84_532);
         controller = new LaunchDeploymentController();
         auctionFactory = new MockContinuousClearingAuctionFactory();
         poolManager = new MockHookPoolManager();
         tokenFactory = new MockTokenFactory();
         strategyFactory = new RegentLBPStrategyFactory(address(this));
-        usdc = new MintableERC20Mock("USD Coin", "USDC");
+        usdc = _installCanonicalUsdcMock();
         subjectRegistry = new SubjectRegistry(address(this));
         revenueShareFactory = new RevenueShareFactory(address(this), address(usdc), subjectRegistry);
         revenueIngressFactory =
@@ -92,6 +94,14 @@ contract LaunchDeploymentControllerTest is Test {
         vm.prank(address(0xBAD));
         vm.expectRevert("ONLY_OWNER");
         controller.deploy(defaultConfig());
+    }
+
+    function testRejectsNonCanonicalUsdc() external {
+        LaunchDeploymentController.DeploymentConfig memory cfg = defaultConfig();
+        cfg.usdcToken = address(0xC0FFEE);
+
+        vm.expectRevert("USDC_NOT_CANONICAL");
+        controller.deploy(cfg);
     }
 
     function testRejectsDeployWhenSubjectRegistryOwnershipNotAccepted() external {
@@ -343,5 +353,11 @@ contract LaunchDeploymentControllerTest is Test {
         assertTrue(result.subjectRegistryAddress != address(0));
         assertTrue(result.revenueShareSplitterAddress != address(0));
         assertTrue(result.defaultIngressAddress != address(0));
+    }
+
+    function _installCanonicalUsdcMock() internal returns (MintableERC20Mock mock) {
+        MintableERC20Mock implementation = new MintableERC20Mock("USD Coin", "USDC");
+        vm.etch(BASE_SEPOLIA_USDC, address(implementation).code);
+        mock = MintableERC20Mock(BASE_SEPOLIA_USDC);
     }
 }

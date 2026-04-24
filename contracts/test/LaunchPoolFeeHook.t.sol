@@ -124,25 +124,25 @@ contract LaunchPoolFeeHookTest is Test {
     function setUp() external {
         vm.startPrank(OWNER);
 
-        registry = new LaunchFeeRegistry(OWNER);
+        launchToken = new MintableERC20Mock("Launch", "LAUNCH");
+        quoteToken = new MintableERC20Mock("Quote", "Q");
+        registry = new LaunchFeeRegistry(OWNER, address(quoteToken));
         vault = new LaunchFeeVault(OWNER, address(registry));
         hookDeployer = new MockHookDeployer();
         poolManager = new MockHookPoolManager();
         hook = hookDeployer.deploy(OWNER, address(poolManager), address(registry), address(vault));
 
         vault.setHook(address(hook));
-        launchToken = new MintableERC20Mock("Launch", "LAUNCH");
-        quoteToken = new MintableERC20Mock("Quote", "Q");
         poolId = _registerPool(address(launchToken), address(quoteToken));
         realPoolManager = new PoolManager(OWNER);
-        realRegistry = new LaunchFeeRegistry(OWNER);
+        realLaunchToken = new MintableERC20Mock("Real Launch", "RLAUNCH");
+        realQuoteToken = new MintableERC20Mock("Real Quote", "RQUOTE");
+        realRegistry = new LaunchFeeRegistry(OWNER, address(realQuoteToken));
         realVault = new LaunchFeeVault(OWNER, address(realRegistry));
         realHook = hookDeployer.deploy(
             OWNER, address(realPoolManager), address(realRegistry), address(realVault)
         );
         realVault.setHook(address(realHook));
-        realLaunchToken = new MintableERC20Mock("Real Launch", "RLAUNCH");
-        realQuoteToken = new MintableERC20Mock("Real Quote", "RQUOTE");
         realPoolId = realRegistry.registerPool(
             LaunchFeeRegistry.PoolRegistration({
                 launchToken: address(realLaunchToken),
@@ -157,7 +157,7 @@ contract LaunchPoolFeeHookTest is Test {
         );
         vm.stopPrank();
 
-        poolKey = _poolKey(address(launchToken), address(quoteToken));
+        poolKey = _sortedPoolKey(address(launchToken), address(quoteToken), address(hook));
         realPoolKey =
             _sortedPoolKey(address(realLaunchToken), address(realQuoteToken), address(realHook));
         launchToken.mint(address(poolManager), 1000e18);
@@ -218,7 +218,7 @@ contract LaunchPoolFeeHookTest is Test {
     }
 
     function testOddSmallFeeIsFullyAssignedToWithdrawableShares() external {
-        _simulateSwap(poolKey, true, -100, -100, 99);
+        _simulateSwap(poolKey, true, -50, -50, 49);
 
         assertEq(poolManager.lastTakeAmount(), 1);
         assertEq(quoteToken.balanceOf(address(vault)), 1);
@@ -250,7 +250,7 @@ contract LaunchPoolFeeHookTest is Test {
     function testTreasuryWithdrawIsAccessControlled() external {
         _simulateSwap(poolKey, true, -100e18, -100e18, 80e18);
 
-        uint256 halfFee = (80e18 * FEE_BPS / 10_000) / 2;
+        uint256 halfFee = poolManager.lastTakeAmount() / 2;
 
         vm.expectRevert("ONLY_TREASURY");
         vault.withdrawTreasury(poolId, address(quoteToken), halfFee, TREASURY);

@@ -12,7 +12,7 @@ import {SubjectRegistry} from "src/revenue/SubjectRegistry.sol";
 contract DeployAutolaunchInfraScriptTest is Test {
     address internal constant OWNER = address(0xA11CE);
     address internal constant DEPLOYER = address(0xBEEF);
-    address internal constant USDC = address(0xC0FFEE);
+    address internal constant USDC = 0x036CbD53842c5426634e7929541eC2318f3dCF7e;
 
     DeployAutolaunchInfraScript internal script;
 
@@ -61,7 +61,7 @@ contract DeployAutolaunchInfraScriptTest is Test {
 
     function testLoadConfigFromEnvReadsExplicitOwnerAndUsdc() external {
         vm.setEnv("AUTOLAUNCH_INFRA_OWNER", "0x00000000000000000000000000000000000A11CE");
-        vm.setEnv("AUTOLAUNCH_USDC_ADDRESS", "0x0000000000000000000000000000000000C0FFEE");
+        vm.setEnv("AUTOLAUNCH_USDC_ADDRESS", vm.toString(USDC));
 
         DeployAutolaunchInfraScript.ScriptConfig memory cfg = script.loadConfigFromEnv();
 
@@ -71,7 +71,7 @@ contract DeployAutolaunchInfraScriptTest is Test {
 
     function testDeployFromEnvUsesLoadedConfig() external {
         vm.setEnv("AUTOLAUNCH_INFRA_OWNER", "0x00000000000000000000000000000000000A11CE");
-        vm.setEnv("AUTOLAUNCH_USDC_ADDRESS", "0x0000000000000000000000000000000000C0FFEE");
+        vm.setEnv("AUTOLAUNCH_USDC_ADDRESS", vm.toString(USDC));
 
         (
             SubjectRegistry subjectRegistry,
@@ -90,15 +90,23 @@ contract DeployAutolaunchInfraScriptTest is Test {
 
     function testRunUsesSingleBroadcastPath() external {
         vm.setEnv("AUTOLAUNCH_INFRA_OWNER", "0x00000000000000000000000000000000000A11CE");
-        vm.setEnv("AUTOLAUNCH_USDC_ADDRESS", "0x0000000000000000000000000000000000C0FFEE");
+        vm.setEnv("AUTOLAUNCH_USDC_ADDRESS", vm.toString(USDC));
 
         script.run();
+    }
+
+    function testLoadConfigFromEnvRejectsWrongBaseSepoliaUsdc() external {
+        vm.setEnv("AUTOLAUNCH_INFRA_OWNER", "0x00000000000000000000000000000000000A11CE");
+        vm.setEnv("AUTOLAUNCH_USDC_ADDRESS", "0x0000000000000000000000000000000000C0FFEE");
+
+        vm.expectRevert("USDC_NOT_CANONICAL");
+        script.loadConfigFromEnv();
     }
 
     function testLoadConfigFromEnvRejectsNonBaseFamilyChain() external {
         vm.chainId(1);
         vm.setEnv("AUTOLAUNCH_INFRA_OWNER", "0x00000000000000000000000000000000000A11CE");
-        vm.setEnv("AUTOLAUNCH_USDC_ADDRESS", "0x0000000000000000000000000000000000C0FFEE");
+        vm.setEnv("AUTOLAUNCH_USDC_ADDRESS", vm.toString(USDC));
 
         vm.expectRevert("BASE_FAMILY_ONLY");
         script.loadConfigFromEnv();

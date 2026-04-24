@@ -36,6 +36,7 @@ contract LaunchFeeRegistry is Owned {
     }
 
     mapping(bytes32 => PoolConfig) private poolConfigs;
+    address public immutable canonicalQuoteToken;
 
     event PoolRegistered(
         bytes32 indexed poolId,
@@ -46,7 +47,11 @@ contract LaunchFeeRegistry is Owned {
         address hook
     );
     event HookStatusSet(bytes32 indexed poolId, bool enabled);
-    constructor(address owner_) Owned(owner_) {}
+
+    constructor(address owner_, address canonicalQuoteToken_) Owned(owner_) {
+        require(canonicalQuoteToken_ != address(0), "QUOTE_TOKEN_ZERO");
+        canonicalQuoteToken = canonicalQuoteToken_;
+    }
 
     function registerPool(PoolRegistration memory registration)
         external
@@ -55,6 +60,7 @@ contract LaunchFeeRegistry is Owned {
     {
         require(registration.launchToken != address(0), "TOKEN_ZERO");
         require(registration.quoteToken != address(0), "QUOTE_TOKEN_ZERO");
+        require(registration.quoteToken == canonicalQuoteToken, "QUOTE_TOKEN_NOT_CANONICAL");
         require(registration.treasury != address(0), "TREASURY_ZERO");
         require(registration.regentRecipient != address(0), "REGENT_RECIPIENT_ZERO");
         require(registration.poolFee <= 1_000_000, "POOL_FEE_INVALID");

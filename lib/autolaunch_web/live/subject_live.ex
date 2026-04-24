@@ -286,9 +286,14 @@ defmodule AutolaunchWeb.SubjectLive do
 
             <div class="al-routing-ledger">
               <article class="al-routing-ledger-card">
-                <span>Gross inflow</span>
-                <strong>{@routing_snapshot.gross_inflow}</strong>
-                <p>Total recognized USDC that reached the subject splitter.</p>
+                <span>Total USDC received</span>
+                <strong>{@routing_snapshot.total_received}</strong>
+                <p>All USDC that has reached this subject.</p>
+              </article>
+              <article class="al-routing-ledger-card">
+                <span>Verified revenue</span>
+                <strong>{@routing_snapshot.verified_revenue}</strong>
+                <p>USDC from intake wallets and launch fees.</p>
               </article>
               <article class="al-routing-ledger-card">
                 <span>Regent skim</span>
@@ -537,7 +542,7 @@ defmodule AutolaunchWeb.SubjectLive do
                 <article class="al-subject-action-card">
                   <div>
                     <p class="al-kicker">Claim</p>
-                    <h3>Withdraw recognized USDC to this wallet.</h3>
+                    <h3>Withdraw available USDC to this wallet.</h3>
                     <p>{@wallet_position.claim_note}</p>
                   </div>
 
@@ -1693,7 +1698,8 @@ defmodule AutolaunchWeb.SubjectLive do
       pending_note: "No delayed share update is queued right now.",
       activation_date: "Not scheduled",
       cooldown_end: "Ready now",
-      gross_inflow: "0",
+      total_received: "0",
+      verified_revenue: "0",
       regent_skim: "0",
       staker_eligible_inflow: "0",
       treasury_reserved_inflow: "0",
@@ -1721,7 +1727,12 @@ defmodule AutolaunchWeb.SubjectLive do
         display_datetime(Map.get(subject, :pending_eligible_revenue_share_eta)) || "Not scheduled",
       cooldown_end:
         display_datetime(Map.get(subject, :eligible_revenue_share_cooldown_end)) || "Ready now",
-      gross_inflow: money_value(Map.get(subject, :gross_inflow_usdc)),
+      total_received: money_value(Map.get(subject, :total_usdc_received)),
+      verified_revenue:
+        verified_revenue_value(
+          Map.get(subject, :verified_ingress_usdc),
+          Map.get(subject, :launch_fee_usdc)
+        ),
       regent_skim: money_value(Map.get(subject, :regent_skim_usdc)),
       staker_eligible_inflow: money_value(Map.get(subject, :staker_eligible_inflow_usdc)),
       treasury_reserved_inflow: money_value(Map.get(subject, :treasury_reserved_inflow_usdc)),
@@ -1813,6 +1824,17 @@ defmodule AutolaunchWeb.SubjectLive do
 
   defp money_value(nil), do: "0 USDC"
   defp money_value(value), do: "#{value} USDC"
+
+  defp verified_revenue_value(ingress, launch_fee) do
+    ingress_decimal = Decimal.new(ingress || "0")
+    launch_fee_decimal = Decimal.new(launch_fee || "0")
+
+    ingress_decimal
+    |> Decimal.add(launch_fee_decimal)
+    |> Decimal.normalize()
+    |> Decimal.to_string(:normal)
+    |> money_value()
+  end
 
   defp percent_value(nil), do: "n/a"
   defp percent_value(value), do: "#{value}%"

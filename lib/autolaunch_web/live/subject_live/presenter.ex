@@ -39,7 +39,7 @@ defmodule AutolaunchWeb.SubjectLive.Presenter do
     end
   end
 
-  def recommended_action_heading(:claim), do: "Claim recognized USDC first"
+  def recommended_action_heading(:claim), do: "Claim available USDC first"
   def recommended_action_heading(:stake), do: "Stake idle wallet balance next"
   def recommended_action_heading(:unstake), do: "Unstake if you need wallet liquidity"
 

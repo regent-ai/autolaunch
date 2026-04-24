@@ -51,7 +51,8 @@ defmodule Autolaunch.RegentStakingTest do
     assert state.treasury_recipient == @treasury
     assert state.staker_share_bps == 7000
     assert state.total_staked == "500"
-    assert state.total_recognized_rewards_usdc == "1000"
+    assert state.total_usdc_received == "1000"
+    assert state.direct_deposit_usdc == "1000"
     assert state.treasury_residual_usdc == "150"
     assert state.materialized_outstanding == "3"
     assert state.available_reward_inventory == "8"
@@ -59,6 +60,7 @@ defmodule Autolaunch.RegentStakingTest do
     assert state.wallet_stake_balance == "20"
     assert state.wallet_claimable_usdc == "12"
     assert state.wallet_claimable_regent == "4"
+    assert state.wallet_funded_claimable_regent == "2"
   end
 
   test "obligation_metrics computes exact accrued totals from a provided staker list" do
@@ -172,7 +174,10 @@ defmodule Autolaunch.RegentStakingTest do
         {contract, "0x966ed108"} when contract == @contract ->
           {:ok, uint_word(150_000_000)}
 
-        {contract, "0x92bfc075"} when contract == @contract ->
+        {contract, "0xcf51bfdd"} when contract == @contract ->
+          {:ok, uint_word(1_000_000_000)}
+
+        {contract, "0x6a142340"} when contract == @contract ->
           {:ok, uint_word(1_000_000_000)}
 
         {contract, "0xa8e345dd"} when contract == @contract ->
@@ -192,6 +197,9 @@ defmodule Autolaunch.RegentStakingTest do
 
         {contract, "0xf653a7f7" <> _address_word} when contract == @contract ->
           {:ok, uint_word(preview_claimable_regent(data))}
+
+        {contract, "0xb4010d49" <> _address_word} when contract == @contract ->
+          {:ok, uint_word(2 * 1_000_000_000_000_000_000)}
 
         {token, "0x70a08231"} when token == @stake_token ->
           {:ok, uint_word(123 * 1_000_000_000_000_000_000)}

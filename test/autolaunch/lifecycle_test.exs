@@ -5,7 +5,7 @@ defmodule Autolaunch.LifecycleTest do
 
   @agent_safe "0x1111111111111111111111111111111111111111"
 
-  describe "settlement_summary/8" do
+  describe "settlement_summary/9" do
     test "classifies a ready migration when the strategy already holds the proceeds" do
       summary =
         Lifecycle.settlement_summary(
@@ -20,6 +20,7 @@ defmodule Autolaunch.LifecycleTest do
           },
           %{token_balance: 0, currency_balance: 0, graduated: true},
           %{releasable_launch_token: 0},
+          accepted_card(),
           accepted_card(),
           accepted_card(),
           accepted_card(),
@@ -50,6 +51,7 @@ defmodule Autolaunch.LifecycleTest do
           accepted_card(),
           accepted_card(),
           accepted_card(),
+          accepted_card(),
           110
         )
 
@@ -76,6 +78,7 @@ defmodule Autolaunch.LifecycleTest do
           accepted_card(),
           accepted_card(),
           accepted_card(),
+          accepted_card(),
           160
         )
 
@@ -98,6 +101,7 @@ defmodule Autolaunch.LifecycleTest do
           },
           %{token_balance: 0, currency_balance: 0, graduated: true},
           %{releasable_launch_token: 0},
+          pending_card("accept_revenue_splitter_ownership"),
           pending_card("accept_fee_registry_ownership"),
           pending_card("accept_fee_vault_ownership"),
           accepted_card(),
@@ -105,9 +109,10 @@ defmodule Autolaunch.LifecycleTest do
         )
 
       assert summary.settlement_state == "ownership_acceptance_required"
-      assert summary.recommended_action == "accept_fee_registry_ownership"
+      assert summary.recommended_action == "accept_revenue_splitter_ownership"
 
       assert summary.allowed_actions == [
+               "accept_revenue_splitter_ownership",
                "accept_fee_registry_ownership",
                "accept_fee_vault_ownership"
              ]
@@ -128,6 +133,9 @@ defmodule Autolaunch.LifecycleTest do
 
       assert Lifecycle.prepare_scope_action("recover_failed_auction") ==
                {:ok, {"strategy", "recover_failed_auction"}}
+
+      assert Lifecycle.prepare_scope_action("accept_revenue_splitter_ownership") ==
+               {:ok, {"revenue_splitter", "accept_ownership"}}
 
       assert Lifecycle.prepare_scope_action("accept_fee_registry_ownership") ==
                {:ok, {"fee_registry", "accept_ownership"}}

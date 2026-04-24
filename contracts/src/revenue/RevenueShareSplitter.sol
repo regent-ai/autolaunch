@@ -19,6 +19,12 @@ import {ISubjectLifecycleSync} from "src/revenue/interfaces/ISubjectLifecycleSyn
 contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycleSync {
     using SafeTransferLib for address;
 
+    enum RevenueSourceKind {
+        DirectDeposit,
+        AuthorizedIngress,
+        LaunchFee
+    }
+
     uint256 public constant BPS_DENOMINATOR = 10_000;
     uint256 public constant ACC_PRECISION = 1e27;
     uint256 public constant MAX_EMISSION_APR_BPS = 10_000;
@@ -64,7 +70,10 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
     uint256 public totalEmittedStakeToken;
     uint256 public totalFundedStakeToken;
     uint256 public totalClaimedStakeToken;
-    uint256 public grossInflowUsdc;
+    uint256 public totalUsdcReceived;
+    uint256 public directDepositUsdc;
+    uint256 public verifiedIngressUsdc;
+    uint256 public launchFeeUsdc;
     uint256 public regentSkimUsdc;
     uint256 public stakerEligibleInflowUsdc;
     uint256 public treasuryReservedInflowUsdc;
@@ -106,7 +115,9 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
         uint256 treasuryReservedAmount,
         uint256 stakerEntitlement,
         uint256 treasuryResidualAmount,
-        bytes32 indexed sourceTag,
+        RevenueSourceKind indexed sourceKind,
+        address indexed depositor,
+        bytes32 sourceTag,
         bytes32 indexed sourceRef
     );
     event USDCRewardClaimed(address indexed account, uint256 amount, address recipient);
@@ -347,7 +358,14 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
         uint256 afterBalance = IERC20SupplyMinimal(usdc).balanceOf(address(this));
         received = afterBalance - beforeBalance;
 
-        _recordRevenue(received, eligibleRevenueShareBps, sourceTag, sourceRef);
+        _recordRevenue(
+            received,
+            eligibleRevenueShareBps,
+            RevenueSourceKind.DirectDeposit,
+            msg.sender,
+            sourceTag,
+            sourceRef
+        );
     }
 
     function recordIngressSweep(uint256 amount, bytes32 sourceRef)
@@ -364,7 +382,14 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
         _settleStakeTokenEmissions();
 
         recognized = amount;
-        _recordRevenue(amount, eligibleRevenueShareBps, bytes32("ingress_sweep"), sourceRef);
+        _recordRevenue(
+            amount,
+            eligibleRevenueShareBps,
+            RevenueSourceKind.AuthorizedIngress,
+            msg.sender,
+            bytes32("ingress_sweep"),
+            sourceRef
+        );
     }
 
     function pullTreasuryShareFromLaunchVault(
@@ -383,7 +408,14 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
         uint256 afterBalance = IERC20SupplyMinimal(usdc).balanceOf(address(this));
         received = afterBalance - beforeBalance;
 
-        _recordRevenue(received, eligibleRevenueShareBps, bytes32("launch_treasury"), sourceRef);
+        _recordRevenue(
+            received,
+            eligibleRevenueShareBps,
+            RevenueSourceKind.LaunchFee,
+            vault,
+            bytes32("launch_treasury"),
+            sourceRef
+        );
     }
 
     function sync(address account) external whenNotPaused nonReentrant {
@@ -421,6 +453,12 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
         }
 
         return claimable + FullMath.mulDiv(stakeBal, currentAcc - priorAcc, ACC_PRECISION);
+    }
+
+    function previewFundedClaimableStakeToken(address account) public view returns (uint256) {
+        uint256 claimable = previewClaimableStakeToken(account);
+        uint256 available = availableStakeTokenRewardInventory();
+        return claimable <= available ? claimable : available;
     }
 
     function claimUSDC(address recipient)
@@ -624,9 +662,14 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
         rewardDebtUsdc[account] = currentAcc;
     }
 
-    function _recordRevenue(uint256 received, uint16 shareBps, bytes32 sourceTag, bytes32 sourceRef)
-        internal
-    {
+    function _recordRevenue(
+        uint256 received,
+        uint16 shareBps,
+        RevenueSourceKind sourceKind,
+        address depositor,
+        bytes32 sourceTag,
+        bytes32 sourceRef
+    ) internal {
         require(received > 0, "NOTHING_RECEIVED");
 
         uint256 protocolAmount = 0;
@@ -658,7 +701,14 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
             creditedByAccumulator = FullMath.mulDiv(deltaAcc, totalStaked, ACC_PRECISION);
         }
 
-        grossInflowUsdc += received;
+        totalUsdcReceived += received;
+        if (sourceKind == RevenueSourceKind.DirectDeposit) {
+            directDepositUsdc += received;
+        } else if (sourceKind == RevenueSourceKind.AuthorizedIngress) {
+            verifiedIngressUsdc += received;
+        } else if (sourceKind == RevenueSourceKind.LaunchFee) {
+            launchFeeUsdc += received;
+        }
         regentSkimUsdc += protocolAmount;
         stakerEligibleInflowUsdc += stakerEligibleAmount;
         treasuryReservedInflowUsdc += treasuryReservedAmount;
@@ -677,6 +727,8 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
             treasuryReservedAmount,
             stakerEntitlement,
             treasuryResidualAmount,
+            sourceKind,
+            depositor,
             sourceTag,
             sourceRef
         );

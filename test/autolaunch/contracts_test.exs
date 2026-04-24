@@ -102,7 +102,7 @@ defmodule Autolaunch.ContractsTest do
     assert subject.subject_id == @subject_id
     assert subject.splitter_address == @splitter
     assert subject.eligible_revenue_share_bps == 10_000
-    assert subject.gross_inflow_usdc_raw == 125_000_000
+    assert subject.total_usdc_received_raw == 125_000_000
     assert subject.treasury_reserved_usdc_raw == 12_000_000
     assert subject.share_change_history == []
     assert registry.address == @registry
@@ -259,7 +259,10 @@ defmodule Autolaunch.ContractsTest do
         "0xb663660a" -> {:ok, uint(0)}
         "0x8c37a52f" -> {:ok, uint(0)}
         "0x5cc76060" -> {:ok, uint(0)}
-        "0x8064d80c" -> {:ok, uint(125 * Integer.pow(10, 6))}
+        "0xcf51bfdd" -> {:ok, uint(125 * Integer.pow(10, 6))}
+        "0x6a142340" -> {:ok, uint(15 * Integer.pow(10, 6))}
+        "0x35816a75" -> {:ok, uint(90 * Integer.pow(10, 6))}
+        "0xe8bb5751" -> {:ok, uint(20 * Integer.pow(10, 6))}
         "0x1aa91287" -> {:ok, uint(10 * Integer.pow(10, 6))}
         "0x08c23673" -> {:ok, uint(90 * Integer.pow(10, 6))}
         "0xddffd82a" -> {:ok, uint(25 * Integer.pow(10, 6))}
@@ -270,6 +273,7 @@ defmodule Autolaunch.ContractsTest do
         "0x60217267" -> {:ok, uint(12 * Integer.pow(10, 18))}
         "0xb026ee79" -> {:ok, uint(5 * Integer.pow(10, 6))}
         "0x05e1fd68" -> {:ok, uint(4 * Integer.pow(10, 18))}
+        "0xc5c5ae3a" -> {:ok, uint(4 * Integer.pow(10, 18))}
         "0x05f15537" -> {:ok, uint(3 * Integer.pow(10, 18))}
         "0xcfb3d0aa" -> {:ok, uint(8 * Integer.pow(10, 18))}
         "0x66ffb8de" -> {:ok, uint(6 * Integer.pow(10, 18))}

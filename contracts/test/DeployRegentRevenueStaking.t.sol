@@ -11,6 +11,7 @@ contract DeployRegentRevenueStakingScriptTest is Test {
     uint256 internal constant SUPPLY_DENOMINATOR = 100_000_000_000e18;
     address internal constant TREASURY = address(0xBEEF);
     address internal constant OWNER = address(0xA11CE);
+    address internal constant BASE_MAINNET_USDC = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
 
     DeployRegentRevenueStakingScript internal script;
     MintableBurnableERC20Mock internal regent;
@@ -19,8 +20,8 @@ contract DeployRegentRevenueStakingScriptTest is Test {
     function setUp() external {
         script = new DeployRegentRevenueStakingScript();
         regent = new MintableBurnableERC20Mock("Regent", "REGENT", 18);
-        usdc = new MintableBurnableERC20Mock("USD Coin", "USDC", 6);
         vm.chainId(8453);
+        usdc = _installCanonicalUsdcMock();
     }
 
     function testDeployFromEnvRequiresBaseMainnet() external {
@@ -50,6 +51,14 @@ contract DeployRegentRevenueStakingScriptTest is Test {
         assertEq(cfg.owner, OWNER);
         assertEq(cfg.revenueShareSupplyDenominator, SUPPLY_DENOMINATOR);
         assertEq(cfg.stakerShareBps, 10_000);
+    }
+
+    function testValidateConfigRejectsWrongBaseMainnetUsdc() external {
+        DeployRegentRevenueStakingScript.ScriptConfig memory cfg = _defaultScriptConfig();
+        cfg.usdc = address(0xC0FFEE);
+
+        vm.expectRevert("USDC_NOT_CANONICAL");
+        script.validateConfig(cfg);
     }
 
     function testDeployCreatesConfiguredStakingContract() external {
@@ -82,5 +91,12 @@ contract DeployRegentRevenueStakingScriptTest is Test {
         cfg.revenueShareSupplyDenominator = SUPPLY_DENOMINATOR;
         cfg.stakerShareBps = 10_000;
         cfg.owner = OWNER;
+    }
+
+    function _installCanonicalUsdcMock() internal returns (MintableBurnableERC20Mock mock) {
+        MintableBurnableERC20Mock implementation =
+            new MintableBurnableERC20Mock("USD Coin", "USDC", 6);
+        vm.etch(BASE_MAINNET_USDC, address(implementation).code);
+        mock = MintableBurnableERC20Mock(BASE_MAINNET_USDC);
     }
 }

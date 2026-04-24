@@ -50,14 +50,14 @@ contract LaunchRevenueFlowTest is Test {
 
     function setUp() external {
         vm.startPrank(OWNER);
-        registry = new LaunchFeeRegistry(OWNER);
+        usdc = new MintableERC20Mock("USD Coin", "USDC");
+        registry = new LaunchFeeRegistry(OWNER, address(usdc));
         vault = new LaunchFeeVault(OWNER, address(registry));
         hookDeployer = new MockHookDeployer();
         poolManager = new MockHookPoolManager();
         hook = hookDeployer.deploy(OWNER, address(poolManager), address(registry), address(vault));
         vault.setHook(address(hook));
 
-        usdc = new MintableERC20Mock("USD Coin", "USDC");
         stakeToken = new MintableBurnableERC20Mock("Agent", "AGENT", 18);
         subjectRegistry = new SubjectRegistry(OWNER);
         splitter = new RevenueShareSplitter(
@@ -131,6 +131,10 @@ contract LaunchRevenueFlowTest is Test {
 
         assertEq(vault.treasuryAccrued(poolId, address(usdc)), 0);
         assertEq(vault.regentAccrued(poolId, address(usdc)), EXPECTED_TREASURY_SHARE);
+        assertEq(splitter.totalUsdcReceived(), EXPECTED_TREASURY_SHARE);
+        assertEq(splitter.launchFeeUsdc(), EXPECTED_TREASURY_SHARE);
+        assertEq(splitter.directDepositUsdc(), 0);
+        assertEq(splitter.verifiedIngressUsdc(), 0);
         assertEq(splitter.protocolReserveUsdc(), EXPECTED_PROTOCOL_RESERVE);
         assertEq(splitter.treasuryResidualUsdc(), EXPECTED_TREASURY_RESIDUAL);
         assertEq(splitter.previewClaimableUSDC(ALICE), EXPECTED_STAKER_CLAIM);

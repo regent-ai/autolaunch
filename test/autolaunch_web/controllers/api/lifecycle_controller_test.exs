@@ -33,6 +33,11 @@ defmodule AutolaunchWeb.Api.LifecycleControllerTest do
                auction: %{usdc_balance: 0, token_balance: 0}
              },
              ownership_status: %{
+               revenue_splitter: %{
+                 owner_address: @authorized_wallet,
+                 pending_owner_address: nil,
+                 accepted: true
+               },
                fee_registry: %{
                  owner_address: @authorized_wallet,
                  pending_owner_address: nil,
@@ -89,6 +94,11 @@ defmodule AutolaunchWeb.Api.LifecycleControllerTest do
                auction: %{usdc_balance: 0, token_balance: 0}
              },
              ownership_status: %{
+               revenue_splitter: %{
+                 owner_address: @authorized_wallet,
+                 pending_owner_address: nil,
+                 accepted: true
+               },
                fee_registry: %{
                  owner_address: @authorized_wallet,
                  pending_owner_address: nil,
@@ -162,6 +172,11 @@ defmodule AutolaunchWeb.Api.LifecycleControllerTest do
                    auction: %{usdc_balance: 0, token_balance: 0}
                  },
                  ownership_status: %{
+                   revenue_splitter: %{
+                     owner_address: @authorized_wallet,
+                     pending_owner_address: nil,
+                     accepted: true
+                   },
                    fee_registry: %{
                      owner_address: @authorized_wallet,
                      pending_owner_address: nil,

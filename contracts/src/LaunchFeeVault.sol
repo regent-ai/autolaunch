@@ -65,9 +65,7 @@ contract LaunchFeeVault is Owned, ILaunchFeeVaultMinimal {
 
         LaunchFeeRegistry.PoolConfig memory config = registryContract.getPoolConfig(poolId);
         require(config.hookEnabled, "HOOK_DISABLED");
-        require(
-            currency == config.launchToken || currency == config.quoteToken, "CURRENCY_MISMATCH"
-        );
+        require(currency == config.quoteToken, "CURRENCY_MISMATCH");
 
         treasuryAccrued[poolId][currency] += treasuryAmount;
         regentAccrued[poolId][currency] += regentAmount;

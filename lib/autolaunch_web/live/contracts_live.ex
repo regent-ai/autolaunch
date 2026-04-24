@@ -192,7 +192,7 @@ defmodule AutolaunchWeb.ContractsLive do
               <div><span>Settlement state</span><strong>{humanize_key(@settlement_summary.settlement_state)}</strong></div>
               <div><span>Recommended next move</span><strong>{humanize_key(@settlement_summary.recommended_action)}</strong></div>
               <div><span>Required signer</span><strong>{humanize_key(@settlement_summary.required_actor || "none")}</strong></div>
-              <div><span>Fee ownership accepted</span><strong>{yes_no(@settlement_summary.ownership_status.all_accepted)}</strong></div>
+              <div><span>Safe acceptance complete</span><strong>{yes_no(@settlement_summary.ownership_status.all_accepted)}</strong></div>
             </div>
             <p :if={@settlement_summary.blocked_reason} class="al-inline-note">
               {@settlement_summary.blocked_reason}
@@ -283,6 +283,20 @@ defmodule AutolaunchWeb.ContractsLive do
               <button type="button" class="al-ghost" phx-click="prepare_action" phx-value-scope="job" phx-value-resource="vesting" phx-value-action="propose_beneficiary_rotation" phx-value-form_name="vesting_beneficiary_rotation">Prepare beneficiary proposal</button>
               <button type="button" class="al-ghost" phx-click="prepare_action" phx-value-scope="job" phx-value-resource="vesting" phx-value-action="cancel_beneficiary_rotation" phx-value-form_name="vesting_beneficiary_rotation">Prepare beneficiary cancel</button>
               <button type="button" class="al-ghost" phx-click="prepare_action" phx-value-scope="job" phx-value-resource="vesting" phx-value-action="execute_beneficiary_rotation" phx-value-form_name="vesting_beneficiary_rotation">Prepare beneficiary execute</button>
+            </div>
+          </article>
+
+          <article class="al-panel al-contract-card">
+            <p class="al-kicker">Revenue splitter</p>
+            <h3>Safe acceptance status</h3>
+            <div class="al-contract-kv">
+              <div><span>Splitter</span><strong>{short_address(@job_scope.revenue_splitter.address)}</strong></div>
+              <div><span>Owner</span><strong>{short_address(@job_scope.revenue_splitter.owner)}</strong></div>
+              <div><span>Pending owner</span><strong>{short_address(@job_scope.revenue_splitter.pending_owner)}</strong></div>
+              <div><span>Ownership status</span><strong>{humanize_key(@job_scope.revenue_splitter.ownership_status)}</strong></div>
+            </div>
+            <div class="al-contract-action-row">
+              <button type="button" class="al-submit" phx-click="prepare_action" phx-value-scope="job" phx-value-resource="revenue_splitter" phx-value-action="accept_ownership" phx-value-form_name="revenue_splitter_accept_ownership">Prepare Safe acceptance</button>
             </div>
           </article>
 
@@ -436,7 +450,10 @@ defmodule AutolaunchWeb.ContractsLive do
               <div><span>Treasury rotation delay</span><strong>{display_seconds(@subject_scope.splitter.treasury_rotation_delay)}</strong></div>
               <div><span>Protocol recipient</span><strong>{short_address(@subject_scope.splitter.protocol_recipient)}</strong></div>
               <div><span>Protocol skim bps</span><strong>{display_uint(@subject_scope.splitter.protocol_skim_bps)}</strong></div>
-              <div><span>Gross inflow</span><strong>{display_uint(@subject_scope.splitter.gross_inflow_usdc_raw)}</strong></div>
+              <div><span>Total USDC received</span><strong>{display_uint(@subject_scope.splitter.total_usdc_received_raw)}</strong></div>
+              <div><span>Direct deposits</span><strong>{display_uint(@subject_scope.splitter.direct_deposit_usdc_raw)}</strong></div>
+              <div><span>Verified ingress</span><strong>{display_uint(@subject_scope.splitter.verified_ingress_usdc_raw)}</strong></div>
+              <div><span>Launch fees</span><strong>{display_uint(@subject_scope.splitter.launch_fee_usdc_raw)}</strong></div>
               <div><span>Regent skim</span><strong>{display_uint(@subject_scope.splitter.regent_skim_usdc_raw)}</strong></div>
               <div><span>Staker-eligible inflow</span><strong>{display_uint(@subject_scope.splitter.staker_eligible_inflow_usdc_raw)}</strong></div>
               <div><span>Treasury-reserved inflow</span><strong>{display_uint(@subject_scope.splitter.treasury_reserved_inflow_usdc_raw)}</strong></div>

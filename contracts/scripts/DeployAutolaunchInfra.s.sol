@@ -8,11 +8,9 @@ import {SubjectRegistry} from "src/revenue/SubjectRegistry.sol";
 import {RevenueShareFactory} from "src/revenue/RevenueShareFactory.sol";
 import {RevenueIngressFactory} from "src/revenue/RevenueIngressFactory.sol";
 import {RegentLBPStrategyFactory} from "src/RegentLBPStrategyFactory.sol";
+import {BaseFamilyUSDC} from "src/libraries/BaseFamilyUSDC.sol";
 
 contract DeployAutolaunchInfraScript is Script {
-    uint256 internal constant BASE_MAINNET_CHAIN_ID = 8453;
-    uint256 internal constant BASE_SEPOLIA_CHAIN_ID = 84_532;
-
     struct ScriptConfig {
         address owner;
         address usdc;
@@ -41,6 +39,8 @@ contract DeployAutolaunchInfraScript is Script {
             RegentLBPStrategyFactory strategyFactory
         )
     {
+        validateConfig(cfg);
+
         address broadcaster = tx.origin;
         require(broadcaster != address(0), "BROADCASTER_ZERO");
 
@@ -55,17 +55,17 @@ contract DeployAutolaunchInfraScript is Script {
         vm.stopBroadcast();
     }
 
-    function loadConfigFromEnv() public view returns (ScriptConfig memory cfg) {
-        require(
-            block.chainid == BASE_SEPOLIA_CHAIN_ID || block.chainid == BASE_MAINNET_CHAIN_ID,
-            "BASE_FAMILY_ONLY"
-        );
-
-        cfg.owner = vm.envAddress("AUTOLAUNCH_INFRA_OWNER");
+    function validateConfig(ScriptConfig memory cfg) public view {
         require(cfg.owner != address(0), "OWNER_ZERO");
+        require(cfg.usdc != address(0), "USDC_ZERO");
+        BaseFamilyUSDC.requireCanonical(cfg.usdc);
+    }
+
+    function loadConfigFromEnv() public view returns (ScriptConfig memory cfg) {
+        cfg.owner = vm.envAddress("AUTOLAUNCH_INFRA_OWNER");
 
         cfg.usdc = vm.envAddress("AUTOLAUNCH_USDC_ADDRESS");
-        require(cfg.usdc != address(0), "USDC_ZERO");
+        validateConfig(cfg);
     }
 
     function run() external {

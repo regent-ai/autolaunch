@@ -24,9 +24,9 @@ The holding contract that keeps subject and Regent fee balances until the regist
 
 The official Uniswap v4 position manager used by the strategy to mint the canonical LP position during migration.
 
-## Recognized revenue
+## Subject USDC received
 
-Revenue that counts for the protocol accounting model. In this workspace, it means Base-family USDC that has actually reached the subject splitter.
+Base-family USDC that has actually reached the subject splitter. Verified ingress, launch fees, and direct deposits are tracked separately.
 
 ## Regent lane
 
@@ -58,7 +58,7 @@ A role allowed to manage subject metadata, lifecycle, and identity links in `Sub
 
 ## Treasury residual
 
-The part of recognized USDC revenue that is not currently attributed to stakers and remains withdrawable for the treasury path.
+The part of received subject USDC that is not currently attributed to stakers and remains withdrawable for the treasury path.
 
 ## Undistributed dust
 

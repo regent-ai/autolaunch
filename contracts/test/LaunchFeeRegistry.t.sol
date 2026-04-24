@@ -20,7 +20,7 @@ contract LaunchFeeRegistryTest is Test {
     LaunchFeeRegistry internal registry;
 
     function setUp() external {
-        registry = new LaunchFeeRegistry(OWNER);
+        registry = new LaunchFeeRegistry(OWNER, QUOTE_TOKEN);
     }
 
     function testRegisterPoolStoresConfigAndGetters() external {
@@ -61,8 +61,14 @@ contract LaunchFeeRegistryTest is Test {
 
     function testRejectsEqualPoolCurrencies() external {
         vm.prank(OWNER);
-        vm.expectRevert("POOL_CURRENCIES_EQUAL");
+        vm.expectRevert("QUOTE_TOKEN_NOT_CANONICAL");
         registry.registerPool(_registration(LAUNCH_TOKEN, LAUNCH_TOKEN));
+    }
+
+    function testRejectsNonCanonicalQuoteToken() external {
+        vm.prank(OWNER);
+        vm.expectRevert("QUOTE_TOKEN_NOT_CANONICAL");
+        registry.registerPool(_registration(LAUNCH_TOKEN, address(0x9999)));
     }
 
     function testOwnerCanToggleHookStatus() external {

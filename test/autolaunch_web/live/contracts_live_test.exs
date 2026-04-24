@@ -66,6 +66,12 @@ defmodule AutolaunchWeb.ContractsLiveTest do
            rotation_delay: 259_200,
            releasable_launch_token: 0
          },
+         revenue_splitter: %{
+           address: "0x9999999999999999999999999999999999999999",
+           owner: "0x4444444444444444444444444444444444444444",
+           pending_owner: "0x5555555555555555555555555555555555555555",
+           ownership_status: "pending_acceptance"
+         },
          fee_registry: %{
            address: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
            owner: "0x4444444444444444444444444444444444444444",
@@ -165,7 +171,10 @@ defmodule AutolaunchWeb.ContractsLiveTest do
            treasury_rotation_delay: 259_200,
            protocol_recipient: "0x1111111111111111111111111111111111111111",
            protocol_skim_bps: 100,
-           gross_inflow_usdc_raw: 125_000_000,
+           total_usdc_received_raw: 125_000_000,
+           direct_deposit_usdc_raw: 15_000_000,
+           verified_ingress_usdc_raw: 90_000_000,
+           launch_fee_usdc_raw: 20_000_000,
            regent_skim_usdc_raw: 1_000_000,
            staker_eligible_inflow_usdc_raw: 99_000_000,
            treasury_reserved_inflow_usdc_raw: 25_000_000,
@@ -270,6 +279,8 @@ defmodule AutolaunchWeb.ContractsLiveTest do
     assert html =~ "Review mode"
     assert html =~ "Current post-auction branch"
     assert html =~ "LBP runtime state"
+    assert html =~ "Revenue splitter"
+    assert html =~ "Prepare Safe acceptance"
     assert html =~ "Prepare failed-auction recovery"
     assert html =~ "Prepare auction currency return"
     assert html =~ "Advanced revenue controls"

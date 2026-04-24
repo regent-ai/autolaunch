@@ -142,6 +142,16 @@ defmodule Autolaunch.Contracts.Dispatch do
     )
   end
 
+  def build_job_action(job, "revenue_splitter", "accept_ownership", _attrs) do
+    ActionParams.prepare_tx(
+      job.chain_id,
+      job.revenue_share_splitter_address,
+      Abi.encode_call(:accept_ownership),
+      "revenue_splitter",
+      "accept_ownership"
+    )
+  end
+
   def build_job_action(job, "fee_vault", "withdraw_regent_share", attrs) do
     with {:ok, currency} <- ActionParams.address_param(attrs, "currency"),
          {:ok, amount} <- ActionParams.uint_param(attrs, "amount"),

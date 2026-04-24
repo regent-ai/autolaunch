@@ -26,7 +26,7 @@ The canonical product rules live in `/Users/sean/Documents/regent/autolaunch/doc
 
 ## Product rule
 
-- Only Base-family USDC that reaches the subject revsplit counts as recognized revenue.
+- Subject USDC is counted when it reaches the revsplit. Verified ingress, launch fees, and direct deposits are tracked separately.
 - The Regent-side fee lane is a plain treasury payout. There is no REGENT reward-accounting contract in the active path.
 - A separate Base-mainnet `RegentRevenueStaking` rail now exists for `$REGENT` rewards. It is fed manually with Base USDC and does not change the active launch path.
 - The launch deployment uses the configured official pool fee, tick spacing, and position manager as part of the hard-cutover migration path.

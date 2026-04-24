@@ -24,7 +24,7 @@ contract ExampleCCADeploymentScriptTest is Test {
     address internal constant REGENT_MULTISIG = address(0x9FA1);
     address internal constant IDENTITY_REGISTRY = address(0x8004);
     address internal constant STRATEGY_OPERATOR = address(0xBEEF);
-    address internal constant USDC = address(0xC0FFEE);
+    address internal constant USDC = 0x036CbD53842c5426634e7929541eC2318f3dCF7e;
     uint256 internal constant IDENTITY_AGENT_ID = 42;
     uint256 internal constant TOTAL_SUPPLY = 1_000_000_000_000_000_000_000;
     uint256 internal constant CCA_TICK_SPACING_Q96 = 1_000_000_000_000_000;
@@ -173,6 +173,13 @@ contract ExampleCCADeploymentScriptTest is Test {
         vm.chainId(1);
 
         vm.expectRevert("BASE_FAMILY_ONLY");
+        script.deployFromEnv();
+    }
+
+    function testDeployFromEnvRejectsWrongBaseSepoliaUsdc() external {
+        vm.setEnv("AUTOLAUNCH_USDC_ADDRESS", "0x0000000000000000000000000000000000C0FFEE");
+
+        vm.expectRevert("USDC_NOT_CANONICAL");
         script.deployFromEnv();
     }
 }

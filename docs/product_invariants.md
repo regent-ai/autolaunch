@@ -14,10 +14,11 @@ Autolaunch has one launch stack and one revenue-recognition stack.
 
 ## Hard product rules
 
-1. Recognized subject revenue is Base-family USDC only.
+1. Subject revenue is Base-family USDC only.
 2. Subject revenue counts only when that Base-family USDC reaches the subject revenue splitter.
-   - USDC waiting in an ingress account is not recognized revenue yet.
+   - USDC waiting in an ingress account has not counted yet.
    - USDC swept after a share change goes live uses the new live share.
+   - Direct manual deposits are tracked separately from verified ingress and launch-fee revenue.
 3. The launch token allocation story is fixed:
    - 10% public sale
    - 5% LP reserve
@@ -44,8 +45,8 @@ Autolaunch has one launch stack and one revenue-recognition stack.
    - subject rewards only come from Base-family USDC that reaches the splitter
 7. Rescue is not revenue accounting:
    - wrong tokens or stray ETH can be recovered by the contract owner or treasury controller
-   - rescued assets do not count as recognized subject revenue
-   - recognized subject revenue still starts only when deliberate Base-family USDC reaches the subject splitter
+   - rescued assets do not count as subject revenue
+   - subject revenue starts only when deliberate Base-family USDC reaches the subject splitter
 
 ## Migration rule
 

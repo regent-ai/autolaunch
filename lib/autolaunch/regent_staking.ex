@@ -231,11 +231,18 @@ defmodule Autolaunch.RegentStaking do
     treasury_residual_usdc =
       call_uint(cfg.chain_id, cfg.contract_address, Abi.encode_call(:treasury_residual_usdc))
 
-    total_recognized_rewards_usdc =
+    total_usdc_received =
       call_uint(
         cfg.chain_id,
         cfg.contract_address,
-        Abi.encode_call(:total_recognized_rewards_usdc)
+        Abi.encode_call(:total_usdc_received)
+      )
+
+    direct_deposit_usdc =
+      call_uint(
+        cfg.chain_id,
+        cfg.contract_address,
+        Abi.encode_call(:direct_deposit_usdc)
       )
 
     materialized_outstanding =
@@ -279,6 +286,14 @@ defmodule Autolaunch.RegentStaking do
           Abi.encode_address_call(:preview_claimable_regent, wallet_address)
         )
 
+    wallet_funded_claimable_regent_raw =
+      wallet_address &&
+        call_uint(
+          cfg.chain_id,
+          cfg.contract_address,
+          Abi.encode_address_call(:preview_funded_claimable_regent, wallet_address)
+        )
+
     wallet_token_balance_raw =
       wallet_address &&
         call_uint(cfg.chain_id, stake_token, Abi.encode_address_call(:balance_of, wallet_address))
@@ -296,8 +311,10 @@ defmodule Autolaunch.RegentStaking do
        paused: paused,
        total_staked_raw: total_staked,
        total_staked: format_units(total_staked, @token_decimals),
-       total_recognized_rewards_usdc_raw: total_recognized_rewards_usdc,
-       total_recognized_rewards_usdc: format_units(total_recognized_rewards_usdc, @usdc_decimals),
+       total_usdc_received_raw: total_usdc_received,
+       total_usdc_received: format_units(total_usdc_received, @usdc_decimals),
+       direct_deposit_usdc_raw: direct_deposit_usdc,
+       direct_deposit_usdc: format_units(direct_deposit_usdc, @usdc_decimals),
        treasury_residual_usdc_raw: treasury_residual_usdc,
        treasury_residual_usdc: format_units(treasury_residual_usdc, @usdc_decimals),
        materialized_outstanding_raw: materialized_outstanding,
@@ -318,7 +335,10 @@ defmodule Autolaunch.RegentStaking do
          wallet_address && format_units(wallet_claimable_usdc_raw, @usdc_decimals),
        wallet_claimable_regent_raw: wallet_claimable_regent_raw,
        wallet_claimable_regent:
-         wallet_address && format_units(wallet_claimable_regent_raw, @token_decimals)
+         wallet_address && format_units(wallet_claimable_regent_raw, @token_decimals),
+       wallet_funded_claimable_regent_raw: wallet_funded_claimable_regent_raw,
+       wallet_funded_claimable_regent:
+         wallet_address && format_units(wallet_funded_claimable_regent_raw, @token_decimals)
      }}
   end
 

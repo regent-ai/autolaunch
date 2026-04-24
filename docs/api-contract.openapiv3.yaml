@@ -1954,7 +1954,7 @@ components:
       schema: { type: string }
       description: >
         Canonical contract scope. Job-scoped settlement actions use `strategy`, `auction`,
-        `fee_registry`, `fee_vault`, `hook`, and `vesting`.
+        `revenue_splitter`, `fee_registry`, `fee_vault`, `hook`, and `vesting`.
     Action:
       name: action
       in: path
@@ -2398,6 +2398,7 @@ components:
         - recover_failed_auction
         - sweep_currency
         - sweep_token
+        - accept_revenue_splitter_ownership
         - accept_fee_registry_ownership
         - accept_fee_vault_ownership
         - accept_hook_ownership
@@ -2438,8 +2439,9 @@ components:
       additionalProperties: false
     LifecycleOwnershipStatus:
       type: object
-      required: [fee_registry, fee_vault, hook, pending_actions, all_accepted]
+      required: [revenue_splitter, fee_registry, fee_vault, hook, pending_actions, all_accepted]
       properties:
+        revenue_splitter: { $ref: "#/components/schemas/LifecycleOwnershipCard" }
         fee_registry: { $ref: "#/components/schemas/LifecycleOwnershipCard" }
         fee_vault: { $ref: "#/components/schemas/LifecycleOwnershipCard" }
         hook: { $ref: "#/components/schemas/LifecycleOwnershipCard" }
@@ -3136,11 +3138,35 @@ components:
           anyOf:
             - { $ref: "#/components/schemas/DateTime" }
             - { type: "null" }
-        gross_inflow_usdc_raw:
+        total_usdc_received_raw:
           anyOf:
             - { type: integer }
             - { type: "null" }
-        gross_inflow_usdc:
+        total_usdc_received:
+          anyOf:
+            - { $ref: "#/components/schemas/DecimalString" }
+            - { type: "null" }
+        direct_deposit_usdc_raw:
+          anyOf:
+            - { type: integer }
+            - { type: "null" }
+        direct_deposit_usdc:
+          anyOf:
+            - { $ref: "#/components/schemas/DecimalString" }
+            - { type: "null" }
+        verified_ingress_usdc_raw:
+          anyOf:
+            - { type: integer }
+            - { type: "null" }
+        verified_ingress_usdc:
+          anyOf:
+            - { $ref: "#/components/schemas/DecimalString" }
+            - { type: "null" }
+        launch_fee_usdc_raw:
+          anyOf:
+            - { type: integer }
+            - { type: "null" }
+        launch_fee_usdc:
           anyOf:
             - { $ref: "#/components/schemas/DecimalString" }
             - { type: "null" }
@@ -3233,6 +3259,14 @@ components:
             - { type: integer }
             - { type: "null" }
         claimable_stake_token:
+          anyOf:
+            - { $ref: "#/components/schemas/DecimalString" }
+            - { type: "null" }
+        funded_claimable_stake_token_raw:
+          anyOf:
+            - { type: integer }
+            - { type: "null" }
+        funded_claimable_stake_token:
           anyOf:
             - { $ref: "#/components/schemas/DecimalString" }
             - { type: "null" }

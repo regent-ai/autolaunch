@@ -8,6 +8,7 @@ import {LaunchDeploymentController} from "src/LaunchDeploymentController.sol";
 import {RegentLBPStrategyFactory} from "src/RegentLBPStrategyFactory.sol";
 import {RevenueIngressFactory} from "src/revenue/RevenueIngressFactory.sol";
 import {RevenueShareFactory} from "src/revenue/RevenueShareFactory.sol";
+import {BaseFamilyUSDC} from "src/libraries/BaseFamilyUSDC.sol";
 
 contract ExampleCCADeploymentScript is Script {
     struct ScriptConfig {
@@ -54,15 +55,8 @@ contract ExampleCCADeploymentScript is Script {
     uint64 internal constant DEFAULT_MIGRATION_BLOCK_OFFSET = 128;
     uint64 internal constant DEFAULT_SWEEP_BLOCK_OFFSET = 256;
     uint64 internal constant DEFAULT_VESTING_DURATION_SECONDS = 365 days;
-    uint256 internal constant BASE_MAINNET_CHAIN_ID = 8453;
-    uint256 internal constant BASE_SEPOLIA_CHAIN_ID = 84_532;
 
     function _loadConfig() internal view returns (ScriptConfig memory cfg) {
-        require(
-            block.chainid == BASE_SEPOLIA_CHAIN_ID || block.chainid == BASE_MAINNET_CHAIN_ID,
-            "BASE_FAMILY_ONLY"
-        );
-
         cfg.agentSafe = vm.envAddress("AUTOLAUNCH_AGENT_SAFE_ADDRESS");
         require(cfg.agentSafe != address(0), "AGENT_SAFE_ZERO");
 
@@ -117,6 +111,7 @@ contract ExampleCCADeploymentScript is Script {
 
         cfg.usdcToken = vm.envAddress("AUTOLAUNCH_USDC_ADDRESS");
         require(cfg.usdcToken != address(0), "USDC_ZERO");
+        BaseFamilyUSDC.requireCanonical(cfg.usdcToken);
 
         cfg.identityRegistry = vm.envAddress("AUTOLAUNCH_IDENTITY_REGISTRY_ADDRESS");
         require(cfg.identityRegistry != address(0), "IDENTITY_REGISTRY_ZERO");

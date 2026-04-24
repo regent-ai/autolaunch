@@ -15,19 +15,19 @@ contract DeployTestnetMintableERC20ScriptTest is Test {
 
     function setUp() external {
         script = new DeployTestnetMintableERC20Script();
-        vm.chainId(84532);
+        vm.chainId(84_532);
     }
 
     function testDeployCreatesMintableTokenWithInitialSupply() external {
-        DeployTestnetMintableERC20Script.ScriptConfig memory cfg = DeployTestnetMintableERC20Script
-            .ScriptConfig({
-            name: "Regent Test",
-            symbol: "tREGENT",
-            decimals: 18,
-            owner: OWNER,
-            initialHolder: HOLDER,
-            initialSupply: INITIAL_SUPPLY
-        });
+        DeployTestnetMintableERC20Script.ScriptConfig memory cfg =
+            DeployTestnetMintableERC20Script.ScriptConfig({
+                name: "Regent Test",
+                symbol: "tREGENT",
+                decimals: 18,
+                owner: OWNER,
+                initialHolder: HOLDER,
+                initialSupply: INITIAL_SUPPLY
+            });
 
         TestnetMintableERC20 token = script.deploy(cfg);
 
@@ -40,15 +40,15 @@ contract DeployTestnetMintableERC20ScriptTest is Test {
     }
 
     function testOwnerCanMintAfterDeploy() external {
-        DeployTestnetMintableERC20Script.ScriptConfig memory cfg = DeployTestnetMintableERC20Script
-            .ScriptConfig({
-            name: "Regent Test",
-            symbol: "tREGENT",
-            decimals: 18,
-            owner: OWNER,
-            initialHolder: HOLDER,
-            initialSupply: INITIAL_SUPPLY
-        });
+        DeployTestnetMintableERC20Script.ScriptConfig memory cfg =
+            DeployTestnetMintableERC20Script.ScriptConfig({
+                name: "Regent Test",
+                symbol: "tREGENT",
+                decimals: 18,
+                owner: OWNER,
+                initialHolder: HOLDER,
+                initialSupply: INITIAL_SUPPLY
+            });
 
         TestnetMintableERC20 token = script.deploy(cfg);
 

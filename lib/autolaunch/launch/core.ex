@@ -186,13 +186,13 @@ defmodule Autolaunch.Launch.Core do
           "One ERC-8004 identity can launch at most one Agent Coin.",
           "AgentLaunchToken supply is fixed at 100 billion from launch.",
           "The Agent Safe is locked into the launch configuration you sign.",
-          "Only Base USDC that reaches the revsplit counts as recognized subject revenue."
+          "Only Base USDC that reaches the subject revenue wallet appears in subject revenue totals."
         ],
         next_steps: [
           "Sign the SIWA message with a linked wallet that controls this ERC-8004 identity.",
           "Queue the Base-family launch deployment.",
           "Wait for the deploy script to return the strategy, vesting wallet, fee hook, subject registry, revenue splitter, and ingress addresses.",
-          "Wait for the auction page, then stake claimed tokens to earn recognized Base USDC revenue."
+          "Wait for the auction page, then stake claimed tokens to earn Base USDC from that subject."
         ],
         launch_notes: launch_notes,
         completion_plan:

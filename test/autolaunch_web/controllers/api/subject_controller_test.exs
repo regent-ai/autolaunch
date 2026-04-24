@@ -29,7 +29,10 @@ defmodule AutolaunchWeb.Api.SubjectControllerTest do
         "0xb663660a" -> {:ok, encode_uint(0)}
         "0x8c37a52f" -> {:ok, encode_uint(0)}
         "0x5cc76060" -> {:ok, encode_uint(0)}
-        "0x8064d80c" -> {:ok, encode_uint(125 * Integer.pow(10, 6))}
+        "0xcf51bfdd" -> {:ok, encode_uint(125 * Integer.pow(10, 6))}
+        "0x6a142340" -> {:ok, encode_uint(15 * Integer.pow(10, 6))}
+        "0x35816a75" -> {:ok, encode_uint(90 * Integer.pow(10, 6))}
+        "0xe8bb5751" -> {:ok, encode_uint(20 * Integer.pow(10, 6))}
         "0x1aa91287" -> {:ok, encode_uint(10 * Integer.pow(10, 6))}
         "0x08c23673" -> {:ok, encode_uint(90 * Integer.pow(10, 6))}
         "0xddffd82a" -> {:ok, encode_uint(25 * Integer.pow(10, 6))}
@@ -40,6 +43,7 @@ defmodule AutolaunchWeb.Api.SubjectControllerTest do
         "0x60217267" -> {:ok, encode_uint(12 * Integer.pow(10, 18))}
         "0xb026ee79" -> {:ok, encode_uint(5 * Integer.pow(10, 6))}
         "0x05e1fd68" -> {:ok, encode_uint(preview_claimable_stake_token(data))}
+        "0xc5c5ae3a" -> {:ok, encode_uint(preview_funded_claimable_stake_token(data))}
         "0x05f15537" -> {:ok, encode_uint(3 * Integer.pow(10, 18))}
         "0xcfb3d0aa" -> {:ok, encode_uint(8 * Integer.pow(10, 18))}
         "0x66ffb8de" -> {:ok, encode_uint(6 * Integer.pow(10, 18))}
@@ -97,6 +101,14 @@ defmodule AutolaunchWeb.Api.SubjectControllerTest do
       case String.slice(encoded, -40, 40) |> String.downcase() do
         "1111111111111111111111111111111111111111" -> 4 * Integer.pow(10, 18)
         "2222222222222222222222222222222222222222" -> 3 * Integer.pow(10, 18)
+        _ -> 0
+      end
+    end
+
+    defp preview_funded_claimable_stake_token(<<"0xc5c5ae3a", encoded::binary>>) do
+      case String.slice(encoded, -40, 40) |> String.downcase() do
+        "1111111111111111111111111111111111111111" -> 2 * Integer.pow(10, 18)
+        "2222222222222222222222222222222222222222" -> 1 * Integer.pow(10, 18)
         _ -> 0
       end
     end
@@ -182,7 +194,10 @@ defmodule AutolaunchWeb.Api.SubjectControllerTest do
                "subject_id" => @subject_id,
                "eligible_revenue_share_bps" => 10_000,
                "pending_eligible_revenue_share_bps" => nil,
-               "gross_inflow_usdc_raw" => 125_000_000,
+               "total_usdc_received_raw" => 125_000_000,
+               "direct_deposit_usdc_raw" => 15_000_000,
+               "verified_ingress_usdc_raw" => 90_000_000,
+               "launch_fee_usdc_raw" => 20_000_000,
                "regent_skim_usdc_raw" => 10_000_000,
                "staker_eligible_inflow_usdc_raw" => 90_000_000,
                "treasury_reserved_inflow_usdc_raw" => 25_000_000,

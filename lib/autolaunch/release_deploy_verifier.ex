@@ -1,6 +1,7 @@
 defmodule Autolaunch.ReleaseDeployVerifier do
   @moduledoc false
 
+  alias Autolaunch.BaseFamily
   alias Autolaunch.CCA.Rpc
   alias Autolaunch.Contracts.Abi
   alias Autolaunch.Launch.Job
@@ -21,6 +22,13 @@ defmodule Autolaunch.ReleaseDeployVerifier do
           ] ++
             controller_checks(job, controller_resolution.address) ++
             [
+              accepted_owner_check(
+                "revenue_splitter_ownership",
+                job.chain_id,
+                job.revenue_share_splitter_address,
+                job.agent_safe_address,
+                "Revenue splitter ownership is fully accepted by the Agent Safe."
+              ),
               accepted_owner_check(
                 "fee_registry_ownership",
                 job.chain_id,
@@ -206,50 +214,41 @@ defmodule Autolaunch.ReleaseDeployVerifier do
     expected_quote_token = usdc_address(job.chain_id)
     expected_pool_manager = pool_manager_address(job.chain_id)
 
-    cond do
-      not configured_address?(expected_quote_token) ->
-        fail_check(
-          "fee_hook_pool_wiring",
-          :error,
-          "Verifier config is missing the USDC address for chain #{job.chain_id}."
-        )
-
-      not configured_address?(expected_pool_manager) ->
-        fail_check(
-          "fee_hook_pool_wiring",
-          :error,
-          "Verifier config is missing the pool manager address for chain #{job.chain_id}."
-        )
-
-      true ->
-        case pool_config(job) do
-          %{hook_enabled: true, hook: hook, quote_token: quote_token, pool_manager: pool_manager} ->
-            if normalize_address(hook) == expected_hook and
-                 normalize_address(quote_token) == normalize_address(expected_quote_token) and
-                 normalize_address(pool_manager) == normalize_address(expected_pool_manager) do
-              ok_check(
-                "fee_hook_pool_wiring",
-                :error,
-                "Pool config points at the expected fixed fee hook, pool manager, and quote token."
-              )
-            else
-              fail_check(
-                "fee_hook_pool_wiring",
-                :error,
-                "Pool config is present but does not match the expected hook wiring."
-              )
-            end
-
-          %{hook_enabled: false} ->
-            fail_check("fee_hook_pool_wiring", :error, "Fee hook is disabled in the pool config.")
-
-          _ ->
+    if configured_address?(expected_pool_manager) do
+      case pool_config(job) do
+        %{hook_enabled: true, hook: hook, quote_token: quote_token, pool_manager: pool_manager} ->
+          if normalize_address(hook) == expected_hook and
+               normalize_address(quote_token) == normalize_address(expected_quote_token) and
+               normalize_address(pool_manager) == normalize_address(expected_pool_manager) do
+            ok_check(
+              "fee_hook_pool_wiring",
+              :error,
+              "Pool config points at the expected fixed fee hook, pool manager, and quote token."
+            )
+          else
             fail_check(
               "fee_hook_pool_wiring",
               :error,
-              "Pool config could not be read from the fee registry."
+              "Pool config is present but does not match the expected hook wiring."
             )
-        end
+          end
+
+        %{hook_enabled: false} ->
+          fail_check("fee_hook_pool_wiring", :error, "Fee hook is disabled in the pool config.")
+
+        _ ->
+          fail_check(
+            "fee_hook_pool_wiring",
+            :error,
+            "Pool config could not be read from the fee registry."
+          )
+      end
+    else
+      fail_check(
+        "fee_hook_pool_wiring",
+        :error,
+        "Verifier config is missing the pool manager address for chain #{job.chain_id}."
+      )
     end
   end
 
@@ -324,13 +323,6 @@ defmodule Autolaunch.ReleaseDeployVerifier do
     expected_quote_token = usdc_address(job.chain_id)
 
     cond do
-      not configured_address?(expected_quote_token) ->
-        fail_check(
-          "fee_vault_canonical_tokens",
-          :error,
-          "Verifier config is missing the USDC address for chain #{job.chain_id}."
-        )
-
       normalize_address(launch_token) != normalize_address(job.token_address) ->
         fail_check(
           "fee_vault_canonical_tokens",
@@ -586,8 +578,12 @@ defmodule Autolaunch.ReleaseDeployVerifier do
   defp pool_manager_address(chain_id),
     do: config_value_for_chain(chain_id, :pool_manager_addresses)
 
-  defp usdc_address(chain_id),
-    do: config_value_for_chain(chain_id, :usdc_addresses)
+  defp usdc_address(chain_id) do
+    case BaseFamily.canonical_usdc_address(chain_id) do
+      {:ok, address} -> address
+      {:error, _reason} -> nil
+    end
+  end
 
   defp revenue_share_factory_address(chain_id),
     do: config_value_for_chain(chain_id, :revenue_share_factory_addresses)
