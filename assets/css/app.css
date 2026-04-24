@@ -47,6 +47,14 @@
     );
   --al-panel: color-mix(in srgb, white 84%, var(--color-bg) 16%);
   --al-panel-strong: color-mix(in srgb, white 92%, var(--color-bg) 8%);
+  --al-component-border: color-mix(in srgb, #087f78 24%, var(--al-border) 76%);
+  --al-component-background:
+    radial-gradient(120% 88% at 8% 0%, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.42) 36%, transparent 62%),
+    radial-gradient(96% 78% at 98% 100%, rgba(25, 181, 165, 0.22) 0%, rgba(25, 181, 165, 0.1) 42%, transparent 68%),
+    linear-gradient(128deg, rgba(247, 255, 251, 0.98) 0%, rgba(218, 253, 244, 0.96) 35%, rgba(177, 241, 230, 0.9) 66%, rgba(235, 255, 247, 0.98) 100%);
+  --al-component-background-strong:
+    radial-gradient(112% 92% at 6% 0%, rgba(255, 255, 255, 0.84) 0%, rgba(255, 255, 255, 0.3) 48%, transparent 68%),
+    linear-gradient(136deg, rgba(255, 255, 255, 0.78) 0%, rgba(216, 253, 244, 0.84) 48%, rgba(170, 238, 228, 0.74) 100%);
   --al-border: color-mix(in srgb, var(--brand-ink) 14%, transparent);
   --al-text: var(--color-fg);
   --al-muted: color-mix(in srgb, var(--color-fg) 68%, var(--color-bg) 32%);
@@ -78,6 +86,14 @@
     linear-gradient(180deg, #0e1411 0%, var(--color-bg) 48%, var(--color-bg-alt) 100%);
   --al-panel: color-mix(in srgb, var(--color-bg-alt) 80%, black 20%);
   --al-panel-strong: color-mix(in srgb, var(--color-bg-secondary) 84%, black 16%);
+  --al-component-border: color-mix(in srgb, #56e8d4 24%, var(--al-border) 76%);
+  --al-component-background:
+    radial-gradient(120% 86% at 10% 0%, rgba(139, 255, 218, 0.2) 0%, rgba(139, 255, 218, 0.08) 36%, transparent 62%),
+    radial-gradient(104% 80% at 98% 100%, rgba(0, 188, 176, 0.3) 0%, rgba(0, 188, 176, 0.1) 46%, transparent 70%),
+    linear-gradient(128deg, rgba(4, 22, 27, 0.98) 0%, rgba(5, 69, 82, 0.96) 34%, rgba(9, 142, 126, 0.78) 68%, rgba(7, 50, 58, 0.96) 100%);
+  --al-component-background-strong:
+    radial-gradient(112% 88% at 8% 0%, rgba(119, 255, 220, 0.14) 0%, rgba(119, 255, 220, 0.05) 44%, transparent 66%),
+    linear-gradient(136deg, rgba(8, 64, 74, 0.88) 0%, rgba(6, 34, 40, 0.88) 54%, rgba(10, 103, 92, 0.58) 100%);
   --al-border: color-mix(in srgb, white 12%, transparent);
   --al-text: var(--color-fg);
   --al-muted: color-mix(in srgb, var(--color-fg) 70%, transparent);
@@ -561,8 +577,8 @@ textarea {
   border: 1px solid color-mix(in srgb, var(--al-border) 84%, white 16%);
   border-radius: 1.45rem;
   padding: clamp(1rem, 2.2vw, 1.35rem);
-  background:
-    linear-gradient(135deg, color-mix(in srgb, var(--al-panel-strong) 96%, white 4%), color-mix(in srgb, var(--brand-primary) 7%, var(--al-panel-strong) 93%));
+  background: var(--al-panel);
+  background: var(--al-component-background);
   box-shadow: 0 24px 70px -48px rgba(17, 35, 64, 0.34);
 }
 
@@ -623,7 +639,8 @@ textarea {
 .al-status-hero,
 .al-status-check {
   border: 1px solid color-mix(in srgb, var(--al-border) 86%, white 14%);
-  background: color-mix(in srgb, var(--al-panel-strong) 94%, white 6%);
+  background: var(--al-panel-strong);
+  background: var(--al-component-background-strong);
   box-shadow: 0 24px 70px -48px rgba(17, 35, 64, 0.24);
 }
 
@@ -1006,8 +1023,9 @@ textarea {
 }
 
 .al-panel {
-  border: 1px solid var(--al-border);
+  border: 1px solid var(--al-component-border);
   background: var(--al-panel);
+  background: var(--al-component-background);
   backdrop-filter: blur(16px);
   box-shadow: var(--al-shadow);
 }
@@ -1025,11 +1043,9 @@ textarea {
   max-width: 42rem;
   padding: clamp(1rem, 2.4vw, 1.45rem);
   border-radius: 1.8rem;
-  border: 1px solid var(--al-border);
-  background:
-    radial-gradient(circle at top right, rgba(13, 124, 112, 0.14), transparent 28%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(15, 118, 110, 0.05)),
-    var(--al-panel-strong);
+  border: 1px solid var(--al-component-border);
+  background: var(--al-panel-strong);
+  background: var(--al-component-background);
   color: var(--al-text);
   box-shadow: 0 36px 100px -40px rgba(2, 8, 10, 0.7);
 }
@@ -1063,7 +1079,7 @@ textarea {
   border-radius: 1.2rem;
   border: 1px solid var(--al-border);
   background:
-    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.96), rgba(221, 233, 255, 0.72) 60%, transparent 62%),
+    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.96), rgba(205, 255, 239, 0.72) 60%, transparent 62%),
     var(--al-panel);
   padding: 0.85rem;
   object-fit: contain;
@@ -1437,6 +1453,7 @@ textarea {
   border-radius: 1rem;
   padding: 0.8rem 0.9rem;
   background: var(--al-panel-strong);
+  background: var(--al-component-background-strong);
 }
 
 .al-contract-kv span,
@@ -2564,7 +2581,8 @@ textarea {
 .al-position-card {
   border: 1px solid var(--al-border);
   border-radius: 1.25rem;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--al-panel-strong);
+  background: var(--al-component-background-strong);
 }
 
 .al-stat-card,
@@ -4042,9 +4060,8 @@ textarea {
   padding: clamp(1.25rem, 3vw, 2.2rem);
   border-radius: 2.2rem;
   overflow: hidden;
-  background:
-    linear-gradient(180deg, color-mix(in srgb, white 76%, var(--color-bg) 24%), var(--al-panel)),
-    color-mix(in srgb, var(--al-accent-soft) 24%, transparent);
+  background: var(--al-panel);
+  background: var(--al-component-background);
 }
 
 .al-homepage-hero-stage::before {
@@ -4217,18 +4234,14 @@ textarea {
   overflow: hidden;
   border-radius: 1.7rem;
   border: 1px solid color-mix(in srgb, var(--al-accent) 14%, var(--al-border));
-  background: color-mix(in srgb, var(--al-panel-strong) 92%, white 8%);
+  background: var(--al-panel-strong);
+  background: var(--al-component-background-strong);
 }
 
 .al-homepage-visual {
   min-height: 17rem;
-  background:
-    radial-gradient(circle at 50% 46%, color-mix(in srgb, var(--al-accent) 14%, transparent), transparent 44%),
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--color-bg-primary-wash) 74%, white 26%),
-      color-mix(in srgb, var(--al-panel-strong) 94%, white 6%)
-    );
+  background: var(--al-panel-strong);
+  background: var(--al-component-background-strong);
 }
 
 .al-homepage-orbit,
@@ -4343,7 +4356,8 @@ textarea {
 .al-homepage-table-card {
   border-radius: 1.9rem;
   padding: clamp(1rem, 2vw, 1.35rem);
-  background: color-mix(in srgb, var(--al-panel-strong) 92%, white 8%);
+  background: var(--al-panel-strong);
+  background: var(--al-component-background-strong);
 }
 
 .al-homepage-table-head {
@@ -4423,7 +4437,8 @@ textarea {
 .al-homepage-story-card {
   padding: 1.2rem;
   border: 1px solid var(--al-border);
-  background: color-mix(in srgb, var(--al-panel-strong) 92%, white 8%);
+  background: var(--al-panel-strong);
+  background: var(--al-component-background-strong);
   box-shadow: var(--al-shadow);
 }
 
@@ -4436,13 +4451,8 @@ textarea {
   padding: clamp(1.2rem, 2.4vw, 1.8rem);
   display: grid;
   gap: 0.9rem;
-  background:
-    radial-gradient(circle at 88% 14%, color-mix(in srgb, var(--al-brass) 12%, transparent), transparent 22%),
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--al-panel-strong) 90%, white 10%),
-      color-mix(in srgb, var(--color-bg-primary-wash) 24%, white 76%)
-    );
+  background: var(--al-panel-strong);
+  background: var(--al-component-background-strong);
 }
 
 .al-homepage-about-primary,

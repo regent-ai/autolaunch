@@ -12,10 +12,10 @@ This folder holds the original first-pass set.
    A reader-friendly explanation of budget, max price, and clearing over time.
 3. `launch-capital-and-vesting-voxel.png`
    Launch-day splits for auction tokens, LP tokens, vested supply, treasury runway, and fees.
-4. `recognized-revenue-lane-voxel.png`
-   The rule that only Base USDC routed into the subject revenue lane counts as recognized revenue.
+4. `subject-usdc-lane-voxel.png`
+   The rule that Base USDC counts for the subject when it reaches the subject revenue lane.
 5. `subject-revsplit-voxel.png`
-   The subject-level split from recognized revenue to Regents Labs, stakers, and treasury remainder.
+   The subject-level split from USDC received to Regents Labs, stakers, and treasury remainder.
 6. `regent-staking-flow-voxel.png`
    The company-level staking flow for protocol revenue, claims, buybacks, and first-year emissions.
 

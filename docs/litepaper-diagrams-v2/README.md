@@ -16,10 +16,10 @@ The main correction is in the flywheel figure:
    Budget, max price, clearing across the launch window, and token receipt only at or below the buyer's cap.
 3. `launch-capital-and-vesting-schematic-v2.png`
    Launch-day token supply split, treasury runway, LP seeding, fee routing, and vesting.
-4. `recognized-revenue-lane-schematic-v2.png`
-   The rule that only Base USDC routed into the subject lane becomes recognized revenue.
+4. `subject-usdc-lane-schematic-v2.png`
+   The rule that Base USDC counts for the subject when it reaches the subject lane.
 5. `subject-revsplit-schematic-v2.png`
-   Subject-level split from recognized revenue to Regents Labs, stakers, and treasury remainder.
+   Subject-level split from USDC received to Regents Labs, stakers, and treasury remainder.
 6. `regent-staking-flow-schematic-v2.png`
    Company-level protocol revenue flow into `$REGENT` staking, claims, buybacks, and first-year emissions.
 
