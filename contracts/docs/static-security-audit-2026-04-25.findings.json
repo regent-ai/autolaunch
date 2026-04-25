@@ -1,0 +1,133 @@
+{
+  "audit_date": "2026-04-25",
+  "workspace": "/Users/sean/Documents/regent/autolaunch/contracts",
+  "scope": {
+    "primary": [
+      "src/**/*.sol",
+      "scripts/**/*.sol"
+    ],
+    "supporting": [
+      "test/**/*.sol"
+    ],
+    "excluded": [
+      "lib/**/*.sol",
+      "out/**/*.sol"
+    ]
+  },
+  "tools": {
+    "foundry": {
+      "commands": [
+        "forge fmt --check",
+        "forge test"
+      ],
+      "result": "passed",
+      "tests_passed": 168,
+      "tests_failed": 0,
+      "tests_skipped": 0
+    },
+    "slither": {
+      "version": "0.11.5",
+      "commands": [
+        "slither . --filter-paths 'lib|out|test' --json /tmp/autolaunch-contract-audit/slither.json",
+        "slither . --foundry-compile-all --filter-paths 'lib|out|test' --json /tmp/autolaunch-contract-audit/slither-compile-all.json",
+        "slither . --foundry-compile-all --filter-paths 'lib|out|test' --print human-summary --json /tmp/autolaunch-contract-audit/slither-summary.json"
+      ],
+      "raw_outputs": [
+        "/tmp/autolaunch-contract-audit/slither.json",
+        "/tmp/autolaunch-contract-audit/slither-compile-all.json",
+        "/tmp/autolaunch-contract-audit/slither-summary.json"
+      ]
+    },
+    "mythril": {
+      "version": "0.24.8",
+      "command_prefix": "uvx --with 'setuptools==70.0.0' --from mythril myth analyze",
+      "source_mode_result": "blocked: Mythril attempted to fetch solc from solc-bin.ethereum.org and DNS resolution failed",
+      "bytecode_mode_result": "completed with generic bytecode-level warnings; no actionable exploit path confirmed",
+      "raw_outputs": [
+        "/tmp/autolaunch-contract-audit/mythril-bytecode/*.json"
+      ]
+    }
+  },
+  "findings": [
+    {
+      "id": "F-001",
+      "title": "Slither flags migration balance reads before external calls",
+      "severity": "low",
+      "tool_severity": "high",
+      "confidence": "medium",
+      "swc": "SWC-107",
+      "files": [
+        {
+          "path": "src/RegentLBPStrategy.sol",
+          "line": 206,
+          "function": "migrate"
+        }
+      ],
+      "status": "triaged-low-risk",
+      "description": "Slither reports that migrate reads token balances and later makes external token and position-manager calls.",
+      "triage": "The function is operator-only, protected by nonReentrant, and records migrated state before external calls. No practical exploit path was confirmed.",
+      "recommendation": "Keep the current ordering and guard. Add a malicious-token or malicious-position-manager regression test before suppressing the warning permanently."
+    },
+    {
+      "id": "F-002",
+      "title": "Example deploy script has unused constants",
+      "severity": "informational",
+      "tool_severity": "informational",
+      "confidence": "high",
+      "swc": null,
+      "files": [
+        {
+          "path": "scripts/ExampleCCADeploymentScript.s.sol",
+          "line": 48,
+          "symbol": "CANONICAL_CCA_FACTORY"
+        },
+        {
+          "path": "scripts/ExampleCCADeploymentScript.s.sol",
+          "line": 49,
+          "symbol": "REGENT_MULTISIG"
+        }
+      ],
+      "status": "confirmed-cleanup",
+      "description": "Two constants are declared but not used.",
+      "triage": "This is not a contract vulnerability, but can confuse operators if the values look authoritative.",
+      "recommendation": "Remove the constants or wire them into script validation."
+    },
+    {
+      "id": "F-003",
+      "title": "Mythril bytecode mode produced generic arithmetic warnings",
+      "severity": "informational",
+      "tool_severity": "high",
+      "confidence": "low",
+      "swc": "SWC-101",
+      "files": [
+        {
+          "path": "multiple deployable project contracts",
+          "line": null
+        }
+      ],
+      "status": "not-actionable-from-current-output",
+      "description": "Mythril bytecode mode reported integer arithmetic warnings across multiple contracts.",
+      "triage": "The code compiles with Solidity 0.8.26 checked arithmetic, uses explicit bounds and FullMath where needed, and passed Foundry tests and invariants. No source-level exploit path was confirmed.",
+      "recommendation": "Re-run Mythril source-mode with a locally available pinned Solidity compiler."
+    },
+    {
+      "id": "F-004",
+      "title": "Mythril fallback requirement warning",
+      "severity": "informational",
+      "tool_severity": "medium",
+      "confidence": "low",
+      "swc": "SWC-123",
+      "files": [
+        {
+          "path": "bytecode fallback paths",
+          "line": null
+        }
+      ],
+      "status": "not-actionable-from-current-output",
+      "description": "Mythril reported a generic fallback requirement warning in bytecode mode.",
+      "triage": "Contracts that should reject native ETH do so explicitly, and no fund-loss or authorization-bypass path was confirmed.",
+      "recommendation": "Keep explicit ETH rejection where native ETH should not be accepted. Re-run Mythril source-mode before mainnet."
+    }
+  ],
+  "bottom_line": "No confirmed critical or high-severity exploitable vulnerability was found in the project-owned Autolaunch contracts during this pass. The main remaining release risk is deployment verification: canonical USDC and accepted ownership must be proven across the full launch stack."
+}
