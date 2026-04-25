@@ -1,6 +1,8 @@
 defmodule AutolaunchWeb.Api.RegentStakingControllerTest do
   use AutolaunchWeb.ConnCase, async: false
 
+  alias Autolaunch.Accounts
+
   defmodule RegentStakingStub do
     def overview(_human) do
       {:ok,
@@ -88,7 +90,15 @@ defmodule AutolaunchWeb.Api.RegentStakingControllerTest do
     original = Application.get_env(:autolaunch, :regent_staking_api, [])
     Application.put_env(:autolaunch, :regent_staking_api, context_module: RegentStakingStub)
     on_exit(fn -> Application.put_env(:autolaunch, :regent_staking_api, original) end)
-    :ok
+
+    {:ok, human} =
+      Accounts.upsert_human_by_privy_id("did:privy:regent-staking-api", %{
+        "wallet_address" => "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "wallet_addresses" => ["0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],
+        "display_name" => "Operator"
+      })
+
+    %{human: human}
   end
 
   test "show returns the regent staking overview", %{conn: conn} do
@@ -120,7 +130,24 @@ defmodule AutolaunchWeb.Api.RegentStakingControllerTest do
            } = json_response(conn, 200)
   end
 
-  test "deposit prepare returns a multisig payload", %{conn: conn} do
+  test "deposit prepare requires a browser session", %{conn: conn} do
+    conn =
+      post(conn, "/v1/app/regent/staking/deposit-usdc/prepare", %{
+        "amount" => "250.5",
+        "source_tag" => "base_manual",
+        "source_ref" => "2026-03"
+      })
+
+    assert %{"ok" => false, "error" => %{"code" => "auth_required"}} =
+             json_response(conn, 401)
+  end
+
+  test "deposit prepare returns a multisig payload for a signed-in user", %{
+    conn: conn,
+    human: human
+  } do
+    conn = init_test_session(conn, privy_user_id: human.privy_user_id)
+
     conn =
       post(conn, "/v1/app/regent/staking/deposit-usdc/prepare", %{
         "amount" => "250.5",

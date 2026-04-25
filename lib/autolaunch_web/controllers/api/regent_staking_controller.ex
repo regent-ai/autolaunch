@@ -36,11 +36,11 @@ defmodule AutolaunchWeb.Api.RegentStakingController do
   end
 
   def prepare_deposit(conn, params) do
-    render_result(conn, context_module().prepare_deposit_usdc(params))
+    render_operator_prepare(conn, fn -> context_module().prepare_deposit_usdc(params) end)
   end
 
   def prepare_withdraw_treasury(conn, params) do
-    render_result(conn, context_module().prepare_withdraw_treasury(params))
+    render_operator_prepare(conn, fn -> context_module().prepare_withdraw_treasury(params) end)
   end
 
   defp render_result(conn, {:ok, payload}), do: json(conn, Map.put(payload, :ok, true))
@@ -99,6 +99,13 @@ defmodule AutolaunchWeb.Api.RegentStakingController do
 
   defp render_result(conn, {:error, reason}) do
     ApiError.render(conn, :unprocessable_entity, "regent_staking_invalid", inspect(reason))
+  end
+
+  defp render_operator_prepare(conn, fun) do
+    case conn.assigns[:current_human] do
+      nil -> render_result(conn, {:error, :unauthorized})
+      _human -> render_result(conn, fun.())
+    end
   end
 
   defp context_module do

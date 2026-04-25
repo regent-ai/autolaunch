@@ -3,14 +3,18 @@ defmodule AutolaunchWeb.ApiRoutes do
 
   defmacro product_api_routes(opts \\ []) do
     include_app_staking_prepare? = Keyword.get(opts, :include_app_staking_prepare?, false)
+    include_human_browser_routes? = Keyword.get(opts, :include_human_browser_routes?, false)
 
     quote do
       get "/agents", AgentController, :index
       get "/agents/:id", AgentController, :show
       get "/agents/:id/readiness", AgentController, :readiness
       get "/trust/agents/:id", TrustController, :show_agent
-      post "/trust/x/start", TrustController, :start_x
-      post "/trust/x/callback", TrustController, :complete_x
+
+      if unquote(include_human_browser_routes?) do
+        post "/trust/x/start", TrustController, :start_x
+        post "/trust/x/callback", TrustController, :complete_x
+      end
 
       get "/subjects/:id", SubjectController, :show
       get "/subjects/:id/ingress", SubjectController, :ingress
@@ -78,12 +82,16 @@ defmodule AutolaunchWeb.ApiRoutes do
       get "/auctions", AuctionController, :index
       get "/auction-returns", AuctionController, :returns
       get "/auctions/:id", AuctionController, :show
-      get "/me/profile", MeController, :profile
-      post "/me/profile/refresh", MeController, :refresh_profile
-      get "/me/holdings", MeController, :holdings
+
+      if unquote(include_human_browser_routes?) do
+        get "/me/profile", MeController, :profile
+        post "/me/profile/refresh", MeController, :refresh_profile
+        get "/me/holdings", MeController, :holdings
+        get "/me/bids", MeController, :bids
+      end
+
       post "/auctions/:id/bid_quote", AuctionController, :bid_quote
       post "/auctions/:id/bids", AuctionController, :create_bid
-      get "/me/bids", MeController, :bids
 
       post "/bids/:id/return-usdc", BidController, :return_usdc
       post "/bids/:id/exit", BidController, :exit

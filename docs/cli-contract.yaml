@@ -9,14 +9,11 @@ command_groups:
       - autolaunch agents list
       - autolaunch agent <id>
       - autolaunch agent readiness <id>
-      - autolaunch trust x-link
     path_templates:
       - /v1/agent/agents
       - /v1/agent/agents/{id}
       - /v1/agent/agents/{id}/readiness
       - /v1/agent/trust/agents/{id}
-      - /v1/agent/trust/x/start
-      - /v1/agent/trust/x/callback
   - name: prelaunch-launch
     interface: mixed
     auth_mode: agent-siwa
@@ -73,14 +70,8 @@ command_groups:
       - autolaunch auction-returns list
       - autolaunch bids quote
       - autolaunch bids place
-      - autolaunch bids mine
       - autolaunch bids exit
       - autolaunch bids claim
-      - autolaunch positions list
-      - autolaunch positions return-usdc
-      - autolaunch positions exit
-      - autolaunch positions claim
-      - autolaunch holdings list
       - autolaunch holdings stake
       - autolaunch holdings unstake
       - autolaunch holdings claim-usdc
@@ -101,8 +92,6 @@ command_groups:
       - /v1/agent/auctions/{id}
       - /v1/agent/auctions/{id}/bid_quote
       - /v1/agent/auctions/{id}/bids
-      - /v1/agent/me/bids
-      - /v1/agent/me/holdings
       - /v1/agent/bids/{id}/exit
       - /v1/agent/bids/{id}/return-usdc
       - /v1/agent/bids/{id}/claim

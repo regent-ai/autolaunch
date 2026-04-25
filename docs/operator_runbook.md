@@ -130,6 +130,8 @@ Use `verify_deploy` immediately after a real launch is marked ready. It checks t
 
 `verify_deploy` now reads the shared addresses for the launch's own Base network from the per-chain verifier address books in the environment. Keep those Base Sepolia and Base mainnet values filled in before you rely on the result.
 
+The cross-repo public beta run sheet lives at `/Users/sean/Documents/regent/docs/public-beta-run-sheet.md`. Use it as the stop/go sheet for Platform, Autolaunch, and the CLI together.
+
 ## Phase 2.5: Create the Agent Safe on Sepolia
 
 Before a launch plan is signed, create one Safe that will be used for:

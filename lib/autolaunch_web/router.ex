@@ -60,6 +60,7 @@ defmodule AutolaunchWeb.Router do
       live "/auctions/:id", AuctionLive, :show
       live "/profile", ProfileLive, :index
       live "/positions", PositionsLive, :index
+      live "/regent-staking", RegentStakingLive, :index
       live "/contracts", ContractsLive, :index
       live "/status", StatusLive, :index
       live "/subjects/:id", SubjectLive, :show
@@ -118,7 +119,10 @@ defmodule AutolaunchWeb.Router do
   scope "/v1/app", AutolaunchWeb.Api do
     pipe_through :session_api
 
-    AutolaunchWeb.ApiRoutes.product_api_routes(include_app_staking_prepare?: true)
+    AutolaunchWeb.ApiRoutes.product_api_routes(
+      include_app_staking_prepare?: true,
+      include_human_browser_routes?: true
+    )
   end
 
   scope "/v1/agent", AutolaunchWeb.Api do

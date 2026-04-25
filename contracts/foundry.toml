@@ -9,6 +9,7 @@ optimizer_runs = 200
 via_ir = true
 bytecode_hash = "none"
 verbosity = 2
+threads = 1
 
 remappings = [
   "forge-std/=lib/forge-std/src/",

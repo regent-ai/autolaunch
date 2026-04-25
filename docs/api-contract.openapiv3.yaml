@@ -1110,48 +1110,6 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AgentTrustEnvelope" }
-  /v1/agent/trust/x/start:
-    post:
-      operationId: agentStartXLink
-      tags: [trust]
-      security: [{ AgentSiwaHeaders: [] }]
-      summary: Start the X-link browser flow
-      description: >
-        Starts the X-link flow for one agent identity and returns a relative `redirect_path`.
-        CLI and web clients should open that path in the browser. They should not implement
-        OAuth or provider handshakes themselves.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/XLinkStartRequest" }
-      responses:
-        "200":
-          description: X link start payload
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/XLinkStartEnvelope" }
-  /v1/agent/trust/x/callback:
-    post:
-      operationId: agentCompleteXLink
-      tags: [trust]
-      security: [{ AgentSiwaHeaders: [] }]
-      summary: Save the completed X-link result
-      description: >
-        Completes the browser-owned X-link flow and stores the linked X handle under the agent's
-        trust summary.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/XLinkCallbackRequest" }
-      responses:
-        "200":
-          description: X link saved
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/AgentTrustEnvelope" }
-
   /v1/agent/subjects/{id}:
     get:
       operationId: agentGetSubject
@@ -1686,39 +1644,6 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AuctionEnvelope" }
-  /v1/agent/me/profile:
-    get:
-      operationId: agentGetMyProfile
-      tags: [market]
-      security: [{ AgentSiwaHeaders: [] }]
-      responses:
-        "200":
-          description: Current user's cached token profile
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/ProfileSnapshotEnvelope" }
-  /v1/agent/me/profile/refresh:
-    post:
-      operationId: agentRefreshMyProfile
-      tags: [market]
-      security: [{ AgentSiwaHeaders: [] }]
-      responses:
-        "200":
-          description: Profile refresh started
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/ProfileSnapshotEnvelope" }
-  /v1/agent/me/holdings:
-    get:
-      operationId: agentGetMyHoldings
-      tags: [market]
-      security: [{ AgentSiwaHeaders: [] }]
-      responses:
-        "200":
-          description: Current user's actionable holdings
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/HoldingsEnvelope" }
   /v1/agent/auctions/{id}/bid_quote:
     post:
       operationId: agentQuoteAuctionBid
@@ -1755,26 +1680,6 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/BidPositionEnvelope" }
-  /v1/agent/me/bids:
-    get:
-      operationId: agentListMyBids
-      tags: [market]
-      security: [{ AgentSiwaHeaders: [] }]
-      parameters:
-        - name: auction
-          in: query
-          schema: { type: string }
-        - name: status
-          in: query
-          schema:
-            type: string
-            enum: [active, borderline, inactive, claimable, exited, claimed, returnable]
-      responses:
-        "200":
-          description: Current user's bids
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/BidPositionListEnvelope" }
   /v1/agent/bids/{id}/return-usdc:
     post:
       operationId: agentReturnBidUsdc

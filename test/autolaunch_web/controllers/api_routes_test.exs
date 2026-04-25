@@ -9,6 +9,15 @@ defmodule AutolaunchWeb.ApiRoutesTest do
      :prepare_withdraw_treasury}
   ]
 
+  @human_browser_product_routes [
+    {:post, "/trust/x/start"},
+    {:post, "/trust/x/callback"},
+    {:get, "/me/profile"},
+    {:post, "/me/profile/refresh"},
+    {:get, "/me/holdings"},
+    {:get, "/me/bids"}
+  ]
+
   @public_app_routes [
     {:post, "/agentbook/sessions"},
     {:get, "/agentbook/sessions/:id"},
@@ -70,6 +79,7 @@ defmodule AutolaunchWeb.ApiRoutesTest do
       |> product_route_specs()
       |> Enum.reject(&public_app_route?/1)
       |> Enum.reject(&app_only_product_route?/1)
+      |> Enum.reject(&human_browser_product_route?/1)
       |> normalize_route_specs("/v1/app")
 
     agent_routes =
@@ -90,6 +100,16 @@ defmodule AutolaunchWeb.ApiRoutesTest do
     end
   end
 
+  test "human browser routes stay out of the agent API" do
+    app_routes = product_route_specs("/v1/app")
+    agent_routes = product_route_specs("/v1/agent")
+
+    for route <- @human_browser_product_routes do
+      assert route in route_methods_and_paths(app_routes, "/v1/app")
+      refute route in route_methods_and_paths(agent_routes, "/v1/agent")
+    end
+  end
+
   defp product_route_specs(prefix) do
     AutolaunchWeb.Router.__routes__()
     |> Enum.filter(&String.starts_with?(&1.path, prefix))
@@ -107,11 +127,23 @@ defmodule AutolaunchWeb.ApiRoutesTest do
     |> Enum.sort()
   end
 
+  defp route_methods_and_paths(route_specs, prefix) do
+    route_specs
+    |> Enum.map(fn {verb, path, _plug, _plug_opts} ->
+      {verb, String.replace_prefix(path, prefix, "")}
+    end)
+    |> Enum.sort()
+  end
+
   defp public_app_route?({verb, path, _plug, _plug_opts}) do
     {verb, String.replace_prefix(path, "/v1/app", "")} in @public_app_routes
   end
 
   defp app_only_product_route?({verb, path, plug, plug_opts}) do
     {verb, String.replace_prefix(path, "/v1/app", ""), plug, plug_opts} in @app_only_product_routes
+  end
+
+  defp human_browser_product_route?({verb, path, _plug, _plug_opts}) do
+    {verb, String.replace_prefix(path, "/v1/app", "")} in @human_browser_product_routes
   end
 end

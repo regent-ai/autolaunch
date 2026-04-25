@@ -367,6 +367,12 @@ defmodule AutolaunchWeb.Layouts do
           <path d="M5 4v16" />
           <path d="M5 12h14" />
           <path d="M12 12a7 7 0 0 1 7-7" />
+        <% "staking" -> %>
+          <path d="M5 7h14" />
+          <path d="M7 7v10a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V7" />
+          <path d="M9 7a3 3 0 0 1 6 0" />
+          <path d="M9.5 13h5" />
+          <path d="M12 10.5v5" />
         <% "profile" -> %>
           <circle cx="12" cy="8" r="3.5" />
           <path d="M5 20a7 7 0 0 1 14 0" />
@@ -419,6 +425,7 @@ defmodule AutolaunchWeb.Layouts do
       %{id: "home", label: "Home", href: ~p"/", icon: "home"},
       %{id: "auctions", label: "Auctions", href: ~p"/auctions", icon: "auctions"},
       %{id: "positions", label: "Positions", href: ~p"/positions", icon: "positions"},
+      %{id: "regent-staking", label: "$REGENT", href: ~p"/regent-staking", icon: "staking"},
       %{id: "profile", label: "Profile", href: ~p"/profile", icon: "profile"},
       %{id: "launch", label: "Launch", href: ~p"/launch", icon: "launch"},
       %{id: "docs", label: "Docs", href: ~p"/how-auctions-work", icon: "docs"}
@@ -440,6 +447,13 @@ defmodule AutolaunchWeb.Layouts do
         href: ~p"/positions",
         mark: "PO",
         search: "positions portfolio bids claims returns wallet"
+      },
+      %{
+        label: "$REGENT staking",
+        note: "Stake, claim, and review the company rewards rail",
+        href: ~p"/regent-staking",
+        mark: "RG",
+        search: "regent staking rewards usdc claim emissions"
       },
       %{
         label: "Launch an agent",
@@ -480,7 +494,15 @@ defmodule AutolaunchWeb.Layouts do
   end
 
   defp active_section(active_view, _page_title)
-       when active_view in ["home", "auctions", "positions", "profile", "launch", "docs"] do
+       when active_view in [
+              "home",
+              "auctions",
+              "positions",
+              "regent-staking",
+              "profile",
+              "launch",
+              "docs"
+            ] do
     active_view
   end
 
@@ -501,6 +523,7 @@ defmodule AutolaunchWeb.Layouts do
       "Autolaunch" -> "home"
       "Auctions" -> "auctions"
       "Positions" -> "positions"
+      "$REGENT Staking" -> "regent-staking"
       "Profile" -> "profile"
       "Launch" -> "launch"
       "How auctions work" -> "docs"

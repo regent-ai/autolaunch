@@ -97,6 +97,12 @@ defmodule AutolaunchWeb.AuctionsLiveTest do
             ends_at: DateTime.add(DateTime.utc_now(), 1_800, :second) |> DateTime.to_iso8601()
           }
         },
+        %{
+          status: "borderline",
+          auction: %{
+            ends_at: DateTime.add(DateTime.utc_now(), 3_600, :second) |> DateTime.to_iso8601()
+          }
+        },
         %{status: "claimable", auction: %{}},
         %{status: "returnable", auction: %{}},
         %{status: "inactive", auction: %{}}
@@ -176,7 +182,7 @@ defmodule AutolaunchWeb.AuctionsLiveTest do
     human: human
   } do
     conn = init_test_session(conn, privy_user_id: human.privy_user_id)
-    {:ok, _view, html} = live(conn, "/auctions")
+    {:ok, view, html} = live(conn, "/auctions")
 
     assert html =~ "Open markets"
     assert html =~ "Whole market cap"
@@ -195,6 +201,7 @@ defmodule AutolaunchWeb.AuctionsLiveTest do
     assert html =~ "Open bid page"
     assert html =~ "Cinder"
     assert html =~ "$1,000"
+    assert has_element?(view, "a[href='/positions?status=active'] strong", "1")
   end
 
   test "mode toggle switches from biddable to live tokens", %{conn: conn, human: human} do

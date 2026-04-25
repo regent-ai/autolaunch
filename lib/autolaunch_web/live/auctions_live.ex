@@ -694,7 +694,7 @@ defmodule AutolaunchWeb.AuctionsLive do
   defp attention_summary(positions) do
     claimable_count = Enum.count(positions, &(&1.status == "claimable"))
     returnable_count = Enum.count(positions, &(&1.status == "returnable"))
-    active_bid_count = Enum.count(positions, &(&1.status in ["active", "borderline"]))
+    active_bid_count = Enum.count(positions, &(&1.status == "active"))
     closing_soon_count = Enum.count(positions, &position_closing_soon?/1)
     inactive_count = Enum.count(positions, &(&1.status == "inactive"))
 
