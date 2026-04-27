@@ -158,7 +158,9 @@ defmodule AutolaunchWeb.EnsLinkLive do
 
                     <div class="al-pill-row">
                       <span class={["al-network-badge", "al-access-badge"]}>{access_mode_label(identity.access_mode)}</span>
-                      <span class="al-network-badge">{short_address(identity.owner_address)}</span>
+                      <span class="al-network-badge">
+                        {AutolaunchWeb.Format.short_wallet(identity.owner_address) || "Unknown"}
+                      </span>
                     </div>
 
                     <p class="al-inline-note">
@@ -294,13 +296,13 @@ defmodule AutolaunchWeb.EnsLinkLive do
 
               <article class="al-review-card">
                 <span>ENS manager</span>
-                <strong>{short_address(@prepared.plan.ens_manager)}</strong>
+                <strong>{AutolaunchWeb.Format.short_wallet(@prepared.plan.ens_manager) || "Unknown"}</strong>
                 <p>{manager_source_copy(@prepared.plan.ens_manager_source)}</p>
               </article>
 
               <article class="al-review-card">
                 <span>Signer</span>
-                <strong>{short_address(@prepared.plan.signer_address)}</strong>
+                <strong>{AutolaunchWeb.Format.short_wallet(@prepared.plan.signer_address) || "Unknown"}</strong>
                 <p>Current linked wallet the planner evaluated for write permissions.</p>
               </article>
             </div>
@@ -539,14 +541,6 @@ defmodule AutolaunchWeb.EnsLinkLive do
   defp access_mode_label("operator"), do: "Operator controlled"
   defp access_mode_label("wallet_bound"), do: "Wallet-bound only"
   defp access_mode_label(_mode), do: "Unknown"
-
-  defp short_address(nil), do: "Unknown"
-
-  defp short_address(value) when is_binary(value) and byte_size(value) > 12 do
-    String.slice(value, 0, 6) <> "..." <> String.slice(value, -4, 4)
-  end
-
-  defp short_address(value), do: value || "Unknown"
 
   defp humanize_plan_status(nil), do: "Not prepared"
 

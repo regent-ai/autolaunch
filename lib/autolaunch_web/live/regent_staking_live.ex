@@ -3,6 +3,7 @@ defmodule AutolaunchWeb.RegentStakingLive do
 
   alias Autolaunch.RegentStaking
   alias AutolaunchWeb.Live.Refreshable
+  alias AutolaunchWeb.RegentStakingLive.Presenter
 
   @poll_ms 15_000
 
@@ -89,19 +90,19 @@ defmodule AutolaunchWeb.RegentStakingLive do
 
           <div class={["al-regent-status", @state && @state.paused && "is-paused"]}>
             <span>{if @state && @state.paused, do: "Paused", else: "Live"}</span>
-            <strong>{chain_label(@state)}</strong>
-            <p>{short_address(@state && @state.contract_address)}</p>
+            <strong>{Presenter.chain_label(@state)}</strong>
+            <p>{AutolaunchWeb.Format.short_address(@state && @state.contract_address, "No contract configured")}</p>
           </div>
         </header>
 
         <%= if @state do %>
           <section class="al-regent-metrics" aria-label="$REGENT staking totals">
-            <.metric title="Total REGENT staked" value={display(@state.total_staked)} />
-            <.metric title="Total USDC received" value={display(@state.total_usdc_received)} />
-            <.metric title="Direct deposits" value={display(@state.direct_deposit_usdc)} />
-            <.metric title="Treasury USDC" value={display(@state.treasury_residual_usdc)} />
-            <.metric title="Funded REGENT rewards" value={display(@state.available_reward_inventory)} />
-            <.metric title="Outstanding REGENT" value={display(@state.materialized_outstanding)} />
+            <.metric title="Total REGENT staked" value={AutolaunchWeb.Format.display(@state.total_staked)} />
+            <.metric title="Total USDC received" value={AutolaunchWeb.Format.display(@state.total_usdc_received)} />
+            <.metric title="Direct deposits" value={AutolaunchWeb.Format.display(@state.direct_deposit_usdc)} />
+            <.metric title="Treasury USDC" value={AutolaunchWeb.Format.display(@state.treasury_residual_usdc)} />
+            <.metric title="Funded REGENT rewards" value={AutolaunchWeb.Format.display(@state.available_reward_inventory)} />
+            <.metric title="Outstanding REGENT" value={AutolaunchWeb.Format.display(@state.materialized_outstanding)} />
           </section>
 
           <.action_desk
@@ -162,19 +163,19 @@ defmodule AutolaunchWeb.RegentStakingLive do
               <div class="al-regent-wallet-strip">
                 <div>
                   <span>Wallet REGENT</span>
-                  <strong>{display(@state.wallet_token_balance)}</strong>
+                  <strong>{AutolaunchWeb.Format.display(@state.wallet_token_balance)}</strong>
                 </div>
                 <div>
                   <span>Staked</span>
-                  <strong>{display(@state.wallet_stake_balance)}</strong>
+                  <strong>{AutolaunchWeb.Format.display(@state.wallet_stake_balance)}</strong>
                 </div>
                 <div>
                   <span>USDC ready</span>
-                  <strong>{display(@state.wallet_claimable_usdc)}</strong>
+                  <strong>{AutolaunchWeb.Format.display(@state.wallet_claimable_usdc)}</strong>
                 </div>
                 <div>
                   <span>Funded rewards</span>
-                  <strong>{display(@state.wallet_funded_claimable_regent)}</strong>
+                  <strong>{AutolaunchWeb.Format.display(@state.wallet_funded_claimable_regent)}</strong>
                 </div>
               </div>
             </:aside>
@@ -432,12 +433,12 @@ defmodule AutolaunchWeb.RegentStakingLive do
         put_pending(socket, key, %{tx_request: tx_request, prepared: prepared})
 
       {:error, reason} ->
-        put_action_error(socket, action_error(reason))
+        put_action_error(socket, Presenter.action_error(reason))
     end
   end
 
   defp prepare_operator_action(%{assigns: %{current_human: nil}} = socket, _key, _fun) do
-    put_action_error(socket, action_error(:unauthorized))
+    put_action_error(socket, Presenter.action_error(:unauthorized))
   end
 
   defp prepare_operator_action(socket, key, fun) do
@@ -449,7 +450,7 @@ defmodule AutolaunchWeb.RegentStakingLive do
         put_pending(socket, key, %{tx_request: tx_request, prepared: prepared})
 
       {:error, reason} ->
-        put_action_error(socket, action_error(reason))
+        put_action_error(socket, Presenter.action_error(reason))
     end
   end
 
@@ -478,33 +479,6 @@ defmodule AutolaunchWeb.RegentStakingLive do
         |> assign(:load_error, reason)
     end
   end
-
-  defp action_error(:unauthorized), do: "Connect a wallet first."
-  defp action_error(:unconfigured), do: "Regent staking is not configured here yet."
-  defp action_error(:amount_required), do: "Enter an amount first."
-  defp action_error(:invalid_amount_precision), do: "Amount precision is too high."
-  defp action_error(:invalid_address), do: "Address is invalid."
-  defp action_error(:source_tag_required), do: "Source label is required."
-  defp action_error(:source_ref_required), do: "Source reference is required."
-  defp action_error(:invalid_source_ref), do: "Source label or reference is invalid."
-  defp action_error(_reason), do: "Staking action could not be prepared."
-
-  defp chain_label(nil), do: "Not configured"
-  defp chain_label(%{chain_label: label}) when is_binary(label), do: label
-  defp chain_label(_state), do: "Base"
-
-  defp display(nil), do: "-"
-  defp display(""), do: "-"
-  defp display(value) when is_binary(value), do: value
-  defp display(value), do: to_string(value)
-
-  defp short_address(nil), do: "No contract configured"
-
-  defp short_address("0x" <> rest = address) when byte_size(rest) > 12 do
-    String.slice(address, 0, 6) <> "..." <> String.slice(address, -4, 4)
-  end
-
-  defp short_address(address), do: address
 
   defp context_module do
     :autolaunch

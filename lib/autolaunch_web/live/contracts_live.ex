@@ -2,6 +2,8 @@ defmodule AutolaunchWeb.ContractsLive do
   use AutolaunchWeb, :live_view
 
   alias Autolaunch.Contracts
+  alias AutolaunchWeb.ContractsLive.Components, as: ContractComponents
+  alias AutolaunchWeb.ContractsLive.Presenter
   alias AutolaunchWeb.Live.Refreshable
 
   @route_css_path Path.expand("../../../priv/static/launch-docs-live.css", __DIR__)
@@ -24,7 +26,7 @@ defmodule AutolaunchWeb.ContractsLive do
      |> assign(:subject_scope, nil)
      |> assign(:admin_scope, nil)
      |> assign(:wallet_switch, nil)
-     |> assign(:forms, default_forms())
+     |> assign(:forms, Presenter.default_forms())
      |> assign(:prepared, nil)
      |> load_console()}
   end
@@ -32,8 +34,8 @@ defmodule AutolaunchWeb.ContractsLive do
   def handle_params(params, _uri, socket) do
     {:noreply,
      socket
-     |> assign(:job_id, blank_to_nil(Map.get(params, "job_id")))
-     |> assign(:subject_id, blank_to_nil(Map.get(params, "subject_id")))
+     |> assign(:job_id, AutolaunchWeb.Format.blank_to_nil(Map.get(params, "job_id")))
+     |> assign(:subject_id, AutolaunchWeb.Format.blank_to_nil(Map.get(params, "subject_id")))
      |> load_console()}
   end
 
@@ -86,7 +88,7 @@ defmodule AutolaunchWeb.ContractsLive do
         {:noreply, put_flash(socket, :error, "This wallet cannot prepare that contract action.")}
 
       {:error, reason} ->
-        {:noreply, put_flash(socket, :error, prepare_error(reason))}
+        {:noreply, put_flash(socket, :error, Presenter.prepare_error(reason))}
     end
   end
 
@@ -113,65 +115,9 @@ defmodule AutolaunchWeb.ContractsLive do
         body="Open one launch job, one token subject, or the shared admin view. Keep the read side close so you can confirm the next approved action before anything is signed."
       />
 
-      <section id="contracts-hero" class="al-hero al-panel al-contracts-hero" phx-hook="MissionMotion">
-        <div>
-          <p class="al-kicker">Contracts</p>
-          <h2>Pick the contract view you need before you review or prepare anything.</h2>
-          <p class="al-subcopy">
-            Start with a launch job, a subject id, or the shared admin view. This page keeps
-            review first and preparation second.
-          </p>
+      <ContractComponents.hero prepared={@prepared} />
 
-          <div class="al-contract-pill-row">
-            <span class="al-launch-tag">Review before you sign</span>
-            <span class="al-launch-tag">Open from launch and token pages</span>
-            <span class="al-launch-tag">Shared admin view</span>
-          </div>
-        </div>
-
-        <div class="al-stat-grid">
-          <.stat_card title="Review mode" value="Check first" hint="Prepare the action here, then send it from your wallet." />
-          <.stat_card title="Prepared action" value={if(@prepared, do: @prepared.action, else: "None yet")} hint="Most recent action you drafted" />
-        </div>
-      </section>
-
-      <section id="contracts-entry" class="al-contract-grid" phx-hook="MissionMotion">
-        <article class="al-panel al-contract-card">
-          <p class="al-kicker">Launch mode</p>
-          <h3>Open one launch job</h3>
-          <p class="al-inline-note">
-            Use this when you want deploy results, strategy state, vesting, or fee details.
-          </p>
-          <form method="get" action={~p"/contracts"} class="al-contract-form-grid">
-            <input type="text" name="job_id" value={@job_id} placeholder="Launch job id" />
-            <button type="submit" class="al-submit">Open launch view</button>
-          </form>
-        </article>
-
-        <article class="al-panel al-contract-card">
-          <p class="al-kicker">Subject mode</p>
-          <h3>Open one subject</h3>
-          <p class="al-inline-note">
-            Use this when you want splitter, ingress, and registry tools for a launched token.
-          </p>
-          <form method="get" action={~p"/contracts"} class="al-contract-form-grid">
-            <input type="text" name="subject_id" value={@subject_id} placeholder="Subject id" />
-            <button type="submit" class="al-submit">Open subject view</button>
-          </form>
-        </article>
-
-        <article class="al-panel al-contract-card">
-          <p class="al-kicker">Admin mode</p>
-          <h3>Stay on the shared factory view</h3>
-          <p class="al-inline-note">
-            Use the admin section below when you want global factory settings without drilling into
-            one launch or subject.
-          </p>
-          <div class="al-action-row">
-            <.link navigate={~p"/contracts"} class="al-ghost">Reset to admin</.link>
-          </div>
-        </article>
-      </section>
+      <ContractComponents.entry_selector job_id={@job_id} subject_id={@subject_id} />
 
       <%= if is_nil(@job_scope) and is_nil(@subject_scope) do %>
         <.empty_state
@@ -189,10 +135,10 @@ defmodule AutolaunchWeb.ContractsLive do
             <p class="al-kicker">Settlement</p>
             <h3>Current post-auction branch</h3>
             <div class="al-contract-kv">
-              <div><span>Settlement state</span><strong>{humanize_key(@settlement_summary.settlement_state)}</strong></div>
-              <div><span>Recommended next move</span><strong>{humanize_key(@settlement_summary.recommended_action)}</strong></div>
-              <div><span>Required signer</span><strong>{humanize_key(@settlement_summary.required_actor || "none")}</strong></div>
-              <div><span>Safe acceptance complete</span><strong>{yes_no(@settlement_summary.ownership_status.all_accepted)}</strong></div>
+              <div><span>Settlement state</span><strong>{AutolaunchWeb.Format.humanize_key(@settlement_summary.settlement_state)}</strong></div>
+              <div><span>Recommended next move</span><strong>{AutolaunchWeb.Format.humanize_key(@settlement_summary.recommended_action)}</strong></div>
+              <div><span>Required signer</span><strong>{AutolaunchWeb.Format.humanize_key(@settlement_summary.required_actor || "none")}</strong></div>
+              <div><span>Safe acceptance complete</span><strong>{AutolaunchWeb.Format.yes_no(@settlement_summary.ownership_status.all_accepted)}</strong></div>
             </div>
             <p :if={@settlement_summary.blocked_reason} class="al-inline-note">
               {@settlement_summary.blocked_reason}
@@ -203,7 +149,7 @@ defmodule AutolaunchWeb.ContractsLive do
                 class="al-contract-list-item"
               >
                 <span>Allowed now</span>
-                <strong>{humanize_key(action)}</strong>
+                <strong>{AutolaunchWeb.Format.humanize_key(action)}</strong>
               </div>
             </div>
           </article>
@@ -215,12 +161,12 @@ defmodule AutolaunchWeb.ContractsLive do
               <div><span>Deploy binary</span><strong>{@job_scope.controller.deploy_binary || "n/a"}</strong></div>
               <div><span>Workdir</span><strong>{@job_scope.controller.deploy_workdir || "n/a"}</strong></div>
               <div><span>Script target</span><strong>{@job_scope.controller.script_target || "n/a"}</strong></div>
-              <div><span>Deploy tx</span><strong>{short_address(@job_scope.controller.deploy_tx_hash)}</strong></div>
+              <div><span>Deploy tx</span><strong>{AutolaunchWeb.Format.short_address(@job_scope.controller.deploy_tx_hash)}</strong></div>
             </div>
             <div class="al-contract-kv">
               <div :for={{label, value} <- @job_scope.controller.result_addresses}>
-                <span>{humanize_key(label)}</span>
-                <strong>{short_address(value)}</strong>
+                <span>{AutolaunchWeb.Format.humanize_key(label)}</span>
+                <strong>{AutolaunchWeb.Format.short_address(value)}</strong>
               </div>
             </div>
           </article>
@@ -229,16 +175,16 @@ defmodule AutolaunchWeb.ContractsLive do
             <p class="al-kicker">Strategy</p>
             <h3>LBP runtime state</h3>
             <div class="al-contract-kv">
-              <div><span>Strategy</span><strong>{short_address(@job_scope.strategy.address)}</strong></div>
-              <div><span>Auction</span><strong>{short_address(@job_scope.strategy.auction_address)}</strong></div>
-              <div><span>Migrated</span><strong>{yes_no(@job_scope.strategy.migrated)}</strong></div>
-              <div><span>Strategy USDC</span><strong>{display_uint(@settlement_summary.balance_snapshot.strategy.usdc_balance)}</strong></div>
-              <div><span>Strategy token</span><strong>{display_uint(@settlement_summary.balance_snapshot.strategy.token_balance)}</strong></div>
-              <div><span>Pool id</span><strong>{short_hash(@job_scope.strategy.migrated_pool_id)}</strong></div>
-              <div><span>Position id</span><strong>{display_uint(@job_scope.strategy.migrated_position_id)}</strong></div>
-              <div><span>Liquidity</span><strong>{display_uint(@job_scope.strategy.migrated_liquidity)}</strong></div>
-              <div><span>Currency for LP</span><strong>{display_uint(@job_scope.strategy.migrated_currency_for_lp)}</strong></div>
-              <div><span>Token for LP</span><strong>{display_uint(@job_scope.strategy.migrated_token_for_lp)}</strong></div>
+              <div><span>Strategy</span><strong>{AutolaunchWeb.Format.short_address(@job_scope.strategy.address)}</strong></div>
+              <div><span>Auction</span><strong>{AutolaunchWeb.Format.short_address(@job_scope.strategy.auction_address)}</strong></div>
+              <div><span>Migrated</span><strong>{AutolaunchWeb.Format.yes_no(@job_scope.strategy.migrated)}</strong></div>
+              <div><span>Strategy USDC</span><strong>{AutolaunchWeb.Format.display_uint(@settlement_summary.balance_snapshot.strategy.usdc_balance)}</strong></div>
+              <div><span>Strategy token</span><strong>{AutolaunchWeb.Format.display_uint(@settlement_summary.balance_snapshot.strategy.token_balance)}</strong></div>
+              <div><span>Pool id</span><strong>{AutolaunchWeb.Format.short_hash(@job_scope.strategy.migrated_pool_id)}</strong></div>
+              <div><span>Position id</span><strong>{AutolaunchWeb.Format.display_uint(@job_scope.strategy.migrated_position_id)}</strong></div>
+              <div><span>Liquidity</span><strong>{AutolaunchWeb.Format.display_uint(@job_scope.strategy.migrated_liquidity)}</strong></div>
+              <div><span>Currency for LP</span><strong>{AutolaunchWeb.Format.display_uint(@job_scope.strategy.migrated_currency_for_lp)}</strong></div>
+              <div><span>Token for LP</span><strong>{AutolaunchWeb.Format.display_uint(@job_scope.strategy.migrated_token_for_lp)}</strong></div>
             </div>
             <div class="al-contract-action-row">
               <button type="button" class="al-submit" phx-click="prepare_action" phx-value-scope="job" phx-value-resource="strategy" phx-value-action="migrate" phx-value-form_name="strategy_migrate">Prepare migrate</button>
@@ -252,10 +198,10 @@ defmodule AutolaunchWeb.ContractsLive do
             <p class="al-kicker">Auction</p>
             <h3>Auction-side balances and return actions</h3>
             <div class="al-contract-kv">
-              <div><span>Auction</span><strong>{short_address(@job_scope.auction.address)}</strong></div>
-              <div><span>Graduated</span><strong>{yes_no(@job_scope.auction.graduated)}</strong></div>
-              <div><span>Auction USDC</span><strong>{display_uint(@job_scope.auction.currency_balance)}</strong></div>
-              <div><span>Auction token</span><strong>{display_uint(@job_scope.auction.token_balance)}</strong></div>
+              <div><span>Auction</span><strong>{AutolaunchWeb.Format.short_address(@job_scope.auction.address)}</strong></div>
+              <div><span>Graduated</span><strong>{AutolaunchWeb.Format.yes_no(@job_scope.auction.graduated)}</strong></div>
+              <div><span>Auction USDC</span><strong>{AutolaunchWeb.Format.display_uint(@job_scope.auction.currency_balance)}</strong></div>
+              <div><span>Auction token</span><strong>{AutolaunchWeb.Format.display_uint(@job_scope.auction.token_balance)}</strong></div>
             </div>
             <div class="al-contract-action-row">
               <button type="button" class="al-submit" phx-click="prepare_action" phx-value-scope="job" phx-value-resource="auction" phx-value-action="sweep_currency" phx-value-form_name="auction_sweep_currency">Prepare auction currency return</button>
@@ -267,16 +213,16 @@ defmodule AutolaunchWeb.ContractsLive do
             <p class="al-kicker">Vesting</p>
             <h3>Release path and Safe rotation</h3>
             <div class="al-contract-kv">
-              <div><span>Vesting wallet</span><strong>{short_address(@job_scope.vesting.address)}</strong></div>
-              <div><span>Beneficiary</span><strong>{short_address(@job_scope.vesting.beneficiary)}</strong></div>
-              <div><span>Pending beneficiary</span><strong>{short_address(@job_scope.vesting.pending_beneficiary)}</strong></div>
-              <div><span>Rotation ETA</span><strong>{display_timestamp(@job_scope.vesting.pending_beneficiary_eta)}</strong></div>
-              <div><span>Rotation delay</span><strong>{display_seconds(@job_scope.vesting.rotation_delay)}</strong></div>
-              <div><span>Releasable token</span><strong>{display_uint(@job_scope.vesting.releasable_launch_token)}</strong></div>
+              <div><span>Vesting wallet</span><strong>{AutolaunchWeb.Format.short_address(@job_scope.vesting.address)}</strong></div>
+              <div><span>Beneficiary</span><strong>{AutolaunchWeb.Format.short_address(@job_scope.vesting.beneficiary)}</strong></div>
+              <div><span>Pending beneficiary</span><strong>{AutolaunchWeb.Format.short_address(@job_scope.vesting.pending_beneficiary)}</strong></div>
+              <div><span>Rotation ETA</span><strong>{AutolaunchWeb.Format.display_unix_timestamp(@job_scope.vesting.pending_beneficiary_eta)}</strong></div>
+              <div><span>Rotation delay</span><strong>{AutolaunchWeb.Format.display_seconds(@job_scope.vesting.rotation_delay)}</strong></div>
+              <div><span>Releasable token</span><strong>{AutolaunchWeb.Format.display_uint(@job_scope.vesting.releasable_launch_token)}</strong></div>
             </div>
             <form phx-change="update_form" class="al-contract-form-grid">
               <input type="hidden" name="form_name" value="vesting_beneficiary_rotation" />
-              <input type="text" name="form[beneficiary]" value={form_value(@forms, "vesting_beneficiary_rotation", "beneficiary")} placeholder="New beneficiary Safe" />
+              <input type="text" name="form[beneficiary]" value={Presenter.form_value(@forms, "vesting_beneficiary_rotation", "beneficiary")} placeholder="New beneficiary Safe" />
             </form>
             <div class="al-contract-action-row">
               <button type="button" class="al-submit" phx-click="prepare_action" phx-value-scope="job" phx-value-resource="vesting" phx-value-action="release" phx-value-form_name="vesting_release">Prepare release</button>
@@ -290,10 +236,10 @@ defmodule AutolaunchWeb.ContractsLive do
             <p class="al-kicker">Revenue splitter</p>
             <h3>Safe acceptance status</h3>
             <div class="al-contract-kv">
-              <div><span>Splitter</span><strong>{short_address(@job_scope.revenue_splitter.address)}</strong></div>
-              <div><span>Owner</span><strong>{short_address(@job_scope.revenue_splitter.owner)}</strong></div>
-              <div><span>Pending owner</span><strong>{short_address(@job_scope.revenue_splitter.pending_owner)}</strong></div>
-              <div><span>Ownership status</span><strong>{humanize_key(@job_scope.revenue_splitter.ownership_status)}</strong></div>
+              <div><span>Splitter</span><strong>{AutolaunchWeb.Format.short_address(@job_scope.revenue_splitter.address)}</strong></div>
+              <div><span>Owner</span><strong>{AutolaunchWeb.Format.short_address(@job_scope.revenue_splitter.owner)}</strong></div>
+              <div><span>Pending owner</span><strong>{AutolaunchWeb.Format.short_address(@job_scope.revenue_splitter.pending_owner)}</strong></div>
+              <div><span>Ownership status</span><strong>{AutolaunchWeb.Format.humanize_key(@job_scope.revenue_splitter.ownership_status)}</strong></div>
             </div>
             <div class="al-contract-action-row">
               <button type="button" class="al-submit" phx-click="prepare_action" phx-value-scope="job" phx-value-resource="revenue_splitter" phx-value-action="accept_ownership" phx-value-form_name="revenue_splitter_accept_ownership">Prepare Safe acceptance</button>
@@ -304,16 +250,16 @@ defmodule AutolaunchWeb.ContractsLive do
             <p class="al-kicker">Fee registry</p>
             <h3>Pool registration and locked hook state</h3>
             <div class="al-contract-kv">
-              <div><span>Registry</span><strong>{short_address(@job_scope.fee_registry.address)}</strong></div>
-              <div><span>Owner</span><strong>{short_address(@job_scope.fee_registry.owner)}</strong></div>
-              <div><span>Pending owner</span><strong>{short_address(@job_scope.fee_registry.pending_owner)}</strong></div>
-              <div><span>Ownership status</span><strong>{humanize_key(@job_scope.fee_registry.ownership_status)}</strong></div>
-              <div><span>Pool id</span><strong>{short_hash(@job_scope.fee_registry.pool_id)}</strong></div>
-              <div :if={@job_scope.fee_registry.pool_config}><span>Hook enabled</span><strong>{yes_no(@job_scope.fee_registry.pool_config.hook_enabled)}</strong></div>
-              <div :if={@job_scope.fee_registry.pool_config}><span>Pool fee</span><strong>{display_uint(@job_scope.fee_registry.pool_config.pool_fee)}</strong></div>
-              <div :if={@job_scope.fee_registry.pool_config}><span>Tick spacing</span><strong>{display_int(@job_scope.fee_registry.pool_config.tick_spacing)}</strong></div>
-              <div :if={@job_scope.fee_registry.pool_config}><span>Treasury</span><strong>{short_address(@job_scope.fee_registry.pool_config.treasury)}</strong></div>
-              <div :if={@job_scope.fee_registry.pool_config}><span>Regent recipient</span><strong>{short_address(@job_scope.fee_registry.pool_config.regent_recipient)}</strong></div>
+              <div><span>Registry</span><strong>{AutolaunchWeb.Format.short_address(@job_scope.fee_registry.address)}</strong></div>
+              <div><span>Owner</span><strong>{AutolaunchWeb.Format.short_address(@job_scope.fee_registry.owner)}</strong></div>
+              <div><span>Pending owner</span><strong>{AutolaunchWeb.Format.short_address(@job_scope.fee_registry.pending_owner)}</strong></div>
+              <div><span>Ownership status</span><strong>{AutolaunchWeb.Format.humanize_key(@job_scope.fee_registry.ownership_status)}</strong></div>
+              <div><span>Pool id</span><strong>{AutolaunchWeb.Format.short_hash(@job_scope.fee_registry.pool_id)}</strong></div>
+              <div :if={@job_scope.fee_registry.pool_config}><span>Hook enabled</span><strong>{AutolaunchWeb.Format.yes_no(@job_scope.fee_registry.pool_config.hook_enabled)}</strong></div>
+              <div :if={@job_scope.fee_registry.pool_config}><span>Pool fee</span><strong>{AutolaunchWeb.Format.display_uint(@job_scope.fee_registry.pool_config.pool_fee)}</strong></div>
+              <div :if={@job_scope.fee_registry.pool_config}><span>Tick spacing</span><strong>{AutolaunchWeb.Format.display_int(@job_scope.fee_registry.pool_config.tick_spacing)}</strong></div>
+              <div :if={@job_scope.fee_registry.pool_config}><span>Treasury</span><strong>{AutolaunchWeb.Format.short_address(@job_scope.fee_registry.pool_config.treasury)}</strong></div>
+              <div :if={@job_scope.fee_registry.pool_config}><span>Regent recipient</span><strong>{AutolaunchWeb.Format.short_address(@job_scope.fee_registry.pool_config.regent_recipient)}</strong></div>
             </div>
             <div class="al-contract-action-row">
               <button type="button" class="al-submit" phx-click="prepare_action" phx-value-scope="job" phx-value-resource="fee_registry" phx-value-action="accept_ownership" phx-value-form_name="fee_registry_accept_ownership">Prepare ownership acceptance</button>
@@ -324,29 +270,29 @@ defmodule AutolaunchWeb.ContractsLive do
             <p class="al-kicker">Fee vault</p>
             <h3>Treasury and Regent balances</h3>
             <div class="al-contract-kv">
-              <div><span>Vault</span><strong>{short_address(@job_scope.fee_vault.address)}</strong></div>
-              <div><span>Hook</span><strong>{short_address(@job_scope.fee_vault.hook)}</strong></div>
-              <div><span>Owner</span><strong>{short_address(@job_scope.fee_vault.owner)}</strong></div>
-              <div><span>Pending owner</span><strong>{short_address(@job_scope.fee_vault.pending_owner)}</strong></div>
-              <div><span>Ownership status</span><strong>{humanize_key(@job_scope.fee_vault.ownership_status)}</strong></div>
-              <div><span>Treasury token</span><strong>{display_uint(@job_scope.fee_vault.treasury_accrued.token)}</strong></div>
-              <div><span>Treasury USDC</span><strong>{display_uint(@job_scope.fee_vault.treasury_accrued.usdc)}</strong></div>
-              <div><span>Regent token</span><strong>{display_uint(@job_scope.fee_vault.regent_accrued.token)}</strong></div>
-              <div><span>Regent USDC</span><strong>{display_uint(@job_scope.fee_vault.regent_accrued.usdc)}</strong></div>
+              <div><span>Vault</span><strong>{AutolaunchWeb.Format.short_address(@job_scope.fee_vault.address)}</strong></div>
+              <div><span>Hook</span><strong>{AutolaunchWeb.Format.short_address(@job_scope.fee_vault.hook)}</strong></div>
+              <div><span>Owner</span><strong>{AutolaunchWeb.Format.short_address(@job_scope.fee_vault.owner)}</strong></div>
+              <div><span>Pending owner</span><strong>{AutolaunchWeb.Format.short_address(@job_scope.fee_vault.pending_owner)}</strong></div>
+              <div><span>Ownership status</span><strong>{AutolaunchWeb.Format.humanize_key(@job_scope.fee_vault.ownership_status)}</strong></div>
+              <div><span>Treasury token</span><strong>{AutolaunchWeb.Format.display_uint(@job_scope.fee_vault.treasury_accrued.token)}</strong></div>
+              <div><span>Treasury USDC</span><strong>{AutolaunchWeb.Format.display_uint(@job_scope.fee_vault.treasury_accrued.usdc)}</strong></div>
+              <div><span>Regent token</span><strong>{AutolaunchWeb.Format.display_uint(@job_scope.fee_vault.regent_accrued.token)}</strong></div>
+              <div><span>Regent USDC</span><strong>{AutolaunchWeb.Format.display_uint(@job_scope.fee_vault.regent_accrued.usdc)}</strong></div>
             </div>
 
             <form phx-change="update_form" class="al-contract-form-grid">
               <input type="hidden" name="form_name" value="fee_vault_withdraw_treasury" />
-              <input type="text" name="form[currency]" value={form_value(@forms, "fee_vault_withdraw_treasury", "currency", @job_scope.job.token_address)} placeholder="Currency address" />
-              <input type="text" name="form[amount]" value={form_value(@forms, "fee_vault_withdraw_treasury", "amount")} placeholder="Amount (raw units)" />
-              <input type="text" name="form[recipient]" value={form_value(@forms, "fee_vault_withdraw_treasury", "recipient")} placeholder="Recipient address" />
+              <input type="text" name="form[currency]" value={Presenter.form_value(@forms, "fee_vault_withdraw_treasury", "currency", @job_scope.job.token_address)} placeholder="Currency address" />
+              <input type="text" name="form[amount]" value={Presenter.form_value(@forms, "fee_vault_withdraw_treasury", "amount")} placeholder="Amount (raw units)" />
+              <input type="text" name="form[recipient]" value={Presenter.form_value(@forms, "fee_vault_withdraw_treasury", "recipient")} placeholder="Recipient address" />
             </form>
 
             <form phx-change="update_form" class="al-contract-form-grid">
               <input type="hidden" name="form_name" value="fee_vault_withdraw_regent" />
-              <input type="text" name="form[currency]" value={form_value(@forms, "fee_vault_withdraw_regent", "currency", @job_scope.job.token_address)} placeholder="Currency address" />
-              <input type="text" name="form[amount]" value={form_value(@forms, "fee_vault_withdraw_regent", "amount")} placeholder="Amount (raw units)" />
-              <input type="text" name="form[recipient]" value={form_value(@forms, "fee_vault_withdraw_regent", "recipient")} placeholder="Recipient address" />
+              <input type="text" name="form[currency]" value={Presenter.form_value(@forms, "fee_vault_withdraw_regent", "currency", @job_scope.job.token_address)} placeholder="Currency address" />
+              <input type="text" name="form[amount]" value={Presenter.form_value(@forms, "fee_vault_withdraw_regent", "amount")} placeholder="Amount (raw units)" />
+              <input type="text" name="form[recipient]" value={Presenter.form_value(@forms, "fee_vault_withdraw_regent", "recipient")} placeholder="Recipient address" />
             </form>
 
             <div class="al-contract-action-row">
@@ -360,11 +306,11 @@ defmodule AutolaunchWeb.ContractsLive do
             <p class="al-kicker">Hook</p>
             <h3>Hook ownership handoff</h3>
             <div class="al-contract-kv">
-              <div><span>Hook</span><strong>{short_address(@job_scope.hook.address)}</strong></div>
-              <div><span>Owner</span><strong>{short_address(@job_scope.hook.owner)}</strong></div>
-              <div><span>Pending owner</span><strong>{short_address(@job_scope.hook.pending_owner)}</strong></div>
-              <div><span>Ownership status</span><strong>{humanize_key(@job_scope.hook.ownership_status)}</strong></div>
-              <div><span>Pool id</span><strong>{short_hash(@job_scope.hook.pool_id)}</strong></div>
+              <div><span>Hook</span><strong>{AutolaunchWeb.Format.short_address(@job_scope.hook.address)}</strong></div>
+              <div><span>Owner</span><strong>{AutolaunchWeb.Format.short_address(@job_scope.hook.owner)}</strong></div>
+              <div><span>Pending owner</span><strong>{AutolaunchWeb.Format.short_address(@job_scope.hook.pending_owner)}</strong></div>
+              <div><span>Ownership status</span><strong>{AutolaunchWeb.Format.humanize_key(@job_scope.hook.ownership_status)}</strong></div>
+              <div><span>Pool id</span><strong>{AutolaunchWeb.Format.short_hash(@job_scope.hook.pool_id)}</strong></div>
             </div>
             <div class="al-contract-action-row">
               <button type="button" class="al-submit" phx-click="prepare_action" phx-value-scope="job" phx-value-resource="hook" phx-value-action="accept_ownership" phx-value-form_name="hook_accept_ownership">Prepare ownership acceptance</button>
@@ -379,9 +325,9 @@ defmodule AutolaunchWeb.ContractsLive do
             <p class="al-kicker">Subject</p>
             <h3>Revenue state</h3>
             <div class="al-contract-kv">
-              <div><span>Subject id</span><strong>{short_hash(@subject_scope.subject.subject_id)}</strong></div>
-              <div><span>Splitter</span><strong>{short_address(@subject_scope.subject.splitter_address)}</strong></div>
-              <div><span>Default ingress</span><strong>{short_address(@subject_scope.subject.default_ingress_address)}</strong></div>
+              <div><span>Subject id</span><strong>{AutolaunchWeb.Format.short_hash(@subject_scope.subject.subject_id)}</strong></div>
+              <div><span>Splitter</span><strong>{AutolaunchWeb.Format.short_address(@subject_scope.subject.splitter_address)}</strong></div>
+              <div><span>Default ingress</span><strong>{AutolaunchWeb.Format.short_address(@subject_scope.subject.default_ingress_address)}</strong></div>
               <div><span>Total staked</span><strong>{@subject_scope.subject.total_staked}</strong></div>
               <div><span>Treasury residual</span><strong>{@subject_scope.subject.treasury_residual_usdc}</strong></div>
               <div><span>Protocol reserve</span><strong>{@subject_scope.subject.protocol_reserve_usdc}</strong></div>
@@ -395,37 +341,37 @@ defmodule AutolaunchWeb.ContractsLive do
             <p class="al-kicker">Subject registry</p>
             <h3>Config, control, and identity links</h3>
             <div class="al-contract-kv">
-              <div><span>Registry</span><strong>{short_address(@subject_scope.registry.address)}</strong></div>
-              <div><span>Owner</span><strong>{short_address(@subject_scope.registry.owner)}</strong></div>
-              <div><span>Treasury safe</span><strong>{short_address(@subject_scope.registry.subject_config && @subject_scope.registry.subject_config.treasury_safe)}</strong></div>
-              <div><span>Active</span><strong>{yes_no(@subject_scope.registry.subject_config && @subject_scope.registry.subject_config.active)}</strong></div>
+              <div><span>Registry</span><strong>{AutolaunchWeb.Format.short_address(@subject_scope.registry.address)}</strong></div>
+              <div><span>Owner</span><strong>{AutolaunchWeb.Format.short_address(@subject_scope.registry.owner)}</strong></div>
+              <div><span>Treasury safe</span><strong>{AutolaunchWeb.Format.short_address(@subject_scope.registry.subject_config && @subject_scope.registry.subject_config.treasury_safe)}</strong></div>
+              <div><span>Active</span><strong>{AutolaunchWeb.Format.yes_no(@subject_scope.registry.subject_config && @subject_scope.registry.subject_config.active)}</strong></div>
               <div><span>Label</span><strong>{@subject_scope.registry.subject_config && @subject_scope.registry.subject_config.label || "n/a"}</strong></div>
-              <div><span>Connected wallet can manage</span><strong>{yes_no(@subject_scope.registry.connected_wallet_can_manage)}</strong></div>
+              <div><span>Connected wallet can manage</span><strong>{AutolaunchWeb.Format.yes_no(@subject_scope.registry.connected_wallet_can_manage)}</strong></div>
             </div>
             <div class="al-contract-list">
               <div :for={link <- @subject_scope.registry.identity_links} class="al-contract-list-item">
-                <span>{display_uint(link.chain_id)}</span>
-                <span>{short_address(link.registry)}</span>
-                <strong>{display_uint(link.agent_id)}</strong>
+                <span>{AutolaunchWeb.Format.display_uint(link.chain_id)}</span>
+                <span>{AutolaunchWeb.Format.short_address(link.registry)}</span>
+                <strong>{AutolaunchWeb.Format.display_uint(link.agent_id)}</strong>
               </div>
             </div>
             <form phx-change="update_form" class="al-contract-form-grid">
               <input type="hidden" name="form_name" value="registry_manager" />
-              <input type="text" name="form[account]" value={form_value(@forms, "registry_manager", "account")} placeholder="Manager wallet" />
+              <input type="text" name="form[account]" value={Presenter.form_value(@forms, "registry_manager", "account")} placeholder="Manager wallet" />
               <select name="form[enabled]">
-                <option value="true" selected={form_value(@forms, "registry_manager", "enabled", "true") == "true"}>Enable</option>
-                <option value="false" selected={form_value(@forms, "registry_manager", "enabled") == "false"}>Disable</option>
+                <option value="true" selected={Presenter.form_value(@forms, "registry_manager", "enabled", "true") == "true"}>Enable</option>
+                <option value="false" selected={Presenter.form_value(@forms, "registry_manager", "enabled") == "false"}>Disable</option>
               </select>
             </form>
             <form phx-change="update_form" class="al-contract-form-grid">
               <input type="hidden" name="form_name" value="registry_identity" />
-              <input type="text" name="form[identity_chain_id]" value={form_value(@forms, "registry_identity", "identity_chain_id", "84532")} placeholder="Identity chain id" />
-              <input type="text" name="form[identity_registry]" value={form_value(@forms, "registry_identity", "identity_registry")} placeholder="Identity registry" />
-              <input type="text" name="form[identity_agent_id]" value={form_value(@forms, "registry_identity", "identity_agent_id")} placeholder="Identity agent id" />
+              <input type="text" name="form[identity_chain_id]" value={Presenter.form_value(@forms, "registry_identity", "identity_chain_id", "84532")} placeholder="Identity chain id" />
+              <input type="text" name="form[identity_registry]" value={Presenter.form_value(@forms, "registry_identity", "identity_registry")} placeholder="Identity registry" />
+              <input type="text" name="form[identity_agent_id]" value={Presenter.form_value(@forms, "registry_identity", "identity_agent_id")} placeholder="Identity agent id" />
             </form>
             <form phx-change="update_form" class="al-contract-form-grid">
               <input type="hidden" name="form_name" value="registry_rotate_safe" />
-              <input type="text" name="form[new_safe]" value={form_value(@forms, "registry_rotate_safe", "new_safe")} placeholder="New Agent Safe" />
+              <input type="text" name="form[new_safe]" value={Presenter.form_value(@forms, "registry_rotate_safe", "new_safe")} placeholder="New Agent Safe" />
             </form>
             <div class="al-contract-action-row">
               <button type="button" class="al-submit" phx-click="prepare_action" phx-value-scope="subject" phx-value-resource="registry" phx-value-action="set_subject_manager" phx-value-form_name="registry_manager">Prepare manager change</button>
@@ -438,65 +384,65 @@ defmodule AutolaunchWeb.ContractsLive do
             <p class="al-kicker">Splitter</p>
             <h3>Advanced revenue controls</h3>
             <div class="al-contract-kv">
-              <div><span>Owner</span><strong>{short_address(@subject_scope.splitter.owner)}</strong></div>
-              <div><span>Paused</span><strong>{yes_no(@subject_scope.splitter.paused)}</strong></div>
-              <div><span>Eligible share</span><strong>{display_bps_percent(@subject_scope.splitter.eligible_revenue_share_bps)}</strong></div>
-              <div><span>Pending eligible share</span><strong>{display_bps_percent(@subject_scope.splitter.pending_eligible_revenue_share_bps)}</strong></div>
-              <div><span>Share activation ETA</span><strong>{display_timestamp(@subject_scope.splitter.pending_eligible_revenue_share_eta)}</strong></div>
-              <div><span>Share cooldown end</span><strong>{display_timestamp(@subject_scope.splitter.eligible_revenue_share_cooldown_end)}</strong></div>
-              <div><span>Treasury recipient</span><strong>{short_address(@subject_scope.splitter.treasury_recipient)}</strong></div>
-              <div><span>Pending treasury recipient</span><strong>{short_address(@subject_scope.splitter.pending_treasury_recipient)}</strong></div>
-              <div><span>Treasury rotation ETA</span><strong>{display_timestamp(@subject_scope.splitter.pending_treasury_recipient_eta)}</strong></div>
-              <div><span>Treasury rotation delay</span><strong>{display_seconds(@subject_scope.splitter.treasury_rotation_delay)}</strong></div>
-              <div><span>Protocol recipient</span><strong>{short_address(@subject_scope.splitter.protocol_recipient)}</strong></div>
-              <div><span>Protocol skim bps</span><strong>{display_uint(@subject_scope.splitter.protocol_skim_bps)}</strong></div>
-              <div><span>Total USDC received</span><strong>{display_uint(@subject_scope.splitter.total_usdc_received_raw)}</strong></div>
-              <div><span>Direct deposits</span><strong>{display_uint(@subject_scope.splitter.direct_deposit_usdc_raw)}</strong></div>
-              <div><span>Verified ingress</span><strong>{display_uint(@subject_scope.splitter.verified_ingress_usdc_raw)}</strong></div>
-              <div><span>Launch fees</span><strong>{display_uint(@subject_scope.splitter.launch_fee_usdc_raw)}</strong></div>
-              <div><span>Regent skim</span><strong>{display_uint(@subject_scope.splitter.regent_skim_usdc_raw)}</strong></div>
-              <div><span>Staker-eligible inflow</span><strong>{display_uint(@subject_scope.splitter.staker_eligible_inflow_usdc_raw)}</strong></div>
-              <div><span>Treasury-reserved inflow</span><strong>{display_uint(@subject_scope.splitter.treasury_reserved_inflow_usdc_raw)}</strong></div>
-              <div><span>Treasury reserve</span><strong>{display_uint(@subject_scope.splitter.treasury_reserved_usdc_raw)}</strong></div>
+              <div><span>Owner</span><strong>{AutolaunchWeb.Format.short_address(@subject_scope.splitter.owner)}</strong></div>
+              <div><span>Paused</span><strong>{AutolaunchWeb.Format.yes_no(@subject_scope.splitter.paused)}</strong></div>
+              <div><span>Eligible share</span><strong>{AutolaunchWeb.Format.display_bps_percent(@subject_scope.splitter.eligible_revenue_share_bps)}</strong></div>
+              <div><span>Pending eligible share</span><strong>{AutolaunchWeb.Format.display_bps_percent(@subject_scope.splitter.pending_eligible_revenue_share_bps)}</strong></div>
+              <div><span>Share activation ETA</span><strong>{AutolaunchWeb.Format.display_unix_timestamp(@subject_scope.splitter.pending_eligible_revenue_share_eta)}</strong></div>
+              <div><span>Share cooldown end</span><strong>{AutolaunchWeb.Format.display_unix_timestamp(@subject_scope.splitter.eligible_revenue_share_cooldown_end)}</strong></div>
+              <div><span>Treasury recipient</span><strong>{AutolaunchWeb.Format.short_address(@subject_scope.splitter.treasury_recipient)}</strong></div>
+              <div><span>Pending treasury recipient</span><strong>{AutolaunchWeb.Format.short_address(@subject_scope.splitter.pending_treasury_recipient)}</strong></div>
+              <div><span>Treasury rotation ETA</span><strong>{AutolaunchWeb.Format.display_unix_timestamp(@subject_scope.splitter.pending_treasury_recipient_eta)}</strong></div>
+              <div><span>Treasury rotation delay</span><strong>{AutolaunchWeb.Format.display_seconds(@subject_scope.splitter.treasury_rotation_delay)}</strong></div>
+              <div><span>Protocol recipient</span><strong>{AutolaunchWeb.Format.short_address(@subject_scope.splitter.protocol_recipient)}</strong></div>
+              <div><span>Protocol skim bps</span><strong>{AutolaunchWeb.Format.display_uint(@subject_scope.splitter.protocol_skim_bps)}</strong></div>
+              <div><span>Total USDC received</span><strong>{AutolaunchWeb.Format.display_uint(@subject_scope.splitter.total_usdc_received_raw)}</strong></div>
+              <div><span>Direct deposits</span><strong>{AutolaunchWeb.Format.display_uint(@subject_scope.splitter.direct_deposit_usdc_raw)}</strong></div>
+              <div><span>Verified ingress</span><strong>{AutolaunchWeb.Format.display_uint(@subject_scope.splitter.verified_ingress_usdc_raw)}</strong></div>
+              <div><span>Launch fees</span><strong>{AutolaunchWeb.Format.display_uint(@subject_scope.splitter.launch_fee_usdc_raw)}</strong></div>
+              <div><span>Regent skim</span><strong>{AutolaunchWeb.Format.display_uint(@subject_scope.splitter.regent_skim_usdc_raw)}</strong></div>
+              <div><span>Staker-eligible inflow</span><strong>{AutolaunchWeb.Format.display_uint(@subject_scope.splitter.staker_eligible_inflow_usdc_raw)}</strong></div>
+              <div><span>Treasury-reserved inflow</span><strong>{AutolaunchWeb.Format.display_uint(@subject_scope.splitter.treasury_reserved_inflow_usdc_raw)}</strong></div>
+              <div><span>Treasury reserve</span><strong>{AutolaunchWeb.Format.display_uint(@subject_scope.splitter.treasury_reserved_usdc_raw)}</strong></div>
               <div><span>Label</span><strong>{@subject_scope.splitter.label || "n/a"}</strong></div>
             </div>
 
             <form phx-change="update_form" class="al-contract-form-grid">
               <input type="hidden" name="form_name" value="splitter_paused" />
               <select name="form[paused]">
-                <option value="true" selected={form_value(@forms, "splitter_paused", "paused") == "true"}>Pause</option>
-                <option value="false" selected={form_value(@forms, "splitter_paused", "paused", "false") == "false"}>Unpause</option>
+                <option value="true" selected={Presenter.form_value(@forms, "splitter_paused", "paused") == "true"}>Pause</option>
+                <option value="false" selected={Presenter.form_value(@forms, "splitter_paused", "paused", "false") == "false"}>Unpause</option>
               </select>
             </form>
 
             <form phx-change="update_form" class="al-contract-form-grid">
               <input type="hidden" name="form_name" value="splitter_label" />
-              <input type="text" name="form[label]" value={form_value(@forms, "splitter_label", "label")} placeholder="Label" />
+              <input type="text" name="form[label]" value={Presenter.form_value(@forms, "splitter_label", "label")} placeholder="Label" />
             </form>
 
             <form phx-change="update_form" class="al-contract-form-grid">
               <input type="hidden" name="form_name" value="splitter_share" />
-              <input type="text" name="form[share_bps]" value={form_value(@forms, "splitter_share", "share_bps")} placeholder="Eligible share bps" />
+              <input type="text" name="form[share_bps]" value={Presenter.form_value(@forms, "splitter_share", "share_bps")} placeholder="Eligible share bps" />
             </form>
 
             <form phx-change="update_form" class="al-contract-form-grid">
               <input type="hidden" name="form_name" value="splitter_treasury_rotation" />
-              <input type="text" name="form[recipient]" value={form_value(@forms, "splitter_treasury_rotation", "recipient")} placeholder="New treasury recipient Safe" />
+              <input type="text" name="form[recipient]" value={Presenter.form_value(@forms, "splitter_treasury_rotation", "recipient")} placeholder="New treasury recipient Safe" />
             </form>
 
             <form phx-change="update_form" class="al-contract-form-grid">
               <input type="hidden" name="form_name" value="splitter_protocol" />
-              <input type="text" name="form[recipient]" value={form_value(@forms, "splitter_protocol", "recipient")} placeholder="Protocol recipient" />
+              <input type="text" name="form[recipient]" value={Presenter.form_value(@forms, "splitter_protocol", "recipient")} placeholder="Protocol recipient" />
             </form>
 
             <form phx-change="update_form" class="al-contract-form-grid">
               <input type="hidden" name="form_name" value="splitter_sweeps" />
-              <input type="text" name="form[amount]" value={form_value(@forms, "splitter_sweeps", "amount")} placeholder="Amount (raw units)" />
+              <input type="text" name="form[amount]" value={Presenter.form_value(@forms, "splitter_sweeps", "amount")} placeholder="Amount (raw units)" />
             </form>
 
             <form phx-change="update_form" class="al-contract-form-grid">
               <input type="hidden" name="form_name" value="splitter_dust" />
-              <input type="text" name="form[amount]" value={form_value(@forms, "splitter_dust", "amount")} placeholder="Dust amount (raw units)" />
+              <input type="text" name="form[amount]" value={Presenter.form_value(@forms, "splitter_dust", "amount")} placeholder="Dust amount (raw units)" />
             </form>
 
             <div class="al-contract-action-row">
@@ -520,51 +466,51 @@ defmodule AutolaunchWeb.ContractsLive do
             <p class="al-kicker">Ingress</p>
             <h3>Factory and account controls</h3>
             <div class="al-contract-kv">
-              <div><span>Factory</span><strong>{short_address(@subject_scope.ingress_factory.address)}</strong></div>
-              <div><span>Owner</span><strong>{short_address(@subject_scope.ingress_factory.owner)}</strong></div>
-              <div><span>Default ingress</span><strong>{short_address(@subject_scope.ingress_factory.default_ingress_address)}</strong></div>
-              <div><span>Known accounts</span><strong>{display_uint(@subject_scope.ingress_factory.ingress_account_count)}</strong></div>
+              <div><span>Factory</span><strong>{AutolaunchWeb.Format.short_address(@subject_scope.ingress_factory.address)}</strong></div>
+              <div><span>Owner</span><strong>{AutolaunchWeb.Format.short_address(@subject_scope.ingress_factory.owner)}</strong></div>
+              <div><span>Default ingress</span><strong>{AutolaunchWeb.Format.short_address(@subject_scope.ingress_factory.default_ingress_address)}</strong></div>
+              <div><span>Known accounts</span><strong>{AutolaunchWeb.Format.display_uint(@subject_scope.ingress_factory.ingress_account_count)}</strong></div>
             </div>
 
             <div class="al-contract-list">
               <div :for={ingress <- @subject_scope.subject.ingress_accounts} class="al-contract-list-item">
                 <span>{if ingress.is_default, do: "default", else: "ingress"}</span>
-                <strong>{short_address(ingress.address)}</strong>
+                <strong>{AutolaunchWeb.Format.short_address(ingress.address)}</strong>
                 <span>{ingress.usdc_balance} USDC</span>
               </div>
             </div>
 
             <form phx-change="update_form" class="al-contract-form-grid">
               <input type="hidden" name="form_name" value="ingress_factory_create" />
-              <input type="text" name="form[label]" value={form_value(@forms, "ingress_factory_create", "label")} placeholder="Ingress label" />
+              <input type="text" name="form[label]" value={Presenter.form_value(@forms, "ingress_factory_create", "label")} placeholder="Ingress label" />
               <select name="form[make_default]">
-                <option value="true" selected={form_value(@forms, "ingress_factory_create", "make_default") == "true"}>Create as default</option>
-                <option value="false" selected={form_value(@forms, "ingress_factory_create", "make_default", "false") == "false"}>Create without default switch</option>
+                <option value="true" selected={Presenter.form_value(@forms, "ingress_factory_create", "make_default") == "true"}>Create as default</option>
+                <option value="false" selected={Presenter.form_value(@forms, "ingress_factory_create", "make_default", "false") == "false"}>Create without default switch</option>
               </select>
             </form>
 
             <form phx-change="update_form" class="al-contract-form-grid">
               <input type="hidden" name="form_name" value="ingress_factory_default" />
-              <input type="text" name="form[ingress_address]" value={form_value(@forms, "ingress_factory_default", "ingress_address")} placeholder="Ingress address" />
+              <input type="text" name="form[ingress_address]" value={Presenter.form_value(@forms, "ingress_factory_default", "ingress_address")} placeholder="Ingress address" />
             </form>
 
             <form phx-change="update_form" class="al-contract-form-grid">
               <input type="hidden" name="form_name" value="ingress_account_label" />
-              <input type="text" name="form[ingress_address]" value={form_value(@forms, "ingress_account_label", "ingress_address")} placeholder="Ingress address" />
-              <input type="text" name="form[label]" value={form_value(@forms, "ingress_account_label", "label")} placeholder="New label" />
+              <input type="text" name="form[ingress_address]" value={Presenter.form_value(@forms, "ingress_account_label", "ingress_address")} placeholder="Ingress address" />
+              <input type="text" name="form[label]" value={Presenter.form_value(@forms, "ingress_account_label", "label")} placeholder="New label" />
             </form>
 
             <form phx-change="update_form" class="al-contract-form-grid">
               <input type="hidden" name="form_name" value="ingress_account_rescue" />
-              <input type="text" name="form[ingress_address]" value={form_value(@forms, "ingress_account_rescue", "ingress_address")} placeholder="Ingress address" />
-              <input type="text" name="form[token]" value={form_value(@forms, "ingress_account_rescue", "token")} placeholder="Token address" />
-              <input type="text" name="form[amount]" value={form_value(@forms, "ingress_account_rescue", "amount")} placeholder="Amount (raw units)" />
-              <input type="text" name="form[recipient]" value={form_value(@forms, "ingress_account_rescue", "recipient")} placeholder="Recipient" />
+              <input type="text" name="form[ingress_address]" value={Presenter.form_value(@forms, "ingress_account_rescue", "ingress_address")} placeholder="Ingress address" />
+              <input type="text" name="form[token]" value={Presenter.form_value(@forms, "ingress_account_rescue", "token")} placeholder="Token address" />
+              <input type="text" name="form[amount]" value={Presenter.form_value(@forms, "ingress_account_rescue", "amount")} placeholder="Amount (raw units)" />
+              <input type="text" name="form[recipient]" value={Presenter.form_value(@forms, "ingress_account_rescue", "recipient")} placeholder="Recipient" />
             </form>
 
             <form phx-change="update_form" class="al-contract-form-grid">
               <input type="hidden" name="form_name" value="ingress_account_sweep" />
-              <input type="text" name="form[ingress_address]" value={form_value(@forms, "ingress_account_sweep", "ingress_address")} placeholder="Ingress address" />
+              <input type="text" name="form[ingress_address]" value={Presenter.form_value(@forms, "ingress_account_sweep", "ingress_address")} placeholder="Ingress address" />
             </form>
 
             <div class="al-contract-action-row">
@@ -583,27 +529,27 @@ defmodule AutolaunchWeb.ContractsLive do
           <p class="al-kicker">Admin factories</p>
           <h3>Global prepare-only actions</h3>
           <div class="al-contract-kv">
-            <div><span>Revenue share factory</span><strong>{short_address(@admin_scope && @admin_scope.admin_contracts.revenue_share_factory.address)}</strong></div>
-            <div><span>Ingress factory</span><strong>{short_address(@admin_scope && @admin_scope.admin_contracts.revenue_ingress_factory.address)}</strong></div>
-            <div><span>Strategy factory</span><strong>{short_address(@admin_scope && @admin_scope.admin_contracts.regent_lbp_strategy_factory.address)}</strong></div>
-            <div><span>USDC</span><strong>{short_address(@admin_scope && @admin_scope.dependencies.usdc_address)}</strong></div>
+            <div><span>Revenue share factory</span><strong>{AutolaunchWeb.Format.short_address(@admin_scope && @admin_scope.admin_contracts.revenue_share_factory.address)}</strong></div>
+            <div><span>Ingress factory</span><strong>{AutolaunchWeb.Format.short_address(@admin_scope && @admin_scope.admin_contracts.revenue_ingress_factory.address)}</strong></div>
+            <div><span>Strategy factory</span><strong>{AutolaunchWeb.Format.short_address(@admin_scope && @admin_scope.admin_contracts.regent_lbp_strategy_factory.address)}</strong></div>
+            <div><span>USDC</span><strong>{AutolaunchWeb.Format.short_address(@admin_scope && @admin_scope.dependencies.usdc_address)}</strong></div>
           </div>
 
           <form phx-change="update_form" class="al-contract-form-grid">
             <input type="hidden" name="form_name" value="admin_revenue_share" />
-            <input type="text" name="form[account]" value={form_value(@forms, "admin_revenue_share", "account")} placeholder="Authorized creator" />
+            <input type="text" name="form[account]" value={Presenter.form_value(@forms, "admin_revenue_share", "account")} placeholder="Authorized creator" />
             <select name="form[enabled]">
-              <option value="true" selected={form_value(@forms, "admin_revenue_share", "enabled", "true") == "true"}>Enable</option>
-              <option value="false" selected={form_value(@forms, "admin_revenue_share", "enabled") == "false"}>Disable</option>
+              <option value="true" selected={Presenter.form_value(@forms, "admin_revenue_share", "enabled", "true") == "true"}>Enable</option>
+              <option value="false" selected={Presenter.form_value(@forms, "admin_revenue_share", "enabled") == "false"}>Disable</option>
             </select>
           </form>
 
           <form phx-change="update_form" class="al-contract-form-grid">
             <input type="hidden" name="form_name" value="admin_revenue_ingress" />
-            <input type="text" name="form[account]" value={form_value(@forms, "admin_revenue_ingress", "account")} placeholder="Authorized creator" />
+            <input type="text" name="form[account]" value={Presenter.form_value(@forms, "admin_revenue_ingress", "account")} placeholder="Authorized creator" />
             <select name="form[enabled]">
-              <option value="true" selected={form_value(@forms, "admin_revenue_ingress", "enabled", "true") == "true"}>Enable</option>
-              <option value="false" selected={form_value(@forms, "admin_revenue_ingress", "enabled") == "false"}>Disable</option>
+              <option value="true" selected={Presenter.form_value(@forms, "admin_revenue_ingress", "enabled", "true") == "true"}>Enable</option>
+              <option value="false" selected={Presenter.form_value(@forms, "admin_revenue_ingress", "enabled") == "false"}>Disable</option>
             </select>
           </form>
 
@@ -613,20 +559,7 @@ defmodule AutolaunchWeb.ContractsLive do
           </div>
         </article>
 
-        <article :if={@prepared} class="al-panel al-contract-card al-prepared-card">
-          <p class="al-kicker">Prepared transaction</p>
-          <h3>{@prepared.resource} / {@prepared.action}</h3>
-          <div class="al-contract-kv">
-            <div><span>Chain id</span><strong>{display_uint(@prepared.chain_id)}</strong></div>
-            <div><span>Target</span><strong>{short_address(@prepared.target)}</strong></div>
-            <div><span>Submission mode</span><strong>{@prepared.submission_mode}</strong></div>
-          </div>
-          <div class="al-action-row">
-            <button type="button" class="al-submit" data-copy-value={Jason.encode!(@prepared.tx_request)}>Copy tx JSON</button>
-            <button type="button" class="al-ghost" data-copy-value={@prepared.calldata}>Copy calldata</button>
-          </div>
-          <pre class="al-contract-json"><code>{Jason.encode!(@prepared, pretty: true)}</code></pre>
-        </article>
+        <ContractComponents.prepared_preview prepared={@prepared} />
       </section>
       </div>
     </.shell>
@@ -642,7 +575,8 @@ defmodule AutolaunchWeb.ContractsLive do
       job_scope: job_scope,
       settlement_summary: job_scope && Map.get(job_scope, :settlement),
       subject_scope: subject_scope,
-      wallet_switch: wallet_switch_prompt(socket.assigns.current_human, job_scope, subject_scope)
+      wallet_switch:
+        Presenter.wallet_switch_prompt(socket.assigns.current_human, job_scope, subject_scope)
     )
   end
 
@@ -671,178 +605,10 @@ defmodule AutolaunchWeb.ContractsLive do
     end
   end
 
-  defp default_forms do
-    %{
-      "fee_registry_hook" => %{"enabled" => "true"},
-      "ingress_factory_create" => %{"make_default" => "false"},
-      "registry_manager" => %{"enabled" => "true"},
-      "splitter_paused" => %{"paused" => "false"},
-      "splitter_share" => %{"share_bps" => "10000"},
-      "admin_revenue_share" => %{"enabled" => "true"},
-      "admin_revenue_ingress" => %{"enabled" => "true"}
-    }
-  end
-
-  defp form_value(forms, form_name, key, fallback \\ "") do
-    forms
-    |> Map.get(form_name, %{})
-    |> Map.get(key, fallback)
-  end
-
   defp context_module do
     Application.get_env(:autolaunch, :contracts_live, [])
     |> Keyword.get(:context_module, Contracts)
   end
 
-  defp short_address(nil), do: "n/a"
-
-  defp short_address("0x" <> _rest = value) when byte_size(value) > 12,
-    do: String.slice(value, 0, 8) <> "..." <> String.slice(value, -4, 4)
-
-  defp short_address(value), do: to_string(value)
-
-  defp short_hash(nil), do: "none"
-
-  defp short_hash("0x" <> _rest = value) when byte_size(value) > 14,
-    do: String.slice(value, 0, 10) <> "..." <> String.slice(value, -6, 6)
-
-  defp short_hash(value), do: to_string(value)
-
-  defp display_uint(nil), do: "n/a"
-  defp display_uint(value) when is_integer(value), do: Integer.to_string(value)
-  defp display_uint(value), do: to_string(value)
-
-  defp display_bps_percent(nil), do: "n/a"
-  defp display_bps_percent(0), do: "n/a"
-
-  defp display_bps_percent(value) when is_integer(value) do
-    percent =
-      value
-      |> Decimal.new()
-      |> Decimal.div(Decimal.new(100))
-      |> Decimal.normalize()
-      |> Decimal.to_string(:normal)
-
-    percent <> "%"
-  end
-
-  defp display_bps_percent(value), do: to_string(value)
-
-  defp display_int(nil), do: "n/a"
-  defp display_int(value) when is_integer(value), do: Integer.to_string(value)
-  defp display_int(value), do: to_string(value)
-
-  defp display_timestamp(nil), do: "n/a"
-  defp display_timestamp(0), do: "n/a"
-
-  defp display_timestamp(value) when is_integer(value) and value > 0 do
-    value
-    |> DateTime.from_unix!()
-    |> Calendar.strftime("%Y-%m-%d %H:%M:%S UTC")
-  rescue
-    _ -> Integer.to_string(value)
-  end
-
-  defp display_timestamp(value), do: to_string(value)
-
-  defp display_seconds(nil), do: "n/a"
-  defp display_seconds(value) when is_integer(value), do: Integer.to_string(value) <> " seconds"
-  defp display_seconds(value), do: to_string(value)
-
-  defp yes_no(true), do: "yes"
-  defp yes_no(false), do: "no"
-  defp yes_no(nil), do: "n/a"
-
-  defp humanize_key(key) do
-    key
-    |> to_string()
-    |> String.replace("_", " ")
-    |> String.split()
-    |> Enum.map_join(" ", &String.capitalize/1)
-  end
-
-  defp prepare_error(:invalid_address), do: "One of the addresses is invalid."
-  defp prepare_error(:invalid_uint), do: "Amounts must be provided in whole onchain units."
-  defp prepare_error(:invalid_string), do: "A text value is required."
-  defp prepare_error(:invalid_boolean), do: "Choose a valid true or false option."
-  defp prepare_error(:eligible_share_too_low), do: "Eligible share must be at least 10%."
-  defp prepare_error(:eligible_share_too_high), do: "Eligible share cannot exceed 100%."
-
-  defp prepare_error(:eligible_share_step_too_large),
-    do: "Eligible share changes can only move by up to 20 percentage points at a time."
-
-  defp prepare_error(:ingress_not_found),
-    do: "That ingress account does not belong to the current subject."
-
-  defp prepare_error(:subject_config_unavailable),
-    do: "The current subject settings could not be loaded for this action."
-
-  defp prepare_error(:safe_rotation_noop),
-    do: "The new Safe must be different from the current one."
-
-  defp prepare_error(:unsupported_action),
-    do: "That contract action is not supported from this console."
-
-  defp prepare_error(_reason), do: "The contract payload could not be prepared."
-
-  defp blank_to_nil(nil), do: nil
-  defp blank_to_nil(""), do: nil
-  defp blank_to_nil(value), do: value
-
-  defp wallet_switch_prompt(nil, _job_scope, _subject_scope), do: nil
-
-  defp wallet_switch_prompt(current_human, job_scope, subject_scope) do
-    active_wallet = normalize_wallet(Map.get(current_human, :wallet_address))
-    linked_wallets = linked_wallets(current_human)
-
-    cond do
-      target =
-          linked_wallet_target(
-            active_wallet,
-            linked_wallets,
-            get_in(job_scope, [:job, :owner_address])
-          ) ->
-        %{wallet_address: target}
-
-      target =
-          linked_wallet_target(
-            active_wallet,
-            linked_wallets,
-            get_in(subject_scope, [:registry, :subject_config, :treasury_safe])
-          ) ->
-        %{wallet_address: target}
-
-      true ->
-        nil
-    end
-  end
-
-  defp linked_wallet_target(active_wallet, linked_wallets, target_wallet) do
-    normalized_target = normalize_wallet(target_wallet)
-
-    if normalized_target && normalized_target != active_wallet &&
-         normalized_target in linked_wallets,
-       do: normalized_target,
-       else: nil
-  end
-
-  defp linked_wallets(current_human) do
-    [
-      Map.get(current_human, :wallet_address)
-      | List.wrap(Map.get(current_human, :wallet_addresses))
-    ]
-    |> Enum.map(&normalize_wallet/1)
-    |> Enum.reject(&is_nil/1)
-    |> Enum.uniq()
-  end
-
-  defp normalize_wallet(value) when is_binary(value) do
-    case String.trim(value) do
-      "" -> nil
-      normalized -> String.downcase(normalized)
-    end
-  end
-
-  defp normalize_wallet(_value), do: nil
   defp route_css, do: @route_css
 end

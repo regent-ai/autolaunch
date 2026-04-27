@@ -4,6 +4,7 @@ defmodule AutolaunchWeb.Layouts do
 
   embed_templates "layouts/*"
 
+  alias AutolaunchWeb.Format
   alias AutolaunchWeb.LaunchComponents
   alias AutolaunchWeb.RegentStatus
 
@@ -547,7 +548,7 @@ defmodule AutolaunchWeb.Layouts do
   defp wallet_label(%{} = current_human) do
     case Map.get(current_human, :display_name) do
       value when is_binary(value) and value != "" -> value
-      _ -> short_wallet(Map.get(current_human, :wallet_address)) || "Connected wallet"
+      _ -> Format.short_wallet(Map.get(current_human, :wallet_address)) || "Connected wallet"
     end
   end
 
@@ -558,16 +559,6 @@ defmodule AutolaunchWeb.Layouts do
     do: "https://basescan.org/address/#{wallet_address}"
 
   defp wallet_explorer_href(_current_human), do: nil
-
-  defp short_wallet(nil), do: nil
-
-  defp short_wallet("0x" <> rest = wallet) when byte_size(rest) > 10 do
-    wallet
-    |> String.slice(0, 6)
-    |> Kernel.<>("..." <> String.slice(wallet, -4, 4))
-  end
-
-  defp short_wallet(wallet), do: wallet
 
   defp privy_app_id do
     Application.get_env(:autolaunch, :privy, [])

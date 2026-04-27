@@ -2,6 +2,7 @@ defmodule AutolaunchWeb.AuctionReturnsLive do
   use AutolaunchWeb, :live_view
 
   alias Autolaunch.Launch
+  alias AutolaunchWeb.Format
   alias Decimal, as: D
 
   @page_size 12
@@ -215,7 +216,7 @@ defmodule AutolaunchWeb.AuctionReturnsLive do
   defp sum_currency(values) do
     values
     |> Enum.reduce(nil, fn value, acc ->
-      case parse_decimal(value) do
+      case Format.parse_decimal(value) do
         nil -> acc
         decimal when is_nil(acc) -> decimal
         decimal -> D.add(acc, decimal)
@@ -223,43 +224,8 @@ defmodule AutolaunchWeb.AuctionReturnsLive do
     end)
     |> case do
       nil -> "Unavailable"
-      decimal -> "$" <> format_decimal(decimal, 0)
+      decimal -> Format.format_currency(decimal, 0)
     end
-  end
-
-  defp parse_decimal(nil), do: nil
-  defp parse_decimal(value) when is_integer(value), do: D.new(value)
-
-  defp parse_decimal(value) when is_binary(value) do
-    case D.parse(value) do
-      {decimal, ""} -> decimal
-      _ -> nil
-    end
-  end
-
-  defp parse_decimal(_value), do: nil
-
-  defp format_decimal(decimal, places) do
-    decimal
-    |> D.round(places)
-    |> D.to_string(:normal)
-    |> add_delimiters()
-  end
-
-  defp add_delimiters(value) do
-    case String.split(value, ".", parts: 2) do
-      [integer, fraction] -> add_integer_delimiters(integer) <> "." <> fraction
-      [integer] -> add_integer_delimiters(integer)
-    end
-  end
-
-  defp add_integer_delimiters(integer) do
-    integer
-    |> String.reverse()
-    |> String.graphemes()
-    |> Enum.chunk_every(3)
-    |> Enum.map_join(",", &Enum.join/1)
-    |> String.reverse()
   end
 
   defp oldest_window_label([]), do: "0 days"

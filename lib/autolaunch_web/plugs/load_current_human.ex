@@ -5,6 +5,7 @@ defmodule AutolaunchWeb.Plugs.LoadCurrentHuman do
 
   alias Autolaunch.Accounts
   alias Autolaunch.Accounts.HumanUser
+  alias Autolaunch.Evm
 
   @pending_wallet_session_key :privy_pending_wallet_address
   @pending_wallets_session_key :privy_pending_wallet_addresses
@@ -41,17 +42,7 @@ defmodule AutolaunchWeb.Plugs.LoadCurrentHuman do
     %{human | wallet_address: pending_wallet, wallet_addresses: pending_wallets}
   end
 
-  defp normalize_wallet_address(value) when is_binary(value) do
-    case String.trim(value) do
-      <<"0x", rest::binary>> = trimmed when byte_size(rest) == 40 ->
-        if String.match?(rest, ~r/\A[0-9a-fA-F]{40}\z/u), do: String.downcase(trimmed), else: nil
-
-      _ ->
-        nil
-    end
-  end
-
-  defp normalize_wallet_address(_value), do: nil
+  defp normalize_wallet_address(value), do: Evm.normalize_address(value)
 
   defp normalize_wallet_addresses(values) when is_list(values) do
     values

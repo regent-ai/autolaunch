@@ -26,9 +26,9 @@ defmodule Autolaunch.PublicChat do
   def request_join(nil), do: {:error, :wallet_required}
 
   def request_join(%HumanUser{} = current_human) do
-    with :ok <- require_room_identity(current_human) do
+    with_ready_identity(current_human, fn ->
       normalize_join_result(xmtp_module().request_join(current_human))
-    end
+    end)
   end
 
   @spec complete_join_signature(HumanUser.t() | nil, String.t() | nil, String.t() | nil) ::
@@ -36,24 +36,20 @@ defmodule Autolaunch.PublicChat do
   def complete_join_signature(nil, _request_id, _signature), do: {:error, :wallet_required}
 
   def complete_join_signature(%HumanUser{} = current_human, request_id, signature) do
-    with :ok <- require_room_identity(current_human) do
-      case xmtp_module().complete_join_signature(current_human, request_id, signature) do
-        {:ok, panel} -> {:ok, panel}
-        {:error, reason} -> {:error, normalize_error(reason)}
-      end
-    end
+    with_ready_identity(current_human, fn ->
+      normalize_panel_result(
+        xmtp_module().complete_join_signature(current_human, request_id, signature)
+      )
+    end)
   end
 
   @spec send_message(HumanUser.t() | nil, String.t() | nil) :: {:ok, map()} | {:error, atom()}
   def send_message(nil, _body), do: {:error, :wallet_required}
 
   def send_message(%HumanUser{} = current_human, body) do
-    with :ok <- require_room_identity(current_human) do
-      case xmtp_module().send_public_message(current_human, body) do
-        {:ok, panel} -> {:ok, panel}
-        {:error, reason} -> {:error, normalize_error(reason)}
-      end
-    end
+    with_ready_identity(current_human, fn ->
+      normalize_panel_result(xmtp_module().send_public_message(current_human, body))
+    end)
   end
 
   @spec heartbeat(HumanUser.t() | nil) :: :ok
@@ -88,11 +84,17 @@ defmodule Autolaunch.PublicChat do
 
   defp normalize_join_result({:ok, panel}), do: {:ok, panel}
 
-  defp normalize_join_result({:needs_signature, %{panel: panel} = request}) do
-    {:needs_signature, Map.put(request, :panel, panel)}
-  end
+  defp normalize_join_result({:needs_signature, request}) when is_map(request),
+    do: {:needs_signature, request}
 
   defp normalize_join_result({:error, reason}), do: {:error, normalize_error(reason)}
+
+  defp normalize_panel_result({:ok, panel}), do: {:ok, panel}
+  defp normalize_panel_result({:error, reason}), do: {:error, normalize_error(reason)}
+
+  defp with_ready_identity(%HumanUser{} = current_human, fun) when is_function(fun, 0) do
+    with :ok <- require_room_identity(current_human), do: fun.()
+  end
 
   defp require_room_identity(%HumanUser{} = human) do
     if room_identity_ready?(human), do: :ok, else: {:error, :xmtp_identity_required}

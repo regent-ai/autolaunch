@@ -2,6 +2,7 @@ defmodule AutolaunchWeb.AuctionsLive do
   use AutolaunchWeb, :live_view
 
   alias Autolaunch.Launch
+  alias AutolaunchWeb.Format
   alias AutolaunchWeb.LaunchComponents
   alias AutolaunchWeb.Live.Refreshable
   alias Decimal, as: D
@@ -677,7 +678,7 @@ defmodule AutolaunchWeb.AuctionsLive do
 
   defp decimal_sum(rows, key) do
     rows
-    |> Enum.map(&(Map.get(&1, key) |> parse_decimal()))
+    |> Enum.map(&(Map.get(&1, key) |> Format.parse_decimal()))
     |> Enum.reject(&is_nil/1)
     |> case do
       [] -> nil
@@ -713,74 +714,9 @@ defmodule AutolaunchWeb.AuctionsLive do
 
   defp position_closing_soon?(_position), do: false
 
-  defp parse_decimal(nil), do: nil
-  defp parse_decimal(""), do: nil
-
-  defp parse_decimal(value) when is_binary(value) do
-    case D.parse(value) do
-      {decimal, ""} -> decimal
-      _ -> nil
-    end
-  end
-
-  defp parse_decimal(value) when is_integer(value), do: D.new(value)
-  defp parse_decimal(_value), do: nil
-
-  defp format_price(value), do: format_currency(value, 4)
-  defp format_large_currency(value), do: format_currency(value, 0)
-  defp format_volume(value), do: format_currency(value, 2)
-
-  defp format_currency(nil, _places), do: "Unavailable"
-
-  defp format_currency(value, places) do
-    case parse_decimal(value) do
-      nil ->
-        "Unavailable"
-
-      decimal ->
-        "$" <>
-          (decimal
-           |> D.round(places)
-           |> decimal_to_string(places)
-           |> add_delimiters())
-    end
-  end
-
-  defp decimal_to_string(decimal, 0), do: D.to_string(decimal, :normal)
-
-  defp decimal_to_string(decimal, places) do
-    base = D.to_string(decimal, :normal)
-
-    case String.split(base, ".", parts: 2) do
-      [integer, fraction] ->
-        integer <> "." <> String.pad_trailing(String.slice(fraction, 0, places), places, "0")
-
-      [integer] ->
-        integer <> "." <> String.duplicate("0", places)
-    end
-  end
-
-  defp add_delimiters(value) do
-    {sign, digits} =
-      case String.starts_with?(value, "-") do
-        true -> {"-", String.trim_leading(value, "-")}
-        false -> {"", value}
-      end
-
-    case String.split(digits, ".", parts: 2) do
-      [integer, fraction] -> sign <> add_integer_delimiters(integer) <> "." <> fraction
-      [integer] -> sign <> add_integer_delimiters(integer)
-    end
-  end
-
-  defp add_integer_delimiters(integer) do
-    integer
-    |> String.reverse()
-    |> String.graphemes()
-    |> Enum.chunk_every(3)
-    |> Enum.map_join(",", &Enum.join/1)
-    |> String.reverse()
-  end
+  defp format_price(value), do: Format.format_currency(value, 4)
+  defp format_large_currency(value), do: Format.format_currency(value, 0)
+  defp format_volume(value), do: Format.format_currency(value, 2)
 
   defp primary_action_label(%{phase: "biddable"}), do: "Open bid page"
 
@@ -906,7 +842,7 @@ defmodule AutolaunchWeb.AuctionsLive do
   end
 
   defp compare_market_caps(left, right) do
-    case {parse_decimal(left), parse_decimal(right)} do
+    case {Format.parse_decimal(left), Format.parse_decimal(right)} do
       {nil, nil} -> :eq
       {nil, _} -> :lt
       {_, nil} -> :gt

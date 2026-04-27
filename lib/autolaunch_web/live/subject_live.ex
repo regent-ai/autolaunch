@@ -3,6 +3,7 @@ defmodule AutolaunchWeb.SubjectLive do
 
   alias Autolaunch.Launch
   alias AutolaunchWeb.Live.Refreshable
+  alias AutolaunchWeb.SubjectLive.Components, as: SubjectComponents
   alias AutolaunchWeb.SubjectLive.Presenter
 
   @poll_ms 15_000
@@ -59,7 +60,7 @@ defmodule AutolaunchWeb.SubjectLive do
   end
 
   def handle_event("prepare_action", %{"action" => action}, socket) do
-    case action_to_atom(action) do
+    case Presenter.action_to_atom(action) do
       {:ok, action} ->
         {:noreply, prepare_action(socket, action, %{})}
 
@@ -99,7 +100,7 @@ defmodule AutolaunchWeb.SubjectLive do
       |> assign(:pending_actions, assigns.pending_actions || %{})
       |> assign(:recommended_action, recommended)
       |> assign(:wallet_position, wallet_position)
-      |> assign(:routing_snapshot, routing_snapshot(subject))
+      |> assign(:routing_snapshot, Presenter.routing_snapshot(subject))
       |> assign(:ingress_accounts, ingress_accounts)
       |> assign(
         :subject_heading,
@@ -116,239 +117,22 @@ defmodule AutolaunchWeb.SubjectLive do
 
       <%= if @subject do %>
         <section id="subject-overview" class="al-subject-page">
-          <header class="al-subject-header">
-            <div class="al-subject-title-group">
-              <.link navigate={~p"/auctions"} class="al-subject-back">
-                <span aria-hidden="true">←</span>
-                <span>Back to auctions</span>
-              </.link>
+          <SubjectComponents.header
+            subject={@subject}
+            subject_id={@subject_id}
+            subject_heading={@subject_heading}
+            subject_summary={@subject_summary}
+            subject_symbol={@subject_symbol}
+            subject_auction_href={@subject_auction_href}
+            recommended_action={@recommended_action}
+          />
 
-              <div class="al-subject-title-row">
-                <div class="al-subject-mark">
-                  <span>{Presenter.subject_initials(@subject_heading)}</span>
-                </div>
+          <SubjectComponents.metric_grid wallet_position={@wallet_position} />
 
-                <div class="al-subject-heading-block">
-                  <div class="al-subject-heading-line">
-                    <h1>{@subject_heading}</h1>
-                    <span :if={@subject_symbol} class="al-subject-chip">{@subject_symbol}</span>
-                  </div>
-
-                  <div class="al-subject-meta">
-                    <span>on {Map.get(@subject, :chain_label, "Base")}</span>
-                    <span class="al-subject-status">
-                      <span class="al-subject-status-dot"></span>
-                      <span>{Presenter.recommended_status_label(@recommended_action)}</span>
-                    </span>
-                  </div>
-
-                  <p class="al-subject-summary">
-                    {@subject_summary}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div class="al-subject-header-actions">
-              <.link
-                :if={@subject_auction_href}
-                navigate={@subject_auction_href}
-                class="al-subject-secondary-button"
-              >
-                Open auction page
-              </.link>
-              <.link navigate={~p"/contracts?subject_id=#{@subject_id}"} class="al-subject-primary-button">
-                Open contracts
-              </.link>
-            </div>
-          </header>
-
-          <section class="al-subject-metric-grid">
-            <.subject_metric
-              label="Claimable USDC"
-              value={@wallet_position.claimable_usdc}
-              hint={@wallet_position.claimable_usdc_line}
-            />
-            <.subject_metric
-              label="Your staked tokens"
-              value={@wallet_position.wallet_stake_balance}
-              hint={@wallet_position.staked_line}
-            />
-            <.subject_metric
-              label="Wallet token balance"
-              value={@wallet_position.wallet_token_balance}
-              hint={@wallet_position.wallet_line}
-            />
-            <.subject_metric
-              label="Claimable emissions"
-              value={@wallet_position.claimable_stake_token}
-              hint={@wallet_position.claimable_emissions_line}
-            />
-          </section>
-
-          <section class="al-routing-policy-panel">
-            <div class="al-routing-policy-copy">
-              <div>
-                <p class="al-kicker">Revenue routing</p>
-                <h2>Follow the live share, the queued change, and every tracked dollar.</h2>
-              </div>
-              <p>
-                Revenue counts when USDC reaches this subject's revenue contract. Money waiting in an intake account can be swept before a pending share change takes effect; money swept later follows the live share at that time.
-              </p>
-
-              <div class="al-routing-policy-stats">
-                <article>
-                  <span>Live eligible share</span>
-                  <strong>{@routing_snapshot.live_share}</strong>
-                  <p>The share of post-Regent revenue that still stays eligible for stakers.</p>
-                </article>
-                <article>
-                  <span>Pending share</span>
-                  <strong>{@routing_snapshot.pending_share}</strong>
-                  <p>{@routing_snapshot.pending_note}</p>
-                </article>
-                <article>
-                  <span>Activation date</span>
-                  <strong>{@routing_snapshot.activation_date}</strong>
-                  <p>When the pending share can first go live.</p>
-                </article>
-                <article>
-                  <span>Cooldown end</span>
-                  <strong>{@routing_snapshot.cooldown_end}</strong>
-                  <p>When another proposal can be queued after the latest cancel or activation.</p>
-                </article>
-              </div>
-
-              <%= if @routing_snapshot.change_chart do %>
-                <section
-                  class="al-routing-change-visual"
-                  role="img"
-                  aria-label={"Upcoming eligible share change from #{@routing_snapshot.change_chart.current_rate} on #{@routing_snapshot.change_chart.current_date} to #{@routing_snapshot.change_chart.next_rate} on #{@routing_snapshot.change_chart.next_date}"}
-                >
-                  <div class="al-routing-change-copy">
-                    <div>
-                      <span>Upcoming change</span>
-                      <strong>{@routing_snapshot.change_chart.headline}</strong>
-                    </div>
-                    <p>{@routing_snapshot.change_chart.summary}</p>
-                  </div>
-
-                  <div class="al-routing-change-chart">
-                    <div class="al-routing-change-point is-current">
-                      <span>{@routing_snapshot.change_chart.current_date}</span>
-                      <strong>{@routing_snapshot.change_chart.current_rate}</strong>
-                    </div>
-
-                    <svg viewBox="0 0 240 132" aria-hidden="true">
-                      <line x1="22" y1="108" x2="218" y2="108" class="al-routing-change-axis" />
-                      <polyline
-                        points={@routing_snapshot.change_chart.line_points}
-                        class="al-routing-change-line"
-                      />
-                      <circle
-                        cx={@routing_snapshot.change_chart.current_x}
-                        cy={@routing_snapshot.change_chart.current_y}
-                        r="5"
-                        class="al-routing-change-dot is-current"
-                      />
-                      <circle
-                        cx={@routing_snapshot.change_chart.next_x}
-                        cy={@routing_snapshot.change_chart.next_y}
-                        r="5"
-                        class="al-routing-change-dot is-next"
-                      />
-                      <text
-                        x={@routing_snapshot.change_chart.current_x}
-                        y={@routing_snapshot.change_chart.current_label_y}
-                        text-anchor="middle"
-                        class="al-routing-change-rate"
-                      >
-                        {@routing_snapshot.change_chart.current_rate}
-                      </text>
-                      <text
-                        x={@routing_snapshot.change_chart.next_x}
-                        y={@routing_snapshot.change_chart.next_label_y}
-                        text-anchor="middle"
-                        class="al-routing-change-rate"
-                      >
-                        {@routing_snapshot.change_chart.next_rate}
-                      </text>
-                    </svg>
-
-                    <div class="al-routing-change-point is-next">
-                      <span>{@routing_snapshot.change_chart.next_date}</span>
-                      <strong>{@routing_snapshot.change_chart.next_rate}</strong>
-                    </div>
-                  </div>
-                </section>
-              <% end %>
-            </div>
-
-            <div class="al-routing-ledger">
-              <article class="al-routing-ledger-card">
-                <span>Total USDC received</span>
-                <strong>{@routing_snapshot.total_received}</strong>
-                <p>All USDC that has reached this subject.</p>
-              </article>
-              <article class="al-routing-ledger-card">
-                <span>Verified revenue</span>
-                <strong>{@routing_snapshot.verified_revenue}</strong>
-                <p>USDC from intake wallets and launch fees.</p>
-              </article>
-              <article class="al-routing-ledger-card">
-                <span>Regent skim</span>
-                <strong>{@routing_snapshot.regent_skim}</strong>
-                <p>The fixed 1% share kept for Regent.</p>
-              </article>
-              <article class="al-routing-ledger-card">
-                <span>Staker-eligible inflow</span>
-                <strong>{@routing_snapshot.staker_eligible_inflow}</strong>
-                <p>The portion that still feeds the subject lane before stake-based allocation.</p>
-              </article>
-              <article class="al-routing-ledger-card">
-                <span>Treasury-reserved inflow</span>
-                <strong>{@routing_snapshot.treasury_reserved_inflow}</strong>
-                <p>The portion routed straight into the subject reserve lane.</p>
-              </article>
-              <article class="al-routing-ledger-card">
-                <span>Subject reserve now</span>
-                <strong>{@routing_snapshot.treasury_reserved_balance}</strong>
-                <p>The reserve balance still sitting inside the splitter.</p>
-              </article>
-              <article class="al-routing-ledger-card">
-                <span>Staker lane residual</span>
-                <strong>{@routing_snapshot.treasury_residual}</strong>
-                <p>The unstaked remainder still inside the eligible lane.</p>
-              </article>
-            </div>
-          </section>
-
-          <section class="al-routing-history-panel">
-            <div class="al-routing-history-head">
-              <div>
-                <p class="al-kicker">Share history</p>
-                <h3>See every proposal, cancel, and activation in order.</h3>
-              </div>
-              <span>{@routing_snapshot.history_count}</span>
-            </div>
-
-            <%= if @subject.share_change_history == [] do %>
-              <p class="al-subject-muted-copy">
-                No share changes have been recorded yet. The live routing rule is still the original launch setting.
-              </p>
-            <% else %>
-              <div class="al-routing-history-list">
-                <article :for={entry <- @subject.share_change_history} class="al-routing-history-item">
-                  <div class="al-routing-history-meta">
-                    <span class="al-routing-history-pill">{history_label(entry)}</span>
-                    <strong>{history_primary_value(entry)}</strong>
-                  </div>
-                  <p>{history_copy(entry)}</p>
-                  <span>{history_timestamp(entry)}</span>
-                </article>
-              </div>
-            <% end %>
-          </section>
+          <SubjectComponents.revenue_routing
+            routing_snapshot={@routing_snapshot}
+            subject={@subject}
+          />
 
           <section class="al-subject-main-grid">
             <div class="al-subject-main-stack">
@@ -719,30 +503,7 @@ defmodule AutolaunchWeb.SubjectLive do
                 </article>
               </section>
 
-              <details class="al-subject-review-panel">
-                <summary>
-                  <div>
-                    <p class="al-kicker">Advanced review</p>
-                    <h3>Contracts, balances, and ingress details</h3>
-                  </div>
-                  <span>Open</span>
-                </summary>
-
-                <div class="al-subject-review-grid">
-                  <.review_card label="Token" value={short_address(@subject.token_address)} note="Staking token for this subject." />
-                  <.review_card label="Splitter" value={short_address(@subject.splitter_address)} note="Revenue lands here before claims." />
-                  <.review_card label="Default ingress" value={short_address(@subject.default_ingress_address)} note="Known USDC intake account." />
-                  <.review_card label="Total staked" value={@subject.total_staked} note="Committed launch tokens." />
-                  <.review_card label="Treasury residual" value={@subject.treasury_residual_usdc} note="Residual USDC after staker allocation." />
-                  <.review_card label="Protocol reserve" value={@subject.protocol_reserve_usdc} note="Protocol skim retained in the splitter." />
-                </div>
-
-                <div class="al-subject-review-actions">
-                  <.link navigate={~p"/contracts?subject_id=#{@subject_id}"} class="al-subject-secondary-button">
-                    Open advanced contracts console
-                  </.link>
-                </div>
-              </details>
+              <SubjectComponents.advanced_review subject={@subject} subject_id={@subject_id} />
             </div>
 
             <aside class="al-subject-side-panel">
@@ -868,34 +629,6 @@ defmodule AutolaunchWeb.SubjectLive do
 
       <.flash_group flash={@flash} />
     </.shell>
-    """
-  end
-
-  attr :label, :string, required: true
-  attr :value, :string, required: true
-  attr :hint, :string, default: nil
-
-  defp subject_metric(assigns) do
-    ~H"""
-    <article class="al-subject-metric-card">
-      <p>{@label}</p>
-      <strong>{@value || "0"}</strong>
-      <span :if={@hint}>{@hint}</span>
-    </article>
-    """
-  end
-
-  attr :label, :string, required: true
-  attr :value, :string, required: true
-  attr :note, :string, required: true
-
-  defp review_card(assigns) do
-    ~H"""
-    <article class="al-subject-review-card">
-      <span>{@label}</span>
-      <strong>{@value}</strong>
-      <p>{@note}</p>
-    </article>
     """
   end
 
@@ -1655,17 +1388,8 @@ defmodule AutolaunchWeb.SubjectLive do
         |> assign(:subject, subject)
         |> put_pending_action(action, tx_request)
 
-      {:error, :unauthorized} ->
-        put_flash(socket, :error, "Privy session required before this wallet action.")
-
-      {:error, :forbidden} ->
-        put_flash(socket, :error, "This wallet cannot perform that subject action.")
-
-      {:error, :amount_required} ->
-        put_flash(socket, :error, "Enter an amount before preparing the wallet transaction.")
-
-      {:error, _} ->
-        put_flash(socket, :error, "Unable to prepare the wallet transaction right now.")
+      {:error, reason} ->
+        put_flash(socket, :error, Presenter.action_error(reason))
     end
   end
 
@@ -1677,204 +1401,10 @@ defmodule AutolaunchWeb.SubjectLive do
     )
   end
 
-  defp short_address(nil), do: "pending"
-
-  defp short_address(address) when is_binary(address) do
-    prefix = String.slice(address, 0, 6)
-    suffix = String.slice(address, -4, 4)
-    "#{prefix}...#{suffix}"
-  end
-
   defp context_module do
     :autolaunch
     |> Application.get_env(:revenue_live, [])
     |> Keyword.get(:context_module, Autolaunch.Revenue)
-  end
-
-  defp routing_snapshot(nil) do
-    %{
-      live_share: "100%",
-      pending_share: "No pending change",
-      pending_note: "No delayed share update is queued right now.",
-      activation_date: "Not scheduled",
-      cooldown_end: "Ready now",
-      total_received: "0",
-      verified_revenue: "0",
-      regent_skim: "0",
-      staker_eligible_inflow: "0",
-      treasury_reserved_inflow: "0",
-      treasury_reserved_balance: "0",
-      treasury_residual: "0",
-      history_count: "0 recorded changes",
-      change_chart: nil
-    }
-  end
-
-  defp routing_snapshot(subject) do
-    history_count = length(Map.get(subject, :share_change_history, []))
-    pending_share = Map.get(subject, :pending_eligible_revenue_share_percent)
-
-    %{
-      live_share: percent_value(Map.get(subject, :eligible_revenue_share_percent, "100")),
-      pending_share:
-        if(pending_share, do: percent_value(pending_share), else: "No pending change"),
-      pending_note:
-        if(pending_share,
-          do: "This delayed update is waiting for its activation window.",
-          else: "No delayed share update is queued right now."
-        ),
-      activation_date:
-        display_datetime(Map.get(subject, :pending_eligible_revenue_share_eta)) || "Not scheduled",
-      cooldown_end:
-        display_datetime(Map.get(subject, :eligible_revenue_share_cooldown_end)) || "Ready now",
-      total_received: money_value(Map.get(subject, :total_usdc_received)),
-      verified_revenue:
-        verified_revenue_value(
-          Map.get(subject, :verified_ingress_usdc),
-          Map.get(subject, :launch_fee_usdc)
-        ),
-      regent_skim: money_value(Map.get(subject, :regent_skim_usdc)),
-      staker_eligible_inflow: money_value(Map.get(subject, :staker_eligible_inflow_usdc)),
-      treasury_reserved_inflow: money_value(Map.get(subject, :treasury_reserved_inflow_usdc)),
-      treasury_reserved_balance: money_value(Map.get(subject, :treasury_reserved_usdc)),
-      treasury_residual: money_value(Map.get(subject, :treasury_residual_usdc)),
-      history_count:
-        if(history_count == 1, do: "1 recorded change", else: "#{history_count} recorded changes"),
-      change_chart: rate_change_chart(subject)
-    }
-  end
-
-  defp rate_change_chart(subject) do
-    current_bps = Map.get(subject, :eligible_revenue_share_bps, 10_000)
-    pending_bps = Map.get(subject, :pending_eligible_revenue_share_bps)
-
-    if is_integer(pending_bps) and pending_bps > 0 do
-      current_x = 36
-      next_x = 204
-      current_y = share_chart_y(current_bps)
-      next_y = share_chart_y(pending_bps)
-
-      %{
-        current_date: display_chart_date(DateTime.utc_now()),
-        current_rate: percent_value(Map.get(subject, :eligible_revenue_share_percent, "100")),
-        next_date: display_chart_date(Map.get(subject, :pending_eligible_revenue_share_eta)),
-        next_rate: percent_value(Map.get(subject, :pending_eligible_revenue_share_percent)),
-        headline:
-          "This share is scheduled to move from #{format_bps_percent(current_bps)} to #{format_bps_percent(pending_bps)}.",
-        summary:
-          "Today the live share is #{format_bps_percent(current_bps)}. On #{display_chart_date(Map.get(subject, :pending_eligible_revenue_share_eta))}, it is scheduled to change to #{format_bps_percent(pending_bps)}.",
-        current_x: current_x,
-        current_y: current_y,
-        next_x: next_x,
-        next_y: next_y,
-        current_label_y: max(current_y - 12, 18),
-        next_label_y: max(next_y - 12, 18),
-        line_points: "#{current_x},#{current_y} #{next_x},#{next_y}"
-      }
-    end
-  end
-
-  defp history_label(%{type: "proposed"}), do: "Queued"
-  defp history_label(%{type: "cancelled"}), do: "Cancelled"
-  defp history_label(%{type: "activated"}), do: "Live"
-  defp history_label(_entry), do: "Update"
-
-  defp history_primary_value(%{type: "proposed", pending_share_percent: percent}),
-    do: percent_value(percent)
-
-  defp history_primary_value(%{type: "cancelled", cancelled_share_percent: percent}),
-    do: percent_value(percent)
-
-  defp history_primary_value(%{type: "activated", new_share_percent: percent}),
-    do: percent_value(percent)
-
-  defp history_primary_value(_entry), do: "Recorded"
-
-  defp history_copy(%{
-         type: "proposed",
-         current_share_percent: current,
-         pending_share_percent: pending,
-         activation_eta: eta
-       }) do
-    "A delayed change from #{percent_value(current)} to #{percent_value(pending)} was queued. It can first go live on #{display_datetime(eta) || "the recorded activation date"}."
-  end
-
-  defp history_copy(%{
-         type: "cancelled",
-         cancelled_share_percent: percent,
-         cooldown_end: cooldown_end
-       }) do
-    "The pending #{percent_value(percent)} change was cleared. A fresh proposal can be queued after #{display_datetime(cooldown_end) || "the recorded cooldown date"}."
-  end
-
-  defp history_copy(%{
-         type: "activated",
-         previous_share_percent: previous,
-         new_share_percent: new_share,
-         cooldown_end: cooldown_end
-       }) do
-    "The live share moved from #{percent_value(previous)} to #{percent_value(new_share)}. Another proposal can be queued after #{display_datetime(cooldown_end) || "the recorded cooldown date"}."
-  end
-
-  defp history_copy(_entry), do: "This share change was recorded onchain."
-
-  defp history_timestamp(%{happened_at: happened_at}) do
-    display_datetime(happened_at) || "Time unavailable"
-  end
-
-  defp money_value(nil), do: "0 USDC"
-  defp money_value(value), do: "#{value} USDC"
-
-  defp verified_revenue_value(ingress, launch_fee) do
-    ingress_decimal = Decimal.new(ingress || "0")
-    launch_fee_decimal = Decimal.new(launch_fee || "0")
-
-    ingress_decimal
-    |> Decimal.add(launch_fee_decimal)
-    |> Decimal.normalize()
-    |> Decimal.to_string(:normal)
-    |> money_value()
-  end
-
-  defp percent_value(nil), do: "n/a"
-  defp percent_value(value), do: "#{value}%"
-
-  defp format_bps_percent(value) when is_integer(value) do
-    value
-    |> Kernel./(100)
-    |> :erlang.float_to_binary(decimals: 2)
-    |> String.trim_trailing("0")
-    |> String.trim_trailing(".")
-    |> percent_value()
-  end
-
-  defp display_datetime(nil), do: nil
-
-  defp display_datetime(value) when is_binary(value) do
-    case DateTime.from_iso8601(value) do
-      {:ok, datetime, _offset} -> Calendar.strftime(datetime, "%b %-d, %Y at %-I:%M %p UTC")
-      _ -> value
-    end
-  end
-
-  defp display_chart_date(%DateTime{} = value) do
-    Calendar.strftime(value, "%b %-d, %Y")
-  end
-
-  defp display_chart_date(nil), do: "Scheduled date"
-
-  defp display_chart_date(value) when is_binary(value) do
-    case DateTime.from_iso8601(value) do
-      {:ok, datetime, _offset} -> Calendar.strftime(datetime, "%b %-d, %Y")
-      _ -> value
-    end
-  end
-
-  defp share_chart_y(bps) when is_integer(bps) do
-    min_y = 24
-    max_y = 92
-    inverted_share = 10_000 - bps
-    min_y + round(inverted_share * (max_y - min_y) / 10_000)
   end
 
   defp load_subject_market(subject_id) do
@@ -1889,11 +1419,4 @@ defmodule AutolaunchWeb.SubjectLive do
     |> Application.get_env(:subject_live, [])
     |> Keyword.get(:launch_module, Launch)
   end
-
-  defp action_to_atom("stake"), do: {:ok, :stake}
-  defp action_to_atom("unstake"), do: {:ok, :unstake}
-  defp action_to_atom("claim"), do: {:ok, :claim}
-  defp action_to_atom("claim_emissions"), do: {:ok, :claim_emissions}
-  defp action_to_atom("claim_and_stake_emissions"), do: {:ok, :claim_and_stake_emissions}
-  defp action_to_atom(_), do: :error
 end

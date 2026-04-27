@@ -54,12 +54,38 @@ defmodule AutolaunchWeb.ProfileLiveTest do
     end
   end
 
+  defmodule CooldownPortfolioStub do
+    def get_snapshot(_human) do
+      {:ok,
+       %{
+         status: "ready",
+         launched_tokens: [],
+         staked_tokens: [],
+         refreshed_at: DateTime.utc_now() |> DateTime.to_iso8601(),
+         next_manual_refresh_at:
+           DateTime.add(DateTime.utc_now(), 30, :second) |> DateTime.to_iso8601()
+       }}
+    end
+
+    def request_manual_refresh(_human) do
+      send(Application.fetch_env!(:autolaunch, :profile_live_test_pid), :refresh_requested)
+      {:ok, %{}}
+    end
+  end
+
   setup do
     original = Application.get_env(:autolaunch, :profile_live, [])
+    original_test_pid = Application.get_env(:autolaunch, :profile_live_test_pid)
     Application.put_env(:autolaunch, :profile_live, portfolio_module: PortfolioStub)
 
     on_exit(fn ->
       Application.put_env(:autolaunch, :profile_live, original)
+
+      if original_test_pid do
+        Application.put_env(:autolaunch, :profile_live_test_pid, original_test_pid)
+      else
+        Application.delete_env(:autolaunch, :profile_live_test_pid)
+      end
     end)
 
     {:ok, human} =
@@ -99,5 +125,23 @@ defmodule AutolaunchWeb.ProfileLiveTest do
 
     assert html =~ "Refresh in"
     assert html =~ "Refreshing"
+  end
+
+  test "manual refresh does not run while the button is disabled", %{conn: conn, human: human} do
+    Application.put_env(:autolaunch, :profile_live, portfolio_module: CooldownPortfolioStub)
+    Application.put_env(:autolaunch, :profile_live_test_pid, self())
+
+    conn = init_test_session(conn, privy_user_id: human.privy_user_id)
+    {:ok, view, html} = live(conn, "/profile")
+
+    assert html =~ "disabled"
+
+    assert_raise ArgumentError, fn ->
+      view
+      |> element("button[phx-click='refresh_profile']")
+      |> render_click()
+    end
+
+    refute_received :refresh_requested
   end
 end

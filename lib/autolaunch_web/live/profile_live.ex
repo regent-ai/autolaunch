@@ -2,6 +2,7 @@ defmodule AutolaunchWeb.ProfileLive do
   use AutolaunchWeb, :live_view
 
   alias Autolaunch.Portfolio
+  alias AutolaunchWeb.Format
   alias AutolaunchWeb.Live.Refreshable
 
   @poll_ms 15_000
@@ -16,18 +17,22 @@ defmodule AutolaunchWeb.ProfileLive do
   end
 
   def handle_event("refresh_profile", _params, socket) do
-    case socket.assigns.current_human &&
-           portfolio_module().request_manual_refresh(socket.assigns.current_human) do
-      {:ok, snapshot} ->
-        {:noreply,
-         socket |> assign(:snapshot, snapshot) |> put_flash(:info, "Profile refresh started.")}
+    if refresh_disabled?(socket.assigns.snapshot.next_manual_refresh_at) do
+      {:noreply, socket}
+    else
+      case socket.assigns.current_human &&
+             portfolio_module().request_manual_refresh(socket.assigns.current_human) do
+        {:ok, snapshot} ->
+          {:noreply,
+           socket |> assign(:snapshot, snapshot) |> put_flash(:info, "Profile refresh started.")}
 
-      {:error, {:cooldown, seconds}} ->
-        {:noreply,
-         put_flash(socket, :error, "Wait #{seconds} more seconds before refreshing again.")}
+        {:error, {:cooldown, seconds}} ->
+          {:noreply,
+           put_flash(socket, :error, "Wait #{seconds} more seconds before refreshing again.")}
 
-      _ ->
-        {:noreply, put_flash(socket, :error, "Profile refresh could not start.")}
+        _ ->
+          {:noreply, put_flash(socket, :error, "Profile refresh could not start.")}
+      end
     end
   end
 
@@ -795,13 +800,9 @@ defmodule AutolaunchWeb.ProfileLive do
        do: display_name
 
   defp profile_title(%{wallet_address: wallet_address}) when is_binary(wallet_address),
-    do: short_wallet(wallet_address)
+    do: Format.short_wallet(wallet_address)
 
   defp profile_title(_), do: "Autolaunch operator"
-
-  defp short_wallet(wallet_address) do
-    "#{String.slice(wallet_address, 0, 6)}...#{String.slice(wallet_address, -4, 4)}"
-  end
 
   defp display_money(nil), do: "Unavailable"
 

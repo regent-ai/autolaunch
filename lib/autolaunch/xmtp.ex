@@ -132,20 +132,6 @@ defmodule Autolaunch.Xmtp do
     })
   end
 
-  defp principal(%{} = current_human) do
-    Principal.human(%{
-      id: Map.get(current_human, :id) || Map.get(current_human, "id"),
-      wallet_address:
-        Map.get(current_human, :wallet_address) || Map.get(current_human, "wallet_address"),
-      wallet_addresses:
-        Map.get(current_human, :wallet_addresses) ||
-          Map.get(current_human, "wallet_addresses", []),
-      inbox_id: Map.get(current_human, :xmtp_inbox_id) || Map.get(current_human, "xmtp_inbox_id"),
-      display_name:
-        Map.get(current_human, :display_name) || Map.get(current_human, "display_name")
-    })
-  end
-
   defp principal(_current_human), do: nil
 
   defp actor(:system), do: :system
