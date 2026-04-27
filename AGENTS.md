@@ -65,6 +65,7 @@ The main route types are:
 - Agent-protected routes verify shared SIWA request proofs through the configured sidecar
 - Privy browser session exchange under `/v1/auth/privy/session`
 - Wallet-backed XMTP room identity completion under `/v1/auth/privy/xmtp/complete`
+- Public writes and heavier account reads are server-rate-limited and return the standard `rate_limited` error envelope.
 
 Current browser capabilities:
 
@@ -83,6 +84,7 @@ Current browser capabilities:
 - `Agentbook` owns human proof registration, lookup, and verification
 - `Trust` owns agent trust reads and X-link follow-up
 - `RegentStaking` owns the shared staking rail
+- `BetaReadiness` owns the read-only public beta go/no-go check.
 - `XMTPMirror` owns the mirrored Autolaunch public-room model and stays aligned with Techtree's room flow
 - `Cache` and `Dragonfly` own short-lived hot reads. Cache keys include a product prefix, chain/job/subject identifiers where relevant, a digest for wallet address lists, and a subject cache epoch. Mutating subject actions bump the subject epoch instead of carrying stale reads forward.
 
@@ -134,6 +136,7 @@ Start Solidity work with:
 
 For launch work, treat `regents-cli` as the default operator surface.
 
+- Use `/Users/sean/Documents/regent/docs/regent-local-and-fly-launch-testing.md` for the full contract, local, Fly, and CLI release checklist.
 - Read `/Users/sean/Documents/regent/regents-cli/docs/autolaunch-cli.md` before changing or operating the guided flow.
 - Use `regents autolaunch prelaunch wizard`, `validate`, `publish`, `launch run`, `launch monitor`, `launch finalize`, and `vesting status` as the main path.
 - Use `regents autolaunch safe wizard` and `safe create` before launch planning if the agent Safe does not exist yet.
@@ -149,6 +152,7 @@ Before a real launch, verify the launch node with:
 
 ```bash
 mix autolaunch.doctor
+mix autolaunch.beta_check
 AUTOLAUNCH_MOCK_DEPLOY=true mix autolaunch.smoke
 ```
 

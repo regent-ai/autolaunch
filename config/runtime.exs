@@ -21,6 +21,14 @@ env_bool = fn key, default ->
   env.(key, if(default, do: "true", else: "false")) in ["1", "true", "TRUE"]
 end
 
+env_list = fn key ->
+  key
+  |> env.("")
+  |> String.split(",", trim: true)
+  |> Enum.map(&String.trim/1)
+  |> Enum.reject(&(&1 == ""))
+end
+
 if config_env() != :test do
   launch_chain_id_default = if config_env() == :prod, do: 8_453, else: 84_532
   launch_chain_id = env_int.("AUTOLAUNCH_CHAIN_ID", launch_chain_id_default)
@@ -154,10 +162,11 @@ if config_env() != :test do
     mock_deploy: env_bool.("AUTOLAUNCH_MOCK_DEPLOY", false)
 
   config :autolaunch, :regent_staking,
-    chain_id: env_int.("REGENT_STAKING_CHAIN_ID", 84_532),
-    chain_label: env.("REGENT_STAKING_CHAIN_LABEL", "Base Sepolia"),
+    chain_id: env_int.("REGENT_STAKING_CHAIN_ID", 8_453),
+    chain_label: env.("REGENT_STAKING_CHAIN_LABEL", "Base"),
     rpc_url: env.("REGENT_STAKING_RPC_URL", ""),
-    contract_address: env.("REGENT_REVENUE_STAKING_ADDRESS", "")
+    contract_address: env.("REGENT_REVENUE_STAKING_ADDRESS", ""),
+    operator_wallets: env_list.("REGENT_STAKING_OPERATOR_WALLETS")
 
   config :agent_world, :world_id,
     app_id: env.("WORLD_ID_APP_ID", ""),

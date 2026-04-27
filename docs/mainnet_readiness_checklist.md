@@ -1,37 +1,16 @@
 # Autolaunch Mainnet Readiness Checklist
 
-This checklist tracks the hardening items that matter before Base mainnet launch operations.
+Autolaunch launch and testing work now uses the canonical Regent local and Fly guide:
 
-Status key:
+- `/Users/sean/Documents/regent/docs/regent-local-and-fly-launch-testing.md`
 
-- `[x]` complete
-- `[ ]` still open
+Use that guide for:
 
-## Contract safety and launch invariants
+- Base mainnet `$REGENT` staking checks
+- Base Sepolia Autolaunch rehearsal checks
+- Foundry, app, Fly, and CLI gates
+- address recording and final run status
 
-- [x] Lock down `LaunchDeploymentController.deploy(...)` so an authorized controller cannot be driven by arbitrary callers.
-- [x] Emit an onchain deployment event from the launch controller so the deployed stack has a durable audit trail.
-- [x] Enforce the intended sweep rule in `RegentLBPStrategy` so post-auction sweeps cannot replace migration.
-- [x] Keep the migration path under the strongest Foundry coverage in the repo.
-- [x] Remove the accidental native-ETH sink from `LaunchFeeVault`.
-- [x] Move the shared `Owned` helper to a two-step transfer model.
+Use `/Users/sean/Documents/regent/autolaunch/docs/product_invariants.md` for the current Autolaunch product rules.
 
-## Operational wiring
-
-- [x] Preserve the shared-infra ownership handoff from `SubjectRegistry` to `RevenueShareFactory` under the new two-step model.
-- [x] Expose or document the acceptance step for any pending post-launch ownership handoffs to the Agent Safe.
-
-## Product-story consistency
-
-- [x] Freeze the canonical product rules in one document.
-- [x] Make the repo docs match the canonical rules:
-  - Base-family USDC only for subject revenue totals
-  - 10% / 5% / 85% allocation story
-  - CLI-first launch, browser-first participation
-  - ingress as receive-and-sweep wrapper only
-- [x] Make the launch and guide pages match the same story.
-
-## Validation
-
-- [x] Run the full Foundry contract test suite after the hardening pass.
-- [x] Run the app-side validation that is reasonable for these changes.
+The earlier mainnet hardening checklist was completed and folded into the guide and product invariants. Treat Base mainnet launch promotion as a later step outside the immediate public beta lane.

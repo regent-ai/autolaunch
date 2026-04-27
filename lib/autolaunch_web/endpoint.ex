@@ -1,12 +1,24 @@
 defmodule AutolaunchWeb.Endpoint do
   use Phoenix.Endpoint, otp_app: :autolaunch
 
-  @session_options [
+  @base_session_options [
     store: :cookie,
     key: "_autolaunch_key",
     signing_salt: "f6n9rGqM",
     same_site: "Lax"
   ]
+
+  @runtime_env Application.compile_env(:autolaunch, :runtime_env, :dev)
+  @session_options if @runtime_env == :prod,
+                     do: Keyword.put(@base_session_options, :secure, true),
+                     else: @base_session_options
+
+  def session_options(runtime_env \\ @runtime_env) do
+    maybe_secure_session(@base_session_options, runtime_env)
+  end
+
+  defp maybe_secure_session(options, :prod), do: Keyword.put(options, :secure, true)
+  defp maybe_secure_session(options, _runtime_env), do: options
 
   socket "/live", Phoenix.LiveView.Socket,
     websocket: [connect_info: [session: @session_options]],

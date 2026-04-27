@@ -51,6 +51,7 @@ Each area needs a clear next action or a clear "no action needed" state.
 Before Autolaunch is included in a release:
 
 - Confirm `mix autolaunch.doctor` is clean for the target environment.
+- Confirm `mix autolaunch.beta_check` is clean for the target public beta environment.
 - Confirm mock launch smoke passes for app-level launch-to-subject behavior.
 - Confirm real launch jobs that reached `ready` pass deploy verification.
 - Confirm launch status shows the current phase, history, and owner of the next action.
@@ -64,4 +65,3 @@ Before Autolaunch is included in a release:
 Use customer-facing text that says what the person can do, what happens next, and why it matters.
 
 Avoid explaining internal service names, route wiring, cache behavior, signing internals, old behavior, or compatibility plans in public UI text.
-

@@ -17,11 +17,13 @@
 /.env.local
 /.env.*
 !/.env.example
+/.envrc
 /.direnv/
 /PLAN.md
 /NOTES.md
 /SCRATCH.md
 /WORKFLOW.md
+/docs/regent-local-and-fly-launch-testing.md
 /design/
 /design/subagents/
 /contracts/docs/images/

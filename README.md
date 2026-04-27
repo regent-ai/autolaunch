@@ -73,6 +73,7 @@ mix precommit
 mix assets.build
 mix assets.deploy
 mix autolaunch.doctor
+mix autolaunch.beta_check
 AUTOLAUNCH_MOCK_DEPLOY=true mix autolaunch.smoke
 mix autolaunch.verify_deploy --job <job-id>
 ```
@@ -137,6 +138,8 @@ The main product routes are:
 
 `/v1/app/agents` is the agent inventory. `/v1/app/agents/:id/readiness` checks whether an agent is ready to launch.
 
+Public writes and heavier account reads return a standard `rate_limited` error with a `retry-after` header when a client sends too many requests.
+
 ### Contract Console
 
 `/contracts` is the operator-facing contract surface. It accepts `job_id` and `subject_id` query parameters and reads the current launch stack or subject stack directly from the backend.
@@ -162,16 +165,16 @@ The full environment list lives in [.env.example](.env.example). For local work,
 - Internal XMTP sync auth: `AUTOLAUNCH_INTERNAL_SHARED_SECRET`
 - SIWA sidecar: `SIWA_INTERNAL_URL`, `SIWA_SHARED_SECRET`
 - Launch deployment: `AUTOLAUNCH_RPC_URL`, `AUTOLAUNCH_CCA_FACTORY_ADDRESS`, `AUTOLAUNCH_UNISWAP_V4_POOL_MANAGER`, `AUTOLAUNCH_UNISWAP_V4_POSITION_MANAGER`, `AUTOLAUNCH_USDC_ADDRESS`, `AUTOLAUNCH_DEPLOY_WORKDIR`, `AUTOLAUNCH_DEPLOY_BINARY`, `AUTOLAUNCH_DEPLOY_SCRIPT_TARGET`, `AUTOLAUNCH_DEPLOY_ACCOUNT` or `AUTOLAUNCH_DEPLOY_PRIVATE_KEY`
-- Launch contracts: `REVENUE_SHARE_FACTORY_ADDRESS`, `REVENUE_INGRESS_FACTORY_ADDRESS`, `LBP_STRATEGY_FACTORY_ADDRESS`, `TOKEN_FACTORY_ADDRESS`, `AUTOLAUNCH_ERC8004_SUBGRAPH_URL`
+- Launch contracts: `AUTOLAUNCH_REVENUE_SHARE_FACTORY_ADDRESS`, `AUTOLAUNCH_REVENUE_INGRESS_FACTORY_ADDRESS`, `AUTOLAUNCH_LBP_STRATEGY_FACTORY_ADDRESS`, `AUTOLAUNCH_TOKEN_FACTORY_ADDRESS`, `AUTOLAUNCH_ERC8004_SUBGRAPH_URL`
 - Base identity lookups: `AUTOLAUNCH_BASE_MAINNET_RPC_URL`, `AUTOLAUNCH_BASE_SEPOLIA_RPC_URL`, `AUTOLAUNCH_BASE_MAINNET_ERC8004_SUBGRAPH_URL`, `AUTOLAUNCH_BASE_SEPOLIA_ERC8004_SUBGRAPH_URL`, `AUTOLAUNCH_BASE_MAINNET_IDENTITY_REGISTRY_ADDRESS`, `AUTOLAUNCH_BASE_SEPOLIA_IDENTITY_REGISTRY_ADDRESS`
 - Base verifier address books: `AUTOLAUNCH_BASE_MAINNET_UNISWAP_V4_POOL_MANAGER`, `AUTOLAUNCH_BASE_SEPOLIA_UNISWAP_V4_POOL_MANAGER`, `AUTOLAUNCH_BASE_MAINNET_REVENUE_SHARE_FACTORY_ADDRESS`, `AUTOLAUNCH_BASE_SEPOLIA_REVENUE_SHARE_FACTORY_ADDRESS`, `AUTOLAUNCH_BASE_MAINNET_REVENUE_INGRESS_FACTORY_ADDRESS`, `AUTOLAUNCH_BASE_SEPOLIA_REVENUE_INGRESS_FACTORY_ADDRESS`
 - Launch-script ambient env: `AUTOLAUNCH_IDENTITY_REGISTRY_ADDRESS`, `STRATEGY_OPERATOR`, `OFFICIAL_POOL_FEE`, `OFFICIAL_POOL_TICK_SPACING`, `CCA_FLOOR_PRICE_Q96`, `CCA_TICK_SPACING_Q96`, `CCA_REQUIRED_CURRENCY_RAISED`, optional `CCA_VALIDATION_HOOK`, optional `CCA_CLAIM_BLOCK_OFFSET`
-- Regent staking rail: `REGENT_STAKING_RPC_URL`, `REGENT_STAKING_CHAIN_ID`, `REGENT_STAKING_CHAIN_LABEL`, `REGENT_REVENUE_STAKING_ADDRESS`
+- Regent staking rail: `REGENT_STAKING_RPC_URL`, `REGENT_STAKING_CHAIN_ID`, `REGENT_STAKING_CHAIN_LABEL`, `REGENT_REVENUE_STAKING_ADDRESS`, `REGENT_STAKING_OPERATOR_WALLETS`
 - AgentBook and World ID: `WORLD_ID_APP_ID`, `WORLD_ID_ACTION`, `WORLD_ID_RP_ID`, `WORLD_ID_SIGNING_KEY`, `WORLDCHAIN_RPC_URL`, `WORLDCHAIN_AGENTBOOK_ADDRESS`, `WORLDCHAIN_AGENTBOOK_RELAY_URL`, `BASE_MAINNET_RPC_URL`, `BASE_AGENTBOOK_ADDRESS`, `BASE_AGENTBOOK_RELAY_URL`, `BASE_SEPOLIA_RPC_URL`, `BASE_SEPOLIA_AGENTBOOK_ADDRESS`, `BASE_SEPOLIA_AGENTBOOK_RELAY_URL`
 
 The launch path supports Base Sepolia for rehearsal and Base mainnet for production.
 
-For the current promotion path, use the run sheet in [REGENT_CLI_LOCAL_AND_FLY_TESTING.md](/Users/sean/Documents/regent/autolaunch/REGENT_CLI_LOCAL_AND_FLY_TESTING.md). It treats Regent staking as a Base mainnet rail, Autolaunch launch rehearsal as Base Sepolia, and the guided CLI lifecycle as the main operator path.
+For the current promotion path, use the root launch guide at [/Users/sean/Documents/regent/docs/regent-local-and-fly-launch-testing.md](/Users/sean/Documents/regent/docs/regent-local-and-fly-launch-testing.md). It treats Regent staking as a Base mainnet rail, Autolaunch launch rehearsal as Base Sepolia, and the guided CLI lifecycle as the main operator path.
 
 If product copy, launch docs, or contract docs disagree about the active rules, use [`docs/product_invariants.md`](docs/product_invariants.md) as the source of truth and update the other surface.
 
@@ -212,7 +215,7 @@ Important launch rules:
 
 - Each auction sells 10% of a 100 billion supply
 - The launch strategy holds another 5% for LP migration and sends 85% into the vesting wallet
-- Every auction is denominated in USDC on Base Sepolia
+- Every auction is denominated in USDC on the configured Base-family launch network
 - Buyers set a total budget and a max price, and the order runs across the remaining blocks like a TWAP
 - Each block clears at the highest price where demand exceeds supply, and no one pays above their stated max price
 - Launch buyers must stake the claimed tokens to earn Base-family USDC once it reaches the subject revenue contract
@@ -248,11 +251,12 @@ mix precommit
 mix assets.build
 mix assets.deploy
 mix autolaunch.doctor
+mix autolaunch.beta_check
 AUTOLAUNCH_MOCK_DEPLOY=true mix autolaunch.smoke
 mix autolaunch.verify_deploy --job <job-id>
 ```
 
-`mix autolaunch.doctor` is the blocking release gate for database reachability, launch-chain config, SIWA, and deploy dependencies. `mix autolaunch.smoke` is the synthetic in-repo launch-to-subject smoke. `mix autolaunch.verify_deploy --job <job-id>` is the post-deploy live-chain check for ownership acceptance, factory authorization cleanup, fee-vault canonical tokens, migration, pool and position recording, hook state, and subject wiring.
+`mix autolaunch.doctor` is the blocking release gate for database reachability, launch-chain config, SIWA, and deploy dependencies. `mix autolaunch.beta_check` is the read-only public beta gate for database reachability, required Base-family addresses, route exposure, and the Regent staking plus launch read paths. `mix autolaunch.smoke` is the synthetic in-repo launch-to-subject smoke. `mix autolaunch.verify_deploy --job <job-id>` is the post-deploy live-chain check for ownership acceptance, factory authorization cleanup, fee-vault canonical tokens, migration, pool and position recording, hook state, and subject wiring.
 
 Doctor checks map directly to product breakage:
 
