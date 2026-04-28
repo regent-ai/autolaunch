@@ -2,6 +2,7 @@ defmodule AutolaunchWeb.RegentStakingLive.Presenter do
   @moduledoc false
 
   def action_error(:unauthorized), do: "Connect a wallet first."
+  def action_error(:operator_required), do: "Use an authorized operator wallet."
   def action_error(:unconfigured), do: "Regent staking is not configured here yet."
   def action_error(:amount_required), do: "Enter an amount first."
   def action_error(:invalid_amount_precision), do: "Amount precision is too high."

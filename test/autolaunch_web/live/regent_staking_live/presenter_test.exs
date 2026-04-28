@@ -5,6 +5,7 @@ defmodule AutolaunchWeb.RegentStakingLive.PresenterTest do
 
   test "translates staking action errors" do
     assert Presenter.action_error(:unauthorized) == "Connect a wallet first."
+    assert Presenter.action_error(:operator_required) == "Use an authorized operator wallet."
     assert Presenter.action_error(:unknown) == "Staking action could not be prepared."
   end
 

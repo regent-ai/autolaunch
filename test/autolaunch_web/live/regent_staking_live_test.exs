@@ -81,8 +81,16 @@ defmodule AutolaunchWeb.RegentStakingLiveTest do
 
   setup do
     original = Application.get_env(:autolaunch, :regent_staking_live, [])
+    original_staking = Application.get_env(:autolaunch, :regent_staking, [])
     Application.put_env(:autolaunch, :regent_staking_live, context_module: StakingStub)
-    on_exit(fn -> Application.put_env(:autolaunch, :regent_staking_live, original) end)
+    Application.put_env(:autolaunch, :regent_staking, operator_wallets: [
+      "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    ])
+
+    on_exit(fn ->
+      Application.put_env(:autolaunch, :regent_staking_live, original)
+      Application.put_env(:autolaunch, :regent_staking, original_staking)
+    end)
 
     {:ok, human} =
       Accounts.upsert_human_by_privy_id("did:privy:regent-staking-live", %{
@@ -172,6 +180,40 @@ defmodule AutolaunchWeb.RegentStakingLiveTest do
       |> render_click()
 
     assert html =~ "Connect a wallet first."
+    refute html =~ "Send USDC deposit"
+    refute html =~ "0xdeposit"
+  end
+
+  test "signed-in non-operators cannot prepare treasury actions", %{conn: conn} do
+    {:ok, human} =
+      Accounts.upsert_human_by_privy_id("did:privy:regent-staking-reader", %{
+        "wallet_address" => "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "wallet_addresses" => ["0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"],
+        "display_name" => "Reader"
+      })
+
+    conn = init_test_session(conn, privy_user_id: human.privy_user_id)
+    {:ok, view, _html} = live(conn, "/regent-staking")
+
+    html =
+      view
+      |> form("form[phx-change='deposit_changed']", %{
+        "deposit" => %{
+          "amount" => "2.0",
+          "source_tag" => "manual",
+          "source_ref" => "regent-staking"
+        }
+      })
+      |> render_change()
+
+    assert html =~ "Prepare USDC deposit"
+
+    html =
+      view
+      |> element("#regent-deposit-usdc")
+      |> render_click()
+
+    assert html =~ "Use an authorized operator wallet."
     refute html =~ "Send USDC deposit"
     refute html =~ "0xdeposit"
   end

@@ -2,6 +2,7 @@ defmodule AutolaunchWeb.RegentStakingLive do
   use AutolaunchWeb, :live_view
 
   alias Autolaunch.RegentStaking
+  alias AutolaunchWeb.RegentStakingAccess
   alias AutolaunchWeb.Live.Refreshable
   alias AutolaunchWeb.RegentStakingLive.Presenter
 
@@ -442,15 +443,19 @@ defmodule AutolaunchWeb.RegentStakingLive do
   end
 
   defp prepare_operator_action(socket, key, fun) do
-    case fun.() do
-      {:ok, %{tx_request: tx_request}} ->
-        put_pending(socket, key, %{tx_request: tx_request})
+    if RegentStakingAccess.authorized_operator?(socket.assigns.current_human) do
+      case fun.() do
+        {:ok, %{tx_request: tx_request}} ->
+          put_pending(socket, key, %{tx_request: tx_request})
 
-      {:ok, %{prepared: %{tx_request: tx_request}} = prepared} ->
-        put_pending(socket, key, %{tx_request: tx_request, prepared: prepared})
+        {:ok, %{prepared: %{tx_request: tx_request}} = prepared} ->
+          put_pending(socket, key, %{tx_request: tx_request, prepared: prepared})
 
-      {:error, reason} ->
-        put_action_error(socket, Presenter.action_error(reason))
+        {:error, reason} ->
+          put_action_error(socket, Presenter.action_error(reason))
+      end
+    else
+      put_action_error(socket, Presenter.action_error(:operator_required))
     end
   end
 

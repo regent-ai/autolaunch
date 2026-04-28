@@ -1,8 +1,8 @@
 defmodule AutolaunchWeb.Api.RegentStakingController do
   use AutolaunchWeb, :controller
 
-  alias Autolaunch.Evm
   alias Autolaunch.RegentStaking
+  alias AutolaunchWeb.RegentStakingAccess
 
   import AutolaunchWeb.Api.ControllerHelpers
 
@@ -83,35 +83,12 @@ defmodule AutolaunchWeb.Api.RegentStakingController do
 
   defp render_operator_prepare(conn, fun) do
     with_current_human(conn, fn human ->
-      if authorized_operator?(human) do
+      if RegentStakingAccess.authorized_operator?(human) do
         render_result(conn, fun.())
       else
         render_result(conn, {:error, :operator_required})
       end
     end)
-  end
-
-  defp authorized_operator?(human) do
-    allowed_wallets = configured_operator_wallets()
-    linked_wallets = linked_wallets(human)
-
-    allowed_wallets != [] and Enum.any?(linked_wallets, &(&1 in allowed_wallets))
-  end
-
-  defp configured_operator_wallets do
-    :autolaunch
-    |> Application.get_env(:regent_staking, [])
-    |> Keyword.get(:operator_wallets, [])
-    |> Enum.map(&Evm.normalize_address/1)
-    |> Enum.reject(&is_nil/1)
-    |> Enum.uniq()
-  end
-
-  defp linked_wallets(human) do
-    [Map.get(human, :wallet_address) | List.wrap(Map.get(human, :wallet_addresses))]
-    |> Enum.map(&Evm.normalize_address/1)
-    |> Enum.reject(&is_nil/1)
-    |> Enum.uniq()
   end
 
   defp context_module do
