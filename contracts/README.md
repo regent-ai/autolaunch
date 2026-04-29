@@ -37,12 +37,15 @@ The canonical product rules live in `/Users/sean/Documents/regent/autolaunch/doc
 - `scripts/ExampleCCADeploymentScript.s.sol`
 - `scripts/DeployRegentRevenueStaking.s.sol`
 
-The launch script expects the active Base-family inputs, including `UNISWAP_V4_POSITION_MANAGER`, `OFFICIAL_POOL_FEE`, and `OFFICIAL_POOL_TICK_SPACING`.
+The launch script expects the active Base inputs, including `UNISWAP_V4_POSITION_MANAGER`, `OFFICIAL_POOL_FEE`, and `OFFICIAL_POOL_TICK_SPACING`.
 
 Important script output markers stay unchanged:
 
 - `AUTOLAUNCH_INFRA_RESULT_JSON:`
 - `CCA_RESULT_JSON:`
+
+`AUTOLAUNCH_INFRA_RESULT_JSON` includes the current and pending revenue share factory
+owners. The pending owner must accept before shared infra is production-ready.
 
 ## Test coverage
 

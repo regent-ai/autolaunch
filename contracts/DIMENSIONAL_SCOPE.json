@@ -76,7 +76,7 @@
           "id": "DIM-002",
           "severity": "high",
           "title": "Configured staker share drifts upward when live stake exceeds fixed denominator",
-          "summary": "stake and claimAndRestakeRegent increase totalStaked without enforcing it stays within revenueShareSupplyDenominator; _recordRevenue scales the accumulator by the fixed denominator and then multiplies by live totalStaked, so creditedToStakers can exceed the configured stakerShareBps portion and eventually exceed the full deposit."
+          "summary": "stake and claimAndRestakeRegent increase totalStaked without enforcing it stays within revenueShareSupplyDenominator; _recordRevenue scales the accumulator by the fixed denominator and then multiplies by live totalStaked, so creditedToStakers can exceed the full fixed-denominator allocation and eventually exceed the full deposit."
         }
       ],
       "validated_findings": [

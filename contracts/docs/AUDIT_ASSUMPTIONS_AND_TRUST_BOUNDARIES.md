@@ -4,8 +4,8 @@
 
 These documents and contracts are consistent on the main operating rules:
 
-- the launch path is Base-family only
-- subject USDC is counted only when Base-family USDC reaches the subject splitter
+- the launch path is Base chain only
+- subject USDC is counted only when Base USDC reaches the subject splitter
 - the launch pool fee is split into a subject lane and a Regent lane
 - the separate `RegentRevenueStaking` contract is not part of the per-launch subject path
 
@@ -123,7 +123,7 @@ flowchart TD
 
 ## Recommended Audit Questions
 
-1. Should the fixed-denominator reward model be enforced, capped, or redesigned?
+1. Are the fixed-denominator stake caps and rounding behavior acceptable for the intended treasury and staker accounting model?
 2. Can any privileged path freeze assets or strand them in a partial migration state?
 3. Are lifecycle sync calls safe if a subject rotates to a new splitter while inactive?
 4. Are the rescue paths appropriately limited across all asset-holding contracts?

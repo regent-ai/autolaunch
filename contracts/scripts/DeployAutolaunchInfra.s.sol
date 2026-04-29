@@ -8,7 +8,7 @@ import {SubjectRegistry} from "src/revenue/SubjectRegistry.sol";
 import {RevenueShareFactory} from "src/revenue/RevenueShareFactory.sol";
 import {RevenueIngressFactory} from "src/revenue/RevenueIngressFactory.sol";
 import {RegentLBPStrategyFactory} from "src/RegentLBPStrategyFactory.sol";
-import {BaseFamilyUSDC} from "src/libraries/BaseFamilyUSDC.sol";
+import {BaseUsdc} from "src/libraries/BaseUsdc.sol";
 
 contract DeployAutolaunchInfraScript is Script {
     struct ScriptConfig {
@@ -41,11 +41,8 @@ contract DeployAutolaunchInfraScript is Script {
     {
         validateConfig(cfg);
 
-        address broadcaster = tx.origin;
-        require(broadcaster != address(0), "BROADCASTER_ZERO");
-
-        vm.startBroadcast();
-        subjectRegistry = new SubjectRegistry(broadcaster);
+        vm.startBroadcast(cfg.owner);
+        subjectRegistry = new SubjectRegistry(cfg.owner);
         revenueShareFactory = new RevenueShareFactory(cfg.owner, cfg.usdc, subjectRegistry);
         revenueIngressFactory =
             new RevenueIngressFactory(cfg.usdc, address(subjectRegistry), cfg.owner);
@@ -58,7 +55,7 @@ contract DeployAutolaunchInfraScript is Script {
     function validateConfig(ScriptConfig memory cfg) public view {
         require(cfg.owner != address(0), "OWNER_ZERO");
         require(cfg.usdc != address(0), "USDC_ZERO");
-        BaseFamilyUSDC.requireCanonical(cfg.usdc);
+        BaseUsdc.requireCanonical(cfg.usdc);
     }
 
     function loadConfigFromEnv() public view returns (ScriptConfig memory cfg) {
@@ -90,6 +87,14 @@ contract DeployAutolaunchInfraScript is Script {
                 vm.toString(address(strategyFactory)),
                 "\",\"usdcAddress\":\"",
                 vm.toString(cfg.usdc),
+                "\",\"revenueShareFactoryOwner\":\"",
+                vm.toString(revenueShareFactory.owner()),
+                "\",\"revenueShareFactoryPendingOwner\":\"",
+                vm.toString(revenueShareFactory.pendingOwner()),
+                "\",\"revenueIngressFactoryOwner\":\"",
+                vm.toString(revenueIngressFactory.owner()),
+                "\",\"strategyFactoryOwner\":\"",
+                vm.toString(strategyFactory.owner()),
                 "\",\"owner\":\"",
                 vm.toString(cfg.owner),
                 "\"}"

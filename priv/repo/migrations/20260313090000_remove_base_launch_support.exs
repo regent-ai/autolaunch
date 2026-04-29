@@ -2,11 +2,32 @@ defmodule Autolaunch.Repo.Migrations.RemoveBaseLaunchSupport do
   use Ecto.Migration
 
   def up do
-    execute("DELETE FROM autolaunch_bids WHERE chain_id NOT IN (8453, 84532)")
-
-    execute("DELETE FROM autolaunch_auctions WHERE chain_id NOT IN (8453, 84532)")
-
-    execute("DELETE FROM autolaunch_jobs WHERE chain_id NOT IN (8453, 84532)")
+    execute("""
+    DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1 FROM autolaunch_bids
+        WHERE network IS NULL
+           OR network NOT IN ('base-mainnet', 'base-sepolia')
+           OR chain_id IS NULL
+           OR chain_id NOT IN (8453, 84532)
+      ) OR EXISTS (
+        SELECT 1 FROM autolaunch_auctions
+        WHERE network IS NULL
+           OR network NOT IN ('base-mainnet', 'base-sepolia')
+           OR chain_id IS NULL
+           OR chain_id NOT IN (8453, 84532)
+      ) OR EXISTS (
+        SELECT 1 FROM autolaunch_jobs
+        WHERE network IS NULL
+           OR network NOT IN ('base-mainnet', 'base-sepolia')
+           OR chain_id IS NULL
+           OR chain_id NOT IN (8453, 84532)
+      ) THEN
+        RAISE EXCEPTION 'Autolaunch launch records include non-Base rows; stop and archive or migrate them before applying Base launch constraints.';
+      END IF;
+    END $$;
+    """)
 
     alter table(:autolaunch_jobs) do
       modify :network, :string, null: false, default: "base-mainnet"

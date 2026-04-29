@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-library BaseFamilyUSDC {
+library BaseUsdc {
     uint256 internal constant BASE_MAINNET_CHAIN_ID = 8453;
     uint256 internal constant BASE_SEPOLIA_CHAIN_ID = 84_532;
 
@@ -11,7 +11,7 @@ library BaseFamilyUSDC {
     function canonicalUsdc(uint256 chainId) internal pure returns (address) {
         if (chainId == BASE_MAINNET_CHAIN_ID) return BASE_MAINNET_USDC;
         if (chainId == BASE_SEPOLIA_CHAIN_ID) return BASE_SEPOLIA_USDC;
-        revert("BASE_FAMILY_ONLY");
+        revert("BASE_CHAIN_ONLY");
     }
 
     function requireCanonical(address usdc) internal view {

@@ -37,11 +37,12 @@ config :autolaunch, :privy,
   app_id: "test-app",
   verification_key: "test-key"
 
-config :autolaunch, :dragonfly_enabled, false
-
 config :autolaunch, :siwa,
   internal_url: "http://localhost:4100",
   shared_secret: "autolaunch-test-shared-secret"
+
+config :autolaunch, :prelaunch_uploads,
+  root_dir: Path.join(System.tmp_dir!(), "autolaunch-test-prelaunch-assets")
 
 config :agent_world, :world_id,
   app_id: "app_test",

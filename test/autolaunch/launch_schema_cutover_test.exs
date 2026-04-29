@@ -56,13 +56,13 @@ defmodule Autolaunch.LaunchSchemaCutoverTest do
     assert column_default("autolaunch_bids", "chain_id") =~ Integer.to_string(@sepolia_chain_id)
   end
 
-  test "database allows Base-family inserts for launch tables" do
+  test "database allows Base inserts for launch tables" do
     assert_insert_allowed(insert_job_row(@mainnet_network, @mainnet_chain_id))
     assert_insert_allowed(insert_auction_row(@mainnet_network, @mainnet_chain_id))
     assert_insert_allowed(insert_bid_row(@mainnet_network, @mainnet_chain_id))
   end
 
-  test "migration delete rule removes non-sepolia rows from a fixture table" do
+  test "migration preflight detects non-base rows instead of deleting them" do
     Repo.query!("DROP TABLE IF EXISTS temp_launch_cutover_jobs")
 
     Repo.query!("""
@@ -113,21 +113,48 @@ defmodule Autolaunch.LaunchSchemaCutoverTest do
 
     Repo.query!(
       """
-      DELETE FROM temp_launch_cutover_jobs
-      WHERE network IS DISTINCT FROM $1
-         OR chain_id IS DISTINCT FROM $2
+      INSERT INTO temp_launch_cutover_jobs (
+        job_id, owner_address, agent_id, agent_safe_address,
+        network, chain_id, status, step, total_supply, message, siwa_nonce, siwa_signature,
+        issued_at, inserted_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW(), NOW())
       """,
-      [@sepolia_network, @sepolia_chain_id]
+      [
+        "job_ethereum",
+        "0x3333333333333333333333333333333333333333",
+        "1:99",
+        "0x3333333333333333333333333333333333333333",
+        @invalid_network,
+        @invalid_chain_id,
+        "queued",
+        "queued",
+        "1000",
+        "signed",
+        "nonce-ethereum",
+        "sig",
+        DateTime.utc_now()
+      ]
     )
+
+    assert %Postgrex.Result{rows: [[true]]} =
+             Repo.query!("""
+             SELECT EXISTS (
+               SELECT 1 FROM temp_launch_cutover_jobs
+               WHERE network IS NULL
+                  OR network NOT IN ('base-sepolia', 'base-mainnet')
+                  OR chain_id IS NULL
+                  OR chain_id NOT IN (84532, 8453)
+             )
+             """)
 
     assert %Postgrex.Result{rows: [[1]]} =
              Repo.query!("SELECT count(*) FROM temp_launch_cutover_jobs WHERE network = $1", [
                @sepolia_network
              ])
 
-    assert %Postgrex.Result{rows: [[0]]} =
+    assert %Postgrex.Result{rows: [[1]]} =
              Repo.query!("SELECT count(*) FROM temp_launch_cutover_jobs WHERE network = $1", [
-               @mainnet_network
+               @invalid_network
              ])
   end
 

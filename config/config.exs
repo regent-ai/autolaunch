@@ -2,9 +2,6 @@ import Config
 
 config :autolaunch,
   runtime_env: config_env(),
-  dragonfly_enabled: true,
-  dragonfly_host: "localhost",
-  dragonfly_port: 6379,
   ecto_repos: [Autolaunch.Repo],
   generators: [timestamp_type: :utc_datetime_usec]
 
@@ -23,6 +20,11 @@ config :autolaunch, :launch,
   network: "base-sepolia",
   allow_unverified_owner: false,
   deploy_script_target: ""
+
+config :autolaunch, :launch_job_poller,
+  enabled: false,
+  interval_ms: 2_000,
+  lease_timeout_ms: :timer.minutes(10)
 
 config :autolaunch, Autolaunch.Xmtp,
   rooms: [
