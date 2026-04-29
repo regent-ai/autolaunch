@@ -6,19 +6,21 @@ defmodule Autolaunch.Application do
   @impl true
   def start(_type, _args) do
     :ok = enforce_siwa_runtime_guard!()
-    dragonfly_children = if dragonfly_enabled?(), do: [dragonfly_child_spec()], else: []
 
     children =
       [
         Autolaunch.Repo,
+        Autolaunch.LocalCache.child_spec(),
         {DNSCluster, query: Application.get_env(:autolaunch, :dns_cluster_query) || :ignore},
         {Phoenix.PubSub, name: Autolaunch.PubSub},
         {Task.Supervisor, name: Autolaunch.TaskSupervisor},
+        launch_job_poller_child(),
         AutolaunchWeb.RateLimiter,
         Autolaunch.XmtpIdentity,
         Autolaunch.Xmtp,
         AutolaunchWeb.Endpoint
-      ] ++ dragonfly_children
+      ]
+      |> Enum.reject(&is_nil/1)
 
     Supervisor.start_link(children, strategy: :one_for_one, name: Autolaunch.Supervisor)
   end
@@ -43,11 +45,11 @@ defmodule Autolaunch.Application do
     :ok
   end
 
-  defp dragonfly_child_spec do
-    RegentCache.Dragonfly.child_spec(:autolaunch)
-  end
+  defp launch_job_poller_child do
+    opts = Application.get_env(:autolaunch, :launch_job_poller, [])
 
-  defp dragonfly_enabled? do
-    Application.get_env(:autolaunch, :dragonfly_enabled, true) == true
+    if Keyword.get(opts, :enabled, false) do
+      {Autolaunch.Launch.JobPoller, opts}
+    end
   end
 end

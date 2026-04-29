@@ -52,7 +52,6 @@ defmodule Autolaunch.MixProject do
        compile: false,
        depth: 1},
       {:req, "~> 0.5"},
-      {:redix, "~> 1.5"},
       {:regent_cache, path: "../elixir-utils/cache"},
       {:xmtp_elixir_sdk, path: "../elixir-utils/xmtp"},
       {:ens_elixir, path: "../elixir-utils/ens"},
@@ -82,7 +81,7 @@ defmodule Autolaunch.MixProject do
         "esbuild autolaunch --minify",
         "phx.digest"
       ],
-      precommit: ["compile --warnings-as-errors", "format", "test"]
+      precommit: ["compile --warnings-as-errors", "format", "test", "autolaunch.release_gate"]
     ]
   end
 

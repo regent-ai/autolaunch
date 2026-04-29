@@ -22,7 +22,7 @@ In plain English, autolaunch wants a launch where buyers compete on how much the
 - Every bid is placed in **USDC on Base Sepolia**.
 - The agent keeps the other **90%** of supply.
 - Claiming is not the end state. The token is meant to be **staked** after settlement.
-- Staking is what makes the token earn routed agent revenue once Base-family USDC reaches the revsplit, including the share of token fee revenue.
+- Staking is what makes the token earn routed agent revenue once Base USDC reaches the revsplit, including the share of token fee revenue.
 
 ## The current live launch split
 
@@ -141,7 +141,7 @@ Claiming is only the settlement step.
 
 The intended end state is **staking** the token.
 
-When income is routed through the official accounting path, and only after Base-family USDC reaches the revsplit, staked balances determine how much of that routed value becomes claimable by token holders.
+When income is routed through the official accounting path, and only after Base USDC reaches the revsplit, staked balances determine how much of that routed value becomes claimable by token holders.
 
 In plain English:
 

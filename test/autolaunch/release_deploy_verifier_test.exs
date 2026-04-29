@@ -46,6 +46,10 @@ defmodule Autolaunch.ReleaseDeployVerifierTest do
              "controller_owner",
              "revenue_share_factory_controller_auth",
              "revenue_ingress_factory_controller_auth",
+             "strategy_factory_controller_auth",
+             "revenue_share_factory_owner",
+             "revenue_ingress_factory_owner",
+             "strategy_factory_owner",
              "revenue_splitter_ownership",
              "fee_registry_ownership",
              "fee_vault_ownership",
@@ -83,6 +87,44 @@ defmodule Autolaunch.ReleaseDeployVerifierTest do
              checks,
              &(&1.key == "fee_vault_ownership" and not &1.ok and
                  String.contains?(&1.detail, "Pending owner"))
+           )
+  end
+
+  test "verifier fails when the launch controller is still authorized by the strategy factory", %{
+    job: job
+  } do
+    Support.set_rpc_mode(:strategy_factory_authorized)
+
+    assert %{ok: false, checks: checks} = ReleaseDeployVerifier.run(job.job_id)
+
+    assert Enum.any?(
+             checks,
+             &(&1.key == "strategy_factory_controller_auth" and not &1.ok and
+                 String.contains?(&1.detail, "still authorized"))
+           )
+  end
+
+  test "verifier fails when a factory is still owned by the launch controller", %{job: job} do
+    Support.set_rpc_mode(:controller_factory_owner)
+
+    assert %{ok: false, checks: checks} = ReleaseDeployVerifier.run(job.job_id)
+
+    assert Enum.any?(
+             checks,
+             &(&1.key == "revenue_share_factory_owner" and not &1.ok and
+                 String.contains?(&1.detail, "still owned by the launch controller"))
+           )
+  end
+
+  test "verifier fails when factory ownership is still pending", %{job: job} do
+    Support.set_rpc_mode(:pending_factory_owner)
+
+    assert %{ok: false, checks: checks} = ReleaseDeployVerifier.run(job.job_id)
+
+    assert Enum.any?(
+             checks,
+             &(&1.key == "revenue_share_factory_owner" and not &1.ok and
+                 String.contains?(&1.detail, "pending owner"))
            )
   end
 

@@ -39,7 +39,7 @@ contract RevenueShareFactory is Owned {
         _;
     }
 
-    function acceptSubjectRegistryOwnership() external {
+    function acceptSubjectRegistryOwnership() external onlyOwner {
         subjectRegistry.acceptOwnership();
     }
 

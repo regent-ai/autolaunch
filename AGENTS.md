@@ -9,7 +9,7 @@ Keep this file short and current. Use it as the fast start map for new coding ag
 - Phoenix + LiveView app for the Autolaunch product
 - TypeScript browser hooks for wallet, auth, and browser-only flows
 - Ecto + Postgres for launch plans, jobs, bids, sessions, portfolio snapshots, and subject actions
-- Dragonfly-backed cache for hot subject revenue reads, wallet position reads, obligation metrics, ingress accounts, and share history
+- Local Cachex-backed cache for hot subject revenue reads, wallet position reads, obligation metrics, ingress accounts, and share history
 - Local Foundry workspace in `contracts/` for launch, fee, splitter, ingress, and staking contracts
 
 ## Contract-First Rule
@@ -51,7 +51,7 @@ Open these files first for product work:
 - `lib/autolaunch/regent_staking.ex`
 - `lib/autolaunch/revenue.ex`
 - `lib/autolaunch/cache.ex`
-- `lib/autolaunch/dragonfly.ex`
+- `lib/autolaunch/local_cache.ex`
 - `lib/autolaunch_web/regent_scenes.ex`
 - `assets/js/app.ts`
 - `assets/js/hooks/index.ts`
@@ -86,7 +86,7 @@ Current browser capabilities:
 - `RegentStaking` owns the shared staking rail
 - `BetaReadiness` owns the read-only public beta go/no-go check.
 - `XMTPMirror` owns the mirrored Autolaunch public-room model and stays aligned with Techtree's room flow
-- `Cache` and `Dragonfly` own short-lived hot reads. Cache keys include a product prefix, chain/job/subject identifiers where relevant, a digest for wallet address lists, and a subject cache epoch. Mutating subject actions bump the subject epoch instead of carrying stale reads forward.
+- `LocalCache` owns short-lived hot reads. Cache keys include a product prefix, chain/job/subject identifiers where relevant, a digest for wallet address lists, and a subject cache epoch. Mutating subject actions bump the subject epoch instead of carrying stale reads forward.
 
 ## Settlement Flow
 
@@ -122,12 +122,12 @@ Start Solidity work with:
 
 ## Product Story
 
-- The launch path is Base-family only: Base Sepolia for rehearsal and Base mainnet for production.
+- The launch path is Base chain only: Base Sepolia for rehearsal and Base mainnet for production.
 - Browser auth is Privy-based.
 - Agent auth is SIWA-based.
 - A Regent identity is a saved Agent account: wallet, registry address, and token ID.
 - The browser wizard exists, but the preferred operator flow is CLI-first.
-- `regent-staking` is a separate shared rail and should stay distinct from the Base-family launch flow.
+- `regent-staking` is a separate shared rail and should stay distinct from the Base launch flow.
 - The Autolaunch public room now follows the same mirrored XMTP group-chat model as Techtree. Keep room identity, membership command queueing, and internal sync endpoints aligned across both repos.
 - Main public CTA: if the reader already has an agent, use `regents-cli`; if they do not have an agent yet, send them to `regents.sh`.
 - Public copy should describe what a person can do, what happens next, and why it matters. Do not expose framework names, internal route wiring, cache mechanics, signing internals, legacy behavior, or compatibility plans in public UI text.

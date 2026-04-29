@@ -4,6 +4,7 @@ defmodule Autolaunch.TokenPricing do
   import Bitwise
 
   alias Autolaunch.CCA.Rpc
+  alias Autolaunch.InfrastructureConfig
 
   @pools_slot 6
   @pool_slot_selector "0x1e2eaeaf"
@@ -63,19 +64,18 @@ defmodule Autolaunch.TokenPricing do
   end
 
   defp pool_manager_address(chain_id) do
-    config = Application.get_env(:autolaunch, :launch, [])
+    case InfrastructureConfig.launch_chain_id() do
+      {:ok, ^chain_id} ->
+        normalize_address(InfrastructureConfig.launch_value(:pool_manager_address))
 
-    case {Keyword.get(config, :chain_id), Keyword.get(config, :pool_manager_address, "")} do
-      {^chain_id, "0x" <> _ = address} -> normalize_address(address)
-      _ -> {:error, :missing_pool_manager}
+      _ ->
+        {:error, :missing_pool_manager}
     end
   end
 
   defp usdc_address(chain_id) do
-    config = Application.get_env(:autolaunch, :launch, [])
-
-    case {Keyword.get(config, :chain_id), Keyword.get(config, :usdc_address, "")} do
-      {^chain_id, "0x" <> _ = address} -> normalize_address(address)
+    case InfrastructureConfig.launch_chain_id() do
+      {:ok, ^chain_id} -> normalize_address(InfrastructureConfig.launch_value(:usdc_address))
       _ -> {:error, :missing_usdc}
     end
   end

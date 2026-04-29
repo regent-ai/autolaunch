@@ -4,6 +4,7 @@ defmodule Autolaunch.CCA.Market do
   alias Autolaunch.CCA.Abi
   alias Autolaunch.CCA.Contract
   alias Autolaunch.CCA.Rpc
+  alias Autolaunch.Contracts.ActionParams
 
   def build_submit_tx_request(auction, owner_address, amount_wei, max_price_q96) do
     {:ok,
@@ -143,8 +144,17 @@ defmodule Autolaunch.CCA.Market do
           {:error, _} -> []
         end
 
-      exit_action = exit_action(snapshot, onchain_bid_id, onchain_bid, checkpoint_history)
-      claim_action = claim_action(snapshot, onchain_bid_id, onchain_bid)
+      exit_action =
+        exit_action(
+          snapshot,
+          onchain_bid_id,
+          onchain_bid,
+          checkpoint_history,
+          tracked_bid.owner_address
+        )
+
+      claim_action =
+        claim_action(snapshot, onchain_bid_id, onchain_bid, tracked_bid.owner_address)
 
       {:ok,
        %{
@@ -182,7 +192,7 @@ defmodule Autolaunch.CCA.Market do
     end
   end
 
-  defp exit_action(snapshot, onchain_bid_id, onchain_bid, checkpoint_history) do
+  defp exit_action(snapshot, onchain_bid_id, onchain_bid, checkpoint_history, owner_address) do
     cond do
       onchain_bid.exited_block > 0 ->
         nil
@@ -190,14 +200,16 @@ defmodule Autolaunch.CCA.Market do
       snapshot.block_number >= snapshot.end_block and not snapshot.is_graduated ->
         %{
           type: :exit_bid,
-          tx_request: build_exit_tx_request!(snapshot, onchain_bid_id, %{type: :exit_bid})
+          prepared:
+            build_exit_prepared!(snapshot, onchain_bid_id, %{type: :exit_bid}, owner_address)
         }
 
       snapshot.block_number >= snapshot.end_block and
           onchain_bid.max_price_q96 > snapshot.checkpoint.clearing_price_q96 ->
         %{
           type: :exit_bid,
-          tx_request: build_exit_tx_request!(snapshot, onchain_bid_id, %{type: :exit_bid})
+          prepared:
+            build_exit_prepared!(snapshot, onchain_bid_id, %{type: :exit_bid}, owner_address)
         }
 
       snapshot.is_graduated and
@@ -208,12 +220,17 @@ defmodule Autolaunch.CCA.Market do
               type: :exit_partially_filled_bid,
               last_fully_filled_checkpoint_block: hints.last_fully_filled_checkpoint_block,
               outbid_block: hints.outbid_block,
-              tx_request:
-                build_exit_tx_request!(snapshot, onchain_bid_id, %{
-                  type: :exit_partially_filled_bid,
-                  last_fully_filled_checkpoint_block: hints.last_fully_filled_checkpoint_block,
-                  outbid_block: hints.outbid_block
-                })
+              prepared:
+                build_exit_prepared!(
+                  snapshot,
+                  onchain_bid_id,
+                  %{
+                    type: :exit_partially_filled_bid,
+                    last_fully_filled_checkpoint_block: hints.last_fully_filled_checkpoint_block,
+                    outbid_block: hints.outbid_block
+                  },
+                  owner_address
+                )
             }
 
           {:error, _reason} ->
@@ -225,10 +242,10 @@ defmodule Autolaunch.CCA.Market do
     end
   end
 
-  defp claim_action(snapshot, onchain_bid_id, onchain_bid) do
+  defp claim_action(snapshot, onchain_bid_id, onchain_bid, owner_address) do
     if onchain_bid.exited_block > 0 and onchain_bid.tokens_filled_units > 0 and
          snapshot.block_number >= snapshot.claim_block do
-      %{tx_request: build_claim_tx_request!(snapshot, onchain_bid_id)}
+      %{prepared: build_claim_prepared!(snapshot, onchain_bid_id, owner_address)}
     else
       nil
     end
@@ -402,6 +419,41 @@ defmodule Autolaunch.CCA.Market do
       )
 
     request
+  end
+
+  defp build_exit_prepared!(snapshot, onchain_bid_id, action, owner_address) do
+    request = build_exit_tx_request!(snapshot, onchain_bid_id, action)
+
+    params =
+      action
+      |> Map.drop([:type])
+      |> Map.put(:onchain_bid_id, Integer.to_string(onchain_bid_id))
+
+    {:ok, prepared} =
+      ActionParams.prepare_tx_request(
+        request,
+        "auction",
+        Atom.to_string(action.type),
+        params,
+        expected_signer: owner_address
+      )
+
+    prepared
+  end
+
+  defp build_claim_prepared!(snapshot, onchain_bid_id, owner_address) do
+    request = build_claim_tx_request!(snapshot, onchain_bid_id)
+
+    {:ok, prepared} =
+      ActionParams.prepare_tx_request(
+        request,
+        "auction",
+        "claim_bid",
+        %{onchain_bid_id: Integer.to_string(onchain_bid_id)},
+        expected_signer: owner_address
+      )
+
+    prepared
   end
 
   defp to_hex_quantity(value) when is_integer(value) and value >= 0 do

@@ -1,9 +1,10 @@
 defmodule Autolaunch.ReleaseDeployVerifier do
   @moduledoc false
 
-  alias Autolaunch.BaseFamily
+  alias Autolaunch.BaseChain
   alias Autolaunch.CCA.Rpc
   alias Autolaunch.Contracts.Abi
+  alias Autolaunch.InfrastructureConfig
   alias Autolaunch.Launch.Job
   alias Autolaunch.Repo
 
@@ -22,6 +23,30 @@ defmodule Autolaunch.ReleaseDeployVerifier do
           ] ++
             controller_checks(job, controller_resolution.address) ++
             [
+              factory_owner_check(
+                "revenue_share_factory_owner",
+                job.chain_id,
+                revenue_share_factory_address(job.chain_id),
+                controller_resolution.address,
+                expected_factory_owner(),
+                "Revenue share factory owner is readable and separate from the launch controller."
+              ),
+              factory_owner_check(
+                "revenue_ingress_factory_owner",
+                job.chain_id,
+                revenue_ingress_factory_address(job.chain_id),
+                controller_resolution.address,
+                expected_factory_owner(),
+                "Revenue ingress factory owner is readable and separate from the launch controller."
+              ),
+              factory_owner_check(
+                "strategy_factory_owner",
+                job.chain_id,
+                strategy_factory_address(job.chain_id),
+                controller_resolution.address,
+                expected_factory_owner(),
+                "Strategy factory owner is readable and separate from the launch controller."
+              ),
               accepted_owner_check(
                 "revenue_splitter_ownership",
                 job.chain_id,
@@ -108,6 +133,13 @@ defmodule Autolaunch.ReleaseDeployVerifier do
         revenue_ingress_factory_address(job.chain_id),
         controller_address,
         "Revenue ingress factory no longer authorizes the deployment controller."
+      ),
+      authorized_creator_revoked_check(
+        "strategy_factory_controller_auth",
+        job.chain_id,
+        strategy_factory_address(job.chain_id),
+        controller_address,
+        "Strategy factory no longer authorizes the deployment controller."
       )
     ]
   end
@@ -279,6 +311,59 @@ defmodule Autolaunch.ReleaseDeployVerifier do
             :error,
             "Could not read authorized creator status from #{factory_address}."
           )
+      end
+    else
+      fail_check(
+        key,
+        :error,
+        "Verifier config is missing the factory address for chain #{chain_id}."
+      )
+    end
+  end
+
+  defp factory_owner_check(
+         key,
+         chain_id,
+         factory_address,
+         controller_address,
+         expected_owner,
+         detail
+       ) do
+    if configured_address?(factory_address) do
+      owner = safe_address_call(chain_id, factory_address, :owner)
+      pending_owner = safe_address_call(chain_id, factory_address, :pending_owner)
+
+      cond do
+        !configured_address?(expected_owner) ->
+          fail_check(key, :error, "Verifier config is missing AUTOLAUNCH_FACTORY_OWNER_ADDRESS.")
+
+        !configured_address?(owner) ->
+          fail_check(key, :error, "Factory owner could not be read from #{factory_address}.")
+
+        configured_address?(controller_address) and
+            normalize_address(owner) == normalize_address(controller_address) ->
+          fail_check(
+            key,
+            :error,
+            "Factory #{factory_address} is still owned by the launch controller."
+          )
+
+        normalize_address(owner) != normalize_address(expected_owner) ->
+          fail_check(
+            key,
+            :error,
+            "Factory #{factory_address} owner is #{owner}, expected #{expected_owner}."
+          )
+
+        normalize_address(pending_owner) != @zero_address ->
+          fail_check(
+            key,
+            :error,
+            "Factory #{factory_address} still has pending owner #{pending_owner}."
+          )
+
+        true ->
+          ok_check(key, :error, detail)
       end
     else
       fail_check(
@@ -520,6 +605,10 @@ defmodule Autolaunch.ReleaseDeployVerifier do
     end
   end
 
+  defp expected_factory_owner do
+    InfrastructureConfig.launch_address(:factory_owner_address)
+  end
+
   defp subject_config(job) do
     case safe_call(
            job.chain_id,
@@ -573,33 +662,24 @@ defmodule Autolaunch.ReleaseDeployVerifier do
     Rpc.eth_call(chain_id, to, data)
   end
 
-  defp launch_config, do: Application.get_env(:autolaunch, :launch, [])
-
   defp pool_manager_address(chain_id),
-    do: config_value_for_chain(chain_id, :pool_manager_addresses)
+    do: InfrastructureConfig.chain_address(:pool_manager_addresses, chain_id)
 
   defp usdc_address(chain_id) do
-    case BaseFamily.canonical_usdc_address(chain_id) do
+    case BaseChain.canonical_usdc_address(chain_id) do
       {:ok, address} -> address
       {:error, _reason} -> nil
     end
   end
 
   defp revenue_share_factory_address(chain_id),
-    do: config_value_for_chain(chain_id, :revenue_share_factory_addresses)
+    do: InfrastructureConfig.chain_address(:revenue_share_factory_addresses, chain_id)
 
   defp revenue_ingress_factory_address(chain_id),
-    do: config_value_for_chain(chain_id, :revenue_ingress_factory_addresses)
+    do: InfrastructureConfig.chain_address(:revenue_ingress_factory_addresses, chain_id)
 
-  defp config_value_for_chain(chain_id, key) do
-    launch_config()
-    |> Keyword.get(key, %{})
-    |> case do
-      %{} = values -> Map.get(values, chain_id)
-      _ -> nil
-    end
-    |> normalize_address()
-  end
+  defp strategy_factory_address(chain_id),
+    do: InfrastructureConfig.chain_address(:lbp_strategy_factory_addresses, chain_id)
 
   defp normalize_address(value) when is_binary(value), do: String.downcase(String.trim(value))
   defp normalize_address(_value), do: nil

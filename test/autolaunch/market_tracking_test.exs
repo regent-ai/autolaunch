@@ -113,7 +113,8 @@ defmodule Autolaunch.MarketTrackingTest do
     [position] = Launch.list_positions(human)
 
     assert position.status == "claimable"
-    assert position.tx_actions.claim.tx_request.to == @auction_address
+    assert position.tx_actions.claim.prepared.expected_signer == @owner_address
+    assert position.tx_actions.claim.prepared.tx_request.to == @auction_address
     assert position.tokens_filled == "12"
   end
 
@@ -146,6 +147,7 @@ defmodule Autolaunch.MarketTrackingTest do
 
     assert position.status == "inactive"
     assert position.tx_actions.exit.type == :exit_partially_filled_bid
+    assert position.tx_actions.exit.prepared.expected_signer == @owner_address
     assert position.tx_actions.exit.last_fully_filled_checkpoint_block == 150
     assert position.tx_actions.exit.outbid_block == 170
   end

@@ -36,6 +36,8 @@ defmodule Autolaunch.ReleaseDeployVerifierTestSupport do
   def address(:mainnet_pool_manager), do: "0x1515151515151515151515151515151515151515"
   def address(:mainnet_revenue_share_factory), do: "0x1616161616161616161616161616161616161616"
   def address(:mainnet_revenue_ingress_factory), do: "0x1717171717171717171717171717171717171717"
+  def address(:mainnet_strategy_factory), do: "0x1818181818181818181818181818181818181818"
+  def address(:strategy_factory), do: "0x1919191919191919191919191919191919191919"
   def address(:currency0), do: address(:launch_token)
   def address(:currency1), do: address(:usdc)
 
@@ -61,7 +63,12 @@ defmodule Autolaunch.ReleaseDeployVerifierTestSupport do
       revenue_ingress_factory_addresses: %{
         84_532 => address(:revenue_ingress_factory),
         8_453 => address(:mainnet_revenue_ingress_factory)
-      }
+      },
+      lbp_strategy_factory_addresses: %{
+        84_532 => address(:strategy_factory),
+        8_453 => address(:mainnet_strategy_factory)
+      },
+      factory_owner_address: address(:owner)
     )
   end
 
@@ -127,6 +134,20 @@ defmodule Autolaunch.ReleaseDeployVerifierTestSupport do
           {:ok, encode_address_result(Support.address(:owner))}
 
         address in [
+          Support.address(:revenue_share_factory),
+          Support.address(:revenue_ingress_factory),
+          Support.address(:strategy_factory)
+        ] and selector == Abi.selector(:owner) ->
+          {:ok, encode_address_result(factory_owner_for_mode())}
+
+        address in [
+          Support.address(:revenue_share_factory),
+          Support.address(:revenue_ingress_factory),
+          Support.address(:strategy_factory)
+        ] and selector == Abi.selector(:pending_owner) ->
+          {:ok, encode_address_result(factory_pending_owner_for_mode())}
+
+        address in [
           Support.address(:splitter),
           Support.address(:fee_registry),
           Support.address(:fee_vault),
@@ -147,10 +168,11 @@ defmodule Autolaunch.ReleaseDeployVerifierTestSupport do
 
         address in [
           Support.address(:revenue_share_factory),
-          Support.address(:revenue_ingress_factory)
+          Support.address(:revenue_ingress_factory),
+          Support.address(:strategy_factory)
         ] and
             selector == Abi.selector(:authorized_creators) ->
-          {:ok, encode_bool_result(false)}
+          {:ok, encode_bool_result(authorized_creator_for_mode(address))}
 
         address == Support.address(:fee_vault) and
             selector == Abi.selector(:canonical_launch_token) ->
@@ -230,6 +252,27 @@ defmodule Autolaunch.ReleaseDeployVerifierTestSupport do
       case Application.get_env(:autolaunch, :release_deploy_verifier_rpc_mode, :healthy) do
         :wrong_usdc -> Support.address(:wrong_usdc)
         _ -> Support.address(:usdc)
+      end
+    end
+
+    defp factory_owner_for_mode do
+      case Application.get_env(:autolaunch, :release_deploy_verifier_rpc_mode, :healthy) do
+        :controller_factory_owner -> Support.address(:controller)
+        _ -> Support.address(:owner)
+      end
+    end
+
+    defp factory_pending_owner_for_mode do
+      case Application.get_env(:autolaunch, :release_deploy_verifier_rpc_mode, :healthy) do
+        :pending_factory_owner -> Support.address(:pending_owner)
+        _ -> zero_address()
+      end
+    end
+
+    defp authorized_creator_for_mode(address) do
+      case Application.get_env(:autolaunch, :release_deploy_verifier_rpc_mode, :healthy) do
+        :strategy_factory_authorized -> address == Support.address(:strategy_factory)
+        _ -> false
       end
     end
 

@@ -25,6 +25,14 @@ defmodule Autolaunch.CCA.Rpc do
     call_adapter(:eth_call, [chain_id, to, data], opts)
   end
 
+  def code_at(chain_id, address) do
+    code_at(chain_id, address, [])
+  end
+
+  def code_at(chain_id, address, opts) do
+    call_adapter(:code_at, [chain_id, address], opts)
+  end
+
   def tx_receipt(chain_id, tx_hash) do
     tx_receipt(chain_id, tx_hash, [])
   end
@@ -69,6 +77,8 @@ defmodule Autolaunch.CCA.Rpc do
   defmodule HttpAdapter do
     @moduledoc false
 
+    alias Autolaunch.InfrastructureConfig
+
     @timeout 15_000
 
     def block_number(chain_id) do
@@ -103,6 +113,15 @@ defmodule Autolaunch.CCA.Rpc do
 
     def eth_call(chain_id, to, data, opts) do
       call(chain_id, "eth_call", [%{"to" => to, "data" => data}, "latest"], opts)
+      |> normalize_hex_result()
+    end
+
+    def code_at(chain_id, address) do
+      code_at(chain_id, address, [])
+    end
+
+    def code_at(chain_id, address, opts) do
+      call(chain_id, "eth_getCode", [address, "latest"], opts)
       |> normalize_hex_result()
     end
 
@@ -149,31 +168,7 @@ defmodule Autolaunch.CCA.Rpc do
     end
 
     def rpc_url(chain_id, opts) do
-      launch_config = Application.get_env(:autolaunch, :launch, [])
-      regent_staking_config = Application.get_env(:autolaunch, :regent_staking, [])
-      regent_staking_chain_id = Keyword.get(regent_staking_config, :chain_id)
-      launch_chain_id = Keyword.get(launch_config, :chain_id)
-      source = Keyword.get(opts, :source, :launch)
-      chain_rpc_urls = Keyword.get(launch_config, :chain_rpc_urls, %{})
-
-      cond do
-        source == :regent_staking and is_integer(regent_staking_chain_id) and
-            chain_id == regent_staking_chain_id ->
-          fetch_url(regent_staking_config, :rpc_url)
-
-        is_map(chain_rpc_urls) and is_binary(Map.get(chain_rpc_urls, chain_id)) and
-            String.trim(Map.get(chain_rpc_urls, chain_id)) != "" ->
-          {:ok, String.trim(Map.get(chain_rpc_urls, chain_id))}
-
-        is_integer(launch_chain_id) and chain_id == launch_chain_id ->
-          fetch_url(launch_config, :rpc_url)
-
-        is_integer(regent_staking_chain_id) and chain_id == regent_staking_chain_id ->
-          fetch_url(regent_staking_config, :rpc_url)
-
-        true ->
-          {:error, :invalid_chain_id}
-      end
+      InfrastructureConfig.rpc_url(chain_id, opts)
     end
 
     defp call(chain_id, method, params, opts) do
@@ -200,13 +195,6 @@ defmodule Autolaunch.CCA.Rpc do
           _ ->
             {:error, :invalid_rpc_response}
         end
-      end
-    end
-
-    defp fetch_url(config, key) do
-      case Keyword.get(config, key, "") do
-        value when is_binary(value) and value != "" -> {:ok, value}
-        _ -> {:error, :missing_rpc_url}
       end
     end
 

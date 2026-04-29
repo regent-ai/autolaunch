@@ -1,22 +1,23 @@
 defmodule Autolaunch.BetaReadiness do
   @moduledoc false
 
+  alias Autolaunch.InfrastructureConfig
   alias Autolaunch.Launch
+  alias Autolaunch.Prelaunch.AssetStorage
   alias Autolaunch.RegentStaking
   alias Autolaunch.Repo
 
-  @base_family_chain_ids [8_453, 84_532]
-  @launch_address_checks [
-    {:cca_factory_address, "AUTOLAUNCH_CCA_FACTORY_ADDRESS"},
-    {:pool_manager_address, "AUTOLAUNCH_UNISWAP_V4_POOL_MANAGER"},
-    {:position_manager_address, "AUTOLAUNCH_UNISWAP_V4_POSITION_MANAGER"},
-    {:usdc_address, "AUTOLAUNCH_USDC_ADDRESS"},
-    {:revenue_share_factory_address, "AUTOLAUNCH_REVENUE_SHARE_FACTORY_ADDRESS"},
-    {:revenue_ingress_factory_address, "AUTOLAUNCH_REVENUE_INGRESS_FACTORY_ADDRESS"},
-    {:lbp_strategy_factory_address, "AUTOLAUNCH_LBP_STRATEGY_FACTORY_ADDRESS"},
-    {:token_factory_address, "AUTOLAUNCH_TOKEN_FACTORY_ADDRESS"},
-    {:identity_registry_address, "AUTOLAUNCH_IDENTITY_REGISTRY_ADDRESS"}
-  ]
+  @launch_address_env_names %{
+    cca_factory_address: "AUTOLAUNCH_CCA_FACTORY_ADDRESS",
+    pool_manager_address: "AUTOLAUNCH_UNISWAP_V4_POOL_MANAGER",
+    position_manager_address: "AUTOLAUNCH_UNISWAP_V4_POSITION_MANAGER",
+    usdc_address: "canonical Base USDC",
+    revenue_share_factory_address: "AUTOLAUNCH_REVENUE_SHARE_FACTORY_ADDRESS",
+    revenue_ingress_factory_address: "AUTOLAUNCH_REVENUE_INGRESS_FACTORY_ADDRESS",
+    lbp_strategy_factory_address: "AUTOLAUNCH_LBP_STRATEGY_FACTORY_ADDRESS",
+    token_factory_address: "AUTOLAUNCH_TOKEN_FACTORY_ADDRESS",
+    identity_registry_address: "AUTOLAUNCH_IDENTITY_REGISTRY_ADDRESS"
+  }
   @expected_routes [
     {:get, "/"},
     {:get, "/health"},
@@ -31,10 +32,13 @@ defmodule Autolaunch.BetaReadiness do
     checks =
       [
         repo_check(),
+        shared_launch_table_check(),
         launch_chain_check(),
-        launch_rpc_check()
+        launch_rpc_check(),
+        prelaunch_upload_storage_check()
       ] ++
         launch_address_checks() ++
+        launch_script_input_checks() ++
         [
           regent_staking_config_check(),
           route_exposure_check(),
@@ -55,32 +59,42 @@ defmodule Autolaunch.BetaReadiness do
     end
   end
 
-  defp launch_chain_check do
-    launch = Application.get_env(:autolaunch, :launch, [])
-    chain_id = Keyword.get(launch, :chain_id)
+  defp shared_launch_table_check do
+    case Ecto.Adapters.SQL.query(
+           Repo,
+           "SELECT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'agent_token_launches')",
+           []
+         ) do
+      {:ok, %{rows: [[true]]}} ->
+        ok("shared_launch_table", "Launch record table is present.")
 
-    if chain_id in @base_family_chain_ids do
-      ok("launch_chain", "Launch chain is Base family: #{chain_id}.")
-    else
-      fail("launch_chain", "Launch chain must be Base mainnet or Base Sepolia.")
+      _ ->
+        fail("shared_launch_table", "Launch record table is missing.")
+    end
+  end
+
+  defp launch_chain_check do
+    case InfrastructureConfig.launch_chain_id() do
+      {:ok, chain_id} ->
+        ok("launch_chain", "Launch chain is Base: #{chain_id}.")
+
+      {:error, _reason} ->
+        fail("launch_chain", "Launch chain must be Base mainnet or Base Sepolia.")
     end
   end
 
   defp launch_rpc_check do
-    launch = Application.get_env(:autolaunch, :launch, [])
-
-    if present?(Keyword.get(launch, :rpc_url)) do
-      ok("launch_rpc", "AUTOLAUNCH_RPC_URL is configured.")
-    else
-      fail("launch_rpc", "AUTOLAUNCH_RPC_URL is missing.")
+    case InfrastructureConfig.launch_rpc_url() do
+      {:ok, _url} -> ok("launch_rpc", "AUTOLAUNCH_RPC_URL is configured.")
+      {:error, _reason} -> fail("launch_rpc", "AUTOLAUNCH_RPC_URL is missing.")
     end
   end
 
   defp launch_address_checks do
-    launch = Application.get_env(:autolaunch, :launch, [])
+    Enum.map(InfrastructureConfig.launch_address_keys(), fn key ->
+      env_name = Map.fetch!(@launch_address_env_names, key)
 
-    Enum.map(@launch_address_checks, fn {key, env_name} ->
-      if address?(Keyword.get(launch, key)) do
+      if InfrastructureConfig.configured_address?(InfrastructureConfig.launch_value(key)) do
         ok("launch_#{key}", "#{env_name} is configured.")
       else
         fail("launch_#{key}", "#{env_name} is missing or invalid.")
@@ -88,24 +102,42 @@ defmodule Autolaunch.BetaReadiness do
     end)
   end
 
-  defp regent_staking_config_check do
-    config = Application.get_env(:autolaunch, :regent_staking, [])
+  defp launch_script_input_checks do
+    Enum.map(InfrastructureConfig.launch_script_inputs(), fn {key, env_name, rule} ->
+      if InfrastructureConfig.valid_script_input?(key, rule) do
+        ok("launch_script_#{key}", "#{env_name} is configured.")
+      else
+        fail("launch_script_#{key}", "#{env_name} is missing or invalid.")
+      end
+    end)
+  end
 
-    cond do
-      Keyword.get(config, :chain_id) not in @base_family_chain_ids ->
+  defp prelaunch_upload_storage_check do
+    if AssetStorage.writable?() do
+      ok("prelaunch_upload_storage", "Prelaunch upload storage is writable.")
+    else
+      fail("prelaunch_upload_storage", "Prelaunch upload storage is missing or not writable.")
+    end
+  end
+
+  defp regent_staking_config_check do
+    with {:ok, _chain_id} <- InfrastructureConfig.regent_staking_chain_id(),
+         {:ok, _rpc_url} <- InfrastructureConfig.regent_staking_rpc_url(),
+         address when is_binary(address) <-
+           InfrastructureConfig.regent_staking_address(:contract_address) do
+      ok("regent_staking_config", "Regent staking configuration is present.")
+    else
+      {:error, :invalid_chain_id} ->
         fail(
           "regent_staking_config",
           "REGENT_STAKING_CHAIN_ID must be Base mainnet or Base Sepolia."
         )
 
-      not present?(Keyword.get(config, :rpc_url)) ->
+      {:error, :missing_rpc_url} ->
         fail("regent_staking_config", "REGENT_STAKING_RPC_URL is missing.")
 
-      not address?(Keyword.get(config, :contract_address)) ->
+      _ ->
         fail("regent_staking_config", "REGENT_REVENUE_STAKING_ADDRESS is missing or invalid.")
-
-      true ->
-        ok("regent_staking_config", "Regent staking configuration is present.")
     end
   end
 
@@ -179,13 +211,4 @@ defmodule Autolaunch.BetaReadiness do
 
   defp ok(key, detail), do: %{key: key, ok: true, detail: detail}
   defp fail(key, detail), do: %{key: key, ok: false, detail: detail}
-
-  defp present?(value) when is_binary(value), do: String.trim(value) != ""
-  defp present?(_value), do: false
-
-  defp address?(value) when is_binary(value) do
-    Regex.match?(~r/^0x[0-9a-fA-F]{40}$/, String.trim(value))
-  end
-
-  defp address?(_value), do: false
 end

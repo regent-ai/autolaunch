@@ -30,6 +30,12 @@ contract RevenueShareFactoryTest is Test {
 
         vm.prank(OWNER);
         subjectRegistry.transferOwnership(address(factory));
+
+        vm.prank(ATTACKER);
+        vm.expectRevert("ONLY_OWNER");
+        factory.acceptSubjectRegistryOwnership();
+
+        vm.prank(OWNER);
         factory.acceptSubjectRegistryOwnership();
     }
 

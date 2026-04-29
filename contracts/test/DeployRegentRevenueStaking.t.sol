@@ -32,14 +32,6 @@ contract DeployRegentRevenueStakingScriptTest is Test {
         script.loadConfigFromEnv();
     }
 
-    function testDeployFromEnvRequiresFullStakerShare() external {
-        DeployRegentRevenueStakingScript.ScriptConfig memory cfg = _defaultScriptConfig();
-        cfg.stakerShareBps = 9000;
-
-        vm.expectRevert("STAKER_SHARE_MUST_BE_FULL");
-        script.validateConfig(cfg);
-    }
-
     function testDeployFromEnvLoadsCurrentRegentConfig() external {
         _setRequiredEnv();
 
@@ -50,7 +42,6 @@ contract DeployRegentRevenueStakingScriptTest is Test {
         assertEq(cfg.treasuryRecipient, TREASURY);
         assertEq(cfg.owner, OWNER);
         assertEq(cfg.revenueShareSupplyDenominator, SUPPLY_DENOMINATOR);
-        assertEq(cfg.stakerShareBps, 10_000);
     }
 
     function testValidateConfigRejectsWrongBaseMainnetUsdc() external {
@@ -77,7 +68,6 @@ contract DeployRegentRevenueStakingScriptTest is Test {
         vm.setEnv("REGENT_REVENUE_TREASURY_ADDRESS", vm.toString(TREASURY));
         vm.setEnv("REGENT_REVENUE_GOVERNANCE_SAFE_ADDRESS", vm.toString(OWNER));
         vm.setEnv("REGENT_REVENUE_SUPPLY_DENOMINATOR", vm.toString(SUPPLY_DENOMINATOR));
-        vm.setEnv("REGENT_REVENUE_STAKER_SHARE_BPS", "10000");
     }
 
     function _defaultScriptConfig()
@@ -89,7 +79,6 @@ contract DeployRegentRevenueStakingScriptTest is Test {
         cfg.usdc = address(usdc);
         cfg.treasuryRecipient = TREASURY;
         cfg.revenueShareSupplyDenominator = SUPPLY_DENOMINATOR;
-        cfg.stakerShareBps = 10_000;
         cfg.owner = OWNER;
     }
 

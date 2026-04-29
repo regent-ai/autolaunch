@@ -8,7 +8,7 @@ import {LaunchDeploymentController} from "src/LaunchDeploymentController.sol";
 import {RegentLBPStrategyFactory} from "src/RegentLBPStrategyFactory.sol";
 import {RevenueIngressFactory} from "src/revenue/RevenueIngressFactory.sol";
 import {RevenueShareFactory} from "src/revenue/RevenueShareFactory.sol";
-import {BaseFamilyUSDC} from "src/libraries/BaseFamilyUSDC.sol";
+import {BaseUsdc} from "src/libraries/BaseUsdc.sol";
 
 contract ExampleCCADeploymentScript is Script {
     struct ScriptConfig {
@@ -26,6 +26,7 @@ contract ExampleCCADeploymentScript is Script {
         address usdcToken;
         address regentRecipient;
         address validationHook;
+        address factoryOwner;
         uint256 agentId;
         uint256 totalSupply;
         uint24 officialPoolFee;
@@ -111,13 +112,16 @@ contract ExampleCCADeploymentScript is Script {
 
         cfg.usdcToken = vm.envAddress("AUTOLAUNCH_USDC_ADDRESS");
         require(cfg.usdcToken != address(0), "USDC_ZERO");
-        BaseFamilyUSDC.requireCanonical(cfg.usdcToken);
+        BaseUsdc.requireCanonical(cfg.usdcToken);
 
         cfg.identityRegistry = vm.envAddress("AUTOLAUNCH_IDENTITY_REGISTRY_ADDRESS");
         require(cfg.identityRegistry != address(0), "IDENTITY_REGISTRY_ZERO");
 
         cfg.regentRecipient = vm.envAddress("REGENT_MULTISIG_ADDRESS");
         require(cfg.regentRecipient != address(0), "REGENT_RECIPIENT_ZERO");
+
+        cfg.factoryOwner = vm.envAddress("AUTOLAUNCH_FACTORY_OWNER_ADDRESS");
+        require(cfg.factoryOwner != address(0), "FACTORY_OWNER_ZERO");
 
         cfg.validationHook = vm.envOr("CCA_VALIDATION_HOOK", address(0));
         cfg.auctionTickSpacing = vm.envUint("CCA_TICK_SPACING_Q96");
@@ -164,6 +168,14 @@ contract ExampleCCADeploymentScript is Script {
     {
         ScriptConfig memory cfg = _loadConfig();
 
+        return _deploy(cfg);
+    }
+
+    function _deploy(ScriptConfig memory cfg)
+        internal
+        returns (LaunchDeploymentController.DeploymentResult memory result)
+    {
+        _requireFactoryOwner(cfg);
         LaunchDeploymentController controller = new LaunchDeploymentController();
         RevenueShareFactory(cfg.revenueShareFactory).setAuthorizedCreator(address(controller), true);
         RevenueIngressFactory(cfg.revenueIngressFactory)
@@ -215,13 +227,41 @@ contract ExampleCCADeploymentScript is Script {
             .setAuthorizedCreator(address(controller), false);
     }
 
-    function run() external {
-        vm.startBroadcast();
+    function _requireFactoryOwner(ScriptConfig memory cfg) internal view {
+        require(
+            RevenueShareFactory(cfg.revenueShareFactory).owner() == cfg.factoryOwner,
+            "REVENUE_SHARE_FACTORY_OWNER"
+        );
+        require(
+            RevenueShareFactory(cfg.revenueShareFactory).pendingOwner() == address(0),
+            "REVENUE_SHARE_FACTORY_PENDING_OWNER"
+        );
+        require(
+            RevenueIngressFactory(cfg.revenueIngressFactory).owner() == cfg.factoryOwner,
+            "REVENUE_INGRESS_FACTORY_OWNER"
+        );
+        require(
+            RevenueIngressFactory(cfg.revenueIngressFactory).pendingOwner() == address(0),
+            "REVENUE_INGRESS_FACTORY_PENDING_OWNER"
+        );
+        require(
+            RegentLBPStrategyFactory(cfg.strategyFactory).owner() == cfg.factoryOwner,
+            "STRATEGY_FACTORY_OWNER"
+        );
+        require(
+            RegentLBPStrategyFactory(cfg.strategyFactory).pendingOwner() == address(0),
+            "STRATEGY_FACTORY_PENDING_OWNER"
+        );
+    }
 
-        LaunchDeploymentController.DeploymentResult memory result = _deployFromEnv();
+    function run() external {
+        ScriptConfig memory cfg = _loadConfig();
+
+        vm.startBroadcast(cfg.factoryOwner);
+
+        LaunchDeploymentController.DeploymentResult memory result = _deploy(cfg);
         address factoryAddress = cfgFactoryAddress();
-        address broadcaster = tx.origin;
-        require(broadcaster != address(0), "BROADCASTER_ZERO");
+        address broadcaster = cfg.factoryOwner;
 
         _logDeploymentResult(factoryAddress, broadcaster, result);
 
@@ -269,7 +309,7 @@ contract ExampleCCADeploymentScript is Script {
         address factoryAddress,
         address broadcaster,
         LaunchDeploymentController.DeploymentResult memory result
-    ) internal view {
+    ) internal pure {
         console2.log("Factory used:", factoryAddress);
         console2.log("Broadcaster used:", broadcaster);
         console2.log("Token deployed to:", result.tokenAddress);
@@ -288,7 +328,7 @@ contract ExampleCCADeploymentScript is Script {
     function _resultJson(
         address factoryAddress,
         LaunchDeploymentController.DeploymentResult memory result
-    ) internal view returns (string memory) {
+    ) internal pure returns (string memory) {
         return string.concat(
             "CCA_RESULT_JSON:{\"factoryAddress\":\"",
             vm.toString(factoryAddress),

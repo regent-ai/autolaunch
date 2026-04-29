@@ -41,6 +41,16 @@ defmodule Mix.Tasks.Autolaunch.DoctorTest do
           8_453 => "0x1313131313131313131313131313131313131313"
         },
         identity_registry_address: "0x9999999999999999999999999999999999999998",
+        factory_owner_address: "0x9999999999999999999999999999999999999996",
+        strategy_operator: "0x9999999999999999999999999999999999999997",
+        official_pool_fee: "0",
+        official_pool_tick_spacing: "60",
+        cca_tick_spacing_q96: "79228162514264337593543950336",
+        cca_floor_price_q96: "79228162514264337593543950336",
+        auction_duration_blocks: "9258",
+        cca_claim_block_offset: "64",
+        lbp_migration_block_offset: "128",
+        lbp_sweep_block_offset: "256",
         identity_registry_addresses: %{
           84_532 => "0x9999999999999999999999999999999999999998",
           8_453 => "0x1616161616161616161616161616161616161616"
@@ -125,6 +135,7 @@ defmodule Mix.Tasks.Autolaunch.DoctorTest do
 
   defmodule DoctorRpc do
     def block_number(84_532, _opts), do: {:ok, 321}
+    def code_at(84_532, _address, _opts), do: {:ok, "0x6000"}
     def eth_call(_chain_id, _to, _data, _opts), do: {:error, :unsupported}
     def tx_receipt(_chain_id, _tx_hash, _opts), do: {:ok, nil}
     def tx_by_hash(_chain_id, _tx_hash, _opts), do: {:ok, nil}

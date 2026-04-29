@@ -2,7 +2,9 @@ defmodule Autolaunch.ReleaseDoctor do
   @moduledoc false
   import Bitwise
 
+  alias Autolaunch.InfrastructureConfig
   alias Autolaunch.CCA.Rpc
+  alias Autolaunch.Prelaunch.AssetStorage
   alias Autolaunch.Repo
 
   @launch_address_checks [
@@ -25,10 +27,6 @@ defmodule Autolaunch.ReleaseDoctor do
     {:erc8004_subgraph_urls, "ERC-8004 subgraph url"},
     {:identity_registry_addresses, "identity registry address"}
   ]
-  @verifier_chains [
-    {84_532, "Base Sepolia"},
-    {8_453, "Base"}
-  ]
   @trust_networks [
     {"world", "World AgentBook config"},
     {"base", "Base AgentBook config"},
@@ -45,8 +43,13 @@ defmodule Autolaunch.ReleaseDoctor do
         deploy_binary_check(),
         deploy_workdir_check(),
         deploy_script_target_check(),
+        shared_launch_table_check(),
+        prelaunch_upload_storage_check(),
         launch_rpc_check()
-      ] ++ launch_address_checks() ++ verifier_chain_address_checks() ++ trust_checks()
+      ] ++
+        launch_address_checks() ++
+        launch_contract_code_checks() ++
+        launch_script_input_checks() ++ verifier_chain_address_checks() ++ trust_checks()
 
     %{
       ok: Enum.all?(checks, &blocking_check_ok?/1),
@@ -111,8 +114,7 @@ defmodule Autolaunch.ReleaseDoctor do
   end
 
   defp deploy_binary_check do
-    launch = Application.get_env(:autolaunch, :launch, [])
-    binary = Keyword.get(launch, :deploy_binary, "")
+    binary = InfrastructureConfig.launch_value(:deploy_binary) || ""
 
     cond do
       not present?(binary) ->
@@ -127,8 +129,7 @@ defmodule Autolaunch.ReleaseDoctor do
   end
 
   defp deploy_workdir_check do
-    launch = Application.get_env(:autolaunch, :launch, [])
-    workdir = Keyword.get(launch, :deploy_workdir, "")
+    workdir = InfrastructureConfig.launch_value(:deploy_workdir) || ""
 
     cond do
       not present?(workdir) ->
@@ -143,12 +144,36 @@ defmodule Autolaunch.ReleaseDoctor do
   end
 
   defp deploy_script_target_check do
-    launch = Application.get_env(:autolaunch, :launch, [])
-
-    if present?(Keyword.get(launch, :deploy_script_target)) do
+    if present?(InfrastructureConfig.launch_value(:deploy_script_target)) do
       ok_check("deploy_script_target", :error, "Launch deploy script target is configured.")
     else
       fail_check("deploy_script_target", :error, "Launch deploy script target is missing.")
+    end
+  end
+
+  defp shared_launch_table_check do
+    case Ecto.Adapters.SQL.query(
+           Repo,
+           "SELECT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'agent_token_launches')",
+           []
+         ) do
+      {:ok, %{rows: [[true]]}} ->
+        ok_check("shared_launch_table", :error, "Launch record table is present.")
+
+      _ ->
+        fail_check("shared_launch_table", :error, "Launch record table is missing.")
+    end
+  end
+
+  defp prelaunch_upload_storage_check do
+    if AssetStorage.writable?() do
+      ok_check("prelaunch_upload_storage", :error, "Prelaunch upload storage is writable.")
+    else
+      fail_check(
+        "prelaunch_upload_storage",
+        :error,
+        "Prelaunch upload storage is missing or not writable."
+      )
     end
   end
 
@@ -173,13 +198,70 @@ defmodule Autolaunch.ReleaseDoctor do
   end
 
   defp launch_address_checks do
-    launch = Application.get_env(:autolaunch, :launch, [])
-
     Enum.map(@launch_address_checks, fn {key, label} ->
-      if configured_address?(Keyword.get(launch, key)) do
+      if InfrastructureConfig.configured_address?(InfrastructureConfig.launch_value(key)) do
         ok_check("launch_#{key}", :error, "#{label} is configured.")
       else
         fail_check("launch_#{key}", :error, "#{label} is missing or invalid.")
+      end
+    end)
+  end
+
+  defp launch_contract_code_checks do
+    chain_id = launch_chain_id()
+
+    [
+      {:cca_factory_address, "CCA factory"},
+      {:pool_manager_address, "Uniswap v4 pool manager"},
+      {:position_manager_address, "Uniswap v4 position manager"},
+      {:revenue_share_factory_address, "revenue share factory"},
+      {:revenue_ingress_factory_address, "revenue ingress factory"},
+      {:lbp_strategy_factory_address, "Regent LBP strategy factory"},
+      {:token_factory_address, "token factory"},
+      {:identity_registry_address, "identity registry"}
+    ]
+    |> Enum.map(fn {key, label} ->
+      address = InfrastructureConfig.launch_value(key)
+      contract_code_check(chain_id, key, label, address)
+    end)
+  end
+
+  defp contract_code_check(chain_id, key, label, address) do
+    cond do
+      not configured_address?(address) ->
+        fail_check("launch_code_#{key}", :error, "#{label} address is missing or invalid.")
+
+      true ->
+        case Rpc.code_at(chain_id, address) do
+          {:ok, code} when is_binary(code) and code not in ["0x", "0X"] ->
+            ok_check("launch_code_#{key}", :error, "#{label} has contract code.")
+
+          {:ok, _empty} ->
+            fail_check("launch_code_#{key}", :error, "#{label} has no contract code.")
+
+          {:error, reason} ->
+            fail_check(
+              "launch_code_#{key}",
+              :error,
+              "#{label} code check failed: #{inspect(reason)}"
+            )
+
+          other ->
+            fail_check(
+              "launch_code_#{key}",
+              :error,
+              "#{label} code check returned #{inspect(other)}"
+            )
+        end
+    end
+  end
+
+  defp launch_script_input_checks do
+    Enum.map(InfrastructureConfig.launch_script_inputs(), fn {key, env_name, rule} ->
+      if InfrastructureConfig.valid_script_input?(key, rule) do
+        ok_check("launch_script_#{key}", :error, "#{env_name} is configured.")
+      else
+        fail_check("launch_script_#{key}", :error, "#{env_name} is missing or invalid.")
       end
     end)
   end
@@ -204,17 +286,9 @@ defmodule Autolaunch.ReleaseDoctor do
   end
 
   defp verifier_chain_address_checks do
-    launch = Application.get_env(:autolaunch, :launch, [])
-
-    for {chain_id, chain_label} <- @verifier_chains,
+    for %{id: chain_id, label: chain_label} <- InfrastructureConfig.base_chains(),
         {key, label} <- @verifier_chain_address_checks do
-      value =
-        launch
-        |> Keyword.get(key, %{})
-        |> case do
-          %{} = values -> Map.get(values, chain_id)
-          _ -> nil
-        end
+      value = InfrastructureConfig.chain_text(key, chain_id)
 
       if configured_verifier_value?(key, value) do
         ok_check("launch_#{key}_#{chain_id}", :error, "#{chain_label} #{label} is configured.")
@@ -274,8 +348,7 @@ defmodule Autolaunch.ReleaseDoctor do
   defp present?(_value), do: false
 
   defp launch_chain_id do
-    Application.get_env(:autolaunch, :launch, [])
-    |> Keyword.get(:chain_id, 84_532)
+    InfrastructureConfig.launch_chain_id!()
   end
 
   defp launch_chain_label(84_532), do: "Base Sepolia"

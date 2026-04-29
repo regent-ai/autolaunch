@@ -75,10 +75,6 @@ if config_env() != :test do
 
   config :autolaunch, :internal_shared_secret, env.("AUTOLAUNCH_INTERNAL_SHARED_SECRET", "")
 
-  config :autolaunch, :dragonfly_host, env.("DRAGONFLY_HOST", "localhost")
-  config :autolaunch, :dragonfly_port, env_int.("DRAGONFLY_PORT", 6379)
-  config :autolaunch, :dragonfly_enabled, env_bool.("DRAGONFLY_ENABLED", true)
-
   config :autolaunch, Autolaunch.Xmtp,
     rooms: [
       %{
@@ -104,6 +100,18 @@ if config_env() != :test do
     http_connect_timeout_ms: env_int.("SIWA_HTTP_CONNECT_TIMEOUT_MS", 2_000),
     http_receive_timeout_ms: env_int.("SIWA_HTTP_RECEIVE_TIMEOUT_MS", 5_000)
 
+  config :autolaunch, :launch_job_poller,
+    enabled: env_bool.("AUTOLAUNCH_LAUNCH_JOB_POLLER_ENABLED", config_env() == :prod),
+    interval_ms: env_int.("AUTOLAUNCH_LAUNCH_JOB_POLLER_INTERVAL_MS", 2_000),
+    lease_timeout_ms: env_int.("AUTOLAUNCH_LAUNCH_JOB_LEASE_TIMEOUT_MS", :timer.minutes(10))
+
+  config :autolaunch, :prelaunch_uploads,
+    root_dir:
+      env.(
+        "AUTOLAUNCH_UPLOAD_DIR",
+        Path.expand("../tmp/prelaunch-assets", __DIR__)
+      )
+
   config :autolaunch, :launch,
     chain_id: launch_chain_id,
     allow_unverified_owner: env_bool.("AUTOLAUNCH_ALLOW_UNVERIFIED_OWNER", false),
@@ -113,8 +121,7 @@ if config_env() != :test do
     deploy_timeout_ms: env_int.("AUTOLAUNCH_DEPLOY_TIMEOUT_MS", 180_000),
     deploy_output_marker: env.("AUTOLAUNCH_DEPLOY_OUTPUT_MARKER", "CCA_RESULT_JSON:"),
     rpc_url: env.("AUTOLAUNCH_RPC_URL", ""),
-    cca_factory_address:
-      env.("AUTOLAUNCH_CCA_FACTORY_ADDRESS", "0xCCccCcCAE7503Cac057829BF2811De42E16e0bD5"),
+    cca_factory_address: env.("AUTOLAUNCH_CCA_FACTORY_ADDRESS", ""),
     pool_manager_address: env.("AUTOLAUNCH_UNISWAP_V4_POOL_MANAGER", ""),
     position_manager_address: env.("AUTOLAUNCH_UNISWAP_V4_POSITION_MANAGER", ""),
     usdc_address: Map.get(canonical_usdc_addresses, launch_chain_id, ""),
@@ -136,15 +143,28 @@ if config_env() != :test do
       8_453 => env.("AUTOLAUNCH_BASE_MAINNET_REVENUE_INGRESS_FACTORY_ADDRESS", ""),
       84_532 => env.("AUTOLAUNCH_BASE_SEPOLIA_REVENUE_INGRESS_FACTORY_ADDRESS", "")
     },
+    lbp_strategy_factory_addresses: %{
+      8_453 => env.("AUTOLAUNCH_BASE_MAINNET_LBP_STRATEGY_FACTORY_ADDRESS", ""),
+      84_532 => env.("AUTOLAUNCH_BASE_SEPOLIA_LBP_STRATEGY_FACTORY_ADDRESS", "")
+    },
     lbp_strategy_factory_address: env.("AUTOLAUNCH_LBP_STRATEGY_FACTORY_ADDRESS", ""),
     token_factory_address: env.("AUTOLAUNCH_TOKEN_FACTORY_ADDRESS", ""),
     erc8004_subgraph_url: env.("AUTOLAUNCH_ERC8004_SUBGRAPH_URL", ""),
     identity_registry_address: env.("AUTOLAUNCH_IDENTITY_REGISTRY_ADDRESS", ""),
+    factory_owner_address: env.("AUTOLAUNCH_FACTORY_OWNER_ADDRESS", ""),
+    strategy_operator: env.("STRATEGY_OPERATOR", ""),
+    official_pool_fee: env.("OFFICIAL_POOL_FEE", "0"),
+    official_pool_tick_spacing: env.("OFFICIAL_POOL_TICK_SPACING", "60"),
+    cca_tick_spacing_q96: env.("CCA_TICK_SPACING_Q96", ""),
+    cca_floor_price_q96: env.("CCA_FLOOR_PRICE_Q96", ""),
+    cca_validation_hook: env.("CCA_VALIDATION_HOOK", ""),
+    auction_duration_blocks: env.("AUCTION_DURATION_BLOCKS", "9258"),
+    cca_claim_block_offset: env.("CCA_CLAIM_BLOCK_OFFSET", "64"),
+    lbp_migration_block_offset: env.("LBP_MIGRATION_BLOCK_OFFSET", "128"),
+    lbp_sweep_block_offset: env.("LBP_SWEEP_BLOCK_OFFSET", "256"),
     chain_rpc_urls: %{
-      1 => env.("AUTOLAUNCH_ETH_MAINNET_RPC_URL", ""),
       8_453 => env.("AUTOLAUNCH_BASE_MAINNET_RPC_URL", ""),
-      84_532 => env.("AUTOLAUNCH_BASE_SEPOLIA_RPC_URL", ""),
-      11_155_111 => env.("AUTOLAUNCH_ETH_SEPOLIA_RPC_URL", "")
+      84_532 => env.("AUTOLAUNCH_BASE_SEPOLIA_RPC_URL", "")
     },
     erc8004_subgraph_urls: %{
       8_453 => env.("AUTOLAUNCH_BASE_MAINNET_ERC8004_SUBGRAPH_URL", ""),
@@ -217,7 +237,11 @@ if config_env() == :prod do
 
   config :autolaunch, Autolaunch.Repo,
     url: database_url,
-    pool_size: String.to_integer(env.("POOL_SIZE", "10"))
+    ssl: true,
+    prepare: :unnamed,
+    pool_size: String.to_integer(env.("ECTO_POOL_SIZE", "5")),
+    migration_default_prefix: "autolaunch",
+    migration_source: "schema_migrations_autolaunch"
 
   config :autolaunch, :dns_cluster_query, env.("DNS_CLUSTER_QUERY", "")
 

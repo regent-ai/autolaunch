@@ -25,7 +25,7 @@ Autolaunch centers on a cleaner market and launch workspace:
 - real Regent status and staking reads for the connected wallet
 - cleaner subject pages with staking, claims, revenue, ingress, and next actions in one place
 - one action panel pattern for wallet actions and prepared operator actions
-- faster subject reads backed by Dragonfly for hot revenue and position state
+- faster subject reads backed by local Cachex for hot display state
 - a slimmer Elixir/Phoenix structure with product areas split by launch, lifecycle, contracts, trust, revenue, staking, and AgentBook
 
 Autolaunch is built for agents that can earn but need capital before revenue catches up. The product should make three things obvious: what is live, what the agent needs next, and what a backer can do now.
@@ -164,11 +164,12 @@ The full environment list lives in [.env.example](.env.example). For local work,
 - Privy auth: `PRIVY_APP_ID`, `PRIVY_VERIFICATION_KEY`, `AUTOLAUNCH_XMTP_AGENT_PRIVATE_KEY`
 - Internal XMTP sync auth: `AUTOLAUNCH_INTERNAL_SHARED_SECRET`
 - SIWA sidecar: `SIWA_INTERNAL_URL`, `SIWA_SHARED_SECRET`
-- Launch deployment: `AUTOLAUNCH_RPC_URL`, `AUTOLAUNCH_CCA_FACTORY_ADDRESS`, `AUTOLAUNCH_UNISWAP_V4_POOL_MANAGER`, `AUTOLAUNCH_UNISWAP_V4_POSITION_MANAGER`, `AUTOLAUNCH_USDC_ADDRESS`, `AUTOLAUNCH_DEPLOY_WORKDIR`, `AUTOLAUNCH_DEPLOY_BINARY`, `AUTOLAUNCH_DEPLOY_SCRIPT_TARGET`, `AUTOLAUNCH_DEPLOY_ACCOUNT` or `AUTOLAUNCH_DEPLOY_PRIVATE_KEY`
+- Upload storage: `AUTOLAUNCH_UPLOAD_DIR`
+- Launch deployment: `AUTOLAUNCH_RPC_URL`, `AUTOLAUNCH_CCA_FACTORY_ADDRESS`, `AUTOLAUNCH_UNISWAP_V4_POOL_MANAGER`, `AUTOLAUNCH_UNISWAP_V4_POSITION_MANAGER`, `AUTOLAUNCH_DEPLOY_WORKDIR`, `AUTOLAUNCH_DEPLOY_BINARY`, `AUTOLAUNCH_DEPLOY_SCRIPT_TARGET`, `AUTOLAUNCH_DEPLOY_ACCOUNT` or `AUTOLAUNCH_DEPLOY_PRIVATE_KEY`, `AUTOLAUNCH_FACTORY_OWNER_ADDRESS`
 - Launch contracts: `AUTOLAUNCH_REVENUE_SHARE_FACTORY_ADDRESS`, `AUTOLAUNCH_REVENUE_INGRESS_FACTORY_ADDRESS`, `AUTOLAUNCH_LBP_STRATEGY_FACTORY_ADDRESS`, `AUTOLAUNCH_TOKEN_FACTORY_ADDRESS`, `AUTOLAUNCH_ERC8004_SUBGRAPH_URL`
 - Base identity lookups: `AUTOLAUNCH_BASE_MAINNET_RPC_URL`, `AUTOLAUNCH_BASE_SEPOLIA_RPC_URL`, `AUTOLAUNCH_BASE_MAINNET_ERC8004_SUBGRAPH_URL`, `AUTOLAUNCH_BASE_SEPOLIA_ERC8004_SUBGRAPH_URL`, `AUTOLAUNCH_BASE_MAINNET_IDENTITY_REGISTRY_ADDRESS`, `AUTOLAUNCH_BASE_SEPOLIA_IDENTITY_REGISTRY_ADDRESS`
-- Base verifier address books: `AUTOLAUNCH_BASE_MAINNET_UNISWAP_V4_POOL_MANAGER`, `AUTOLAUNCH_BASE_SEPOLIA_UNISWAP_V4_POOL_MANAGER`, `AUTOLAUNCH_BASE_MAINNET_REVENUE_SHARE_FACTORY_ADDRESS`, `AUTOLAUNCH_BASE_SEPOLIA_REVENUE_SHARE_FACTORY_ADDRESS`, `AUTOLAUNCH_BASE_MAINNET_REVENUE_INGRESS_FACTORY_ADDRESS`, `AUTOLAUNCH_BASE_SEPOLIA_REVENUE_INGRESS_FACTORY_ADDRESS`
-- Launch-script ambient env: `AUTOLAUNCH_IDENTITY_REGISTRY_ADDRESS`, `STRATEGY_OPERATOR`, `OFFICIAL_POOL_FEE`, `OFFICIAL_POOL_TICK_SPACING`, `CCA_FLOOR_PRICE_Q96`, `CCA_TICK_SPACING_Q96`, `CCA_REQUIRED_CURRENCY_RAISED`, optional `CCA_VALIDATION_HOOK`, optional `CCA_CLAIM_BLOCK_OFFSET`
+- Base verifier address books: `AUTOLAUNCH_BASE_MAINNET_UNISWAP_V4_POOL_MANAGER`, `AUTOLAUNCH_BASE_SEPOLIA_UNISWAP_V4_POOL_MANAGER`, `AUTOLAUNCH_BASE_MAINNET_REVENUE_SHARE_FACTORY_ADDRESS`, `AUTOLAUNCH_BASE_SEPOLIA_REVENUE_SHARE_FACTORY_ADDRESS`, `AUTOLAUNCH_BASE_MAINNET_REVENUE_INGRESS_FACTORY_ADDRESS`, `AUTOLAUNCH_BASE_SEPOLIA_REVENUE_INGRESS_FACTORY_ADDRESS`, `AUTOLAUNCH_BASE_MAINNET_LBP_STRATEGY_FACTORY_ADDRESS`, `AUTOLAUNCH_BASE_SEPOLIA_LBP_STRATEGY_FACTORY_ADDRESS`
+- Launch-script ambient env: `AUTOLAUNCH_IDENTITY_REGISTRY_ADDRESS`, `AUTOLAUNCH_FACTORY_OWNER_ADDRESS`, `STRATEGY_OPERATOR`, `OFFICIAL_POOL_FEE`, `OFFICIAL_POOL_TICK_SPACING`, `CCA_FLOOR_PRICE_Q96`, `CCA_TICK_SPACING_Q96`, `CCA_REQUIRED_CURRENCY_RAISED`, optional `CCA_VALIDATION_HOOK`, optional `CCA_CLAIM_BLOCK_OFFSET`
 - Regent staking rail: `REGENT_STAKING_RPC_URL`, `REGENT_STAKING_CHAIN_ID`, `REGENT_STAKING_CHAIN_LABEL`, `REGENT_REVENUE_STAKING_ADDRESS`, `REGENT_STAKING_OPERATOR_WALLETS`
 - AgentBook and World ID: `WORLD_ID_APP_ID`, `WORLD_ID_ACTION`, `WORLD_ID_RP_ID`, `WORLD_ID_SIGNING_KEY`, `WORLDCHAIN_RPC_URL`, `WORLDCHAIN_AGENTBOOK_ADDRESS`, `WORLDCHAIN_AGENTBOOK_RELAY_URL`, `BASE_MAINNET_RPC_URL`, `BASE_AGENTBOOK_ADDRESS`, `BASE_AGENTBOOK_RELAY_URL`, `BASE_SEPOLIA_RPC_URL`, `BASE_SEPOLIA_AGENTBOOK_ADDRESS`, `BASE_SEPOLIA_AGENTBOOK_RELAY_URL`
 
@@ -186,12 +187,12 @@ Autolaunch exposes a separate Regent staking rail for Regent Labs itself.
 - Its production target is Base mainnet.
 - It uses the existing `$REGENT` token on the configured Base network as the stake token.
 - It accepts USDC deposits manually on the configured Base network.
-- It pays the configured staker share to `$REGENT` stakers and leaves the rest accruing for the Regent treasury.
+- Each USDC deposit is accounted against the fixed `$REGENT` revenue-share supply denominator. Staked `$REGENT` earns its proportional amount, and the rest accrues for the Regent treasury.
 - Other-chain Regent income still lands in Treasury A first, then gets bridged manually to Base USDC and deposited into the staking contract.
 
 This rail is separate from agent subject splitters:
 
-- agent subject splitters are per-agent revenue-rights contracts on the active Base-family launch network
+- agent subject splitters are per-agent revenue-rights contracts on the active Base launch network
 - REGENT staking is one singleton company-token rewards rail on the configured Base network
 
 ### Launch Flow
@@ -215,12 +216,12 @@ Important launch rules:
 
 - Each auction sells 10% of a 100 billion supply
 - The launch strategy holds another 5% for LP migration and sends 85% into the vesting wallet
-- Every auction is denominated in USDC on the configured Base-family launch network
+- Every auction is denominated in USDC on the configured Base launch network
 - Buyers set a total budget and a max price, and the order runs across the remaining blocks like a TWAP
 - Each block clears at the highest price where demand exceeds supply, and no one pays above their stated max price
-- Launch buyers must stake the claimed tokens to earn Base-family USDC once it reaches the subject revenue contract
+- Launch buyers must stake the claimed tokens to earn Base USDC once it reaches the subject revenue contract
 - Mock deploy is opt-in through `AUTOLAUNCH_MOCK_DEPLOY=true`
-- Subject USDC is counted once Base-family USDC reaches the revsplit
+- Subject USDC is counted once Base USDC reaches the revsplit
 - Funds waiting in an ingress account have not reached the revsplit yet; they can be swept before a pending share change takes effect, and anything swept later uses the live share at that time
 - The fee hook is the launch-side fee lane, while the revsplit is the ongoing revenue-rights lane
 - `AUTOLAUNCH_DEPLOY_SCRIPT_TARGET` is required at runtime
@@ -256,7 +257,7 @@ AUTOLAUNCH_MOCK_DEPLOY=true mix autolaunch.smoke
 mix autolaunch.verify_deploy --job <job-id>
 ```
 
-`mix autolaunch.doctor` is the blocking release gate for database reachability, launch-chain config, SIWA, and deploy dependencies. `mix autolaunch.beta_check` is the read-only public beta gate for database reachability, required Base-family addresses, route exposure, and the Regent staking plus launch read paths. `mix autolaunch.smoke` is the synthetic in-repo launch-to-subject smoke. `mix autolaunch.verify_deploy --job <job-id>` is the post-deploy live-chain check for ownership acceptance, factory authorization cleanup, fee-vault canonical tokens, migration, pool and position recording, hook state, and subject wiring.
+`mix autolaunch.doctor` is the blocking release gate for database reachability, launch-chain config, SIWA, and deploy dependencies. `mix autolaunch.beta_check` is the read-only public beta gate for database reachability, required Base addresses, route exposure, and the Regent staking plus launch read paths. `mix autolaunch.smoke` is the synthetic in-repo launch-to-subject smoke. `mix autolaunch.verify_deploy --job <job-id>` is the post-deploy live-chain check for ownership acceptance, factory authorization cleanup, fee-vault canonical tokens, migration, pool and position recording, hook state, and subject wiring.
 
 Doctor checks map directly to product breakage:
 
@@ -265,9 +266,9 @@ Doctor checks map directly to product breakage:
 - SIWA failure means launch creation cannot verify the wallet signature
 - deploy binary, workdir, or script-target failure means launches cannot be executed on that node
 - launch-chain RPC failure means launch reads, quote reads, and transaction verification become unreliable
+- upload storage failure means hosted prelaunch images cannot be saved or served
+- launch-script input failure means a real deploy is missing a value the Foundry launch script requires
 - trust-network warnings only affect trust follow-up surfaces; launch and auction flows should still work
-
-`mix autolaunch.doctor` does not prove every Foundry launch-script variable is present. The ambient launch-script values like `AUTOLAUNCH_IDENTITY_REGISTRY_ADDRESS`, `STRATEGY_OPERATOR`, `OFFICIAL_POOL_FEE`, `OFFICIAL_POOL_TICK_SPACING`, and required `CCA_*` values still need to be set correctly for a real launch.
 
 ### What Must Be Alive
 

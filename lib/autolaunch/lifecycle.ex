@@ -116,7 +116,8 @@ defmodule Autolaunch.Lifecycle do
 
     awaiting_migration? =
       ready_with_strategy? and !migrated? and migration_block_reached? and
-        positive_uint?(strategy[:currency_balance]) and auction_asset_actions == []
+        auction_graduated?(auction) == true and positive_uint?(strategy[:currency_balance]) and
+        auction_asset_actions == []
 
     sweep_actions =
       sweep_actions(strategy, migrated?, sweep_block_reached?)

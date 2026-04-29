@@ -31,7 +31,17 @@ defmodule Autolaunch.BetaReadinessTest do
         revenue_ingress_factory_address: "0x6666666666666666666666666666666666666666",
         lbp_strategy_factory_address: "0x7777777777777777777777777777777777777777",
         token_factory_address: "0x8888888888888888888888888888888888888888",
-        identity_registry_address: "0x9999999999999999999999999999999999999999"
+        identity_registry_address: "0x9999999999999999999999999999999999999999",
+        factory_owner_address: "0x9999999999999999999999999999999999999997",
+        strategy_operator: "0x9999999999999999999999999999999999999998",
+        official_pool_fee: "0",
+        official_pool_tick_spacing: "60",
+        cca_tick_spacing_q96: "79228162514264337593543950336",
+        cca_floor_price_q96: "79228162514264337593543950336",
+        auction_duration_blocks: "9258",
+        cca_claim_block_offset: "64",
+        lbp_migration_block_offset: "128",
+        lbp_sweep_block_offset: "256"
       )
     )
 

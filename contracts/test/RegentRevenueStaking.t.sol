@@ -127,6 +127,37 @@ contract RegentRevenueStakingTest is Test {
         assertEq(staking.directDepositUsdc(), depositAmount);
     }
 
+    function testFuzzUsdcRewardsUseFixedSupplyDenominator(
+        uint256 aliceStake,
+        uint256 bobStake,
+        uint256 depositAmount
+    ) external {
+        aliceStake = bound(aliceStake, 1, REVENUE_SHARE_SUPPLY_DENOMINATOR / 2);
+        bobStake = bound(bobStake, 1, REVENUE_SHARE_SUPPLY_DENOMINATOR - aliceStake);
+        depositAmount = bound(depositAmount, 1, 1_000_000_000 * USDC);
+
+        regent.mint(ALICE, aliceStake);
+        regent.mint(BOB, bobStake);
+        _stake(ALICE, aliceStake);
+        _stake(BOB, bobStake);
+
+        usdc.mint(address(this), depositAmount);
+        usdc.approve(address(staking), type(uint256).max);
+        staking.depositUSDC(depositAmount, bytes32("fuzz"), bytes32("denominator"));
+
+        uint256 deltaAcc =
+            depositAmount * staking.ACC_PRECISION() / REVENUE_SHARE_SUPPLY_DENOMINATOR;
+        uint256 expectedAlice = aliceStake * deltaAcc / staking.ACC_PRECISION();
+        uint256 expectedBob = bobStake * deltaAcc / staking.ACC_PRECISION();
+        uint256 creditedToStakers = deltaAcc * (aliceStake + bobStake) / staking.ACC_PRECISION();
+        uint256 expectedTreasury = depositAmount - creditedToStakers;
+
+        assertEq(staking.previewClaimableUSDC(ALICE), expectedAlice);
+        assertEq(staking.previewClaimableUSDC(BOB), expectedBob);
+        assertEq(staking.treasuryResidualUsdc(), expectedTreasury);
+        assertLe(expectedAlice + expectedBob, creditedToStakers);
+    }
+
     function testTreasuryWithdrawalIsRestricted() external {
         _stake(ALICE, 100 * REGENT);
         usdc.mint(address(this), 100 * USDC);

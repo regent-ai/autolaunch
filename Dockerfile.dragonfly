@@ -1,4 +1,0 @@
-# syntax = docker/dockerfile:1
-FROM docker.dragonflydb.io/dragonflydb/dragonfly:v1.29.0
-
-CMD ["dragonfly", "--bind", "fly-local-6pn", "--port", "6379"]

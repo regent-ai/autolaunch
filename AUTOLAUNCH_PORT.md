@@ -57,6 +57,6 @@ Shared Regent policy tables read by readiness:
 - Launch network is fixed to Base Sepolia and is not user-selectable in the launch form.
 - AgentLaunchToken supply is fixed at 100 billion and every auction sells 10%.
 - Mock deploy path is disabled by default and only enabled when `AUTOLAUNCH_MOCK_DEPLOY=true`
-- Revenue counts only when Base-family USDC reaches the revsplit.
+- Revenue counts only when Base USDC reaches the revsplit.
 - The Regent-side fee lane is a direct treasury payout with no reward-accounting contract behind it.
 - The Autolaunch contract source of truth lives at `/Users/sean/Documents/regent/autolaunch/contracts`.

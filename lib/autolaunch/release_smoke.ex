@@ -3,8 +3,10 @@ defmodule Autolaunch.ReleaseSmoke do
   import Ecto.Query, warn: false
 
   alias Autolaunch.Accounts
+  alias Autolaunch.InfrastructureConfig
   alias Autolaunch.Launch
   alias Autolaunch.Launch.Auction
+  alias Autolaunch.Launch.DeployResult
   alias Autolaunch.Launch.Job
   alias Autolaunch.Repo
   alias Autolaunch.Revenue
@@ -91,9 +93,7 @@ defmodule Autolaunch.ReleaseSmoke do
   end
 
   defp ensure_mock_deploy! do
-    launch = Application.get_env(:autolaunch, :launch, [])
-
-    unless Keyword.get(launch, :mock_deploy, false) do
+    unless InfrastructureConfig.launch_value(:mock_deploy) do
       raise "AUTOLAUNCH_MOCK_DEPLOY=true is required for mix autolaunch.smoke"
     end
   end
@@ -115,33 +115,38 @@ defmodule Autolaunch.ReleaseSmoke do
     chain_id = launch_chain_id()
     network = chain_label(chain_id)
 
-    Repo.insert(
-      Job.create_changeset(%Job{}, %{
-        job_id: job_id,
-        privy_user_id: human.privy_user_id,
-        owner_address: @wallet,
-        agent_id: "#{chain_id}:42",
-        agent_name: "Smoke Agent",
-        token_name: "Smoke Coin",
-        token_symbol: "SMOKE",
-        agent_safe_address: @wallet,
-        network: network,
-        chain_id: chain_id,
-        status: "queued",
-        step: "queued",
-        total_supply: "100000000000000000000000000000",
-        message: message,
-        siwa_nonce: nonce,
-        siwa_signature: signature,
-        issued_at: now,
-        launch_notes: "Synthetic smoke run",
-        broadcast: false,
-        deploy_binary: "forge",
-        deploy_workdir: File.cwd!(),
-        script_target: "scripts/ExampleCCADeploymentScript.s.sol:ExampleCCADeploymentScript",
-        rpc_host: "mock"
-      })
-    )
+    with {:ok, job} <-
+           Repo.insert(
+             Job.create_changeset(%Job{}, %{
+               job_id: job_id,
+               privy_user_id: human.privy_user_id,
+               owner_address: @wallet,
+               agent_id: "#{chain_id}:42",
+               agent_name: "Smoke Agent",
+               token_name: "Smoke Coin",
+               token_symbol: "SMOKE",
+               agent_safe_address: @wallet,
+               network: network,
+               chain_id: chain_id,
+               status: "queued",
+               step: "queued",
+               total_supply: "100000000000000000000000000000",
+               message: message,
+               siwa_nonce: nonce,
+               siwa_signature: signature,
+               issued_at: now,
+               launch_notes: "Synthetic smoke run",
+               broadcast: false,
+               deploy_binary: "forge",
+               deploy_workdir: File.cwd!(),
+               script_target:
+                 "scripts/ExampleCCADeploymentScript.s.sol:ExampleCCADeploymentScript",
+               rpc_host: "mock"
+             })
+           ),
+         {:ok, _launch} <- DeployResult.record_external_launch(job) do
+      {:ok, job}
+    end
   end
 
   defp verify_job_payload(%{job: job}) do
@@ -207,6 +212,12 @@ defmodule Autolaunch.ReleaseSmoke do
   defp cleanup_smoke_artifacts(job_id) do
     auction_id = "auc_" <> String.replace_prefix(job_id, "job_", "")
     Repo.delete_all(from auction in Auction, where: auction.source_job_id == ^auction_id)
+
+    Repo.delete_all(
+      from launch in Autolaunch.Launch.External.TokenLaunch,
+        where: launch.launch_job_id == ^job_id
+    )
+
     Repo.delete_all(from job in Job, where: job.job_id == ^job_id)
     :ok
   end
@@ -324,20 +335,16 @@ defmodule Autolaunch.ReleaseSmoke do
     end
 
     defp smoke_chain_id do
-      Application.get_env(:autolaunch, :launch, [])
-      |> Keyword.get(:chain_id, 84_532)
+      InfrastructureConfig.launch_chain_id!()
     end
 
     defp ingress_factory_address do
-      Application.get_env(:autolaunch, :launch, [])
-      |> Keyword.get(:revenue_ingress_factory_address, "")
-      |> String.downcase()
+      InfrastructureConfig.launch_address(:revenue_ingress_factory_address) || ""
     end
   end
 
   defp launch_chain_id do
-    Application.get_env(:autolaunch, :launch, [])
-    |> Keyword.get(:chain_id, 84_532)
+    InfrastructureConfig.launch_chain_id!()
   end
 
   defp chain_label(84_532), do: "base-sepolia"

@@ -51,6 +51,8 @@ contract ExampleCCADeploymentScriptTest is Test {
         strategyFactory = new RegentLBPStrategyFactory(address(script));
         tokenFactory = new MockTokenFactory();
         subjectRegistry.transferOwnership(address(revenueShareFactory));
+
+        vm.prank(address(script));
         revenueShareFactory.acceptSubjectRegistryOwnership();
 
         _setEnvAddress("AUTOLAUNCH_AGENT_SAFE_ADDRESS", AGENT_SAFE);
@@ -65,6 +67,7 @@ contract ExampleCCADeploymentScriptTest is Test {
         vm.setEnv("AUTOLAUNCH_LBP_STRATEGY_FACTORY_ADDRESS", vm.toString(address(strategyFactory)));
         vm.setEnv("AUTOLAUNCH_TOKEN_FACTORY_ADDRESS", vm.toString(address(tokenFactory)));
         vm.setEnv("AUTOLAUNCH_CCA_FACTORY_ADDRESS", vm.toString(address(auctionFactory)));
+        vm.setEnv("AUTOLAUNCH_FACTORY_OWNER_ADDRESS", vm.toString(address(script)));
         vm.setEnv("AUTOLAUNCH_UNISWAP_V4_POOL_MANAGER", vm.toString(address(poolManager)));
         vm.setEnv("AUTOLAUNCH_UNISWAP_V4_POSITION_MANAGER", vm.toString(address(0xDEAD)));
         _setEnvAddress("AUTOLAUNCH_IDENTITY_REGISTRY_ADDRESS", IDENTITY_REGISTRY);
@@ -73,7 +76,6 @@ contract ExampleCCADeploymentScriptTest is Test {
         vm.setEnv("AUTOLAUNCH_TOKEN_SYMBOL", "LAGENT");
         vm.setEnv("AUTOLAUNCH_AGENT_ID", "1:42");
         vm.setEnv("AUTOLAUNCH_TOTAL_SUPPLY", vm.toString(TOTAL_SUPPLY));
-        vm.setEnv("AUTOLAUNCH_USDC_ADDRESS", vm.toString(USDC));
         vm.setEnv("CCA_TICK_SPACING_Q96", vm.toString(CCA_TICK_SPACING_Q96));
         vm.setEnv("CCA_FLOOR_PRICE_Q96", vm.toString(CCA_FLOOR_PRICE_Q96));
         vm.setEnv("CCA_REQUIRED_CURRENCY_RAISED", "1000000000000000000");
@@ -85,6 +87,9 @@ contract ExampleCCADeploymentScriptTest is Test {
     }
 
     function testDeployFromEnvCreatesModelBLaunchStack() external {
+        vm.chainId(84_532);
+        vm.setEnv("AUTOLAUNCH_USDC_ADDRESS", vm.toString(USDC));
+
         LaunchDeploymentController.DeploymentResult memory result = script.deployFromEnv();
 
         _assertCoreAddressesWereCreated(result);
@@ -148,6 +153,10 @@ contract ExampleCCADeploymentScriptTest is Test {
             revenueIngressFactory.defaultIngressOfSubject(result.subjectId),
             result.defaultIngressAddress
         );
+        address controller = strategy.auctionCreator();
+        assertFalse(revenueShareFactory.authorizedCreators(controller));
+        assertFalse(revenueIngressFactory.authorizedCreators(controller));
+        assertFalse(strategyFactory.authorizedCreators(controller));
     }
 
     function _setEnvAddress(string memory key, address value) internal {
@@ -169,15 +178,17 @@ contract ExampleCCADeploymentScriptTest is Test {
         assertTrue(result.defaultIngressAddress != address(0));
     }
 
-    function testDeployFromEnvRejectsNonBaseFamilyChain() external {
+    function testDeployFromEnvRejectsNonBaseChain() external {
         vm.chainId(1);
+        vm.setEnv("AUTOLAUNCH_USDC_ADDRESS", vm.toString(USDC));
 
-        vm.expectRevert("BASE_FAMILY_ONLY");
+        vm.expectRevert("BASE_CHAIN_ONLY");
         script.deployFromEnv();
     }
 
-    function testDeployFromEnvRejectsWrongBaseSepoliaUsdc() external {
-        vm.setEnv("AUTOLAUNCH_USDC_ADDRESS", "0x0000000000000000000000000000000000C0FFEE");
+    function testDeployFromEnvRejectsWrongBaseMainnetUsdc() external {
+        vm.chainId(8453);
+        vm.setEnv("AUTOLAUNCH_USDC_ADDRESS", vm.toString(USDC));
 
         vm.expectRevert("USDC_NOT_CANONICAL");
         script.deployFromEnv();
