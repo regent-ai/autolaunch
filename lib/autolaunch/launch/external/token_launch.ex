@@ -52,7 +52,8 @@ defmodule Autolaunch.Launch.External.TokenLaunch do
       :chain_id,
       :total_supply,
       :vesting_beneficiary,
-      :launch_status
+      :launch_status,
+      :launch_job_id
     ])
   end
 end

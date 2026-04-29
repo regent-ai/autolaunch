@@ -1,0 +1,89 @@
+defmodule Autolaunch.LaunchDeployCommandTest do
+  use ExUnit.Case, async: true
+
+  alias Autolaunch.Launch.DeployCommand
+  alias Autolaunch.Launch.Job
+
+  test "build includes every deploy-script input in the command environment" do
+    assert {:ok, command} = DeployCommand.build(job(), launch_config())
+
+    env = Map.new(command.opts[:env])
+
+    assert env["AUTOLAUNCH_IDENTITY_REGISTRY_ADDRESS"] ==
+             "0x9999999999999999999999999999999999999999"
+
+    assert env["STRATEGY_OPERATOR"] == "0x9999999999999999999999999999999999999998"
+    assert env["AUTOLAUNCH_FACTORY_OWNER_ADDRESS"] == "0x9999999999999999999999999999999999999997"
+    assert env["OFFICIAL_POOL_FEE"] == "0"
+    assert env["OFFICIAL_POOL_TICK_SPACING"] == "60"
+    assert env["CCA_TICK_SPACING_Q96"] == "79228162514264337593543950336"
+    assert env["CCA_FLOOR_PRICE_Q96"] == "79228162514264337593543950336"
+    assert env["CCA_REQUIRED_CURRENCY_RAISED"] == "1000000"
+    assert env["AUCTION_DURATION_BLOCKS"] == "9258"
+    assert env["CCA_CLAIM_BLOCK_OFFSET"] == "64"
+    assert env["LBP_MIGRATION_BLOCK_OFFSET"] == "128"
+    assert env["LBP_SWEEP_BLOCK_OFFSET"] == "256"
+  end
+
+  test "build fails before running forge when a required script input is missing" do
+    config = Keyword.put(launch_config(), :strategy_operator, "")
+
+    assert {:error, "Missing strategy operator address.", %{stdout_tail: "", stderr_tail: ""}} =
+             DeployCommand.build(job(), config)
+  end
+
+  test "build requires the factory owner address" do
+    config = Keyword.put(launch_config(), :factory_owner_address, "")
+
+    assert {:error, "Missing factory owner address.", %{stdout_tail: "", stderr_tail: ""}} =
+             DeployCommand.build(job(), config)
+  end
+
+  defp job do
+    %Job{
+      job_id: "job_deploy_command",
+      owner_address: "0x1111111111111111111111111111111111111111",
+      agent_id: "84532:42",
+      agent_name: "Atlas",
+      token_name: "Atlas Coin",
+      token_symbol: "ATLAS",
+      minimum_raise_usdc_raw: "1000000",
+      total_supply: "1000",
+      agent_safe_address: "0x2222222222222222222222222222222222222222",
+      lifecycle_run_id: "life_1",
+      launch_notes: "Launch",
+      network: "base-sepolia",
+      chain_id: 84_532,
+      broadcast: false
+    }
+  end
+
+  defp launch_config do
+    [
+      chain_id: 84_532,
+      deploy_binary: "forge",
+      deploy_workdir: "contracts",
+      deploy_script_target: "scripts/ExampleCCADeploymentScript.s.sol:ExampleCCADeploymentScript",
+      rpc_url: "https://base-sepolia.example",
+      revenue_share_factory_address: "0x3333333333333333333333333333333333333333",
+      revenue_ingress_factory_address: "0x4444444444444444444444444444444444444444",
+      lbp_strategy_factory_address: "0x5555555555555555555555555555555555555555",
+      token_factory_address: "0x6666666666666666666666666666666666666666",
+      regent_multisig_address: "0x7777777777777777777777777777777777777777",
+      factory_owner_address: "0x9999999999999999999999999999999999999997",
+      strategy_operator: "0x9999999999999999999999999999999999999998",
+      official_pool_fee: "0",
+      official_pool_tick_spacing: "60",
+      cca_tick_spacing_q96: "79228162514264337593543950336",
+      cca_floor_price_q96: "79228162514264337593543950336",
+      auction_duration_blocks: "9258",
+      cca_claim_block_offset: "64",
+      lbp_migration_block_offset: "128",
+      lbp_sweep_block_offset: "256",
+      identity_registry_address: "0x9999999999999999999999999999999999999999",
+      cca_factory_address: "0x8888888888888888888888888888888888888888",
+      pool_manager_address: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      position_manager_address: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    ]
+  end
+end

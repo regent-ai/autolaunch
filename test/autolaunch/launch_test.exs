@@ -3,6 +3,7 @@ defmodule Autolaunch.LaunchTest do
 
   alias Autolaunch.Launch
   alias Autolaunch.Launch.Auction
+  alias Autolaunch.Launch.DeployResult
   alias Autolaunch.Launch.Job
   alias Autolaunch.Repo
 
@@ -29,7 +30,7 @@ defmodule Autolaunch.LaunchTest do
     refute Launch.terminal_status?("queued")
   end
 
-  test "chain options expose the Base family only" do
+  test "chain options expose only Base networks" do
     assert Enum.map(Launch.chain_options(), & &1.id) == [84_532, 8_453]
   end
 
@@ -407,7 +408,7 @@ defmodule Autolaunch.LaunchTest do
   defp insert_launch_job(job_id) do
     now = DateTime.utc_now()
 
-    {:ok, _job} =
+    {:ok, job} =
       %Job{}
       |> Job.create_changeset(
         %{
@@ -431,6 +432,10 @@ defmodule Autolaunch.LaunchTest do
         |> Map.merge(launch_recipients())
       )
       |> Repo.insert()
+
+    {:ok, _external_launch} = DeployResult.record_external_launch(job)
+
+    :ok
   end
 
   defp with_launch_command_output(result_json, fun) do
@@ -461,6 +466,17 @@ defmodule Autolaunch.LaunchTest do
         revenue_ingress_factory_address: "0x2222222222222222222222222222222222222222",
         lbp_strategy_factory_address: "0x6666666666666666666666666666666666666666",
         token_factory_address: "0x7777777777777777777777777777777777777777",
+        identity_registry_address: "0x9999999999999999999999999999999999999999",
+        factory_owner_address: "0x9999999999999999999999999999999999999997",
+        strategy_operator: "0x9999999999999999999999999999999999999998",
+        official_pool_fee: "0",
+        official_pool_tick_spacing: "60",
+        cca_tick_spacing_q96: "79228162514264337593543950336",
+        cca_floor_price_q96: "79228162514264337593543950336",
+        auction_duration_blocks: "9258",
+        cca_claim_block_offset: "64",
+        lbp_migration_block_offset: "128",
+        lbp_sweep_block_offset: "256",
         pool_manager_address: "0x3333333333333333333333333333333333333333",
         cca_factory_address: "0x4444444444444444444444444444444444444444",
         usdc_address: "0x5555555555555555555555555555555555555555",

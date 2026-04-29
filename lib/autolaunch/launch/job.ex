@@ -3,8 +3,8 @@ defmodule Autolaunch.Launch.Job do
   use Autolaunch.Schema
 
   @primary_key {:job_id, :string, autogenerate: false}
-  @supported_networks ~w(base-sepolia base-mainnet)
-  @supported_chain_ids [84_532, 8_453]
+  @supported_networks Enum.map(Autolaunch.BaseChain.chains(), & &1.key)
+  @supported_chain_ids Autolaunch.BaseChain.supported_chain_ids()
 
   schema "autolaunch_jobs" do
     field :privy_user_id, :string
@@ -51,6 +51,10 @@ defmodule Autolaunch.Launch.Job do
     field :uniswap_url, :string
     field :stdout_tail, :string
     field :stderr_tail, :string
+    field :locked_at, :utc_datetime_usec
+    field :locked_by, :string
+    field :last_heartbeat_at, :utc_datetime_usec
+    field :attempt_count, :integer, default: 0
     field :world_network, :string, default: "world"
     field :world_registered, :boolean, default: false
     field :world_human_id, :string
@@ -134,6 +138,10 @@ defmodule Autolaunch.Launch.Job do
       :uniswap_url,
       :stdout_tail,
       :stderr_tail,
+      :locked_at,
+      :locked_by,
+      :last_heartbeat_at,
+      :attempt_count,
       :world_network,
       :world_registered,
       :world_human_id,

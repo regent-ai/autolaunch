@@ -2,8 +2,8 @@ defmodule Autolaunch.Launch.Auction do
   @moduledoc false
   use Autolaunch.Schema
 
-  @supported_networks ~w(base-sepolia base-mainnet)
-  @supported_chain_ids [84_532, 8_453]
+  @supported_networks Enum.map(Autolaunch.BaseChain.chains(), & &1.key)
+  @supported_chain_ids Autolaunch.BaseChain.supported_chain_ids()
 
   schema "autolaunch_auctions" do
     field :source_job_id, :string

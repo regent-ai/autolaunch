@@ -4,9 +4,11 @@ defmodule Autolaunch.Launch.Core do
   import Ecto.Query, warn: false
 
   alias Autolaunch.Accounts.HumanUser
+  alias Autolaunch.BaseChain
   alias Autolaunch.CCA.Contract, as: CCAContract
   alias Autolaunch.CCA.Market, as: CCAMarket
   alias Autolaunch.ERC8004
+  alias Autolaunch.InfrastructureConfig
   alias Autolaunch.Launch.Auction
   alias Autolaunch.Launch.AuctionDetails
   alias Autolaunch.Launch.Bid
@@ -29,27 +31,7 @@ defmodule Autolaunch.Launch.Core do
     protocol_bps: 100
   }
   @directory_supply Decimal.new("100000000000")
-  @chain_configs %{
-    84_532 => %{
-      id: 84_532,
-      key: "base-sepolia",
-      family: "base",
-      label: "Base Sepolia",
-      short_label: "Base Sepolia",
-      uniswap_network: "base_sepolia",
-      testnet?: true
-    },
-    8_453 => %{
-      id: 8_453,
-      key: "base-mainnet",
-      family: "base",
-      label: "Base",
-      short_label: "Base",
-      uniswap_network: "base",
-      testnet?: false
-    }
-  }
-  @supported_chain_ids [84_532, 8_453]
+  @supported_chain_ids InfrastructureConfig.base_chain_ids()
 
   def fee_split_summary, do: @fee_split
 
@@ -59,29 +41,10 @@ defmodule Autolaunch.Launch.Core do
     network = normalize_optional_text(Map.get(attrs, :network), 32) || "world"
 
     if is_binary(human_id) and human_id != "" do
-      if job = Repo.get(Job, launch_job_id) do
-        _ =
-          job
-          |> Job.update_changeset(%{
-            world_registered: true,
-            world_human_id: human_id,
-            world_network: network
-          })
-          |> Repo.update()
+      with :ok <- update_world_job(launch_job_id, human_id, network),
+           :ok <- update_world_auction(launch_job_id, human_id, network) do
+        {:ok, %{job_id: launch_job_id, human_id: human_id, network: network}}
       end
-
-      if auction = Repo.get_by(Auction, source_job_id: launch_job_auction_id(launch_job_id)) do
-        _ =
-          auction
-          |> Auction.changeset(%{
-            world_registered: true,
-            world_human_id: human_id,
-            world_network: network
-          })
-          |> Repo.update()
-      end
-
-      {:ok, %{job_id: launch_job_id, human_id: human_id, network: network}}
     else
       {:error, :invalid_human_id}
     end
@@ -89,9 +52,49 @@ defmodule Autolaunch.Launch.Core do
     _ -> {:error, :record_update_failed}
   end
 
+  defp update_world_job(launch_job_id, human_id, network) do
+    case Repo.get(Job, launch_job_id) do
+      %Job{} = job ->
+        job
+        |> Job.update_changeset(%{
+          world_registered: true,
+          world_human_id: human_id,
+          world_network: network
+        })
+        |> Repo.update()
+        |> case do
+          {:ok, _job} -> :ok
+          {:error, _changeset} -> {:error, :record_update_failed}
+        end
+
+      nil ->
+        :ok
+    end
+  end
+
+  defp update_world_auction(launch_job_id, human_id, network) do
+    case Repo.get_by(Auction, source_job_id: launch_job_auction_id(launch_job_id)) do
+      %Auction{} = auction ->
+        auction
+        |> Auction.changeset(%{
+          world_registered: true,
+          world_human_id: human_id,
+          world_network: network
+        })
+        |> Repo.update()
+        |> case do
+          {:ok, _auction} -> :ok
+          {:error, _changeset} -> {:error, :record_update_failed}
+        end
+
+      nil ->
+        :ok
+    end
+  end
+
   def chain_options do
     Enum.map(@supported_chain_ids, fn chain_id ->
-      config = chain_config!(chain_id)
+      config = BaseChain.config!(chain_id)
 
       %{
         id: config.id,
@@ -190,7 +193,7 @@ defmodule Autolaunch.Launch.Core do
         ],
         next_steps: [
           "Confirm the launch with the wallet that owns this Agent account.",
-          "Queue the Base-family launch deployment.",
+          "Queue the Base launch deployment.",
           "Wait for launch setup to finish and show the new launch addresses.",
           "Wait for the auction page, then stake claimed tokens to earn Base USDC from that subject."
         ],
@@ -281,24 +284,30 @@ defmodule Autolaunch.Launch.Core do
         rpc_host: Deployment.deploy_rpc_host(chain_id)
       }
 
-      {:ok, job} =
-        %Job{}
-        |> Job.create_changeset(job_attrs)
-        |> Repo.insert()
-
-      Deployment.record_external_launch(job)
-
-      if Keyword.get(opts, :queue?, true) do
-        Autolaunch.Launch.Jobs.queue_processing(job.job_id)
+      with {:ok, job} <-
+             %Job{}
+             |> Job.create_changeset(job_attrs)
+             |> Repo.insert(),
+           {:ok, _external_launch} <- Deployment.record_external_launch(job),
+           :ok <- maybe_queue_launch_job(job, opts) do
+        {:ok, serialize_job(job)}
+      else
+        {:error, _reason} = error -> error
       end
-
-      {:ok, serialize_job(job)}
     else
       {:error, _} = error -> error
     end
   end
 
   def create_launch_job(_attrs, _human, _request_ip, _opts), do: {:error, :unauthorized}
+
+  defp maybe_queue_launch_job(job, opts) do
+    if Keyword.get(opts, :queue?, true) do
+      Autolaunch.Launch.Jobs.queue_processing(job.job_id)
+    else
+      :ok
+    end
+  end
 
   def get_job_response(job_id) do
     with {:ok, active_chain_id} <- launch_chain_id() do
@@ -492,6 +501,10 @@ defmodule Autolaunch.Launch.Core do
   end
 
   def serialize_action_request(nil), do: nil
+
+  def serialize_action_request(%{prepared: _prepared} = action) do
+    action
+  end
 
   def serialize_action_request(%{tx_request: tx_request} = action) do
     action
@@ -1331,7 +1344,7 @@ defmodule Autolaunch.Launch.Core do
   end
 
   def launch_chain_id do
-    normalize_chain_id(Keyword.get(launch_config(), :chain_id, 84_532))
+    InfrastructureConfig.launch_chain_id()
   end
 
   def iso(nil), do: nil
@@ -1357,19 +1370,6 @@ defmodule Autolaunch.Launch.Core do
 
   def primary_wallet_address(%HumanUser{} = human),
     do: human |> linked_wallet_addresses() |> List.first()
-
-  defp normalize_chain_id(value) when is_integer(value) do
-    if value in @supported_chain_ids, do: {:ok, value}, else: {:error, :invalid_chain_id}
-  end
-
-  defp normalize_chain_id(value) when is_binary(value) do
-    case Integer.parse(String.trim(value)) do
-      {parsed, ""} -> normalize_chain_id(parsed)
-      _ -> {:error, :invalid_chain_id}
-    end
-  end
-
-  defp normalize_chain_id(_value), do: {:error, :invalid_chain_id}
 
   defp normalize_total_supply(_value), do: @agent_launch_total_supply
 
@@ -1453,25 +1453,14 @@ defmodule Autolaunch.Launch.Core do
 
   defp blank?(value), do: value in [nil, ""]
 
-  defp launch_config do
-    Application.get_env(:autolaunch, :launch, [])
-  end
-
   defp fetch_chain_config(chain_id) do
-    case chain_config(chain_id) do
-      nil -> {:error, :invalid_chain_id}
-      config -> {:ok, config}
-    end
+    BaseChain.config(chain_id)
   end
 
-  defp chain_config(chain_id), do: Map.get(@chain_configs, chain_id)
+  defp chain_config(chain_id), do: chain_id |> BaseChain.config() |> elem_or_nil()
 
-  defp chain_config!(chain_id) do
-    case chain_config(chain_id) do
-      nil -> raise ArgumentError, "unsupported chain id #{inspect(chain_id)}"
-      config -> config
-    end
-  end
+  defp elem_or_nil({:ok, value}), do: value
+  defp elem_or_nil({:error, _reason}), do: nil
 
   defp load_live_snapshot(%Auction{auction_address: auction_address, chain_id: chain_id})
        when is_binary(auction_address) and is_integer(chain_id) do

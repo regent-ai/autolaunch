@@ -3,6 +3,7 @@ defmodule Autolaunch.Launch.Readiness do
 
   import Ecto.Query, warn: false
 
+  alias Autolaunch.InfrastructureConfig
   alias Autolaunch.Launch.External.IronspriteAgent
   alias Autolaunch.Launch.External.LifecycleRun
   alias Autolaunch.Launch.External.RegentbotAgent
@@ -105,8 +106,8 @@ defmodule Autolaunch.Launch.Readiness do
         )
 
       owner_authorized =
-        Keyword.get(Application.get_env(:autolaunch, :launch, []), :allow_unverified_owner, false) or
-          regentbot_match or ironsprite_match
+        InfrastructureConfig.launch_value(:allow_unverified_owner) or regentbot_match or
+          ironsprite_match
 
       checks = [
         %{

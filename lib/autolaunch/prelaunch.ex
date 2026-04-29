@@ -5,13 +5,14 @@ defmodule Autolaunch.Prelaunch do
 
   alias Autolaunch.Accounts.HumanUser
   alias Autolaunch.Evm
+  alias Autolaunch.InfrastructureConfig
   alias Autolaunch.Launch
   alias Autolaunch.Prelaunch.Asset
+  alias Autolaunch.Prelaunch.AssetStorage
   alias Autolaunch.Prelaunch.Plan
   alias Autolaunch.Repo
 
   @draft_states ~w(draft validated launchable)
-  @uploads_dir "priv/static/prelaunch-assets"
   @allowed_media_types ~w(image/png image/jpeg image/webp image/gif)
 
   def list_plans(%HumanUser{} = human) do
@@ -358,8 +359,7 @@ defmodule Autolaunch.Prelaunch do
   defp metadata_draft(_value), do: %{}
 
   defp launch_chain_id do
-    Application.get_env(:autolaunch, :launch, [])
-    |> Keyword.get(:chain_id, 84_532)
+    InfrastructureConfig.launch_chain_id!()
   end
 
   defp identity_snapshot(agent) do
@@ -396,37 +396,23 @@ defmodule Autolaunch.Prelaunch do
          true <- media_type in @allowed_media_types || {:error, :invalid_media_type},
          {:ok, encoded} <- required_text(Map.get(attrs, "content_base64"), 10_000_000),
          {:ok, bytes} <- Base.decode64(encoded),
-         {:ok, asset_id, storage_path, public_url, sha256} <-
-           persist_asset(file_name, media_type, bytes) do
+         {:ok, stored} <- AssetStorage.persist(file_name, media_type, bytes) do
       {:ok,
        %{
-         asset_id: asset_id,
+         asset_id: stored.asset_id,
          privy_user_id: human.privy_user_id,
          file_name: file_name,
          media_type: media_type,
-         storage_path: storage_path,
-         public_url: public_url,
+         storage_path: stored.storage_path,
+         public_url: stored.public_url,
          byte_size: byte_size(bytes),
-         sha256: sha256
+         sha256: stored.sha256
        }}
     else
       false -> {:error, :invalid_media_type}
+      {:error, {:asset_write_failed, _reason}} -> {:error, :asset_write_failed}
       {:error, _} = error -> error
     end
-  end
-
-  defp persist_asset(file_name, media_type, bytes) do
-    File.mkdir_p!(Path.expand(@uploads_dir, File.cwd!()))
-    asset_id = "asset_" <> Ecto.UUID.generate()
-    ext = extension_for(media_type, file_name)
-    relative_path = Path.join(@uploads_dir, "#{asset_id}#{ext}")
-    absolute_path = Path.expand(relative_path, File.cwd!())
-    File.write!(absolute_path, bytes)
-
-    {:ok, asset_id, relative_path, "/prelaunch-assets/#{asset_id}#{ext}",
-     Base.encode16(:crypto.hash(:sha256, bytes), case: :lower)}
-  rescue
-    _ -> {:error, :asset_write_failed}
   end
 
   defp serialize_plan(%Plan{} = plan) do
@@ -559,15 +545,6 @@ defmodule Autolaunch.Prelaunch do
       value -> value
     end
   end
-
-  defp extension_for("image/png", _file_name), do: ".png"
-
-  defp extension_for("image/jpeg", file_name),
-    do: if(String.ends_with?(String.downcase(file_name), ".jpg"), do: ".jpg", else: ".jpeg")
-
-  defp extension_for("image/webp", _file_name), do: ".webp"
-  defp extension_for("image/gif", _file_name), do: ".gif"
-  defp extension_for(_media_type, file_name), do: Path.extname(file_name)
 
   defp iso(nil), do: nil
   defp iso(%DateTime{} = value), do: DateTime.to_iso8601(value)

@@ -2,7 +2,9 @@ defmodule Autolaunch.LaunchRunnerHardeningTest do
   use Autolaunch.DataCase, async: false
 
   alias Autolaunch.Launch
+  alias Autolaunch.Launch.DeployResult
   alias Autolaunch.Launch.Job
+  alias Autolaunch.Launch.Jobs
   alias Autolaunch.Repo
 
   setup do
@@ -66,10 +68,51 @@ defmodule Autolaunch.LaunchRunnerHardeningTest do
     )
   end
 
+  test "leases one queued launch job at a time and recovers stale leases" do
+    insert_launch_job("job_leased")
+    now = DateTime.utc_now()
+
+    assert {:ok, leased} = Jobs.lease_next_job("worker-a", now)
+    assert leased.job_id == "job_leased"
+    assert leased.status == "running"
+    assert leased.step == "deploying"
+    assert leased.locked_by == "worker-a"
+    assert leased.locked_at == now
+    assert leased.last_heartbeat_at == now
+    assert leased.attempt_count == 1
+
+    assert {:error, :empty} = Jobs.lease_next_job("worker-b", now)
+
+    later = DateTime.add(now, :timer.minutes(11), :millisecond)
+    assert {:ok, stolen} = Jobs.lease_next_job("worker-b", later)
+    assert stolen.locked_by == "worker-b"
+    assert stolen.locked_at == later
+    assert stolen.attempt_count == 2
+  end
+
+  test "deploy result save failures are returned to the caller" do
+    job = %Job{
+      job_id: "job_invalid_result",
+      owner_address: "0x1111111111111111111111111111111111111111",
+      agent_id: nil,
+      agent_name: nil,
+      token_symbol: "ATLAS",
+      minimum_raise_usdc: "1",
+      minimum_raise_usdc_raw: "1000000",
+      network: "base-sepolia",
+      chain_id: 84_532
+    }
+
+    assert {:error, {:auction, changeset}} =
+             DeployResult.persist_success(job, deploy_result_attrs())
+
+    assert :agent_id in Keyword.keys(changeset.errors)
+  end
+
   defp insert_launch_job(job_id) do
     now = DateTime.utc_now()
 
-    {:ok, _job} =
+    {:ok, job} =
       %Job{}
       |> Job.create_changeset(%{
         job_id: job_id,
@@ -91,6 +134,10 @@ defmodule Autolaunch.LaunchRunnerHardeningTest do
         agent_safe_address: "0x1111111111111111111111111111111111111111"
       })
       |> Repo.insert()
+
+    {:ok, _external_launch} = DeployResult.record_external_launch(job)
+
+    :ok
   end
 
   defp with_launch_command_lines(lines, fun) do
@@ -122,6 +169,17 @@ defmodule Autolaunch.LaunchRunnerHardeningTest do
         revenue_ingress_factory_address: "0x2222222222222222222222222222222222222222",
         lbp_strategy_factory_address: "0x6666666666666666666666666666666666666666",
         token_factory_address: "0x7777777777777777777777777777777777777777",
+        identity_registry_address: "0x9999999999999999999999999999999999999999",
+        factory_owner_address: "0x9999999999999999999999999999999999999997",
+        strategy_operator: "0x9999999999999999999999999999999999999998",
+        official_pool_fee: "0",
+        official_pool_tick_spacing: "60",
+        cca_tick_spacing_q96: "79228162514264337593543950336",
+        cca_floor_price_q96: "79228162514264337593543950336",
+        auction_duration_blocks: "9258",
+        cca_claim_block_offset: "64",
+        lbp_migration_block_offset: "128",
+        lbp_sweep_block_offset: "256",
         pool_manager_address: "0x3333333333333333333333333333333333333333",
         cca_factory_address: "0x4444444444444444444444444444444444444444",
         usdc_address: "0x5555555555555555555555555555555555555555",
@@ -169,5 +227,26 @@ defmodule Autolaunch.LaunchRunnerHardeningTest do
       Process.sleep(200)
       {"", 0}
     end
+  end
+
+  defp deploy_result_attrs do
+    %{
+      auction_address: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      token_address: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      strategy_address: "0x9999999999999999999999999999999999999999",
+      vesting_wallet_address: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      hook_address: "0xcccccccccccccccccccccccccccccccccccccccc",
+      launch_fee_registry_address: "0xdddddddddddddddddddddddddddddddddddddddd",
+      launch_fee_vault_address: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      subject_registry_address: "0xffffffffffffffffffffffffffffffffffffffff",
+      subject_id: "0x" <> String.duplicate("1", 64),
+      revenue_share_splitter_address: "0x9999999999999999999999999999999999999999",
+      default_ingress_address: "0x7777777777777777777777777777777777777777",
+      pool_id: "0x" <> String.duplicate("f", 64),
+      tx_hash: "0x" <> String.duplicate("a", 64),
+      uniswap_url: "https://app.uniswap.org/explore/tokens/base_sepolia/0xbb",
+      stdout_tail: "",
+      stderr_tail: ""
+    }
   end
 end

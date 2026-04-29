@@ -119,6 +119,114 @@ defmodule Autolaunch.LifecycleTest do
 
       assert summary.required_actor == "agent_safe"
     end
+
+    test "classifies strategy sweeps after migration" do
+      summary =
+        Lifecycle.settlement_summary(
+          %{status: "ready", agent_safe_address: @agent_safe},
+          %{
+            address: "0xstrategy",
+            migrated: true,
+            migration_block: 105,
+            sweep_block: 150,
+            currency_balance: 3,
+            token_balance: 4
+          },
+          %{token_balance: 0, currency_balance: 0, graduated: true},
+          %{releasable_launch_token: 0},
+          accepted_card(),
+          accepted_card(),
+          accepted_card(),
+          accepted_card(),
+          160
+        )
+
+      assert summary.settlement_state == "awaiting_sweeps"
+      assert summary.recommended_action == "sweep_currency"
+      assert summary.allowed_actions == ["sweep_currency", "sweep_token"]
+      assert summary.required_actor == "operator"
+    end
+
+    test "classifies post recovery cleanup after failed auction token recovery" do
+      summary =
+        Lifecycle.settlement_summary(
+          %{status: "ready", agent_safe_address: @agent_safe},
+          %{
+            address: "0xstrategy",
+            migrated: false,
+            migration_block: 105,
+            sweep_block: 150,
+            currency_balance: 6,
+            token_balance: 0
+          },
+          %{token_balance: 0, currency_balance: 0, graduated: false},
+          %{releasable_launch_token: 5},
+          accepted_card(),
+          accepted_card(),
+          accepted_card(),
+          accepted_card(),
+          160
+        )
+
+      assert summary.settlement_state == "post_recovery_cleanup"
+      assert summary.recommended_action == "release_vesting"
+      assert summary.allowed_actions == ["release_vesting"]
+      assert summary.blocked_reason =~ "leftover currency"
+    end
+
+    test "classifies fully settled launches and preserves vesting release when ready" do
+      summary =
+        Lifecycle.settlement_summary(
+          %{status: "ready", agent_safe_address: @agent_safe},
+          %{
+            address: "0xstrategy",
+            migrated: true,
+            migration_block: 105,
+            sweep_block: 150,
+            currency_balance: 0,
+            token_balance: 0
+          },
+          %{token_balance: 0, currency_balance: 0, graduated: true},
+          %{releasable_launch_token: 5},
+          accepted_card(),
+          accepted_card(),
+          accepted_card(),
+          accepted_card(),
+          160
+        )
+
+      assert summary.settlement_state == "settled"
+      assert summary.recommended_action == "release_vesting"
+      assert summary.allowed_actions == ["release_vesting"]
+      assert summary.required_actor == "beneficiary"
+    end
+
+    test "waits when the launch is not ready for settlement work" do
+      summary =
+        Lifecycle.settlement_summary(
+          %{status: "running", agent_safe_address: @agent_safe},
+          %{
+            address: "0xstrategy",
+            migrated: false,
+            migration_block: 105,
+            sweep_block: 150,
+            currency_balance: 0,
+            token_balance: 0
+          },
+          %{token_balance: 0, currency_balance: 0, graduated: nil},
+          %{releasable_launch_token: 0},
+          accepted_card(),
+          accepted_card(),
+          accepted_card(),
+          accepted_card(),
+          100
+        )
+
+      assert summary.settlement_state == "wait"
+      assert summary.recommended_action == "wait"
+      assert summary.allowed_actions == []
+      assert summary.blocked_reason == "Launch job is not ready yet."
+    end
   end
 
   describe "prepare_scope_action/1" do

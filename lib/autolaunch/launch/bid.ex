@@ -3,8 +3,8 @@ defmodule Autolaunch.Launch.Bid do
   use Autolaunch.Schema
 
   @primary_key {:bid_id, :string, autogenerate: false}
-  @supported_networks ~w(base-sepolia base-mainnet)
-  @supported_chain_ids [84_532, 8_453]
+  @supported_networks Enum.map(Autolaunch.BaseChain.chains(), & &1.key)
+  @supported_chain_ids Autolaunch.BaseChain.supported_chain_ids()
 
   schema "autolaunch_bids" do
     field :privy_user_id, :string

@@ -7,6 +7,7 @@ defmodule Autolaunch.Launch.BidFlow do
   alias Autolaunch.CCA.Contract, as: CCAContract
   alias Autolaunch.CCA.Market, as: CCAMarket
   alias Autolaunch.CCA.QuoteEngine
+  alias Autolaunch.Contracts.ActionParams
   alias Autolaunch.Launch.AuctionDetails
   alias Autolaunch.Launch.Bid
   alias Autolaunch.Launch.Core
@@ -24,17 +25,16 @@ defmodule Autolaunch.Launch.BidFlow do
       time_remaining_seconds = Core.time_remaining_seconds(auction.ends_at)
       owner_address = current_human && Core.primary_wallet_address(current_human)
 
-      tx_request =
+      prepared =
         if owner_address do
-          case CCAMarket.build_submit_tx_request(
-                 auction,
-                 owner_address,
-                 amount_wei,
-                 max_price_q96
-               ) do
-            {:ok, request} -> Core.serialize_tx_request(request)
-            _ -> nil
-          end
+          prepare_bid_action(
+            auction,
+            owner_address,
+            amount_wei,
+            max_price_q96,
+            amount_decimal,
+            max_price_decimal
+          )
         end
 
       quote = %{
@@ -54,7 +54,7 @@ defmodule Autolaunch.Launch.BidFlow do
         inactive_above_price: Core.q96_price_to_string(raw_quote.inactive_above_price_q96),
         time_remaining_seconds: time_remaining_seconds,
         warnings: raw_quote.warnings,
-        tx_request: tx_request
+        prepared: prepared
       }
 
       {:ok, quote}
@@ -247,6 +247,41 @@ defmodule Autolaunch.Launch.BidFlow do
     case AuctionDetails.get_auction(auction_id, current_human) do
       nil -> {:error, :auction_not_found}
       auction -> {:ok, auction}
+    end
+  end
+
+  defp prepare_bid_action(
+         auction,
+         owner_address,
+         amount_wei,
+         max_price_q96,
+         amount_decimal,
+         max_price_decimal
+       ) do
+    with {:ok, request} <-
+           CCAMarket.build_submit_tx_request(
+             auction,
+             owner_address,
+             amount_wei,
+             max_price_q96
+           ),
+         {:ok, prepared} <-
+           ActionParams.prepare_tx_request(
+             request,
+             "auction",
+             "submit_bid",
+             %{
+               auction_id: auction.id,
+               amount: Core.decimal_string(amount_decimal),
+               amount_raw: Integer.to_string(amount_wei),
+               max_price: Core.decimal_string(max_price_decimal, 8),
+               max_price_q96: Integer.to_string(max_price_q96)
+             },
+             expected_signer: owner_address
+           ) do
+      prepared
+    else
+      _ -> nil
     end
   end
 
