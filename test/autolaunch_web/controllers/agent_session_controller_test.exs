@@ -35,7 +35,6 @@ defmodule AutolaunchWeb.AgentSessionControllerTest do
       conn
       |> init_test_session(%{})
       |> with_agent_headers()
-      |> with_csrf()
       |> post("/v1/auth/agent/session", %{})
 
     created = json_response(created_conn, 200)
@@ -81,7 +80,6 @@ defmodule AutolaunchWeb.AgentSessionControllerTest do
       conn
       |> init_test_session(%{})
       |> with_agent_headers()
-      |> with_csrf()
       |> post("/v1/auth/agent/session", %{})
 
     response = json_response(conn, 200)
@@ -143,7 +141,6 @@ defmodule AutolaunchWeb.AgentSessionControllerTest do
       conn
       |> init_test_session(%{})
       |> with_agent_headers(receipt_audience: "techtree")
-      |> with_csrf()
       |> post("/v1/auth/agent/session", %{})
 
     assert %{"error" => %{"code" => "siwa_auth_denied"}} = json_response(conn, 401)

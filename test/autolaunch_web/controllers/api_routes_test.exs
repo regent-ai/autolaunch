@@ -143,6 +143,14 @@ defmodule AutolaunchWeb.ApiRoutesTest do
       |> Enum.filter(fn {_verb, path} -> String.starts_with?(path, "/v1/agent/") end)
       |> Enum.sort()
 
+    assert documented_routes != [],
+           """
+           Regent staking agent routes are served by Autolaunch, but the shared services contract
+           at ../regents-cli/docs/regent-services-contract.openapiv3.yaml does not list them.
+           Add the /v1/agent/regent/staking routes to that shared contract, then regenerate
+           the CLI bindings from the shared contract.
+           """
+
     assert phoenix_routes == documented_routes
   end
 

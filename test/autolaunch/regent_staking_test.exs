@@ -50,7 +50,7 @@ defmodule Autolaunch.RegentStakingTest do
     assert state.usdc_address == @usdc
     assert state.owner_address == @owner
     assert state.treasury_recipient == @treasury
-    assert state.staker_share_bps == 7000
+    assert state.revenue_share_supply_denominator == "100000000000"
     assert state.total_staked == "500"
     assert state.total_usdc_received == "1000"
     assert state.direct_deposit_usdc == "1000"
@@ -80,12 +80,16 @@ defmodule Autolaunch.RegentStakingTest do
     assert metrics.funding_gap == "0"
   end
 
-  test "stake returns a canonical wallet tx request", %{human: human} do
-    assert {:ok, %{tx_request: tx_request}} = RegentStaking.stake(%{"amount" => "1.5"}, human)
+  test "stake returns a prepared wallet action", %{human: human} do
+    assert {:ok, %{prepared: prepared}} = RegentStaking.stake(%{"amount" => "1.5"}, human)
 
-    assert tx_request.chain_id == @base_sepolia_chain_id
-    assert tx_request.to == @contract
-    assert String.starts_with?(tx_request.data, "0x7acb7757")
+    assert prepared.chain_id == @base_sepolia_chain_id
+    assert prepared.expected_signer == @wallet
+    assert prepared.idempotency_key == prepared.action_id
+    assert is_binary(prepared.risk_copy)
+    assert prepared.tx_request.chain_id == @base_sepolia_chain_id
+    assert prepared.tx_request.to == @contract
+    assert String.starts_with?(prepared.tx_request.data, "0x7acb7757")
   end
 
   test "stake uses the configured staking chain id", %{human: human} do
@@ -98,8 +102,8 @@ defmodule Autolaunch.RegentStakingTest do
       contract_address: @contract
     )
 
-    assert {:ok, %{tx_request: tx_request}} = RegentStaking.stake(%{"amount" => "1.5"}, human)
-    assert tx_request.chain_id == 12_345
+    assert {:ok, %{prepared: prepared}} = RegentStaking.stake(%{"amount" => "1.5"}, human)
+    assert prepared.tx_request.chain_id == 12_345
   end
 
   test "prepare_deposit_usdc encodes ascii source tags and refs" do
@@ -115,6 +119,11 @@ defmodule Autolaunch.RegentStakingTest do
     assert prepared.chain_id == @base_sepolia_chain_id
     assert prepared.target == @contract
     assert String.starts_with?(prepared.calldata, "0x7dc6bb98")
+    assert prepared.tx_request.to == @contract
+    assert prepared.expected_signer == nil
+    assert is_binary(prepared.expires_at)
+    assert is_binary(prepared.idempotency_key)
+    assert is_binary(prepared.risk_copy)
   end
 
   test "prepared actions use Base as the canonical staking rail when chain config is omitted" do
@@ -182,8 +191,8 @@ defmodule Autolaunch.RegentStakingTest do
         {contract, "0xeb4eebc7"} when contract == @contract ->
           {:ok, address_word(@treasury)}
 
-        {contract, "0x53dfb983"} when contract == @contract ->
-          {:ok, uint_word(7000)}
+        {contract, "0xe3961f2a"} when contract == @contract ->
+          {:ok, uint_word(100_000_000_000 * 1_000_000_000_000_000_000)}
 
         {contract, "0x5c975abb"} when contract == @contract ->
           {:ok, uint_word(0)}

@@ -202,6 +202,17 @@ defmodule AutolaunchWeb.Api.SubjectControllerTest do
                "staker_eligible_inflow_usdc_raw" => 90_000_000,
                "treasury_reserved_inflow_usdc_raw" => 25_000_000,
                "treasury_reserved_usdc_raw" => 12_000_000,
+               "recognized_revenue_proof" => %{
+                 "source" => "onchain_splitter",
+                 "chain_id" => 84_532,
+                 "ingress" => "0x7777777777777777777777777777777777777777",
+                 "revsplit" => @splitter,
+                 "block_number" => 1,
+                 "amount_raw" => 125_000_000,
+                 "amount" => "125",
+                 "recipient_lane" => "subject_revenue",
+                 "status" => "fresh"
+               },
                "share_change_history" => []
              }
            } = json_response(conn, 200)
@@ -244,19 +255,29 @@ defmodule AutolaunchWeb.Api.SubjectControllerTest do
            } = json_response(conn, 401)
   end
 
-  test "stake returns canonical tx request", %{conn: conn} do
+  test "stake returns a prepared wallet action without broadcasting a live update", %{conn: conn} do
+    AutolaunchWeb.LiveUpdates.subscribe([:subjects, :positions, :regent])
+
     conn = post(conn, "/v1/app/subjects/#{@subject_id}/stake", %{"amount" => "1.5"})
 
     assert %{
              "ok" => true,
-             "tx_request" => %{
-               "chain_id" => 84_532,
-               "to" => @splitter,
-               "data" => data
+             "prepared" => %{
+               "expected_signer" => @wallet,
+               "idempotency_key" => idempotency_key,
+               "risk_copy" => risk_copy,
+               "tx_request" => %{
+                 "chain_id" => 84_532,
+                 "to" => @splitter,
+                 "data" => data
+               }
              }
            } = json_response(conn, 200)
 
+    assert is_binary(idempotency_key)
+    assert is_binary(risk_copy)
     assert String.starts_with?(data, "0x7acb7757")
+    refute_receive {:autolaunch_live_update, :changed}, 50
   end
 
   test "stake with tx hash requires amount", %{conn: conn} do

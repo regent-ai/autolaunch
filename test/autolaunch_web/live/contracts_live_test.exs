@@ -215,6 +215,33 @@ defmodule AutolaunchWeb.ContractsLiveTest do
        }}
     end
 
+    def prepare_job_action(
+          "job_contracts",
+          "revenue_splitter",
+          "pull_treasury_share",
+          _attrs,
+          _human
+        ) do
+      {:ok,
+       %{
+         job_id: "job_contracts",
+         prepared: %{
+           resource: "revenue_splitter",
+           action: "pull_treasury_share",
+           chain_id: 84_532,
+           target: "0x9999999999999999999999999999999999999999",
+           calldata: "0x94af8446",
+           tx_request: %{
+             chain_id: 84_532,
+             to: "0x9999999999999999999999999999999999999999",
+             value: "0x0",
+             data: "0x94af8446"
+           },
+           submission_mode: "prepare_only"
+         }
+       }}
+    end
+
     def prepare_subject_action(_subject_id, "splitter", "set_paused", _attrs, _human) do
       {:ok,
        %{
@@ -283,6 +310,7 @@ defmodule AutolaunchWeb.ContractsLiveTest do
     assert html =~ "Prepare Safe acceptance"
     assert html =~ "Prepare failed-auction recovery"
     assert html =~ "Prepare auction currency return"
+    assert html =~ "Prepare treasury fee collection"
     assert html =~ "Advanced revenue controls"
     assert html =~ "Prepared action"
     assert html =~ "Eligible share"
@@ -323,5 +351,19 @@ defmodule AutolaunchWeb.ContractsLiveTest do
     assert html =~ "migrate"
     assert html =~ "0x8fd3ab80"
     assert html =~ "Copy tx JSON"
+  end
+
+  test "contracts page prepares treasury fee collection through the splitter", %{conn: conn} do
+    {:ok, view, _html} = live(conn, "/contracts?job_id=job_contracts")
+
+    html =
+      view
+      |> element(
+        "button[phx-value-resource='revenue_splitter'][phx-value-action='pull_treasury_share']"
+      )
+      |> render_click()
+
+    assert html =~ "pull_treasury_share"
+    assert html =~ "0x94af8446"
   end
 end

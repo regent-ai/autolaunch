@@ -65,12 +65,16 @@ defmodule Autolaunch.DocsExamplesTest do
     assert regent_staking_prepare["prepared"]["tx_request"]["chain_id"] == 8_453
 
     bid_quote = bundle["bid_quote"]
-    assert bid_quote["tx_request"]["chain_id"] == 84_532
+    assert bid_quote["prepared"]["tx_request"]["chain_id"] == 84_532
+
+    assert bid_quote["prepared"]["expected_signer"] ==
+             "0x1111111111111111111111111111111111111111"
+
     assert bid_quote["quote_mode"] == "onchain_exact_v1"
 
     position = bundle["position"]
     assert position["status"] == "claimable"
-    assert position["tx_actions"]["claim"]["chain_id"] == 84_532
+    assert position["tx_actions"]["claim"]["prepared"]["tx_request"]["chain_id"] == 84_532
     assert position["next_action_label"] == "Claim purchased tokens now."
 
     reputation_prompt = bundle["reputation_prompt"]

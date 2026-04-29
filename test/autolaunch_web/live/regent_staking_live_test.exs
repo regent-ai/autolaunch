@@ -16,7 +16,7 @@ defmodule AutolaunchWeb.RegentStakingLiveTest do
          stake_token_address: "0x2222222222222222222222222222222222222222",
          usdc_address: "0x3333333333333333333333333333333333333333",
          treasury_recipient: "0x4444444444444444444444444444444444444444",
-         staker_share_bps: 10_000,
+         revenue_share_supply_denominator: "100000000000",
          paused: false,
          total_staked: "12345",
          total_usdc_received: "500",
@@ -55,11 +55,13 @@ defmodule AutolaunchWeb.RegentStakingLiveTest do
     defp tx(data) do
       {:ok,
        %{
-         tx_request: %{
-           chain_id: 8453,
-           to: "0x9999999999999999999999999999999999999999",
-           value: "0x0",
-           data: data
+         prepared: %{
+           tx_request: %{
+             chain_id: 8453,
+             to: "0x9999999999999999999999999999999999999999",
+             value: "0x0",
+             data: data
+           }
          }
        }}
     end
@@ -83,9 +85,12 @@ defmodule AutolaunchWeb.RegentStakingLiveTest do
     original = Application.get_env(:autolaunch, :regent_staking_live, [])
     original_staking = Application.get_env(:autolaunch, :regent_staking, [])
     Application.put_env(:autolaunch, :regent_staking_live, context_module: StakingStub)
-    Application.put_env(:autolaunch, :regent_staking, operator_wallets: [
-      "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-    ])
+
+    Application.put_env(:autolaunch, :regent_staking,
+      operator_wallets: [
+        "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      ]
+    )
 
     on_exit(fn ->
       Application.put_env(:autolaunch, :regent_staking_live, original)
@@ -109,7 +114,8 @@ defmodule AutolaunchWeb.RegentStakingLiveTest do
     assert html =~ "$REGENT staking"
     assert html =~ "Company rewards rail"
     assert html =~ "Total REGENT staked"
-    assert html =~ "Funded REGENT rewards"
+    assert html =~ "Funded $REGENT rewards"
+    assert html =~ "It does not guarantee yield."
     assert html =~ "Prepare stake"
     assert html =~ "Prepare USDC claim"
     assert html =~ "Prepare REGENT claim"
@@ -156,6 +162,44 @@ defmodule AutolaunchWeb.RegentStakingLiveTest do
 
     assert html =~ "Send USDC deposit"
     assert html =~ "0xdeposit"
+  end
+
+  test "operator access uses the connected session wallet before it is saved", %{conn: conn} do
+    {:ok, human} =
+      Accounts.upsert_human_by_privy_id("did:privy:regent-staking-pending-operator", %{
+        "display_name" => "Operator"
+      })
+
+    conn =
+      init_test_session(conn,
+        privy_user_id: human.privy_user_id,
+        privy_pending_wallet_address: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        privy_pending_wallet_addresses: ["0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]
+      )
+
+    {:ok, view, _html} = live(conn, "/regent-staking")
+
+    html =
+      view
+      |> form("form[phx-change='deposit_changed']", %{
+        "deposit" => %{
+          "amount" => "2.0",
+          "source_tag" => "manual",
+          "source_ref" => "regent-staking"
+        }
+      })
+      |> render_change()
+
+    assert html =~ "Prepare USDC deposit"
+
+    html =
+      view
+      |> element("#regent-deposit-usdc")
+      |> render_click()
+
+    assert html =~ "Send USDC deposit"
+    assert html =~ "0xdeposit"
+    refute html =~ "Use an authorized operator wallet."
   end
 
   test "anonymous visitors cannot prepare treasury actions", %{conn: conn} do

@@ -482,7 +482,7 @@ defmodule AutolaunchWeb.Layouts do
         note: "Check launch, cache, auth, and service readiness",
         href: ~p"/status",
         mark: "ST",
-        search: "status health readiness cache dragonfly siwa xmtp database"
+        search: "status health readiness cache siwa xmtp database"
       },
       %{
         label: "Profile and identity",

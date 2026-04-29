@@ -374,7 +374,7 @@ defmodule AutolaunchWeb.PositionsLive do
                               :if={return_action(position)}
                               id={"positions-return-#{position.bid_id}"}
                               class="al-submit"
-                              tx_request={return_action(position).tx_request}
+                              tx_request={return_action(position).prepared.tx_request}
                               register_endpoint={~p"/v1/app/bids/#{position.bid_id}/return-usdc"}
                               pending_message="Return transaction sent. Waiting for confirmation."
                               success_message="USDC return registered."
@@ -385,7 +385,7 @@ defmodule AutolaunchWeb.PositionsLive do
                               :if={tx_action(position, :exit) && is_nil(return_action(position))}
                               id={"positions-exit-#{position.bid_id}"}
                               class="al-ghost"
-                              tx_request={tx_action(position, :exit).tx_request}
+                              tx_request={tx_action(position, :exit).prepared.tx_request}
                               register_endpoint={~p"/v1/app/bids/#{position.bid_id}/exit"}
                               pending_message="Exit transaction sent. Waiting for confirmation."
                               success_message="Bid exit registered."
@@ -396,7 +396,7 @@ defmodule AutolaunchWeb.PositionsLive do
                               :if={tx_action(position, :claim)}
                               id={"positions-claim-#{position.bid_id}"}
                               class="al-submit"
-                              tx_request={tx_action(position, :claim).tx_request}
+                              tx_request={tx_action(position, :claim).prepared.tx_request}
                               register_endpoint={~p"/v1/app/bids/#{position.bid_id}/claim"}
                               pending_message="Claim transaction sent. Waiting for confirmation."
                               success_message="Claim registered."

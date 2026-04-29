@@ -40,6 +40,18 @@ defmodule AutolaunchWeb.Router do
     plug AutolaunchWeb.Plugs.RequireAgentSiwa
   end
 
+  pipeline :agent_session_api do
+    plug :accepts, ["json"]
+    plug :fetch_session
+    plug :put_secure_browser_headers
+    plug AutolaunchWeb.Plugs.RateLimit
+    plug AutolaunchWeb.Plugs.RequireAgentSiwa
+  end
+
+  pipeline :public_asset do
+    plug :put_secure_browser_headers
+  end
+
   scope "/", AutolaunchWeb do
     pipe_through :browser
 
@@ -72,6 +84,12 @@ defmodule AutolaunchWeb.Router do
     get "/health", HealthController, :show
   end
 
+  scope "/", AutolaunchWeb do
+    pipe_through :public_asset
+
+    get "/prelaunch-assets/:file", PrelaunchAssetController, :show
+  end
+
   scope "/v1/auth", AutolaunchWeb do
     pipe_through :browser_session_api
 
@@ -90,7 +108,7 @@ defmodule AutolaunchWeb.Router do
   end
 
   scope "/v1/auth/agent", AutolaunchWeb do
-    pipe_through [:browser_session_api, :agent_api]
+    pipe_through :agent_session_api
 
     post "/session", AgentSessionController, :create
   end

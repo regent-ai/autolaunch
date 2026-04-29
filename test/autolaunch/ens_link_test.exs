@@ -89,8 +89,7 @@ defmodule Autolaunch.EnsLinkTest do
         chain_rpc_urls: %{
           1 => "https://ethereum.example",
           84_532 => "https://base-sepolia.example",
-          8_453 => "https://base.example",
-          11_155_111 => "https://ethereum-sepolia.example"
+          8_453 => "https://base.example"
         },
         identity_registry_addresses: %{
           84_532 => "0x8004A818BFB912233c491871b3d84c89A494BD9e",
@@ -163,8 +162,7 @@ defmodule Autolaunch.EnsLinkTest do
         chain_rpc_urls: %{
           1 => "https://ethereum.example",
           84_532 => "https://base-sepolia.example",
-          8_453 => "",
-          11_155_111 => "https://ethereum-sepolia.example"
+          8_453 => ""
         }
       )
     )

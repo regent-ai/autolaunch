@@ -4,6 +4,7 @@ defmodule Autolaunch.EnsLink do
   alias AgentEns.Link
   alias Autolaunch.Accounts.HumanUser
   alias Autolaunch.ERC8004
+  alias Autolaunch.InfrastructureConfig
   alias Autolaunch.Launch
 
   def plan_link(%HumanUser{} = human, attrs) when is_map(attrs) do
@@ -128,7 +129,7 @@ defmodule Autolaunch.EnsLink do
   end
 
   defp chain_rpc_url(chain_id) do
-    case chain_string_config(:chain_rpc_urls, chain_id) do
+    case InfrastructureConfig.chain_text(:chain_rpc_urls, chain_id) do
       value when is_binary(value) -> {:ok, value}
       _ -> {:error, :rpc_not_configured}
     end
@@ -203,21 +204,6 @@ defmodule Autolaunch.EnsLink do
   defp normalize_address(_value), do: nil
 
   defp truthy?(value), do: value in [true, "true", "1", 1]
-
-  defp launch_config, do: Application.get_env(:autolaunch, :launch, [])
-
-  defp chain_string_config(key, chain_id) do
-    case Keyword.get(launch_config(), key, %{}) do
-      %{} = values ->
-        case Map.get(values, chain_id) do
-          value when is_binary(value) and value != "" -> String.trim(value)
-          _ -> nil
-        end
-
-      _ ->
-        nil
-    end
-  end
 
   defp serialize(value) when is_struct(value) do
     value

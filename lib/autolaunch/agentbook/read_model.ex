@@ -39,7 +39,10 @@ defmodule Autolaunch.Agentbook.ReadModel do
       data: request.data,
       value: request.value,
       chain_id: request.chain_id,
-      description: request.description
+      description: request.description,
+      expected_signer: request.expected_signer,
+      expires_at: request.expires_at,
+      risk: request.risk
     }
   end
 

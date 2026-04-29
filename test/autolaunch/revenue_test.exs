@@ -18,13 +18,9 @@ defmodule Autolaunch.RevenueTest do
   setup do
     previous_adapter = Application.get_env(:autolaunch, :cca_rpc_adapter)
     previous_launch = Application.get_env(:autolaunch, :launch, [])
-    previous_dragonfly_enabled = Application.get_env(:autolaunch, :dragonfly_enabled)
-    previous_dragonfly_name = Application.get_env(:autolaunch, :dragonfly_name)
-
-    previous_dragonfly_command_module =
-      Application.get_env(:autolaunch, :dragonfly_command_module)
 
     Application.put_env(:autolaunch, :cca_rpc_adapter, __MODULE__.FakeRpc)
+    {:ok, _count} = Cachex.clear(:autolaunch_cache)
 
     Application.put_env(
       :autolaunch,
@@ -45,12 +41,8 @@ defmodule Autolaunch.RevenueTest do
       end
 
       Application.put_env(:autolaunch, :launch, previous_launch)
-      restore_env(:dragonfly_enabled, previous_dragonfly_enabled)
-      restore_env(:dragonfly_name, previous_dragonfly_name)
-      restore_env(:dragonfly_command_module, previous_dragonfly_command_module)
-      Process.delete(:revenue_dragonfly_values)
-      Process.delete(:revenue_dragonfly_commands)
       Process.delete(:fake_rpc_logs)
+      {:ok, _count} = Cachex.clear(:autolaunch_cache)
     end)
 
     human =
@@ -219,17 +211,11 @@ defmodule Autolaunch.RevenueTest do
              Revenue.subject_wallet_positions(@subject_id, ["not-an-address"])
   end
 
-  test "subject_wallet_positions uses Dragonfly after the first successful read" do
-    configure_dragonfly_cache()
-
+  test "subject_wallet_positions uses local cache after the first successful read" do
     assert {:ok, first} = Revenue.subject_wallet_positions(@subject_id, [@wallet])
     assert {:ok, second} = Revenue.subject_wallet_positions(@subject_id, [@wallet])
 
     assert first == second
-
-    commands = Process.get(:revenue_dragonfly_commands)
-    assert Enum.count(commands, &match?(["SET", _key, _value, "EX", 10], &1)) == 1
-    assert Enum.count(commands, &match?(["GET", _key], &1)) >= 2
   end
 
   test "subject_obligation_metrics computes exact accrued totals from a provided staker list" do
@@ -256,13 +242,16 @@ defmodule Autolaunch.RevenueTest do
     assert subject.subject_id == @subject_id
   end
 
-  test "stake returns canonical tx request", %{human: human} do
-    assert {:ok, %{tx_request: tx_request}} =
+  test "stake returns a prepared wallet action", %{human: human} do
+    assert {:ok, %{prepared: prepared}} =
              Revenue.stake(@subject_id, %{"amount" => "1.5"}, human)
 
-    assert tx_request.chain_id == 84_532
-    assert tx_request.to == @splitter
-    assert String.starts_with?(tx_request.data, "0x7acb7757")
+    assert prepared.chain_id == 84_532
+    assert prepared.expected_signer == @wallet
+    assert prepared.idempotency_key == prepared.action_id
+    assert prepared.params.subject_id == @subject_id
+    assert prepared.tx_request.to == @splitter
+    assert String.starts_with?(prepared.tx_request.data, "0x7acb7757")
   end
 
   test "revenue actions keep missing subject, wallet, data, and amount reasons separate", %{
@@ -409,6 +398,36 @@ defmodule Autolaunch.RevenueTest do
     assert subject.subject_id == @subject_id
   end
 
+  test "claim_usdc records failed receipts as rejected", %{human: human} do
+    tx_hash = "0x" <> String.duplicate("f", 64)
+
+    Process.put(:fake_rpc_transaction, %{
+      transaction_hash: tx_hash,
+      from: @wallet,
+      to: @splitter,
+      input: Abi.encode_claim_usdc(@wallet),
+      value: "0x0",
+      block_number: nil
+    })
+
+    Process.put(:fake_rpc_receipt, %{
+      transaction_hash: tx_hash,
+      status: 0,
+      from: @wallet,
+      to: @splitter,
+      logs: []
+    })
+
+    assert {:error, :transaction_failed} =
+             Revenue.claim_usdc(@subject_id, %{"tx_hash" => tx_hash}, human)
+
+    assert %SubjectActionRegistration{
+             status: "rejected",
+             error_code: "transaction_failed",
+             error_message: "Transaction failed onchain"
+           } = Repo.get_by(SubjectActionRegistration, tx_hash: tx_hash)
+  end
+
   test "sweep_ingress refreshes the subject after a confirmed ingress sweep", %{human: human} do
     tx_hash = "0x" <> String.duplicate("b", 64)
 
@@ -548,17 +567,6 @@ defmodule Autolaunch.RevenueTest do
     end
   end
 
-  defp configure_dragonfly_cache do
-    Application.put_env(:autolaunch, :dragonfly_enabled, true)
-    Application.put_env(:autolaunch, :dragonfly_name, self())
-    Application.put_env(:autolaunch, :dragonfly_command_module, __MODULE__.FakeRedix)
-    Process.put(:revenue_dragonfly_values, %{})
-    Process.put(:revenue_dragonfly_commands, [])
-  end
-
-  defp restore_env(key, nil), do: Application.delete_env(:autolaunch, key)
-  defp restore_env(key, value), do: Application.put_env(:autolaunch, key, value)
-
   defp encode_word(value) do
     value
     |> Integer.to_string(16)
@@ -575,31 +583,5 @@ defmodule Autolaunch.RevenueTest do
       end)
 
     "0x" <> encoded
-  end
-
-  defmodule FakeRedix do
-    def command(_owner, command) do
-      commands = Process.get(:revenue_dragonfly_commands, [])
-      Process.put(:revenue_dragonfly_commands, commands ++ [command])
-
-      values = Process.get(:revenue_dragonfly_values, %{})
-
-      case command do
-        ["GET", key] ->
-          {:ok, Map.get(values, key)}
-
-        ["SET", key, value, "EX", _ttl] ->
-          Process.put(:revenue_dragonfly_values, Map.put(values, key, value))
-          {:ok, "OK"}
-
-        ["INCR", key] ->
-          next = values |> Map.get(key, "0") |> String.to_integer() |> Kernel.+(1)
-          Process.put(:revenue_dragonfly_values, Map.put(values, key, Integer.to_string(next)))
-          {:ok, next}
-
-        ["PING"] ->
-          {:ok, "PONG"}
-      end
-    end
   end
 end

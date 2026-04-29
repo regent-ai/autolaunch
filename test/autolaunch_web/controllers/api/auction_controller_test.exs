@@ -59,12 +59,25 @@ defmodule AutolaunchWeb.Api.AuctionControllerTest do
          inactive_above_price: "0.0049",
          time_remaining_seconds: 86_400,
          warnings: ["Watch the next checkpoint."],
-         tx_request:
+         prepared:
            if(human,
              do: %{
+               action_id: "bid_quote",
+               resource: "auction",
+               action: "submit_bid",
                chain_id: 84_532,
-               to: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-               data: "0x1234"
+               target: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+               calldata: "0x1234",
+               expected_signer: "0x1111111111111111111111111111111111111111",
+               expires_at: "2999-01-01T00:00:00Z",
+               idempotency_key: "bid_quote",
+               risk_copy: "Submits a Base USDC bid for this auction.",
+               tx_request: %{
+                 chain_id: 84_532,
+                 to: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                 value: "0x0",
+                 data: "0x1234"
+               }
              },
              else: nil
            )
@@ -110,7 +123,7 @@ defmodule AutolaunchWeb.Api.AuctionControllerTest do
              json_response(conn, 404)
   end
 
-  test "bid_quote returns the live estimator and tx request for signed-in users", %{
+  test "bid_quote returns the live estimator and prepared action for signed-in users", %{
     conn: conn,
     human: human
   } do
@@ -126,7 +139,10 @@ defmodule AutolaunchWeb.Api.AuctionControllerTest do
              "ok" => true,
              "auction_id" => "auc_1",
              "status_band" => "active",
-             "tx_request" => %{"chain_id" => 84_532}
+             "prepared" => %{
+               "expected_signer" => @wallet,
+               "tx_request" => %{"chain_id" => 84_532}
+             }
            } = json_response(conn, 200)
   end
 

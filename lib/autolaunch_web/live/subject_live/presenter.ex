@@ -17,15 +17,15 @@ defmodule AutolaunchWeb.SubjectLive.Presenter do
       claimable_usdc: claimable_usdc,
       claimable_stake_token: claimable_emissions,
       summary:
-        "Your staked balance, wallet balance, claimable USDC, and claimable emissions all live here.",
-      staked_line: "Staked: #{staked}",
-      wallet_line: "Wallet: #{wallet}",
+        "Your staked agent-token balance, wallet balance, claimable USDC, and claimable agent-token emissions all live here.",
+      staked_line: "Staked agent tokens: #{staked}",
+      wallet_line: "Wallet agent tokens: #{wallet}",
       claimable_usdc_line: "USDC: #{claimable_usdc}",
-      claimable_emissions_line: "Emissions: #{claimable_emissions}",
-      stake_note: "Wallet balance: #{wallet}.",
-      unstake_note: "Currently staked: #{staked}.",
+      claimable_emissions_line: "Agent-token emissions: #{claimable_emissions}",
+      stake_note: "Wallet agent-token balance: #{wallet}.",
+      unstake_note: "Currently staked agent tokens: #{staked}.",
       claim_note: "Claimable now: #{claimable_usdc}.",
-      emissions_note: "Claimable emissions: #{claimable_emissions}."
+      emissions_note: "Claimable agent-token emissions: #{claimable_emissions}."
     }
   end
 
@@ -55,15 +55,15 @@ defmodule AutolaunchWeb.SubjectLive.Presenter do
   end
 
   def recommended_action_summary(:stake, wallet_position) do
-    "This wallet still holds #{wallet_position.wallet_token_balance} unstaked tokens. Move the amount you want into the splitter so revenue stays attached to the position."
+    "This wallet still holds #{wallet_position.wallet_token_balance} unstaked agent tokens. Move the amount you want into the subject revenue contract so future subject revenue stays attached to the position."
   end
 
   def recommended_action_summary(:unstake, wallet_position) do
-    "There is no claimable USDC or idle wallet balance, but #{wallet_position.wallet_stake_balance} tokens are still committed. Unstake only if you want that balance back in the wallet."
+    "There is no claimable USDC or idle wallet balance, but #{wallet_position.wallet_stake_balance} agent tokens are still committed. Unstake only if you want that balance back in the wallet."
   end
 
   def recommended_action_summary(:claim_and_stake_emissions, _wallet_position) do
-    "Reward emissions are available now. Claim them on their own or move them straight back into the splitter."
+    "Agent-token emissions are available now. Claim them on their own or move them straight back into the subject revenue contract."
   end
 
   def recommended_action_summary(_, _wallet_position) do
@@ -241,8 +241,51 @@ defmodule AutolaunchWeb.SubjectLive.Presenter do
     Format.display_datetime(happened_at) || "Time unavailable"
   end
 
+  def public_revenue_proof_rows(subject) when is_map(subject) do
+    proof = Map.get(subject, :recognized_revenue_proof) || %{}
+
+    [
+      %{id: "source", label: "Source", value: proof_value(proof, :source)},
+      %{id: "chain", label: "Chain", value: proof_value(proof, :chain_id)},
+      %{id: "ingress", label: "Ingress account", value: proof_address(proof, :ingress)},
+      %{id: "revsplit", label: "Revsplit contract", value: proof_address(proof, :revsplit)},
+      %{id: "block", label: "Block number", value: proof_value(proof, :block_number)},
+      %{id: "amount", label: "Amount", value: proof_amount(proof)},
+      %{
+        id: "recipient-lane",
+        label: "Recipient lane",
+        value: proof_value(proof, :recipient_lane)
+      },
+      %{id: "status", label: "Freshness", value: proof_value(proof, :status)}
+    ]
+  end
+
+  def public_revenue_proof_rows(_subject), do: []
+
   defp subject_value(nil, _key), do: "0"
   defp subject_value(subject, key) when is_map(subject), do: Map.get(subject, key, "0")
+
+  defp proof_value(proof, key) do
+    case Map.get(proof, key) || Map.get(proof, Atom.to_string(key)) do
+      nil -> "Unavailable"
+      "" -> "Unavailable"
+      value -> to_string(value)
+    end
+  end
+
+  defp proof_address(proof, key) do
+    case proof_value(proof, key) do
+      "Unavailable" -> "Unavailable"
+      value -> Format.short_address(value, value)
+    end
+  end
+
+  defp proof_amount(proof) do
+    case proof_value(proof, :amount) do
+      "Unavailable" -> "Unavailable"
+      amount -> "#{amount} USDC"
+    end
+  end
 
   defp positive_amount?(nil), do: false
 

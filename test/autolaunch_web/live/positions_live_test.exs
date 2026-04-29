@@ -25,11 +25,13 @@ defmodule AutolaunchWeb.PositionsLiveTest do
           next_action_label: "Exit this bid and settle the refund.",
           tx_actions: %{
             exit: %{
-              tx_request: %{
-                chain_id: 84_532,
-                to: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-                data: "0xexit",
-                value: "0x0"
+              prepared: %{
+                tx_request: %{
+                  chain_id: 84_532,
+                  to: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                  data: "0xexit",
+                  value: "0x0"
+                }
               }
             },
             claim: nil
@@ -49,11 +51,13 @@ defmodule AutolaunchWeb.PositionsLiveTest do
           tx_actions: %{
             exit: nil,
             claim: %{
-              tx_request: %{
-                chain_id: 84_532,
-                to: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-                data: "0xclaim",
-                value: "0x0"
+              prepared: %{
+                tx_request: %{
+                  chain_id: 84_532,
+                  to: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                  data: "0xclaim",
+                  value: "0x0"
+                }
               }
             }
           }

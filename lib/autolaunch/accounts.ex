@@ -24,7 +24,11 @@ defmodule Autolaunch.Accounts do
         from(human in HumanUser,
           where:
             human.wallet_address == ^normalized_wallet or
-              fragment("? = ANY(?)", ^normalized_wallet, human.wallet_addresses),
+              fragment(
+                "? @> ?",
+                human.wallet_addresses,
+                type(^[normalized_wallet], {:array, :string})
+              ),
           order_by: [asc: human.id],
           limit: 1
         )

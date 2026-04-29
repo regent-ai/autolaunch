@@ -112,22 +112,20 @@ defmodule Autolaunch.Contracts.Dispatch do
     )
   end
 
-  def build_job_action(job, "fee_vault", "withdraw_treasury", attrs) do
-    with {:ok, currency} <- ActionParams.address_param(attrs, "currency"),
-         {:ok, amount} <- ActionParams.uint_param(attrs, "amount"),
-         {:ok, recipient} <- ActionParams.address_param(attrs, "recipient") do
+  def build_job_action(job, "revenue_splitter", "pull_treasury_share", attrs) do
+    with {:ok, amount} <- ActionParams.uint_param(attrs, "amount") do
       ActionParams.prepare_tx(
         job.chain_id,
-        job.launch_fee_vault_address,
-        Abi.encode_call(:withdraw_treasury, [
+        job.revenue_share_splitter_address,
+        Abi.encode_call(:pull_treasury_share_from_launch_vault, [
+          {:address, job.launch_fee_vault_address},
           {:bytes32, job.pool_id},
-          {:address, currency},
           {:uint256, amount},
-          {:address, recipient}
+          {:bytes32, job.pool_id}
         ]),
-        "fee_vault",
-        "withdraw_treasury",
-        %{currency: currency, amount: Integer.to_string(amount), recipient: recipient}
+        "revenue_splitter",
+        "pull_treasury_share",
+        %{vault: job.launch_fee_vault_address, amount: Integer.to_string(amount)}
       )
     end
   end

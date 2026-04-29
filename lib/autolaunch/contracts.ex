@@ -2,10 +2,11 @@ defmodule Autolaunch.Contracts do
   @moduledoc false
 
   alias Autolaunch.Accounts.HumanUser
-  alias Autolaunch.BaseFamily
+  alias Autolaunch.BaseChain
   alias Autolaunch.CCA.Rpc
   alias Autolaunch.Contracts.Abi
   alias Autolaunch.Contracts.Dispatch
+  alias Autolaunch.InfrastructureConfig
   alias Autolaunch.Launch
   alias Autolaunch.Lifecycle
   alias Autolaunch.Revenue
@@ -186,8 +187,8 @@ defmodule Autolaunch.Contracts do
         vesting:
           ~w(release propose_beneficiary_rotation cancel_beneficiary_rotation execute_beneficiary_rotation),
         fee_registry: ~w(accept_ownership),
-        fee_vault: ~w(withdraw_treasury withdraw_regent_share accept_ownership),
-        revenue_splitter: ~w(accept_ownership),
+        fee_vault: ~w(withdraw_regent_share accept_ownership),
+        revenue_splitter: ~w(accept_ownership pull_treasury_share),
         hook: ~w(accept_ownership)
       }
     }
@@ -232,8 +233,6 @@ defmodule Autolaunch.Contracts do
         safe_uint_call(job.chain_id, job.strategy_address, :total_strategy_supply),
       reserve_token_amount:
         safe_uint_call(job.chain_id, job.strategy_address, :reserve_token_amount),
-      max_currency_amount_for_lp:
-        safe_uint_call(job.chain_id, job.strategy_address, :max_currency_amount_for_lp),
       migrated_pool_id: safe_bytes32_call(job.chain_id, job.strategy_address, :migrated_pool_id),
       migrated_position_id:
         safe_uint_call(job.chain_id, job.strategy_address, :migrated_position_id),
@@ -688,15 +687,14 @@ defmodule Autolaunch.Contracts do
 
   defp normalize_address_or_text(value), do: value
 
-  defp launch_config, do: Application.get_env(:autolaunch, :launch, [])
+  defp launch_config, do: InfrastructureConfig.launch()
 
   defp launch_chain_id do
-    launch_config()
-    |> Keyword.get(:chain_id, 84_532)
+    InfrastructureConfig.launch_chain_id!()
   end
 
   defp launch_usdc_address(chain_id) do
-    case BaseFamily.canonical_usdc_address(chain_id) do
+    case BaseChain.canonical_usdc_address(chain_id) do
       {:ok, address} -> address
       {:error, _reason} -> ""
     end

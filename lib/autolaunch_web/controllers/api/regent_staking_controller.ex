@@ -7,33 +7,33 @@ defmodule AutolaunchWeb.Api.RegentStakingController do
   import AutolaunchWeb.Api.ControllerHelpers
 
   def show(conn, _params) do
-    render_result(conn, context_module().overview(conn.assigns[:current_human]))
+    render_result(conn, context_module().overview(staking_actor(conn)))
   end
 
   def account(conn, %{"address" => address}) do
-    render_result(conn, context_module().account(address, conn.assigns[:current_human]))
+    render_result(conn, context_module().account(address, staking_actor(conn)))
   end
 
   def stake(conn, params) do
-    render_result(conn, context_module().stake(params, conn.assigns[:current_human]))
+    render_result(conn, context_module().stake(params, staking_actor(conn)))
   end
 
   def unstake(conn, params) do
-    render_result(conn, context_module().unstake(params, conn.assigns[:current_human]))
+    render_result(conn, context_module().unstake(params, staking_actor(conn)))
   end
 
   def claim_usdc(conn, params) do
-    render_result(conn, context_module().claim_usdc(params, conn.assigns[:current_human]))
+    render_result(conn, context_module().claim_usdc(params, staking_actor(conn)))
   end
 
   def claim_regent(conn, params) do
-    render_result(conn, context_module().claim_regent(params, conn.assigns[:current_human]))
+    render_result(conn, context_module().claim_regent(params, staking_actor(conn)))
   end
 
   def claim_and_restake_regent(conn, params) do
     render_result(
       conn,
-      context_module().claim_and_restake_regent(params, conn.assigns[:current_human])
+      context_module().claim_and_restake_regent(params, staking_actor(conn))
     )
   end
 
@@ -94,4 +94,11 @@ defmodule AutolaunchWeb.Api.RegentStakingController do
   defp context_module do
     configured_module(:regent_staking_api, :context_module, RegentStaking)
   end
+
+  defp staking_actor(%{assigns: %{current_human: current_human}})
+       when not is_nil(current_human),
+       do: current_human
+
+  defp staking_actor(%{assigns: %{current_agent_claims: claims}}) when is_map(claims), do: claims
+  defp staking_actor(_conn), do: nil
 end

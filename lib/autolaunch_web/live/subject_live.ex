@@ -255,13 +255,13 @@ defmodule AutolaunchWeb.SubjectLive do
                   <div class="al-subject-flow-box">
                     <span>Your wallet</span>
                     <strong>{@wallet_position.wallet_token_balance}</strong>
-                    <p>Available to stake</p>
+                    <p>Agent tokens available to stake</p>
                   </div>
                   <div class="al-subject-flow-arrow">→</div>
                   <div class="al-subject-flow-box is-featured">
-                    <span>Revenue splitter</span>
+                    <span>Subject revenue contract</span>
                     <strong>{@wallet_position.wallet_stake_balance}</strong>
-                    <p>Currently staked</p>
+                    <p>Agent tokens currently staked</p>
                   </div>
                   <div class="al-subject-flow-arrow">→</div>
                   <div class="al-subject-flow-box">
@@ -277,7 +277,7 @@ defmodule AutolaunchWeb.SubjectLive do
                 <article class="al-subject-action-card">
                   <div>
                     <p class="al-kicker">Stake</p>
-                    <h3>Move wallet tokens into the splitter.</h3>
+                    <h3>Move wallet agent tokens into the subject revenue contract.</h3>
                     <p>{@wallet_position.stake_note}</p>
                   </div>
 
@@ -362,7 +362,7 @@ defmodule AutolaunchWeb.SubjectLive do
                 <article class="al-subject-secondary-card">
                   <div>
                     <p class="al-kicker">Unstake</p>
-                    <h3>Move committed tokens back to the wallet.</h3>
+                    <h3>Move staked agent tokens back to the wallet.</h3>
                     <p>{@wallet_position.unstake_note}</p>
                   </div>
 
@@ -407,7 +407,7 @@ defmodule AutolaunchWeb.SubjectLive do
                 <article class="al-subject-secondary-card">
                   <div>
                     <p class="al-kicker">Emissions</p>
-                    <h3>Claim reward tokens or roll them back into stake.</h3>
+                    <h3>Claim agent-token emissions or roll them back into stake.</h3>
                     <p>{@wallet_position.emissions_note}</p>
                   </div>
 
@@ -419,8 +419,8 @@ defmodule AutolaunchWeb.SubjectLive do
                         tx_request={@pending_actions[:claim_emissions].tx_request}
                         register_endpoint={~p"/v1/app/subjects/#{@subject_id}/claim-emissions"}
                         register_body={%{}}
-                        pending_message="Emission claim sent. Waiting for confirmation."
-                        success_message="Emission claim registered."
+                        pending_message="Agent-token emission claim sent. Waiting for confirmation."
+                        success_message="Agent-token emission claim registered."
                       >
                         Send emissions claim
                       </.wallet_tx_button>
@@ -442,8 +442,8 @@ defmodule AutolaunchWeb.SubjectLive do
                         tx_request={@pending_actions[:claim_and_stake_emissions].tx_request}
                         register_endpoint={~p"/v1/app/subjects/#{@subject_id}/claim-and-stake-emissions"}
                         register_body={%{}}
-                        pending_message="Claim and stake sent. Waiting for confirmation."
-                        success_message="Emission claim and stake registered."
+                        pending_message="Agent-token emission claim and stake sent. Waiting for confirmation."
+                        success_message="Agent-token emission claim and stake registered."
                       >
                         Send claim and stake
                       </.wallet_tx_button>
@@ -463,8 +463,8 @@ defmodule AutolaunchWeb.SubjectLive do
                 <article class="al-subject-secondary-card">
                   <div>
                     <p class="al-kicker">Ingress</p>
-                    <h3>Move USDC from intake accounts into revenue.</h3>
-                    <p>Known USDC intake accounts: {@ingress_count}. Money here counts after it is swept.</p>
+                    <h3>Move USDC from intake accounts into agent revenue.</h3>
+                    <p>Known USDC intake accounts: {@ingress_count}. Money here counts as agent revenue after it is swept into the subject revenue contract.</p>
                   </div>
 
                   <%= if @subject.can_manage_ingress and @ingress_accounts != [] do %>
@@ -543,9 +543,9 @@ defmodule AutolaunchWeb.SubjectLive do
                   <p class="al-kicker">Wallet view</p>
                   <dl class="al-subject-side-list">
                     <div><dt>Claimable now</dt><dd>{@wallet_position.claimable_usdc} USDC</dd></div>
-                    <div><dt>Available to stake</dt><dd>{@wallet_position.wallet_token_balance}</dd></div>
-                    <div><dt>Committed</dt><dd>{@wallet_position.wallet_stake_balance}</dd></div>
-                    <div><dt>Emissions</dt><dd>{@wallet_position.claimable_stake_token}</dd></div>
+                    <div><dt>Agent tokens available to stake</dt><dd>{@wallet_position.wallet_token_balance}</dd></div>
+                    <div><dt>Staked agent tokens</dt><dd>{@wallet_position.wallet_stake_balance}</dd></div>
+                    <div><dt>Agent-token emissions</dt><dd>{@wallet_position.claimable_stake_token}</dd></div>
                   </dl>
                 </div>
               </div>
@@ -555,9 +555,9 @@ defmodule AutolaunchWeb.SubjectLive do
                   <p class="al-kicker">Wallet balances</p>
                   <dl class="al-subject-side-list">
                     <div><dt>Claimable USDC</dt><dd>{@wallet_position.claimable_usdc}</dd></div>
-                    <div><dt>Wallet token balance</dt><dd>{@wallet_position.wallet_token_balance}</dd></div>
-                    <div><dt>Your staked tokens</dt><dd>{@wallet_position.wallet_stake_balance}</dd></div>
-                    <div><dt>Claimable emissions</dt><dd>{@wallet_position.claimable_stake_token}</dd></div>
+                    <div><dt>Wallet agent-token balance</dt><dd>{@wallet_position.wallet_token_balance}</dd></div>
+                    <div><dt>Your staked agent tokens</dt><dd>{@wallet_position.wallet_stake_balance}</dd></div>
+                    <div><dt>Claimable agent-token emissions</dt><dd>{@wallet_position.claimable_stake_token}</dd></div>
                   </dl>
                 </div>
 
@@ -1383,21 +1383,21 @@ defmodule AutolaunchWeb.SubjectLive do
       end
 
     case result do
-      {:ok, %{tx_request: tx_request, subject: subject}} ->
+      {:ok, %{prepared: %{tx_request: tx_request} = prepared, subject: subject}} ->
         socket
         |> assign(:subject, subject)
-        |> put_pending_action(action, tx_request)
+        |> put_pending_action(action, %{tx_request: tx_request, prepared: prepared})
 
       {:error, reason} ->
         put_flash(socket, :error, Presenter.action_error(reason))
     end
   end
 
-  defp put_pending_action(socket, action, tx_request) do
+  defp put_pending_action(socket, action, prepared_action) do
     assign(
       socket,
       :pending_actions,
-      Map.put(socket.assigns.pending_actions, action, %{tx_request: tx_request})
+      Map.put(socket.assigns.pending_actions, action, prepared_action)
     )
   end
 

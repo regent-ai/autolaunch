@@ -5,6 +5,7 @@ defmodule Autolaunch.Trust do
 
   alias Autolaunch.Accounts.HumanUser
   alias Autolaunch.ERC8004
+  alias Autolaunch.InfrastructureConfig
   alias Autolaunch.Launch
   alias Autolaunch.Launch.Auction
   alias Autolaunch.Launch.External.SocialAccount
@@ -12,7 +13,7 @@ defmodule Autolaunch.Trust do
 
   @x_provider "x"
   @oauth_provider "twitter"
-  @supported_chain_ids [84_532, 8_453]
+  @supported_chain_ids InfrastructureConfig.base_chain_ids()
   @positive_int_regex ~r/^[1-9][0-9]*$/
 
   def x_provider, do: @x_provider

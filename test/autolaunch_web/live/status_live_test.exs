@@ -10,7 +10,7 @@ defmodule AutolaunchWeb.StatusLiveTest do
         checked_at: ~U[2026-04-23 16:00:00Z],
         checks: [
           %{state: :ready, label: "Database", detail: "Reads and writes are available."},
-          %{state: :muted, label: "Dragonfly", detail: "Cache is disabled here."},
+          %{state: :ready, label: "Local cache", detail: "Cache is ready."},
           %{state: :blocked, label: "Launch stack", detail: "One setting needs a value."}
         ]
       }
@@ -28,7 +28,7 @@ defmodule AutolaunchWeb.StatusLiveTest do
 
     assert html =~ "Autolaunch needs attention."
     assert html =~ "Database"
-    assert html =~ "Dragonfly"
+    assert html =~ "Local cache"
     assert html =~ "Launch stack"
     assert html =~ "Attention"
 

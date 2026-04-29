@@ -1,7 +1,9 @@
 defmodule Autolaunch.ERC8004 do
   @moduledoc false
 
-  @supported_chain_ids [84_532, 8_453]
+  alias Autolaunch.InfrastructureConfig
+
+  @supported_chain_ids InfrastructureConfig.base_chain_ids()
 
   @agent_query """
   query Agents($where: Agent_filter, $first: Int!) {
@@ -70,7 +72,7 @@ defmodule Autolaunch.ERC8004 do
   end
 
   def identity_registry(chain_id) do
-    chain_address_config(:identity_registry_addresses, chain_id)
+    InfrastructureConfig.chain_address(:identity_registry_addresses, chain_id)
   end
 
   def get_identities_by_agent_ids(agent_ids) when is_list(agent_ids) do
@@ -285,37 +287,11 @@ defmodule Autolaunch.ERC8004 do
   end
 
   defp configured_chain?(chain_id) do
-    is_binary(chain_string_config(:erc8004_subgraph_urls, chain_id)) and
-      is_binary(chain_address_config(:identity_registry_addresses, chain_id))
+    is_binary(InfrastructureConfig.chain_text(:erc8004_subgraph_urls, chain_id)) and
+      is_binary(InfrastructureConfig.chain_address(:identity_registry_addresses, chain_id))
   end
-
-  defp launch_config, do: Application.get_env(:autolaunch, :launch, [])
 
   defp chain_string_config(key, chain_id) do
-    case Keyword.get(launch_config(), key, %{}) do
-      %{} = values ->
-        values
-        |> Map.get(chain_id)
-        |> normalize_optional_text()
-
-      _ ->
-        nil
-    end
+    InfrastructureConfig.chain_text(key, chain_id)
   end
-
-  defp chain_address_config(key, chain_id) do
-    case chain_string_config(key, chain_id) do
-      value when is_binary(value) -> String.downcase(value)
-      _ -> nil
-    end
-  end
-
-  defp normalize_optional_text(value) when is_binary(value) do
-    case String.trim(value) do
-      "" -> nil
-      trimmed -> trimmed
-    end
-  end
-
-  defp normalize_optional_text(_value), do: nil
 end

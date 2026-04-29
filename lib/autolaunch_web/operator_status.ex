@@ -1,15 +1,14 @@
 defmodule AutolaunchWeb.OperatorStatus do
   @moduledoc false
 
+  alias Autolaunch.InfrastructureConfig
   alias Autolaunch.Repo
   alias Autolaunch.Siwa.Config, as: SiwaConfig
-
-  @cache_app :autolaunch
 
   def snapshot do
     checks = [
       repo_check(),
-      dragonfly_check(),
+      cache_check(),
       siwa_check(),
       launch_config_check(),
       regent_config_check(),
@@ -30,11 +29,10 @@ defmodule AutolaunchWeb.OperatorStatus do
     end
   end
 
-  defp dragonfly_check do
-    case RegentCache.Dragonfly.status(@cache_app) do
-      :ready -> check(:ready, "Dragonfly", "Hot read cache is ready.")
-      :disabled -> check(:muted, "Dragonfly", "Cache is disabled in this environment.")
-      {:error, _reason} -> check(:blocked, "Dragonfly", "Cache is not reachable.")
+  defp cache_check do
+    case Autolaunch.LocalCache.status() do
+      :ready -> check(:ready, "Local cache", "Hot read cache is ready.")
+      {:error, _reason} -> check(:blocked, "Local cache", "Cache is not ready.")
     end
   end
 
@@ -46,27 +44,11 @@ defmodule AutolaunchWeb.OperatorStatus do
   end
 
   defp launch_config_check do
-    launch = Application.get_env(:autolaunch, :launch, [])
-
-    required = [
-      :chain_id,
-      :cca_factory_address,
-      :pool_manager_address,
-      :position_manager_address,
-      :usdc_address,
-      :revenue_share_factory_address,
-      :revenue_ingress_factory_address,
-      :lbp_strategy_factory_address,
-      :token_factory_address,
-      :identity_registry_address
-    ]
-
     missing =
-      Enum.reject(required, fn key ->
-        launch
-        |> Keyword.get(key)
-        |> present?()
-      end)
+      case InfrastructureConfig.launch_chain_id() do
+        {:ok, _chain_id} -> InfrastructureConfig.launch_missing_address_keys()
+        {:error, _reason} -> [:chain_id | InfrastructureConfig.launch_missing_address_keys()]
+      end
 
     if missing == [] do
       check(:ready, "Launch stack", "Base launch addresses are configured.")
@@ -76,9 +58,10 @@ defmodule AutolaunchWeb.OperatorStatus do
   end
 
   defp regent_config_check do
-    cfg = Application.get_env(:autolaunch, :regent_staking, [])
-
-    if present?(Keyword.get(cfg, :contract_address)) and present?(Keyword.get(cfg, :rpc_url)) do
+    if InfrastructureConfig.configured_address?(
+         InfrastructureConfig.regent_staking_value(:contract_address)
+       ) and
+         match?({:ok, _url}, InfrastructureConfig.regent_staking_rpc_url()) do
       check(:ready, "Regent staking", "Regent staking reads are configured.")
     else
       check(:muted, "Regent staking", "Regent staking is not fully configured here.")
@@ -99,8 +82,4 @@ defmodule AutolaunchWeb.OperatorStatus do
   end
 
   defp check(state, label, detail), do: %{state: state, label: label, detail: detail}
-
-  defp present?(value) when is_integer(value), do: true
-  defp present?(value) when is_binary(value), do: String.trim(value) != ""
-  defp present?(_value), do: false
 end

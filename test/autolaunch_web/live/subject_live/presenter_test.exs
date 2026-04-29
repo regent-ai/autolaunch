@@ -32,6 +32,37 @@ defmodule AutolaunchWeb.SubjectLive.PresenterTest do
     assert snapshot.change_chart == nil
   end
 
+  test "builds public revenue proof rows" do
+    rows =
+      Presenter.public_revenue_proof_rows(%{
+        recognized_revenue_proof: %{
+          source: "onchain_splitter",
+          chain_id: 84_532,
+          ingress: "0x7777777777777777777777777777777777777777",
+          revsplit: "0x9999999999999999999999999999999999999999",
+          block_number: 123_456,
+          amount: "125",
+          recipient_lane: "subject_revenue",
+          status: "fresh"
+        }
+      })
+
+    assert Enum.map(rows, & &1.label) == [
+             "Source",
+             "Chain",
+             "Ingress account",
+             "Revsplit contract",
+             "Block number",
+             "Amount",
+             "Recipient lane",
+             "Freshness"
+           ]
+
+    assert Enum.find(rows, &(&1.id == "amount")).value == "125 USDC"
+    assert Enum.find(rows, &(&1.id == "recipient-lane")).value == "subject_revenue"
+    assert Enum.find(rows, &(&1.id == "status")).value == "fresh"
+  end
+
   test "translates share history entries" do
     entry = %{
       type: "activated",

@@ -56,13 +56,17 @@ defmodule AutolaunchWeb.AuctionLiveTest do
          inactive_above_price: "0.0049",
          time_remaining_seconds: 86_400,
          warnings: ["Watch the next checkpoint."],
-         tx_request:
+         prepared:
            if(human,
              do: %{
+               expected_signer: "0x1111111111111111111111111111111111111111",
                chain_id: 84_532,
-               to: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-               data: "0x1234",
-               value: "0x0"
+               tx_request: %{
+                 chain_id: 84_532,
+                 to: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                 data: "0x1234",
+                 value: "0x0"
+               }
              },
              else: nil
            )
@@ -89,11 +93,13 @@ defmodule AutolaunchWeb.AuctionLiveTest do
           tx_actions: %{
             exit: nil,
             claim: %{
-              tx_request: %{
-                chain_id: 84_532,
-                to: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-                data: "0xclaim",
-                value: "0x0"
+              prepared: %{
+                tx_request: %{
+                  chain_id: 84_532,
+                  to: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                  data: "0xclaim",
+                  value: "0x0"
+                }
               }
             }
           }

@@ -282,21 +282,19 @@ defmodule AutolaunchWeb.ContractsLive do
             </div>
 
             <form phx-change="update_form" class="al-contract-form-grid">
-              <input type="hidden" name="form_name" value="fee_vault_withdraw_treasury" />
-              <input type="text" name="form[currency]" value={Presenter.form_value(@forms, "fee_vault_withdraw_treasury", "currency", @job_scope.job.token_address)} placeholder="Currency address" />
-              <input type="text" name="form[amount]" value={Presenter.form_value(@forms, "fee_vault_withdraw_treasury", "amount")} placeholder="Amount (raw units)" />
-              <input type="text" name="form[recipient]" value={Presenter.form_value(@forms, "fee_vault_withdraw_treasury", "recipient")} placeholder="Recipient address" />
-            </form>
-
-            <form phx-change="update_form" class="al-contract-form-grid">
               <input type="hidden" name="form_name" value="fee_vault_withdraw_regent" />
               <input type="text" name="form[currency]" value={Presenter.form_value(@forms, "fee_vault_withdraw_regent", "currency", @job_scope.job.token_address)} placeholder="Currency address" />
               <input type="text" name="form[amount]" value={Presenter.form_value(@forms, "fee_vault_withdraw_regent", "amount")} placeholder="Amount (raw units)" />
               <input type="text" name="form[recipient]" value={Presenter.form_value(@forms, "fee_vault_withdraw_regent", "recipient")} placeholder="Recipient address" />
             </form>
 
+            <form phx-change="update_form" class="al-contract-form-grid">
+              <input type="hidden" name="form_name" value="revenue_splitter_pull_treasury_share" />
+              <input type="text" name="form[amount]" value={Presenter.form_value(@forms, "revenue_splitter_pull_treasury_share", "amount")} placeholder="USDC amount" />
+            </form>
+
             <div class="al-contract-action-row">
-              <button type="button" class="al-submit" phx-click="prepare_action" phx-value-scope="job" phx-value-resource="fee_vault" phx-value-action="withdraw_treasury" phx-value-form_name="fee_vault_withdraw_treasury">Prepare treasury withdrawal</button>
+              <button type="button" class="al-submit" phx-click="prepare_action" phx-value-scope="job" phx-value-resource="revenue_splitter" phx-value-action="pull_treasury_share" phx-value-form_name="revenue_splitter_pull_treasury_share">Prepare treasury fee collection</button>
               <button type="button" class="al-ghost" phx-click="prepare_action" phx-value-scope="job" phx-value-resource="fee_vault" phx-value-action="withdraw_regent_share" phx-value-form_name="fee_vault_withdraw_regent">Prepare Regent withdrawal</button>
               <button type="button" class="al-ghost" phx-click="prepare_action" phx-value-scope="job" phx-value-resource="fee_vault" phx-value-action="accept_ownership" phx-value-form_name="fee_vault_accept_ownership">Prepare ownership acceptance</button>
             </div>

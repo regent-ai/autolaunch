@@ -44,6 +44,10 @@ defmodule AutolaunchWeb.Api.SubjectController do
     )
   end
 
+  defp render_write(conn, {:ok, %{prepared: _prepared} = payload}) do
+    render_result(conn, {:ok, payload})
+  end
+
   defp render_write(conn, {:ok, payload}) do
     LiveUpdates.broadcast([:subjects, :positions, :regent])
     render_result(conn, {:ok, payload})

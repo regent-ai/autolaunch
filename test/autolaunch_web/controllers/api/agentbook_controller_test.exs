@@ -44,7 +44,10 @@ defmodule AutolaunchWeb.Api.AgentbookControllerTest do
          data: "0xabc",
          value: "0x0",
          chain_id: session.chain_id,
-         description: "Register agent wallet in AgentBook"
+         description: "Register agent wallet in AgentBook",
+         expected_signer: session.agent_address,
+         expires_at: DateTime.to_iso8601(session.expires_at),
+         risk: "Registers this wallet as the agent wallet in AgentBook."
        })}
     end
 

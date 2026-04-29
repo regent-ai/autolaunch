@@ -1,6 +1,7 @@
 defmodule Autolaunch.ContractsDispatchTest do
   use ExUnit.Case, async: true
 
+  alias Autolaunch.Contracts.Abi
   alias Autolaunch.Contracts.Dispatch
 
   test "job dispatch prepares the migrate transaction" do
@@ -28,7 +29,8 @@ defmodule Autolaunch.ContractsDispatchTest do
       revenue_share_splitter_address: "0x4444444444444444444444444444444444444444",
       launch_fee_registry_address: "0x1111111111111111111111111111111111111111",
       launch_fee_vault_address: "0x2222222222222222222222222222222222222222",
-      hook_address: "0x3333333333333333333333333333333333333333"
+      hook_address: "0x3333333333333333333333333333333333333333",
+      pool_id: "0x" <> String.duplicate("a", 64)
     }
 
     assert {:ok, recover} =
@@ -53,6 +55,27 @@ defmodule Autolaunch.ContractsDispatchTest do
              Dispatch.build_job_action(job, "revenue_splitter", "accept_ownership", %{})
 
     assert splitter_acceptance.tx_request.to == job.revenue_share_splitter_address
+
+    assert {:ok, treasury_pull} =
+             Dispatch.build_job_action(job, "revenue_splitter", "pull_treasury_share", %{
+               "amount" => "7"
+             })
+
+    assert treasury_pull.resource == "revenue_splitter"
+    assert treasury_pull.action == "pull_treasury_share"
+    assert treasury_pull.tx_request.to == job.revenue_share_splitter_address
+    refute treasury_pull.tx_request.to == job.launch_fee_vault_address
+    assert String.starts_with?(treasury_pull.tx_request.data, "0x94af8446")
+    assert is_binary(treasury_pull.action_id)
+    assert treasury_pull.idempotency_key == treasury_pull.action_id
+    assert treasury_pull.expected_signer == nil
+    assert treasury_pull.risk_copy =~ "subject treasury share"
+    assert {:ok, _expires_at, _offset} = DateTime.from_iso8601(treasury_pull.expires_at)
+
+    assert treasury_pull.params == %{
+             amount: "7",
+             vault: job.launch_fee_vault_address
+           }
 
     assert {:ok, registry_acceptance} =
              Dispatch.build_job_action(job, "fee_registry", "accept_ownership", %{})
@@ -122,6 +145,11 @@ defmodule Autolaunch.ContractsDispatchTest do
              })
 
     assert {:error, :unsupported_action} =
+             Dispatch.build_job_action(job, "fee_vault", "withdraw_treasury", %{
+               "amount" => "7"
+             })
+
+    assert {:error, :unsupported_action} =
              Dispatch.build_subject_action(
                subject,
                %{address: "0x5555555555555555555555555555555555555555"},
@@ -130,5 +158,76 @@ defmodule Autolaunch.ContractsDispatchTest do
                %{"skim_bps" => "250"},
                %{ingress_factory_address: "0x6666666666666666666666666666666666666666"}
              )
+  end
+
+  test "prepared action selectors match Foundry ABI artifacts" do
+    assert Abi.selector(:pull_treasury_share_from_launch_vault) ==
+             artifact_selector(
+               "contracts/out/RevenueShareSplitter.sol/RevenueShareSplitter.json",
+               "pullTreasuryShareFromLaunchVault"
+             )
+
+    assert Abi.selector(:withdraw_regent_share) ==
+             artifact_selector(
+               "contracts/out/LaunchFeeVault.sol/LaunchFeeVault.json",
+               "withdrawRegentShare"
+             )
+  end
+
+  test "owned ABI modules do not include stale contract functions" do
+    assert_raise KeyError, fn ->
+      Abi.selector(:max_currency_amount_for_lp)
+    end
+
+    assert_raise KeyError, fn ->
+      Autolaunch.RegentStaking.Abi.selector(:staker_share_bps)
+    end
+
+    assert Autolaunch.RegentStaking.Abi.selector(:revenue_share_supply_denominator) ==
+             artifact_selector(
+               "contracts/out/RegentRevenueStaking.sol/RegentRevenueStaking.json",
+               "revenueShareSupplyDenominator"
+             )
+
+    assert artifact_function?(
+             "contracts/out/RegentRevenueStaking.sol/RegentRevenueStaking.json",
+             "revenueShareSupplyDenominator"
+           )
+  end
+
+  defp artifact_selector(path, name) do
+    artifact =
+      path
+      |> File.read!()
+      |> Jason.decode!()
+
+    signature =
+      artifact
+      |> Map.fetch!("abi")
+      |> Enum.find(fn entry ->
+        entry["type"] == "function" and entry["name"] == name
+      end)
+      |> function_signature()
+
+    "0x" <> Map.fetch!(Map.fetch!(artifact, "methodIdentifiers"), signature)
+  end
+
+  defp artifact_function?(path, name) do
+    path
+    |> File.read!()
+    |> Jason.decode!()
+    |> Map.fetch!("abi")
+    |> Enum.any?(fn entry ->
+      entry["type"] == "function" and entry["name"] == name
+    end)
+  end
+
+  defp function_signature(%{"name" => name, "inputs" => inputs}) do
+    types =
+      inputs
+      |> Enum.map(&Map.fetch!(&1, "type"))
+      |> Enum.join(",")
+
+    "#{name}(#{types})"
   end
 end

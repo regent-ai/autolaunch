@@ -5,6 +5,8 @@ defmodule Autolaunch.Revenue.Core do
 
   alias Autolaunch.Accounts.HumanUser
   alias Autolaunch.CCA.Rpc
+  alias Autolaunch.Contracts.ActionParams
+  alias Autolaunch.InfrastructureConfig
   alias Autolaunch.Launch.Job
   alias Autolaunch.Repo
   alias Autolaunch.Revenue.Abi
@@ -12,7 +14,6 @@ defmodule Autolaunch.Revenue.Core do
 
   @usdc_decimals 6
   @token_decimals 18
-  @cache_app :autolaunch
   @eligible_share_proposed_topic0 "0xdea1cf6e658a0d5758b71519980315f6a1dd1377c7de69e48adc4a4f318a1283"
   @eligible_share_cancelled_topic0 "0x10cb96b400282a7ceaa5f8861808ae2919fd8925eb8ee66c751afc59e7c8fb5d"
   @eligible_share_activated_topic0 "0x58af83b8600b3af6bd5ced17057404f562a686f59299b9e65067534837eb13f5"
@@ -28,8 +29,7 @@ defmodule Autolaunch.Revenue.Core do
          {:ok, job} <- fetch_subject_job(normalized_subject_id),
          owner_address = primary_wallet_address(current_human),
          {:ok, subject} <-
-           RegentCache.fetch(
-             @cache_app,
+           Autolaunch.LocalCache.fetch(
              subject_cache_key(job, normalized_subject_id, owner_address),
              15,
              fn ->
@@ -64,8 +64,7 @@ defmodule Autolaunch.Revenue.Core do
     with {:ok, normalized_subject_id} <- normalize_subject_id(subject_id),
          {:ok, job} <- fetch_subject_job(normalized_subject_id),
          {:ok, addresses} <- normalize_address_list(wallet_addresses) do
-      RegentCache.fetch(
-        @cache_app,
+      Autolaunch.LocalCache.fetch(
         wallet_positions_cache_key(job, normalized_subject_id, addresses),
         10,
         fn ->
@@ -91,8 +90,7 @@ defmodule Autolaunch.Revenue.Core do
     with {:ok, normalized_subject_id} <- normalize_subject_id(subject_id),
          {:ok, job} <- fetch_subject_job(normalized_subject_id),
          {:ok, addresses} <- normalize_address_list(staker_addresses) do
-      RegentCache.fetch(
-        @cache_app,
+      Autolaunch.LocalCache.fetch(
         obligation_metrics_cache_key(job, normalized_subject_id, addresses),
         15,
         fn ->
@@ -149,13 +147,17 @@ defmodule Autolaunch.Revenue.Core do
           {:ok,
            %{
              subject: subject,
-             tx_request:
-               serialize_tx_request(%{
+             prepared:
+               prepare_subject_action!(
+                 :sweep_ingress,
+                 subject,
+                 wallet_address,
                  chain_id: subject.chain_id,
                  to: ingress.address,
                  value_hex: "0x0",
-                 data: Abi.encode_sweep_usdc(source_ref)
-               })
+                 data: Abi.encode_sweep_usdc(source_ref),
+                 params: %{ingress_address: ingress.address}
+               )
            }}
 
         tx_hash ->
@@ -203,13 +205,17 @@ defmodule Autolaunch.Revenue.Core do
       {:ok,
        %{
          subject: subject,
-         tx_request:
-           serialize_tx_request(%{
+         prepared:
+           prepare_subject_action!(
+             action,
+             subject,
+             wallet_address,
              chain_id: subject.chain_id,
              to: subject.splitter_address,
              value_hex: "0x0",
-             data: amount_action_call(action, amount_wei, wallet_address)
-           })
+             data: amount_action_call(action, amount_wei, wallet_address),
+             params: %{amount: Integer.to_string(amount_wei)}
+           )
        }}
     end
   end
@@ -219,43 +225,53 @@ defmodule Autolaunch.Revenue.Core do
     {:ok,
      %{
        subject: subject,
-       tx_request:
-         serialize_tx_request(%{
+       prepared:
+         prepare_subject_action!(
+           action,
+           subject,
+           wallet_address,
            chain_id: subject.chain_id,
            to: subject.splitter_address,
            value_hex: "0x0",
            data: single_recipient_action_call(action, wallet_address)
-         })
+         )
      }}
   end
 
-  defp build_write_request(:claim_and_stake_emissions, subject, _wallet_address, _attrs) do
+  defp build_write_request(:claim_and_stake_emissions, subject, wallet_address, _attrs) do
     {:ok,
      %{
        subject: subject,
-       tx_request:
-         serialize_tx_request(%{
+       prepared:
+         prepare_subject_action!(
+           :claim_and_stake_emissions,
+           subject,
+           wallet_address,
            chain_id: subject.chain_id,
            to: subject.splitter_address,
            value_hex: "0x0",
            data: Abi.encode_claim_and_restake_stake_token()
-         })
+         )
      }}
   end
 
-  defp build_write_request(:sweep_ingress, subject, _wallet_address, _attrs) do
+  defp build_write_request(:sweep_ingress, subject, wallet_address, _attrs) do
     source_ref = source_ref(subject)
 
     {:ok,
      %{
        subject: subject,
-       tx_request:
-         serialize_tx_request(%{
+       prepared:
+         prepare_subject_action!(
+           :sweep_ingress,
+           subject,
+           wallet_address,
            chain_id: subject.chain_id,
            to: subject.default_ingress_address,
            value_hex: "0x0",
-           data: Abi.encode_sweep_usdc(source_ref)
-         })
+           data: Abi.encode_sweep_usdc(source_ref),
+           params: %{ingress_address: subject.default_ingress_address}
+         )
      }}
   end
 
@@ -379,13 +395,14 @@ defmodule Autolaunch.Revenue.Core do
   end
 
   defp finalize_registration(registration, :pending, _subject, _current_human) do
-    maybe_update_registration(registration, %{
-      status: "pending",
-      error_code: nil,
-      error_message: nil
-    })
-
-    {:error, :transaction_pending}
+    with :ok <-
+           update_registration(registration, %{
+             status: "pending",
+             error_code: nil,
+             error_message: nil
+           }) do
+      {:error, :transaction_pending}
+    end
   end
 
   defp finalize_registration(
@@ -394,37 +411,37 @@ defmodule Autolaunch.Revenue.Core do
          subject,
          current_human
        ) do
-    maybe_update_registration(registration, %{
-      status: "confirmed",
-      block_number: block_number,
-      error_code: nil,
-      error_message: nil
-    })
-
-    bump_subject_cache_epoch(subject.subject_id)
-
-    with {:ok, refreshed} <- get_subject(subject.subject_id, current_human) do
+    with :ok <-
+           update_registration(registration, %{
+             status: "confirmed",
+             block_number: block_number,
+             error_code: nil,
+             error_message: nil
+           }),
+         :ok <- bump_subject_cache_epoch(subject.subject_id),
+         {:ok, refreshed} <- get_subject(subject.subject_id, current_human) do
       {:ok, %{subject: refreshed}}
     end
   end
 
   defp finalize_registration(registration, {:failed, error_code}, _subject, _current_human) do
-    maybe_update_registration(registration, %{
-      status: "rejected",
-      error_code: Atom.to_string(error_code),
-      error_message: default_error_message(error_code)
-    })
-
-    {:error, error_code}
+    with :ok <-
+           update_registration(registration, %{
+             status: "rejected",
+             error_code: Atom.to_string(error_code),
+             error_message: default_error_message(error_code)
+           }) do
+      {:error, error_code}
+    end
   end
 
-  defp maybe_update_registration(%SubjectActionRegistration{} = registration, attrs) do
+  defp update_registration(%SubjectActionRegistration{} = registration, attrs) do
     registration
     |> SubjectActionRegistration.update_status_changeset(attrs)
     |> Repo.update()
     |> case do
       {:ok, _registration} -> :ok
-      {:error, _} -> :ok
+      {:error, reason} -> {:error, {:subject_action_registration_update_failed, reason}}
     end
   end
 
@@ -969,6 +986,9 @@ defmodule Autolaunch.Revenue.Core do
         Abi.encode_no_args(:total_claimed_stake_token)
       )
 
+    default_ingress_address =
+      Map.get(ingress_accounts, :default_address) || job.default_ingress_address
+
     {:ok,
      %{
        subject_id: subject_id,
@@ -978,8 +998,7 @@ defmodule Autolaunch.Revenue.Core do
        strategy_address: job.strategy_address,
        subject_registry_address: job.subject_registry_address,
        splitter_address: job.revenue_share_splitter_address,
-       default_ingress_address:
-         Map.get(ingress_accounts, :default_address) || job.default_ingress_address,
+       default_ingress_address: default_ingress_address,
        ingress_accounts: ingress_accounts.accounts,
        total_staked_raw: total_staked,
        total_staked: format_units(total_staked, @token_decimals),
@@ -1017,6 +1036,8 @@ defmodule Autolaunch.Revenue.Core do
        protocol_reserve_usdc: format_units(protocol_reserve_usdc, @usdc_decimals),
        undistributed_dust_usdc_raw: undistributed_dust_usdc,
        undistributed_dust_usdc: format_units(undistributed_dust_usdc, @usdc_decimals),
+       recognized_revenue_proof:
+         recognized_revenue_proof(job, default_ingress_address, total_usdc_received),
        share_change_history: share_change_history,
        wallet_address: owner_address,
        wallet_stake_balance_raw: wallet_stake_balance_raw,
@@ -1041,6 +1062,31 @@ defmodule Autolaunch.Revenue.Core do
        total_claimed_so_far: format_units(total_claimed_so_far_raw, @token_decimals),
        can_manage_ingress: can_manage || false
      }}
+  end
+
+  defp recognized_revenue_proof(job, default_ingress_address, total_usdc_received) do
+    block_number = current_block_number(job.chain_id)
+
+    %{
+      source: "onchain_splitter",
+      chain_id: job.chain_id,
+      ingress: default_ingress_address,
+      revsplit: job.revenue_share_splitter_address,
+      block_number: block_number,
+      amount_raw: total_usdc_received,
+      amount: format_units(total_usdc_received, @usdc_decimals),
+      recipient_lane: "subject_revenue",
+      status: if(is_integer(block_number), do: "fresh", else: "stale")
+    }
+  end
+
+  defp current_block_number(chain_id) do
+    case Rpc.block_number(chain_id) do
+      {:ok, block_number} when is_integer(block_number) and block_number >= 0 -> block_number
+      _ -> nil
+    end
+  rescue
+    _ -> nil
   end
 
   defp subject_wallet_position_from_job(job, wallet_address) do
@@ -1112,7 +1158,7 @@ defmodule Autolaunch.Revenue.Core do
   end
 
   defp load_ingress_accounts(job, subject_id) do
-    case RegentCache.fetch(@cache_app, ingress_accounts_cache_key(job, subject_id), 30, fn ->
+    case Autolaunch.LocalCache.fetch(ingress_accounts_cache_key(job, subject_id), 30, fn ->
            {:ok, read_ingress_accounts(job, subject_id)}
          end) do
       {:ok, accounts} -> accounts
@@ -1181,7 +1227,7 @@ defmodule Autolaunch.Revenue.Core do
   end
 
   defp load_share_change_history(job) do
-    case RegentCache.fetch(@cache_app, share_history_cache_key(job), 60, fn ->
+    case Autolaunch.LocalCache.fetch(share_history_cache_key(job), 60, fn ->
            {:ok, read_share_change_history(job)}
          end) do
       {:ok, history} -> history
@@ -1304,7 +1350,7 @@ defmodule Autolaunch.Revenue.Core do
   defp block_timestamp(chain_id, block_number) when is_integer(block_number) do
     key = "autolaunch:block:#{chain_id}:#{block_number}:timestamp"
 
-    case RegentCache.fetch(@cache_app, key, 86_400, fn ->
+    case Autolaunch.LocalCache.fetch(key, 86_400, fn ->
            case Rpc.block_by_number(chain_id, block_number) do
              {:ok, %{timestamp: timestamp}} when is_integer(timestamp) -> {:ok, timestamp}
              _ -> {:ok, nil}
@@ -1421,8 +1467,24 @@ defmodule Autolaunch.Revenue.Core do
 
   defp normalize_required_address(_value), do: {:error, :invalid_address}
 
-  defp serialize_tx_request(%{chain_id: chain_id, to: to, value_hex: value_hex, data: data}) do
-    %{chain_id: chain_id, to: to, value: value_hex, data: data}
+  defp prepare_subject_action!(action, subject, wallet_address, request) do
+    request = Map.new(request)
+
+    params =
+      request
+      |> Map.get(:params, %{})
+      |> Map.merge(%{subject_id: subject.subject_id})
+
+    {:ok, prepared} =
+      ActionParams.prepare_tx_request(
+        request,
+        "subject",
+        action_name(action),
+        params,
+        expected_signer: wallet_address
+      )
+
+    prepared
   end
 
   defp chain_label(84_532), do: "Base Sepolia"
@@ -1541,9 +1603,7 @@ defmodule Autolaunch.Revenue.Core do
   defp revenue_ingress_factory_address(chain_id) do
     case launch_chain_id() do
       {:ok, ^chain_id} ->
-        Application.get_env(:autolaunch, :launch, [])
-        |> Keyword.get(:revenue_ingress_factory_address, "")
-        |> normalize_address()
+        InfrastructureConfig.launch_address(:revenue_ingress_factory_address)
 
       _ ->
         nil
@@ -1551,12 +1611,7 @@ defmodule Autolaunch.Revenue.Core do
   end
 
   defp launch_chain_id do
-    config = Application.get_env(:autolaunch, :launch, [])
-
-    case Keyword.get(config, :chain_id, 84_532) do
-      value when is_integer(value) -> {:ok, value}
-      _ -> {:error, :invalid_chain_id}
-    end
+    InfrastructureConfig.launch_chain_id()
   end
 
   defp tx_hash_param(attrs) do
@@ -1664,14 +1719,14 @@ defmodule Autolaunch.Revenue.Core do
   defp subject_cache_epoch(subject_id) do
     key = subject_epoch_key(subject_id)
 
-    case RegentCache.Dragonfly.get(@cache_app, key) do
+    case Autolaunch.LocalCache.get_string(key) do
       {:ok, value} when is_binary(value) -> value
       _ -> "0"
     end
   end
 
   defp bump_subject_cache_epoch(subject_id) do
-    _ = RegentCache.Dragonfly.command(@cache_app, ["INCR", subject_epoch_key(subject_id)])
+    _ = Autolaunch.LocalCache.increment(subject_epoch_key(subject_id), 86_400)
     :ok
   end
 

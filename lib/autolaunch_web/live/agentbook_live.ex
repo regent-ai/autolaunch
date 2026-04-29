@@ -159,7 +159,7 @@ defmodule AutolaunchWeb.AgentbookLive do
 
           <div class="al-stat-grid">
             <.stat_card title="Public flow" value="No app login" hint="Works for web pages and CLI callers" />
-            <.stat_card title="Submission" value="Relay first" hint="Falls back to wallet send if sponsorship is unavailable" />
+            <.stat_card title="Submission" value="Relay first" hint="Uses wallet send if sponsorship is unavailable" />
             <.stat_card title="Networks" value="World + Base" hint="World mainnet, Base mainnet, and Base Sepolia" />
             <.stat_card title="Lookup" value={lookup_label(@lookup_result)} hint="Reads the live registration record" />
           </div>

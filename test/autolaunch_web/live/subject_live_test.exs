@@ -33,6 +33,16 @@ defmodule AutolaunchWeb.SubjectLiveTest do
          treasury_reserved_usdc: "25",
          treasury_residual_usdc: "25",
          protocol_reserve_usdc: "10",
+         recognized_revenue_proof: %{
+           source: "onchain_splitter",
+           chain_id: 84_532,
+           ingress: "0x7777777777777777777777777777777777777777",
+           revsplit: "0x9999999999999999999999999999999999999999",
+           block_number: 123_456,
+           amount: "125",
+           recipient_lane: "subject_revenue",
+           status: "fresh"
+         },
          share_change_history: [
            %{
              event: "activated",
@@ -64,11 +74,13 @@ defmodule AutolaunchWeb.SubjectLiveTest do
       {:ok,
        %{
          subject: get_subject(@subject_id, nil) |> elem(1),
-         tx_request: %{
-           chain_id: 84_532,
-           to: "0x9999999999999999999999999999999999999999",
-           value: "0x0",
-           data: "0x7acb7757"
+         prepared: %{
+           tx_request: %{
+             chain_id: 84_532,
+             to: "0x9999999999999999999999999999999999999999",
+             value: "0x0",
+             data: "0x7acb7757"
+           }
          }
        }}
     end
@@ -77,11 +89,13 @@ defmodule AutolaunchWeb.SubjectLiveTest do
       {:ok,
        %{
          subject: get_subject(@subject_id, nil) |> elem(1),
-         tx_request: %{
-           chain_id: 84_532,
-           to: "0x9999999999999999999999999999999999999999",
-           value: "0x0",
-           data: "0x8381e182"
+         prepared: %{
+           tx_request: %{
+             chain_id: 84_532,
+             to: "0x9999999999999999999999999999999999999999",
+             value: "0x0",
+             data: "0x8381e182"
+           }
          }
        }}
     end
@@ -90,11 +104,13 @@ defmodule AutolaunchWeb.SubjectLiveTest do
       {:ok,
        %{
          subject: get_subject(@subject_id, nil) |> elem(1),
-         tx_request: %{
-           chain_id: 84_532,
-           to: "0x9999999999999999999999999999999999999999",
-           value: "0x0",
-           data: "0x42852610"
+         prepared: %{
+           tx_request: %{
+             chain_id: 84_532,
+             to: "0x9999999999999999999999999999999999999999",
+             value: "0x0",
+             data: "0x42852610"
+           }
          }
        }}
     end
@@ -103,11 +119,13 @@ defmodule AutolaunchWeb.SubjectLiveTest do
       {:ok,
        %{
          subject: get_subject(@subject_id, nil) |> elem(1),
-         tx_request: %{
-           chain_id: 84_532,
-           to: "0x7777777777777777777777777777777777777777",
-           value: "0x0",
-           data: "0xbe25fb30"
+         prepared: %{
+           tx_request: %{
+             chain_id: 84_532,
+             to: "0x7777777777777777777777777777777777777777",
+             value: "0x0",
+             data: "0xbe25fb30"
+           }
          }
        }}
     end
@@ -148,12 +166,18 @@ defmodule AutolaunchWeb.SubjectLiveTest do
     {:ok, _view, html} = live(conn, "/subjects/#{@subject_id}")
 
     assert html =~ "Back to auctions"
-    assert html =~ "Your staked tokens"
-    assert html =~ "Wallet token balance"
+    assert html =~ "Your staked agent tokens"
+    assert html =~ "Wallet agent-token balance"
     assert html =~ "Claimable USDC"
+    assert html =~ "Claimable agent-token emissions"
     assert html =~ "Action desk"
-    assert html =~ "Move wallet tokens into the splitter."
+    assert html =~ "Move wallet agent tokens into the subject revenue contract."
     assert html =~ "Revenue routing"
+    assert html =~ "Public revenue proof"
+    assert html =~ "Revsplit contract"
+    assert html =~ "Recipient lane"
+    assert html =~ "subject_revenue"
+    assert html =~ "123456"
     assert html =~ "Share history"
     assert html =~ "Live eligible share"
     assert html =~ "This share is scheduled to move from 80% to 60%."
@@ -188,7 +212,7 @@ defmodule AutolaunchWeb.SubjectLiveTest do
       |> render_change()
 
     assert html =~ "Prepare stake"
-    assert html =~ "Wallet balance: 90"
+    assert html =~ "Wallet agent-token balance: 90"
 
     html =
       view

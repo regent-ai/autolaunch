@@ -21,6 +21,19 @@ tags:
   - name: ens
   - name: contracts
   - name: regent-staking
+x-regent-chat-room-contract:
+  owner: autolaunch
+  canonical_room_record_fields:
+    - room_key
+    - xmtp_group_id
+    - name
+    - status
+    - presence_ttl_seconds
+  canonical_public_room_key: public-chatbox
+  room_authority: Autolaunch owns launch-room membership, session bridge, public-room sync behavior, and launch-room product meaning.
+  thread_identifier: xmtp_group_id
+  browser_identity_path: /v1/auth/privy/xmtp/complete
+  transport_boundary: Autolaunch room setup is product-owned browser auth/session behavior, not a stack-wide room API.
 x-autolaunch-rate-limits:
   error:
     status: 429
@@ -85,12 +98,12 @@ paths:
           description: Invalid wallet address
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/LooseObject" }
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
         "401":
           description: Missing or invalid Privy bearer token
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/LooseObject" }
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
     delete:
       operationId: deletePrivySession
       tags: [auth]
@@ -121,12 +134,12 @@ paths:
           description: Missing signed-in browser session
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/LooseObject" }
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
         "422":
           description: XMTP setup request invalid
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/LooseObject" }
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
   /v1/auth/privy/profile:
     get:
       operationId: getPrivySessionProfile
@@ -163,7 +176,7 @@ paths:
           description: Missing or invalid shared SIWA receipt
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/LooseObject" }
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
     delete:
       operationId: deleteAutolaunchAgentSession
       tags: [auth]
@@ -217,7 +230,7 @@ paths:
           description: Stake transaction prepared
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/LooseObject" }
+              schema: { $ref: "#/components/schemas/RegentStakingPreparedActionEnvelope" }
         "401":
           description: Missing signed-in browser session
           content:
@@ -238,7 +251,7 @@ paths:
           description: Unstake transaction prepared
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/LooseObject" }
+              schema: { $ref: "#/components/schemas/RegentStakingPreparedActionEnvelope" }
         "401":
           description: Missing signed-in browser session
           content:
@@ -258,7 +271,7 @@ paths:
           description: USDC claim transaction prepared
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/LooseObject" }
+              schema: { $ref: "#/components/schemas/RegentStakingPreparedActionEnvelope" }
         "401":
           description: Missing signed-in browser session
           content:
@@ -278,7 +291,7 @@ paths:
           description: Regent reward claim transaction prepared
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/LooseObject" }
+              schema: { $ref: "#/components/schemas/RegentStakingPreparedActionEnvelope" }
         "401":
           description: Missing signed-in browser session
           content:
@@ -298,7 +311,7 @@ paths:
           description: Regent reward claim and restake transaction prepared
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/LooseObject" }
+              schema: { $ref: "#/components/schemas/RegentStakingPreparedActionEnvelope" }
         "401":
           description: Missing signed-in browser session
           content:
@@ -319,7 +332,7 @@ paths:
           description: Operator USDC deposit transaction prepared
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/LooseObject" }
+              schema: { $ref: "#/components/schemas/RegentStakingPreparedActionEnvelope" }
         "401":
           description: Missing signed-in browser session
           content:
@@ -345,7 +358,7 @@ paths:
           description: Operator treasury withdrawal transaction prepared
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/LooseObject" }
+              schema: { $ref: "#/components/schemas/RegentStakingPreparedActionEnvelope" }
         "401":
           description: Missing signed-in browser session
           content:
@@ -2070,6 +2083,7 @@ components:
       description: >
         Canonical contract scope. Job-scoped settlement actions use `strategy`, `auction`,
         `revenue_splitter`, `fee_registry`, `fee_vault`, `hook`, and `vesting`.
+        Launch treasury fee pulls use `revenue_splitter`, not `fee_vault`.
     Action:
       name: action
       in: path
@@ -2078,7 +2092,7 @@ components:
       description: >
         Canonical contract action. Settlement actions include `migrate`,
         `recover_failed_auction`, `sweep_currency`, `sweep_unsold_tokens`,
-        `accept_ownership`, `sweep_token`, and `release`.
+        `accept_ownership`, `sweep_token`, `release`, and `pull_treasury_share`.
   schemas:
     Address:
       type: string
@@ -2104,10 +2118,15 @@ components:
         ok: { type: boolean, enum: [false] }
         error:
           type: object
-          required: [code, message]
+          required: [code, product, status, path, request_id, message]
           properties:
             code: { type: string }
+            product: { type: string, enum: [autolaunch] }
+            status: { type: integer }
+            path: { type: string }
+            request_id: { type: string, nullable: true }
             message: { type: string }
+            next_steps: { type: string, nullable: true }
           additionalProperties: true
       additionalProperties: false
     RateLimitedError:
@@ -2274,22 +2293,56 @@ components:
       additionalProperties: true
     PreparedAction:
       type: object
+      required:
+        - action_id
+        - resource
+        - action
+        - chain_id
+        - expected_signer
+        - expires_at
+        - idempotency_key
+        - risk_copy
+        - tx_request
       properties:
+        action_id: { type: string }
         resource: { type: string }
         action: { type: string }
         chain_id: { $ref: "#/components/schemas/AutolaunchChainId" }
         target: { $ref: "#/components/schemas/Address" }
         calldata: { $ref: "#/components/schemas/HexData" }
+        expected_signer:
+          anyOf:
+            - { $ref: "#/components/schemas/Address" }
+            - { type: "null" }
+        expires_at: { $ref: "#/components/schemas/DateTime" }
+        idempotency_key: { type: string }
+        risk_copy: { type: string }
         tx_request:
           $ref: "#/components/schemas/TxRequest"
       additionalProperties: true
     PreparedActionEnvelope:
       type: object
+      required: [ok, prepared]
       properties:
-        ok: { type: boolean }
-        data:
+        ok: { type: boolean, enum: [true] }
+        job_id: { type: string }
+        subject_id: { type: string }
+        prepared:
           $ref: "#/components/schemas/PreparedAction"
-      additionalProperties: true
+      additionalProperties: false
+    RegentStakingPreparedActionEnvelope:
+      type: object
+      required: [ok, prepared]
+      properties:
+        ok: { type: boolean, enum: [true] }
+        staking:
+          anyOf:
+            - type: object
+              additionalProperties: true
+            - { type: "null" }
+        prepared:
+          $ref: "#/components/schemas/PreparedAction"
+      additionalProperties: false
     TxRequest:
       type: object
       required: [chain_id, to, value, data]
@@ -3097,17 +3150,19 @@ components:
         warnings:
           type: array
           items: { type: string }
-        tx_request:
+        prepared:
           anyOf:
-            - { $ref: "#/components/schemas/TxRequest" }
+            - { $ref: "#/components/schemas/PreparedAction" }
             - { type: "null" }
       additionalProperties: false
     AuctionBidQuoteEnvelope:
-      type: object
-      required: [ok]
-      properties:
-        ok: { type: boolean, enum: [true] }
-      additionalProperties: true
+      allOf:
+        - $ref: "#/components/schemas/AuctionBidQuote"
+        - type: object
+          required: [ok]
+          properties:
+            ok: { type: boolean, enum: [true] }
+          additionalProperties: false
     CreateAuctionBidRequest:
       type: object
       required: [amount, max_price]
@@ -3154,9 +3209,9 @@ components:
     PositionAction:
       type: object
       properties:
-        tx_request:
+        prepared:
           anyOf:
-            - { $ref: "#/components/schemas/TxRequest" }
+            - { $ref: "#/components/schemas/PreparedAction" }
             - { type: "null" }
       additionalProperties: true
     BidPosition:
@@ -3396,6 +3451,41 @@ components:
           anyOf:
             - { $ref: "#/components/schemas/DecimalString" }
             - { type: "null" }
+        recognized_revenue_proof:
+          type: object
+          required:
+            - source
+            - chain_id
+            - ingress
+            - revsplit
+            - block_number
+            - amount_raw
+            - amount
+            - recipient_lane
+            - status
+          properties:
+            source: { type: string }
+            chain_id: { $ref: "#/components/schemas/AutolaunchChainId" }
+            ingress:
+              anyOf:
+                - { $ref: "#/components/schemas/Address" }
+                - { type: "null" }
+            revsplit: { $ref: "#/components/schemas/Address" }
+            block_number:
+              anyOf:
+                - { type: integer, minimum: 0 }
+                - { type: "null" }
+            amount_raw:
+              anyOf:
+                - { type: integer }
+                - { type: "null" }
+            amount:
+              anyOf:
+                - { $ref: "#/components/schemas/DecimalString" }
+                - { type: "null" }
+            recipient_lane: { type: string }
+            status: { type: string, enum: [fresh, stale] }
+          additionalProperties: false
         wallet_address:
           anyOf:
             - { $ref: "#/components/schemas/Address" }
@@ -3473,24 +3563,20 @@ components:
           anyOf:
             - { $ref: "#/components/schemas/Subject" }
             - { type: "null" }
-        tx_request:
-          anyOf:
-            - { $ref: "#/components/schemas/TxRequest" }
-            - { type: "null" }
         prepared:
           anyOf:
             - { $ref: "#/components/schemas/PreparedAction" }
             - { type: "null" }
       additionalProperties: true
     HoldingAction:
-      type: object
-      properties:
-        type: { type: string }
-        tx_request:
-          anyOf:
-            - { $ref: "#/components/schemas/TxRequest" }
-            - { type: "null" }
-      additionalProperties: true
+      type: string
+      enum:
+        - unstake
+        - stake
+        - claim_usdc
+        - claim_emissions
+        - claim_and_stake_emissions
+        - sweep_ingress
     HoldingRow:
       type: object
       required: [auction_id, subject_id, agent_id, agent_name, symbol]

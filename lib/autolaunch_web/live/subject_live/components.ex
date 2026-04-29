@@ -75,17 +75,17 @@ defmodule AutolaunchWeb.SubjectLive.Components do
         hint={@wallet_position.claimable_usdc_line}
       />
       <.subject_metric
-        label="Your staked tokens"
+        label="Your staked agent tokens"
         value={@wallet_position.wallet_stake_balance}
         hint={@wallet_position.staked_line}
       />
       <.subject_metric
-        label="Wallet token balance"
+        label="Wallet agent-token balance"
         value={@wallet_position.wallet_token_balance}
         hint={@wallet_position.wallet_line}
       />
       <.subject_metric
-        label="Claimable emissions"
+        label="Claimable agent-token emissions"
         value={@wallet_position.claimable_stake_token}
         hint={@wallet_position.claimable_emissions_line}
       />
@@ -105,14 +105,14 @@ defmodule AutolaunchWeb.SubjectLive.Components do
           <h2>Follow the live share, the queued change, and every tracked dollar.</h2>
         </div>
         <p>
-          Revenue counts when USDC reaches this subject's revenue contract. Money waiting in an intake account can be swept before a pending share change takes effect; money swept later follows the live share at that time.
+          Agent revenue counts when USDC reaches this subject's revenue contract. Money waiting in an intake account can be swept before a pending share change takes effect; money swept later follows the live share at that time.
         </p>
 
         <div class="al-routing-policy-stats">
           <article>
             <span>Live eligible share</span>
             <strong>{@routing_snapshot.live_share}</strong>
-            <p>The share of post-Regent revenue that still stays eligible for stakers.</p>
+            <p>The share of agent revenue after the fixed Regent platform skim that stays eligible for agent-token stakers.</p>
           </article>
           <article>
             <span>Pending share</span>
@@ -210,17 +210,17 @@ defmodule AutolaunchWeb.SubjectLive.Components do
         <article class="al-routing-ledger-card">
           <span>Regent skim</span>
           <strong>{@routing_snapshot.regent_skim}</strong>
-          <p>The fixed 1% share kept for Regent.</p>
+          <p>The fixed platform fee kept for Regent.</p>
         </article>
         <article class="al-routing-ledger-card">
           <span>Staker-eligible inflow</span>
           <strong>{@routing_snapshot.staker_eligible_inflow}</strong>
-          <p>The portion that still feeds the subject lane before stake-based allocation.</p>
+          <p>The agent revenue portion that feeds agent-token staker claims before stake-based allocation.</p>
         </article>
         <article class="al-routing-ledger-card">
           <span>Treasury-reserved inflow</span>
           <strong>{@routing_snapshot.treasury_reserved_inflow}</strong>
-          <p>The portion routed straight into the subject reserve lane.</p>
+          <p>The agent revenue portion routed straight into the subject reserve lane.</p>
         </article>
         <article class="al-routing-ledger-card">
           <span>Subject reserve now</span>
@@ -231,6 +231,21 @@ defmodule AutolaunchWeb.SubjectLive.Components do
           <span>Staker lane residual</span>
           <strong>{@routing_snapshot.treasury_residual}</strong>
           <p>The unstaked remainder still inside the eligible lane.</p>
+        </article>
+      </div>
+
+      <div class="al-routing-ledger">
+        <article class="al-routing-ledger-card">
+          <span>Public revenue proof</span>
+          <strong>{proof_status(@subject)}</strong>
+          <p>Public chain facts for recognized agent revenue. Private work details stay out of this view.</p>
+        </article>
+        <article
+          :for={row <- Presenter.public_revenue_proof_rows(@subject)}
+          class="al-routing-ledger-card"
+        >
+          <span>{row.label}</span>
+          <strong>{row.value}</strong>
         </article>
       </div>
     </section>
@@ -297,7 +312,7 @@ defmodule AutolaunchWeb.SubjectLive.Components do
         <.review_card
           label="Total staked"
           value={@subject.total_staked}
-          note="Committed launch tokens."
+          note="Committed agent tokens."
         />
         <.review_card
           label="Treasury residual"
@@ -307,7 +322,7 @@ defmodule AutolaunchWeb.SubjectLive.Components do
         <.review_card
           label="Protocol reserve"
           value={@subject.protocol_reserve_usdc}
-          note="Protocol skim retained in the splitter."
+          note="Platform fee retained in the subject revenue contract."
         />
       </div>
 
@@ -333,6 +348,14 @@ defmodule AutolaunchWeb.SubjectLive.Components do
     </article>
     """
   end
+
+  defp proof_status(%{recognized_revenue_proof: %{status: status}}) when is_binary(status),
+    do: status
+
+  defp proof_status(%{recognized_revenue_proof: %{"status" => status}}) when is_binary(status),
+    do: status
+
+  defp proof_status(_subject), do: "Unavailable"
 
   attr :label, :string, required: true
   attr :value, :string, required: true

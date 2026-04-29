@@ -3,7 +3,9 @@ defmodule Autolaunch.RegentStaking do
 
   alias Autolaunch.Accounts.HumanUser
   alias Autolaunch.CCA.Rpc
+  alias Autolaunch.Contracts.ActionParams
   alias Autolaunch.Evm
+  alias Autolaunch.InfrastructureConfig
   alias Autolaunch.RegentStaking.Abi
 
   @usdc_decimals 6
@@ -93,13 +95,17 @@ defmodule Autolaunch.RegentStaking do
       {:ok,
        %{
          staking: compact_state(cfg, wallet_address),
-         tx_request:
-           serialize_tx_request(%{
+         prepared:
+           prepare_wallet_payload!(
+             cfg,
+             "stake",
+             wallet_address,
              chain_id: cfg.chain_id,
              to: cfg.contract_address,
              value_hex: "0x0",
-             data: Abi.encode_stake(amount, wallet_address)
-           })
+             data: Abi.encode_stake(amount, wallet_address),
+             params: %{amount: Integer.to_string(amount)}
+           )
        }}
     end
   end
@@ -111,13 +117,17 @@ defmodule Autolaunch.RegentStaking do
       {:ok,
        %{
          staking: compact_state(cfg, wallet_address),
-         tx_request:
-           serialize_tx_request(%{
+         prepared:
+           prepare_wallet_payload!(
+             cfg,
+             "unstake",
+             wallet_address,
              chain_id: cfg.chain_id,
              to: cfg.contract_address,
              value_hex: "0x0",
-             data: Abi.encode_unstake(amount, wallet_address)
-           })
+             data: Abi.encode_unstake(amount, wallet_address),
+             params: %{amount: Integer.to_string(amount)}
+           )
        }}
     end
   end
@@ -128,13 +138,16 @@ defmodule Autolaunch.RegentStaking do
       {:ok,
        %{
          staking: compact_state(cfg, wallet_address),
-         tx_request:
-           serialize_tx_request(%{
+         prepared:
+           prepare_wallet_payload!(
+             cfg,
+             "claim_usdc",
+             wallet_address,
              chain_id: cfg.chain_id,
              to: cfg.contract_address,
              value_hex: "0x0",
              data: Abi.encode_claim_usdc(wallet_address)
-           })
+           )
        }}
     end
   end
@@ -145,13 +158,16 @@ defmodule Autolaunch.RegentStaking do
       {:ok,
        %{
          staking: compact_state(cfg, wallet_address),
-         tx_request:
-           serialize_tx_request(%{
+         prepared:
+           prepare_wallet_payload!(
+             cfg,
+             "claim_regent",
+             wallet_address,
              chain_id: cfg.chain_id,
              to: cfg.contract_address,
              value_hex: "0x0",
              data: Abi.encode_claim_regent(wallet_address)
-           })
+           )
        }}
     end
   end
@@ -162,13 +178,16 @@ defmodule Autolaunch.RegentStaking do
       {:ok,
        %{
          staking: compact_state(cfg, wallet_address),
-         tx_request:
-           serialize_tx_request(%{
+         prepared:
+           prepare_wallet_payload!(
+             cfg,
+             "claim_and_restake_regent",
+             wallet_address,
              chain_id: cfg.chain_id,
              to: cfg.contract_address,
              value_hex: "0x0",
              data: Abi.encode_claim_and_restake_regent()
-           })
+           )
        }}
     end
   end
@@ -225,8 +244,12 @@ defmodule Autolaunch.RegentStaking do
     treasury_recipient =
       call_address(cfg.chain_id, cfg.contract_address, Abi.encode_call(:treasury_recipient))
 
-    staker_share_bps =
-      call_uint(cfg.chain_id, cfg.contract_address, Abi.encode_call(:staker_share_bps))
+    revenue_share_supply_denominator =
+      call_uint(
+        cfg.chain_id,
+        cfg.contract_address,
+        Abi.encode_call(:revenue_share_supply_denominator)
+      )
 
     paused = call_bool(cfg.chain_id, cfg.contract_address, Abi.encode_call(:paused))
     total_staked = call_uint(cfg.chain_id, cfg.contract_address, Abi.encode_call(:total_staked))
@@ -310,7 +333,9 @@ defmodule Autolaunch.RegentStaking do
        stake_token_address: stake_token,
        usdc_address: usdc,
        treasury_recipient: treasury_recipient,
-       staker_share_bps: staker_share_bps,
+       revenue_share_supply_denominator_raw: revenue_share_supply_denominator,
+       revenue_share_supply_denominator:
+         format_units(revenue_share_supply_denominator, @token_decimals),
        paused: paused,
        total_staked_raw: total_staked,
        total_staked: format_units(total_staked, @token_decimals),
@@ -355,39 +380,34 @@ defmodule Autolaunch.RegentStaking do
   end
 
   defp prepare_payload(cfg, action, target, calldata, params) do
-    %{
-      resource: "regent_staking",
-      action: action,
-      chain_id: cfg.chain_id,
-      target: target,
-      calldata: calldata,
-      params: params,
-      tx_request: %{chain_id: cfg.chain_id, to: target, value: "0x0", data: calldata}
-    }
+    {:ok, prepared} =
+      ActionParams.prepare_tx(
+        cfg.chain_id,
+        target,
+        calldata,
+        "regent_staking",
+        action,
+        params,
+        expected_signer: nil
+      )
+
+    prepared
   end
 
   defp config do
-    cfg = Application.get_env(:autolaunch, :regent_staking, [])
+    with contract_address when is_binary(contract_address) <-
+           InfrastructureConfig.regent_staking_address(:contract_address),
+         {:ok, _rpc_url} <- InfrastructureConfig.regent_staking_rpc_url() do
+      cfg = InfrastructureConfig.regent_staking()
 
-    contract_address =
-      cfg
-      |> Keyword.get(:contract_address, "")
-      |> normalize_address()
-
-    rpc_url =
-      cfg
-      |> Keyword.get(:rpc_url, "")
-      |> normalize_string()
-
-    if blank?(contract_address) or blank?(rpc_url) do
-      {:error, :unconfigured}
-    else
       {:ok,
        %{
          chain_id: Keyword.get(cfg, :chain_id, @base_chain_id),
          chain_label: Keyword.get(cfg, :chain_label, @base_chain_label),
          contract_address: contract_address
        }}
+    else
+      _ -> {:error, :unconfigured}
     end
   end
 
@@ -413,7 +433,11 @@ defmodule Autolaunch.RegentStaking do
     end
   end
 
-  defp required_wallet(_human), do: {:error, :unauthorized}
+  defp required_wallet(%{"wallet_address" => wallet_address}) do
+    normalize_required_address(wallet_address)
+  end
+
+  defp required_wallet(_actor), do: {:error, :unauthorized}
 
   defp primary_wallet_address(%HumanUser{} = human) do
     [human.wallet_address | List.wrap(human.wallet_addresses)]
@@ -421,10 +445,30 @@ defmodule Autolaunch.RegentStaking do
     |> normalize_address()
   end
 
+  defp primary_wallet_address(%{"wallet_address" => wallet_address}) do
+    normalize_address(wallet_address)
+  end
+
   defp primary_wallet_address(_human), do: nil
 
-  defp serialize_tx_request(%{chain_id: chain_id, to: to, value_hex: value_hex, data: data}) do
-    %{chain_id: chain_id, to: to, value: value_hex, data: data}
+  defp prepare_wallet_payload!(cfg, action, wallet_address, request) do
+    request = Map.new(request)
+
+    params =
+      request
+      |> Map.get(:params, %{})
+      |> Map.merge(%{contract_address: cfg.contract_address})
+
+    {:ok, prepared} =
+      ActionParams.prepare_tx_request(
+        request,
+        "regent_staking",
+        action,
+        params,
+        expected_signer: wallet_address
+      )
+
+    prepared
   end
 
   defp parse_amount(value, decimals) when is_binary(value) do
@@ -483,8 +527,6 @@ defmodule Autolaunch.RegentStaking do
 
   defp normalize_address(value), do: Evm.normalize_address(value)
 
-  defp normalize_string(value), do: Evm.normalize_string(value)
-
   defp format_units(value, decimals) when is_integer(value) do
     value
     |> Decimal.new()
@@ -499,6 +541,4 @@ defmodule Autolaunch.RegentStaking do
 
   defp positive_difference(left, right) when left > right, do: left - right
   defp positive_difference(_left, _right), do: 0
-
-  defp blank?(value), do: value in [nil, ""]
 end

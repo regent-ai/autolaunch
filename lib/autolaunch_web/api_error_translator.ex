@@ -3,16 +3,17 @@ defmodule AutolaunchWeb.ApiErrorTranslator do
 
   alias AutolaunchWeb.ApiError
 
-  def render(conn, _context, {:sidecar_error, status, body}) do
-    conn
-    |> Plug.Conn.put_status(status)
-    |> Phoenix.Controller.json(body)
+  def render(conn, _context, {:sidecar_error, status, _body}) do
+    ApiError.render(
+      conn,
+      status,
+      "siwa_unavailable",
+      "Signed agent authentication is unavailable right now"
+    )
   end
 
-  def render(conn, _context, {:verify_failed, response}) do
-    conn
-    |> Plug.Conn.put_status(:unauthorized)
-    |> Phoenix.Controller.json(response)
+  def render(conn, _context, {:verify_failed, _response}) do
+    ApiError.render(conn, :unauthorized, "siwa_auth_denied", "Signed agent authentication failed")
   end
 
   def render(conn, context, reason) do

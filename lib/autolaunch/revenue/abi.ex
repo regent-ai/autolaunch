@@ -32,6 +32,7 @@ defmodule Autolaunch.Revenue.Abi do
     available_stake_token_reward_inventory: "0xcfb3d0aa",
     preview_funded_claimable_stake_token: "0xc5c5ae3a",
     total_claimed_stake_token: "0x66ffb8de",
+    revenue_share_supply_denominator: "0xe3961f2a",
     stake: "0x7acb7757",
     unstake: "0x8381e182",
     claim_usdc: "0x42852610",

@@ -85,7 +85,7 @@ defmodule AutolaunchWeb.RegentStakingLive do
             <p class="al-kicker">$REGENT staking</p>
             <h1>Company rewards rail</h1>
             <p>
-              Stake REGENT, claim USDC, and claim funded REGENT rewards from the standalone Regent contract.
+              Stake $REGENT, claim USDC from the separate Regent rewards pool, and claim funded $REGENT rewards when inventory is available.
             </p>
           </div>
 
@@ -102,15 +102,15 @@ defmodule AutolaunchWeb.RegentStakingLive do
             <.metric title="Total USDC received" value={AutolaunchWeb.Format.display(@state.total_usdc_received)} />
             <.metric title="Direct deposits" value={AutolaunchWeb.Format.display(@state.direct_deposit_usdc)} />
             <.metric title="Treasury USDC" value={AutolaunchWeb.Format.display(@state.treasury_residual_usdc)} />
-            <.metric title="Funded REGENT rewards" value={AutolaunchWeb.Format.display(@state.available_reward_inventory)} />
-            <.metric title="Outstanding REGENT" value={AutolaunchWeb.Format.display(@state.materialized_outstanding)} />
+            <.metric title="Funded $REGENT rewards" value={AutolaunchWeb.Format.display(@state.available_reward_inventory)} />
+            <.metric title="Outstanding $REGENT rewards" value={AutolaunchWeb.Format.display(@state.materialized_outstanding)} />
           </section>
 
           <.action_desk
             id="regent-staking-action-desk"
             kicker="Wallet actions"
             title="Stake and claim from one place"
-            body="This page prepares transactions for the unique $REGENT staking contract. Your wallet signs each action."
+            body="This page prepares transactions for the separate $REGENT staking contract. Your wallet signs each action."
             status_label={if @state.paused, do: "Paused", else: "Ready"}
             class="al-regent-action-desk"
           >
@@ -163,7 +163,7 @@ defmodule AutolaunchWeb.RegentStakingLive do
             <:aside>
               <div class="al-regent-wallet-strip">
                 <div>
-                  <span>Wallet REGENT</span>
+                  <span>Wallet $REGENT</span>
                   <strong>{AutolaunchWeb.Format.display(@state.wallet_token_balance)}</strong>
                 </div>
                 <div>
@@ -175,7 +175,7 @@ defmodule AutolaunchWeb.RegentStakingLive do
                   <strong>{AutolaunchWeb.Format.display(@state.wallet_claimable_usdc)}</strong>
                 </div>
                 <div>
-                  <span>Funded rewards</span>
+                  <span>Funded $REGENT rewards</span>
                   <strong>{AutolaunchWeb.Format.display(@state.wallet_funded_claimable_regent)}</strong>
                 </div>
               </div>
@@ -186,8 +186,8 @@ defmodule AutolaunchWeb.RegentStakingLive do
             <article class="al-regent-action-card">
               <div>
                 <p class="al-kicker">Stake</p>
-                <h2>Move REGENT into staking.</h2>
-                <p>Staked REGENT participates in future USDC deposits and funded reward claims.</p>
+                <h2>Move $REGENT into staking.</h2>
+                <p>Staked $REGENT participates in future deposits to this pool. It does not guarantee yield.</p>
               </div>
               <form phx-change="stake_changed" class="al-regent-form">
                 <label for="regent-stake-amount">Amount</label>
@@ -208,7 +208,7 @@ defmodule AutolaunchWeb.RegentStakingLive do
             <article class="al-regent-action-card">
               <div>
                 <p class="al-kicker">Unstake</p>
-                <h2>Move REGENT back to your wallet.</h2>
+                <h2>Move $REGENT back to your wallet.</h2>
                 <p>Unstaking does not claim USDC or funded rewards for you. Claim those separately when needed.</p>
               </div>
               <form phx-change="unstake_changed" class="al-regent-form">
@@ -230,8 +230,8 @@ defmodule AutolaunchWeb.RegentStakingLive do
             <article class="al-regent-action-card">
               <div>
                 <p class="al-kicker">Claims</p>
-                <h2>Claim USDC or funded REGENT rewards.</h2>
-                <p>Accrued rewards and funded rewards are shown separately so claimable inventory is clear.</p>
+                <h2>Claim USDC or funded $REGENT rewards.</h2>
+                <p>USDC rewards and funded $REGENT rewards are shown separately so available inventory is clear.</p>
               </div>
               <div class="al-regent-split-actions">
                 <.prepared_button
@@ -427,9 +427,6 @@ defmodule AutolaunchWeb.RegentStakingLive do
 
   defp prepare(socket, key, fun) do
     case fun.(socket.assigns.current_human) do
-      {:ok, %{tx_request: tx_request}} ->
-        put_pending(socket, key, %{tx_request: tx_request})
-
       {:ok, %{prepared: %{tx_request: tx_request}} = prepared} ->
         put_pending(socket, key, %{tx_request: tx_request, prepared: prepared})
 
@@ -445,9 +442,6 @@ defmodule AutolaunchWeb.RegentStakingLive do
   defp prepare_operator_action(socket, key, fun) do
     if RegentStakingAccess.authorized_operator?(socket.assigns.current_human) do
       case fun.() do
-        {:ok, %{tx_request: tx_request}} ->
-          put_pending(socket, key, %{tx_request: tx_request})
-
         {:ok, %{prepared: %{tx_request: tx_request}} = prepared} ->
           put_pending(socket, key, %{tx_request: tx_request, prepared: prepared})
 

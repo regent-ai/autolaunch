@@ -6,6 +6,7 @@ defmodule AutolaunchWeb.Plugs.RequireAgentSiwa do
   alias Autolaunch.Accounts
   alias Autolaunch.Accounts.HumanUser
   alias Autolaunch.Siwa.Config
+  alias AutolaunchWeb.ApiError
 
   @http_verify_path "/v1/agent/siwa/http-verify"
   @audience "autolaunch"
@@ -149,14 +150,7 @@ defmodule AutolaunchWeb.Plugs.RequireAgentSiwa do
 
   defp unauthorized(conn) do
     conn
-    |> put_status(:unauthorized)
-    |> Phoenix.Controller.json(%{
-      ok: false,
-      error: %{
-        code: "siwa_auth_denied",
-        message: "Signed agent authentication failed"
-      }
-    })
+    |> ApiError.render(:unauthorized, "siwa_auth_denied", "Signed agent authentication failed")
     |> halt()
   end
 end

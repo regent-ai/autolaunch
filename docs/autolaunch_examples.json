@@ -58,7 +58,7 @@
       "symbol": "ATLAS",
       "chain": "base-sepolia",
       "chain_id": 84532,
-      "chain_family": "ethereum",
+      "chain_family": "base",
       "chain_label": "Base Sepolia",
       "agent_safe_address": "0x1111111111111111111111111111111111111111",
       "total_supply": "100000000000000000000000000000"
@@ -335,7 +335,8 @@
     "stake_token_address": "0x3333333333333333333333333333333333333333",
     "usdc_address": "0x4444444444444444444444444444444444444444",
     "treasury_recipient": "0x5555555555555555555555555555555555555555",
-    "staker_share_bps": 7000,
+    "revenue_share_supply_denominator_raw": 100000000000000000000000000000,
+    "revenue_share_supply_denominator": "100000000000",
     "paused": false,
     "total_staked_raw": 500000000000000000000,
     "total_staked": "500",
@@ -389,11 +390,23 @@
     "inactive_above_price": "0.0011",
     "time_remaining_seconds": 86400,
     "warnings": [],
-    "tx_request": {
+    "prepared": {
+      "action_id": "auction_bid_quote",
+      "resource": "auction",
+      "action": "submit_bid",
       "chain_id": 84532,
-      "to": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-      "value": "0x0",
-      "data": "0x1234"
+      "target": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "calldata": "0x1234",
+      "expected_signer": "0x1111111111111111111111111111111111111111",
+      "expires_at": "2026-03-27T12:10:00Z",
+      "idempotency_key": "auction_bid_quote",
+      "risk_copy": "Submits a Base USDC bid for this auction.",
+      "tx_request": {
+        "chain_id": 84532,
+        "to": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "value": "0x0",
+        "data": "0x1234"
+      }
     }
   },
   "position": {
@@ -415,10 +428,24 @@
     "tx_actions": {
       "exit": null,
       "claim": {
-        "chain_id": 84532,
-        "to": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-        "value": "0x0",
-        "data": "0x5678"
+        "prepared": {
+          "action_id": "auction_claim_bid",
+          "resource": "auction",
+          "action": "claim_bid",
+          "chain_id": 84532,
+          "target": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "calldata": "0x5678",
+          "expected_signer": "0x1111111111111111111111111111111111111111",
+          "expires_at": "2026-03-27T12:10:00Z",
+          "idempotency_key": "auction_claim_bid",
+          "risk_copy": "Claims tokens purchased by this auction bid.",
+          "tx_request": {
+            "chain_id": 84532,
+            "to": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "value": "0x0",
+            "data": "0x5678"
+          }
+        }
       }
     },
     "auction": {

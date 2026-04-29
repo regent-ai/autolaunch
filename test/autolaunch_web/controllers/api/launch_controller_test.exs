@@ -176,7 +176,16 @@ defmodule AutolaunchWeb.Api.LaunchControllerTest do
 
     conn = post(conn, "/v1/app/launch/jobs", launch_job_payload("bad"))
 
-    assert %{"ok" => false, "reason" => "bad signature"} = json_response(conn, 401)
+    assert %{
+             "ok" => false,
+             "error" => %{
+               "code" => "siwa_auth_denied",
+               "product" => "autolaunch",
+               "status" => 401,
+               "path" => "/v1/app/launch/jobs",
+               "message" => "Signed agent authentication failed"
+             }
+           } = json_response(conn, 401)
   end
 
   test "launch job creation returns sidecar failures", %{conn: conn, human: human} do
@@ -184,7 +193,16 @@ defmodule AutolaunchWeb.Api.LaunchControllerTest do
 
     conn = post(conn, "/v1/app/launch/jobs", launch_job_payload("sidecar"))
 
-    assert %{"ok" => false, "error" => "siwa_down"} = json_response(conn, 503)
+    assert %{
+             "ok" => false,
+             "error" => %{
+               "code" => "siwa_unavailable",
+               "product" => "autolaunch",
+               "status" => 503,
+               "path" => "/v1/app/launch/jobs",
+               "message" => "Signed agent authentication is unavailable right now"
+             }
+           } = json_response(conn, 503)
   end
 
   test "launch job show rejects unauthorized access", %{conn: conn, human: human} do
