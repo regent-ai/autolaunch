@@ -5,6 +5,7 @@ defmodule Mix.Tasks.Autolaunch.ReleaseGate do
 
   @shortdoc "Runs Autolaunch release gates"
   @shared_services_contract "../regents-cli/docs/regent-services-contract.openapiv3.yaml"
+  @platform_contract "../platform/api-contract.openapiv3.yaml"
   @path_dependencies [
     "../elixir-utils/cache",
     "../elixir-utils/xmtp",
@@ -20,18 +21,21 @@ defmodule Mix.Tasks.Autolaunch.ReleaseGate do
     check_contract_file!("docs/api-contract.openapiv3.yaml")
     check_contract_file!("docs/cli-contract.yaml")
     check_contract_file!(@shared_services_contract)
+    check_contract_file!(@platform_contract)
     Enum.each(@path_dependencies, &check_path_dependency!/1)
-    check_api_contract_routes!()
-    check_shared_regent_staking_routes!()
-    check_cli_contract_routes!()
-    check_lifecycle_settlement_contract!()
+    Mix.Task.run("autolaunch.release_packaging_check")
+    run!("npm", ["ci"], cd: "assets")
     run!("forge", ["build"], cd: "contracts")
     Mix.Task.run("autolaunch.generate_selectors", ["--check"])
+    run!("mix", ["compile", "--warnings-as-errors"], cd: ".")
+    check_api_contract_routes!()
+    check_platform_regent_staking_routes!()
+    check_cli_contract_routes!()
+    check_lifecycle_settlement_contract!()
+    run!("mix", ["test"], cd: ".")
     run!("forge", ["test"], cd: "contracts")
-
-    if File.exists?("assets/package.json") do
-      run!("npm", ["run", "typecheck"], cd: "assets")
-    end
+    run!("npm", ["run", "typecheck"], cd: "assets")
+    run!("npm", ["test"], cd: "assets")
   end
 
   defp check_contract_file!(path) do
@@ -57,7 +61,7 @@ defmodule Mix.Tasks.Autolaunch.ReleaseGate do
     documented_routes =
       "docs/api-contract.openapiv3.yaml"
       |> openapi_routes()
-      |> Enum.reject(&shared_regent_staking_route?/1)
+      |> Enum.reject(&platform_regent_staking_route?/1)
       |> Enum.sort()
 
     phoenix_routes =
@@ -66,7 +70,7 @@ defmodule Mix.Tasks.Autolaunch.ReleaseGate do
       |> Enum.filter(fn {_verb, path} ->
         String.starts_with?(path, "/v1/app/") or String.starts_with?(path, "/v1/agent/")
       end)
-      |> Enum.reject(&shared_regent_staking_route?/1)
+      |> Enum.reject(&platform_regent_staking_route?/1)
       |> Enum.sort()
 
     if phoenix_routes == documented_routes do
@@ -138,25 +142,25 @@ defmodule Mix.Tasks.Autolaunch.ReleaseGate do
     end
   end
 
-  defp check_shared_regent_staking_routes! do
+  defp check_platform_regent_staking_routes! do
     documented_routes =
-      @shared_services_contract
+      @platform_contract
       |> openapi_routes()
-      |> Enum.filter(&shared_regent_staking_route?/1)
+      |> Enum.filter(&platform_regent_staking_route?/1)
       |> Enum.sort()
 
     phoenix_routes =
       AutolaunchWeb.Router.__routes__()
       |> Enum.map(&{&1.verb, &1.path})
-      |> Enum.filter(&shared_regent_staking_route?/1)
+      |> Enum.filter(&platform_regent_staking_route?/1)
       |> Enum.sort()
 
     if phoenix_routes == documented_routes do
-      Mix.shell().info("Shared Regent staking routes match regent-services contract")
+      Mix.shell().info("Platform Regent staking routes match Platform contract")
     else
       Mix.raise("""
-      Shared Regent staking routes do not match #{@shared_services_contract}.
-      Update the shared YAML contract first, then update Autolaunch routes and CLI bindings.
+      Platform Regent staking routes do not match #{@platform_contract}.
+      Update the Platform YAML contract first, then update Autolaunch routes and CLI bindings.
       """)
     end
   end
@@ -220,9 +224,9 @@ defmodule Mix.Tasks.Autolaunch.ReleaseGate do
     String.replace(path, ~r/\{([^}]+)\}/, ":\\1")
   end
 
-  defp shared_regent_staking_route?({_verb, path}), do: shared_regent_staking_path?(path)
+  defp platform_regent_staking_route?({_verb, path}), do: platform_regent_staking_path?(path)
 
-  defp shared_regent_staking_path?(path) do
+  defp platform_regent_staking_path?(path) do
     String.starts_with?(path, "/v1/agent/regent/staking")
   end
 end

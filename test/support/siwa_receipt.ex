@@ -1,4 +1,4 @@
-defmodule Autolaunch.SiwaReceipt do
+defmodule Autolaunch.TestSupport.SiwaReceipt do
   @moduledoc false
 
   @hex_address_regex ~r/^0x[0-9a-fA-F]{40}$/

@@ -5,9 +5,15 @@ info:
   description: >
     Source-of-truth HTTP contract for the live Autolaunch backend. This file owns
     Autolaunch launch, prelaunch, lifecycle, market, ENS, contracts, AgentBook,
-    browser auth routes, and browser-owned Regent staking routes. Shared SIWA auth
-    and agent-signed Regent staking route shapes live in the shared Regent services
-    contract instead.
+    browser auth routes, and Autolaunch-hosted browser Regent staking routes.
+    Shared SIWA auth lives in the shared Regent services contract. Agent-signed
+    Regent staking route shapes are Platform-owned.
+x-regent-capability:
+  status: beta
+  owner: autolaunch
+  money_path: true
+  cli_surface: true
+  mobile_surface: false
 tags:
   - name: health
   - name: auth
@@ -21,6 +27,7 @@ tags:
   - name: ens
   - name: contracts
   - name: regent-staking
+  - name: internal-xmtp
 x-regent-chat-room-contract:
   owner: autolaunch
   canonical_room_record_fields:
@@ -29,6 +36,7 @@ x-regent-chat-room-contract:
     - name
     - status
     - presence_ttl_seconds
+    - capacity
   canonical_public_room_key: public-chatbox
   room_authority: Autolaunch owns launch-room membership, session bridge, public-room sync behavior, and launch-room product meaning.
   thread_identifier: xmtp_group_id
@@ -68,6 +76,179 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/HealthResponse" }
+  /api/internal/xmtp/shards:
+    get:
+      operationId: autolaunchInternalXmtpListShards
+      tags: [internal-xmtp]
+      security: [{ InternalSharedSecret: [] }]
+      responses:
+        "200":
+          description: Active mirrored XMTP rooms available to the internal worker
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/InternalXmtpRoomShard" }
+                additionalProperties: false
+        "401":
+          description: Missing or invalid internal shared secret
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+  /api/internal/xmtp/rooms/ensure:
+    post:
+      operationId: autolaunchInternalXmtpEnsureRoom
+      tags: [internal-xmtp]
+      security: [{ InternalSharedSecret: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/InternalXmtpEnsureRoomRequest" }
+      responses:
+        "200":
+          description: Mirrored XMTP room record
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: "#/components/schemas/InternalXmtpRoom" }
+                additionalProperties: false
+        "401":
+          description: Missing or invalid internal shared secret
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "422":
+          description: Room request invalid
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+  /api/internal/xmtp/messages/ingest:
+    post:
+      operationId: autolaunchInternalXmtpIngestMessage
+      tags: [internal-xmtp]
+      security: [{ InternalSharedSecret: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/InternalXmtpMessageIngestRequest" }
+      responses:
+        "200":
+          description: Saved mirrored message id
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [id]
+                    properties:
+                      id: { type: integer }
+                    additionalProperties: false
+                additionalProperties: false
+        "401":
+          description: Missing or invalid internal shared secret
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "422":
+          description: Message request invalid
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+  /api/internal/xmtp/commands/lease:
+    post:
+      operationId: autolaunchInternalXmtpLeaseCommand
+      tags: [internal-xmtp]
+      security: [{ InternalSharedSecret: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [room_key]
+              properties:
+                room_key: { type: string }
+              additionalProperties: false
+      responses:
+        "200":
+          description: Next membership command for the room, or null
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    anyOf:
+                      - { $ref: "#/components/schemas/InternalXmtpMembershipCommand" }
+                      - { type: "null" }
+                additionalProperties: false
+        "401":
+          description: Missing or invalid internal shared secret
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "422":
+          description: Command lease request invalid
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+  /api/internal/xmtp/commands/{id}/resolve:
+    post:
+      operationId: autolaunchInternalXmtpResolveCommand
+      tags: [internal-xmtp]
+      security: [{ InternalSharedSecret: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [done, failed]
+                error: { type: string }
+              additionalProperties: false
+      responses:
+        "200":
+          description: Membership command resolution accepted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OkEnvelope" }
+        "401":
+          description: Missing or invalid internal shared secret
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "404":
+          description: Membership command not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "422":
+          description: Command resolution request invalid
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
   /v1/auth/privy/csrf:
     get:
       operationId: autolaunchPrivySessionCsrf
@@ -1356,6 +1537,31 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/SubjectIngressEnvelope" }
+  /v1/agent/subjects/{id}/accounting-tags:
+    get:
+      operationId: agentGetSubjectAccountingTags
+      tags: [subjects]
+      security: [{ AgentSiwaHeaders: [] }]
+      parameters:
+        - $ref: "#/components/parameters/SubjectId"
+        - name: from_block
+          in: query
+          required: true
+          schema: { type: integer, minimum: 0 }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: integer, minimum: 0, default: 0 }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100, default: 100 }
+      responses:
+        "200":
+          description: Accounting labels
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SubjectAccountingTagsEnvelope" }
   /v1/agent/subjects/{id}/stake:
     post:
       operationId: agentStakeSubject
@@ -2039,6 +2245,11 @@ components:
         Signed Agent account header bundle for authenticated agent requests. The current
         shape includes the receipt, signature, signature-input, key ID, timestamp, wallet,
         chain, registry address, token ID, and content digest when the request has a body.
+    InternalSharedSecret:
+      type: apiKey
+      in: header
+      name: x-autolaunch-secret
+      description: Shared secret for internal Autolaunch worker calls.
   parameters:
     AgentId:
       name: id
@@ -2148,6 +2359,70 @@ components:
       properties:
         ok: { type: boolean, enum: [true] }
         service: { type: string, enum: [autolaunch] }
+      additionalProperties: false
+    InternalXmtpRoom:
+      type: object
+      required: [id, room_key, xmtp_group_id, name, status, presence_ttl_seconds, capacity]
+      properties:
+        id: { type: integer }
+        room_key: { type: string }
+        xmtp_group_id:
+          anyOf:
+            - { type: string }
+            - { type: "null" }
+        name: { type: string }
+        status: { type: string }
+        presence_ttl_seconds: { type: integer }
+        capacity: { type: integer, enum: [200] }
+      additionalProperties: false
+    InternalXmtpRoomShard:
+      allOf:
+        - { $ref: "#/components/schemas/InternalXmtpRoom" }
+        - type: object
+          required: [active_members, joinable]
+          properties:
+            active_members: { type: integer }
+            joinable: { type: boolean }
+          additionalProperties: false
+    InternalXmtpEnsureRoomRequest:
+      type: object
+      required: [room_key, name]
+      properties:
+        room_key: { type: string }
+        xmtp_group_id: { type: string }
+        name: { type: string }
+        status: { type: string }
+        presence_ttl_seconds: { type: integer }
+        capacity: { type: integer, enum: [200] }
+      additionalProperties: false
+    InternalXmtpMessageIngestRequest:
+      type: object
+      required: [room_key, xmtp_message_id, sender_inbox_id, sender_type, body, sent_at]
+      properties:
+        room_key: { type: string }
+        xmtp_message_id: { type: string }
+        sender_inbox_id: { type: string }
+        sender_wallet_address: { type: string }
+        sender_label: { type: string }
+        sender_type:
+          type: string
+          enum: [human, agent, system]
+        body: { type: string }
+        sent_at: { type: string, format: date-time }
+        raw_payload: { type: object }
+        moderation_state: { type: string }
+        reply_to_message_id: { type: integer }
+        reactions: { type: object }
+      additionalProperties: false
+    InternalXmtpMembershipCommand:
+      type: object
+      required: [id, op, xmtp_inbox_id]
+      properties:
+        id: { type: integer }
+        op:
+          type: string
+          enum: [add_member, remove_member]
+        xmtp_inbox_id: { type: string }
       additionalProperties: false
     PrivySessionCsrf:
       type: object
@@ -3553,6 +3828,76 @@ components:
       properties:
         ok: { type: boolean, enum: [true] }
         subject: { $ref: "#/components/schemas/Subject" }
+      additionalProperties: false
+    SubjectAccountingTag:
+      type: object
+      required:
+        - source
+        - ingress_address
+        - tag_index
+        - block_number
+        - depositor
+        - amount_raw
+        - amount
+        - label
+      properties:
+        source:
+          type: string
+          enum: [ingress_deposit, direct_deposit]
+        ingress_address:
+          anyOf:
+            - { $ref: "#/components/schemas/Address" }
+            - { type: "null" }
+        splitter_address:
+          anyOf:
+            - { $ref: "#/components/schemas/Address" }
+            - { type: "null" }
+        tag_index:
+          anyOf:
+            - { type: integer, minimum: 0 }
+            - { type: "null" }
+        block_number: { type: integer, minimum: 0 }
+        log_block_number:
+          anyOf:
+            - { type: integer, minimum: 0 }
+            - { type: "null" }
+        depositor: { $ref: "#/components/schemas/Address" }
+        amount_raw: { type: integer, minimum: 0 }
+        amount: { $ref: "#/components/schemas/DecimalString" }
+        label: { $ref: "#/components/schemas/HexData" }
+        transaction_hash:
+          anyOf:
+            - { $ref: "#/components/schemas/HexData" }
+            - { type: "null" }
+        log_index:
+          anyOf:
+            - { type: integer, minimum: 0 }
+            - { type: "null" }
+      additionalProperties: false
+    SubjectAccountingTagsEnvelope:
+      type: object
+      required:
+        - ok
+        - subject_id
+        - chain_id
+        - from_block
+        - cursor
+        - limit
+        - next_cursor
+        - has_more
+        - accounting_tags
+      properties:
+        ok: { type: boolean, enum: [true] }
+        subject_id: { type: string }
+        chain_id: { $ref: "#/components/schemas/AutolaunchChainId" }
+        from_block: { type: integer, minimum: 0 }
+        cursor: { type: integer, minimum: 0 }
+        limit: { type: integer, minimum: 1, maximum: 100 }
+        next_cursor: { type: integer, minimum: 0 }
+        has_more: { type: boolean }
+        accounting_tags:
+          type: array
+          items: { $ref: "#/components/schemas/SubjectAccountingTag" }
       additionalProperties: false
     PreparedSubjectActionEnvelope:
       type: object

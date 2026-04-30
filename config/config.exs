@@ -26,25 +26,6 @@ config :autolaunch, :launch_job_poller,
   interval_ms: 2_000,
   lease_timeout_ms: :timer.minutes(10)
 
-config :autolaunch, Autolaunch.Xmtp,
-  rooms: [
-    %{
-      key: "public-chatbox",
-      name: "Autolaunch Room",
-      description: "The shared Autolaunch chat room.",
-      app_data: "public-chatbox",
-      agent_private_key: nil,
-      moderator_wallets: [],
-      capacity: 200,
-      presence_timeout_ms: :timer.minutes(2),
-      presence_check_interval_ms: :timer.seconds(30),
-      policy_options: %{
-        allowed_kinds: [:human, :agent],
-        required_claims: %{}
-      }
-    }
-  ]
-
 config :autolaunch, :regent_staking,
   chain_id: 8_453,
   chain_label: "Base",

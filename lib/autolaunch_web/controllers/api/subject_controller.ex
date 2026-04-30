@@ -14,6 +14,10 @@ defmodule AutolaunchWeb.Api.SubjectController do
     render_result(conn, Revenue.ingress_state(subject_id, conn.assigns[:current_human]))
   end
 
+  def accounting_tags(conn, %{"id" => subject_id} = params) do
+    render_result(conn, Revenue.accounting_tags(subject_id, params, conn.assigns[:current_human]))
+  end
+
   def stake(conn, %{"id" => subject_id} = params) do
     render_write(conn, Revenue.stake(subject_id, params, conn.assigns[:current_human]))
   end
@@ -107,8 +111,26 @@ defmodule AutolaunchWeb.Api.SubjectController do
   defp translate_error(:ingress_not_found),
     do: {:not_found, "ingress_not_found", "USDC intake address does not belong to this token"}
 
-  defp translate_error(:invalid_source_ref),
-    do: {:unprocessable_entity, "invalid_source_ref", "Source reference is invalid"}
+  defp translate_error(:from_block_required),
+    do: {:unprocessable_entity, "from_block_required", "Starting block is required"}
+
+  defp translate_error(:invalid_from_block),
+    do: {:unprocessable_entity, "invalid_from_block", "Starting block is invalid"}
+
+  defp translate_error(:invalid_cursor),
+    do: {:unprocessable_entity, "invalid_cursor", "Cursor is invalid"}
+
+  defp translate_error(:invalid_limit),
+    do: {:unprocessable_entity, "invalid_limit", "Limit is invalid"}
+
+  defp translate_error(:accounting_tags_unavailable),
+    do:
+      {:bad_gateway, "accounting_tags_unavailable",
+       "Payment labels could not be loaded right now"}
+
+  defp translate_error(:invalid_accounting_tag_log),
+    do:
+      {:bad_gateway, "invalid_accounting_tag_log", "Payment labels could not be loaded right now"}
 
   defp translate_error(reason),
     do: {:unprocessable_entity, "subject_invalid", inspect(reason)}

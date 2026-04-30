@@ -6,6 +6,7 @@ import {
   labelForUser,
   loginWithPrivyWallet,
   requireEthereumProvider,
+  signWithConnectedWallet,
   type EthereumProvider,
   type PrivyLike,
   type PrivyUser,
@@ -14,6 +15,27 @@ import {
 } from "./privy-wallet.ts"
 
 const SESSION_ENDPOINT = "/v1/auth/privy/session"
+const XMTP_COMPLETE_ENDPOINT = "/v1/auth/privy/xmtp/complete"
+
+type XmtpReadyState = {
+  status: "ready"
+  inbox_id: string
+  wallet_address: string
+}
+
+type XmtpSignatureRequiredState = {
+  status: "signature_required"
+  inbox_id: null
+  wallet_address: string
+  client_id: string
+  signature_request_id: string
+  signature_text: string
+}
+
+type PrivySessionResponse = {
+  ok: boolean
+  xmtp?: XmtpReadyState | XmtpSignatureRequiredState | null
+}
 
 interface PrivyAuthRoot extends HTMLElement {
   _walletSwitchListener?: EventListener
@@ -91,7 +113,36 @@ export const PrivyAuth: Hook = {
         }),
       })
 
-      return response.ok
+      if (!response.ok) return false
+
+      const session = (await response.json()) as PrivySessionResponse
+
+      if (session.xmtp?.status !== "signature_required") return true
+
+      const provider = await requireEthereumProvider()
+      const signed = await signWithConnectedWallet(
+        provider,
+        session.xmtp.signature_text,
+        session.xmtp.wallet_address,
+      )
+
+      const completion = await fetch(XMTP_COMPLETE_ENDPOINT, {
+        method: "POST",
+        headers: {
+          accept: "application/json",
+          "content-type": "application/json",
+          ...csrfHeaders(csrfToken),
+        },
+        credentials: "same-origin",
+        body: JSON.stringify({
+          wallet_address: signed.address,
+          client_id: session.xmtp.client_id,
+          signature_request_id: session.xmtp.signature_request_id,
+          signature: signed.signature,
+        }),
+      })
+
+      return completion.ok
     }
 
     const clearSession = async () => {

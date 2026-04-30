@@ -65,6 +65,7 @@ contract RegentRevenueStaking is Owned {
         address indexed account, uint256 amount, uint256 newStakeBalance, uint256 totalStaked
     );
     event TreasuryResidualWithdrawn(uint256 amount, address indexed recipient);
+    event AccountSynced(address indexed account);
 
     constructor(
         address stakeToken_,
@@ -152,6 +153,7 @@ contract RegentRevenueStaking is Owned {
     function sync(address account) external nonReentrant {
         require(account != address(0), "ACCOUNT_ZERO");
         _sync(account);
+        emit AccountSynced(account);
     }
 
     function previewClaimableUSDC(address account) public view returns (uint256) {
@@ -192,12 +194,7 @@ contract RegentRevenueStaking is Owned {
         return claimable <= available ? claimable : available;
     }
 
-    function claimUSDC(address recipient)
-        external
-        whenNotPaused
-        nonReentrant
-        returns (uint256 amount)
-    {
+    function claimUSDC(address recipient) external nonReentrant returns (uint256 amount) {
         require(recipient != address(0), "RECIPIENT_ZERO");
 
         _sync(msg.sender);
@@ -211,12 +208,7 @@ contract RegentRevenueStaking is Owned {
         usdc.safeTransfer(recipient, amount);
     }
 
-    function claimRegent(address recipient)
-        external
-        whenNotPaused
-        nonReentrant
-        returns (uint256 amount)
-    {
+    function claimRegent(address recipient) external nonReentrant returns (uint256 amount) {
         require(recipient != address(0), "RECIPIENT_ZERO");
 
         _sync(msg.sender);

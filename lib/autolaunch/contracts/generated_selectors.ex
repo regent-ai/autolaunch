@@ -189,7 +189,12 @@ defmodule Autolaunch.Contracts.GeneratedSelectors do
       "withdrawTreasuryResidual(uint256,address)" => "0xe13b5822"
     },
     "RevenueIngressAccount" => %{
+      "MAX_ACCOUNTING_TAG_PAGE_SIZE()" => "0xfa7a788b",
       "acceptOwnership()" => "0x79ba5097",
+      "accountingTagAt(uint256)" => "0x33a00799",
+      "accountingTagCount()" => "0x13c5797a",
+      "accountingTagsSinceBlock(uint256,uint256,uint256)" => "0x1e679e7b",
+      "depositUSDC(uint256,bytes32)" => "0xe96ba32e",
       "factory()" => "0xc45a0155",
       "label()" => "0xcb4774c4",
       "owner()" => "0x8da5cb5b",
@@ -199,7 +204,7 @@ defmodule Autolaunch.Contracts.GeneratedSelectors do
       "setLabel(string)" => "0xbf530969",
       "splitter()" => "0x3cd8045e",
       "subjectId()" => "0x24574d4d",
-      "sweepUSDC(bytes32)" => "0xbe25fb30",
+      "sweepUSDC()" => "0xf4d1e0cb",
       "transferOwnership(address)" => "0xf2fde38b",
       "usdc()" => "0x3e413bee"
     },
@@ -286,7 +291,7 @@ defmodule Autolaunch.Contracts.GeneratedSelectors do
       "protocolSkimBps()" => "0xaf385b72",
       "pullTreasuryShareFromLaunchVault(address,bytes32,uint256,bytes32)" => "0x94af8446",
       "reassignUndistributedDustToTreasury(uint256)" => "0xbe2a401c",
-      "recordIngressSweep(uint256,bytes32)" => "0x3880557f",
+      "recordIngressSweep(uint256)" => "0x9627e6be",
       "regentSkimUsdc()" => "0x1aa91287",
       "rescueNative(address)" => "0xc8df4230",
       "rescueUnsupportedToken(address,uint256,address)" => "0x032876d3",

@@ -119,6 +119,21 @@ defmodule Autolaunch.Revenue.Core do
 
   def ingress_state(subject_id, current_human \\ nil), do: get_ingress(subject_id, current_human)
 
+  def accounting_tags(subject_id, attrs, current_human \\ nil) do
+    with {:ok, subject} <- get_subject(subject_id, current_human),
+         {:ok, from_block} <-
+           required_non_negative_int(
+             attrs,
+             "from_block",
+             :from_block_required,
+             :invalid_from_block
+           ),
+         {:ok, cursor} <- optional_non_negative_int(attrs, "cursor", 0, :invalid_cursor),
+         {:ok, limit} <- optional_limit(attrs, "limit", 100) do
+      read_accounting_tags(subject, from_block, cursor, limit)
+    end
+  end
+
   def stake(subject_id, attrs, current_human),
     do: write_action(:stake, subject_id, attrs, current_human)
 
@@ -142,8 +157,6 @@ defmodule Autolaunch.Revenue.Core do
          {:ok, tx_hash} <- tx_hash_param(attrs) do
       case tx_hash do
         nil ->
-          source_ref = source_ref(subject)
-
           {:ok,
            %{
              subject: subject,
@@ -155,7 +168,7 @@ defmodule Autolaunch.Revenue.Core do
                  chain_id: subject.chain_id,
                  to: ingress.address,
                  value_hex: "0x0",
-                 data: Abi.encode_sweep_usdc(source_ref),
+                 data: Abi.encode_sweep_usdc(),
                  params: %{ingress_address: ingress.address}
                )
            }}
@@ -256,8 +269,6 @@ defmodule Autolaunch.Revenue.Core do
   end
 
   defp build_write_request(:sweep_ingress, subject, wallet_address, _attrs) do
-    source_ref = source_ref(subject)
-
     {:ok,
      %{
        subject: subject,
@@ -269,7 +280,7 @@ defmodule Autolaunch.Revenue.Core do
            chain_id: subject.chain_id,
            to: subject.default_ingress_address,
            value_hex: "0x0",
-           data: Abi.encode_sweep_usdc(source_ref),
+           data: Abi.encode_sweep_usdc(),
            params: %{ingress_address: subject.default_ingress_address}
          )
      }}
@@ -540,7 +551,7 @@ defmodule Autolaunch.Revenue.Core do
 
   defp validate_registered_action(
          :sweep_ingress,
-         subject,
+         _subject,
          wallet_address,
          _attrs,
          tx,
@@ -551,21 +562,12 @@ defmodule Autolaunch.Revenue.Core do
     with :ok <- validate_tx_sender(tx, wallet_address),
          :ok <- validate_tx_target(tx, expected_to) do
       case Abi.decode_call_data(tx.input) do
-        {:ok, %{action: :sweep_ingress, source_ref: source_ref}} ->
-          with :ok <-
-                 validate_equal(
-                   normalize_address(source_ref),
-                   normalize_address(subject.subject_id),
-                   :transaction_data_mismatch
-                 ),
-               :ok <-
-                 validate_equal(
-                   normalize_address(Map.get(registration_attrs, :ingress_address)),
-                   normalize_address(expected_to),
-                   :transaction_data_mismatch
-                 ) do
-            :ok
-          end
+        {:ok, %{action: :sweep_ingress}} ->
+          validate_equal(
+            normalize_address(Map.get(registration_attrs, :ingress_address)),
+            normalize_address(expected_to),
+            :transaction_data_mismatch
+          )
 
         _ ->
           {:error, :transaction_data_mismatch}
@@ -608,6 +610,95 @@ defmodule Autolaunch.Revenue.Core do
          _receipt_state
        ),
        do: {:error, :transaction_data_mismatch}
+
+  defp read_accounting_tags(subject, from_block, cursor, limit) do
+    with {:ok, ingress_tags} <- read_ingress_accounting_tags(subject, from_block),
+         {:ok, direct_tags} <- read_direct_accounting_tags(subject, from_block) do
+      sorted_tags = Enum.sort_by(ingress_tags ++ direct_tags, &accounting_tag_sort_key/1)
+
+      {page, remaining} =
+        sorted_tags
+        |> Enum.drop(cursor)
+        |> Enum.split(limit)
+
+      {:ok,
+       %{
+         subject_id: subject.subject_id,
+         chain_id: subject.chain_id,
+         from_block: from_block,
+         cursor: cursor,
+         limit: limit,
+         next_cursor: cursor + length(page),
+         has_more: remaining != [],
+         accounting_tags: Enum.map(page, &format_accounting_tag/1)
+       }}
+    end
+  end
+
+  defp read_ingress_accounting_tags(subject, from_block) do
+    addresses = Enum.map(subject.ingress_accounts, & &1.address)
+
+    if addresses == [] do
+      {:ok, []}
+    else
+      subject.chain_id
+      |> Rpc.get_logs(%{
+        "address" => addresses,
+        "fromBlock" => encode_block_number(from_block),
+        "toBlock" => "latest",
+        "topics" => [Abi.accounting_tag_recorded_topic0()]
+      })
+      |> case do
+        {:ok, logs} -> decode_accounting_tag_logs(logs)
+        {:error, _reason} -> {:error, :accounting_tags_unavailable}
+      end
+    end
+  end
+
+  defp read_direct_accounting_tags(subject, from_block) do
+    subject.chain_id
+    |> Rpc.get_logs(%{
+      "address" => subject.splitter_address,
+      "fromBlock" => encode_block_number(from_block),
+      "toBlock" => "latest",
+      "topics" => [Abi.usdc_revenue_deposited_topic0(), Abi.direct_deposit_source_kind_topic()]
+    })
+    |> case do
+      {:ok, logs} -> decode_direct_revenue_logs(logs)
+      {:error, _reason} -> {:error, :accounting_tags_unavailable}
+    end
+  end
+
+  defp decode_accounting_tag_logs(logs) do
+    Enum.reduce_while(logs, {:ok, []}, fn log, {:ok, acc} ->
+      case Abi.decode_accounting_tag_log(log) do
+        {:ok, tag} -> {:cont, {:ok, [tag | acc]}}
+        {:error, _reason} -> {:halt, {:error, :invalid_accounting_tag_log}}
+      end
+    end)
+    |> case do
+      {:ok, tags} -> {:ok, Enum.reverse(tags)}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp decode_direct_revenue_logs(logs) do
+    Enum.reduce_while(logs, {:ok, []}, fn log, {:ok, acc} ->
+      case Abi.decode_direct_revenue_log(log) do
+        {:ok, tag} -> {:cont, {:ok, [tag | acc]}}
+        {:error, _reason} -> {:halt, {:error, :invalid_accounting_tag_log}}
+      end
+    end)
+    |> case do
+      {:ok, tags} -> {:ok, Enum.reverse(tags)}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp accounting_tag_sort_key(tag) do
+    {tag.block_number, tag.source, tag.ingress_address || tag.splitter_address,
+     tag.tag_index || tag.log_index || 0}
+  end
 
   defp validate_tx_sender(%{from: from}, wallet_address) do
     if normalize_address(from) == normalize_address(wallet_address),
@@ -1404,6 +1495,25 @@ defmodule Autolaunch.Revenue.Core do
     if ingress, do: {:ok, ingress}, else: {:error, :ingress_not_found}
   end
 
+  defp format_accounting_tag(tag) do
+    amount_raw = tag.amount_raw
+
+    %{
+      source: tag.source,
+      ingress_address: tag.ingress_address,
+      splitter_address: Map.get(tag, :splitter_address),
+      tag_index: tag.tag_index,
+      block_number: tag.block_number,
+      log_block_number: tag.log_block_number,
+      depositor: tag.depositor,
+      amount_raw: amount_raw,
+      amount: format_units(amount_raw, @usdc_decimals),
+      label: tag.label,
+      transaction_hash: tag.transaction_hash,
+      log_index: tag.log_index
+    }
+  end
+
   defp call_uint(chain_id, to, data) do
     {:ok, result} = Rpc.eth_call(chain_id, to, data)
     Abi.decode_uint256(result)
@@ -1418,6 +1528,47 @@ defmodule Autolaunch.Revenue.Core do
   defp wallet_issue, do: {:error, :unauthorized}
   defp unavailable_subject_data, do: {:error, :subject_lookup_failed}
   defp bad_amount, do: {:error, :amount_required}
+
+  defp required_non_negative_int(attrs, key, missing_error, invalid_error) do
+    case Map.get(attrs, key) do
+      nil -> {:error, missing_error}
+      value -> parse_non_negative_int(value, invalid_error)
+    end
+  end
+
+  defp optional_non_negative_int(attrs, key, default, error) do
+    case Map.get(attrs, key) do
+      nil ->
+        {:ok, default}
+
+      value ->
+        case parse_non_negative_int(value, error) do
+          {:ok, parsed} -> {:ok, parsed}
+          {:error, _reason} = error -> error
+        end
+    end
+  end
+
+  defp optional_limit(attrs, key, default) do
+    with {:ok, limit} <- optional_non_negative_int(attrs, key, default, :invalid_limit),
+         true <- limit >= 1 and limit <= 100 do
+      {:ok, limit}
+    else
+      _ -> {:error, :invalid_limit}
+    end
+  end
+
+  defp parse_non_negative_int(value, _error) when is_integer(value) and value >= 0,
+    do: {:ok, value}
+
+  defp parse_non_negative_int(value, error) when is_binary(value) do
+    case Integer.parse(String.trim(value)) do
+      {parsed, ""} when parsed >= 0 -> {:ok, parsed}
+      _ -> {:error, error}
+    end
+  end
+
+  defp parse_non_negative_int(_value, error), do: {:error, error}
 
   defp required_wallet(%HumanUser{} = human) do
     case primary_wallet_address(human) do
@@ -1615,7 +1766,7 @@ defmodule Autolaunch.Revenue.Core do
   end
 
   defp tx_hash_param(attrs) do
-    case Map.get(attrs, "tx_hash", Map.get(attrs, :tx_hash)) do
+    case Map.get(attrs, "tx_hash") do
       nil -> {:ok, nil}
       value when is_binary(value) -> normalize_tx_hash(value)
       _ -> {:error, :invalid_transaction_hash}
@@ -1739,8 +1890,6 @@ defmodule Autolaunch.Revenue.Core do
   defp balance_raw(job, address) do
     call_uint(job.chain_id, splitter_usdc(job), Abi.encode_address_call(:balance_of, address))
   end
-
-  defp source_ref(subject), do: subject.subject_id
 
   defp integer_pow10(exponent) when exponent >= 0 do
     Integer.pow(10, exponent)

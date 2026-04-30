@@ -4,6 +4,8 @@ defmodule AutolaunchWeb.OperatorStatus do
   alias Autolaunch.InfrastructureConfig
   alias Autolaunch.Repo
   alias Autolaunch.Siwa.Config, as: SiwaConfig
+  alias Autolaunch.XMTPMirror.Rooms
+  alias Autolaunch.XMTPMirror.XmtpRoom
 
   def snapshot do
     checks = [
@@ -69,15 +71,9 @@ defmodule AutolaunchWeb.OperatorStatus do
   end
 
   defp xmtp_config_check do
-    rooms =
-      :autolaunch
-      |> Application.get_env(Autolaunch.Xmtp, [])
-      |> Keyword.get(:rooms, [])
-
-    if is_list(rooms) and rooms != [] do
-      check(:ready, "XMTP rooms", "#{length(rooms)} room setup is configured.")
-    else
-      check(:blocked, "XMTP rooms", "No XMTP room setup is configured.")
+    case Repo.get_by(XmtpRoom, room_key: Rooms.canonical_room_key()) do
+      %XmtpRoom{} -> check(:ready, "XMTP rooms", "The public room is ready.")
+      nil -> check(:blocked, "XMTP rooms", "The public room is not ready.")
     end
   end
 

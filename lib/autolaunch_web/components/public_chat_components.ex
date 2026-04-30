@@ -38,17 +38,17 @@ defmodule AutolaunchWeb.PublicChatComponents do
         <% else %>
           <article
             :for={message <- @room.messages}
-            id={"public-chat-message-#{message.key}"}
-            class={["al-home-chat-message", message.side == :self && "is-self"]}
+            id={"public-chat-message-#{message_key(message)}"}
+            class={["al-home-chat-message", own_message?(message, @room) && "is-self"]}
             data-public-chat-entry
-            data-message-key={message.key}
+            data-message-key={message_key(message)}
           >
             <div class="al-home-chat-message-meta">
-              <span>{sender_label(message.sender_kind)}</span>
-              <span>{message.author}</span>
-              <span>{message.stamp}</span>
+              <span>{sender_label(message_sender_type(message))}</span>
+              <span>{message_author(message)}</span>
+              <span>{message_stamp(message)}</span>
             </div>
-            <p>{message.body}</p>
+            <p>{message_body(message)}</p>
           </article>
         <% end %>
       </div>
@@ -94,9 +94,6 @@ defmodule AutolaunchWeb.PublicChatComponents do
   defp room_status_copy(%{membership_state: :join_pending}),
     do: "Your room seat is being prepared."
 
-  defp room_status_copy(%{membership_state: :join_pending_signature}),
-    do: "Check your wallet to finish joining."
-
   defp room_status_copy(%{membership_state: :leave_pending}), do: "Your room seat is closing."
 
   defp room_status_copy(%{membership_state: :setup_required}),
@@ -114,7 +111,6 @@ defmodule AutolaunchWeb.PublicChatComponents do
   defp room_state_label(%{ready?: false}), do: "Offline"
   defp room_state_label(%{membership_state: :joined}), do: "In room"
   defp room_state_label(%{membership_state: :join_pending}), do: "Joining"
-  defp room_state_label(%{membership_state: :join_pending_signature}), do: "Joining"
   defp room_state_label(%{membership_state: :leave_pending}), do: "Leaving"
   defp room_state_label(%{seats_remaining: 0}), do: "Full"
   defp room_state_label(%{connected_wallet: nil}), do: "Watch only"
@@ -139,9 +135,53 @@ defmodule AutolaunchWeb.PublicChatComponents do
   defp composer_copy(%{membership_state: :join_pending}),
     do: "Wait for your seat to finish opening before posting."
 
-  defp composer_copy(%{membership_state: :join_pending_signature}),
-    do: "Finish joining before posting."
-
   defp composer_copy(%{seats_remaining: 0}), do: "Posting is closed while the room is full."
   defp composer_copy(_room), do: "Read along here even if you are not ready to post."
+
+  defp message_key(message), do: Map.get(message, :id) || Map.get(message, :xmtp_message_id)
+
+  defp own_message?(message, %{connected_wallet: wallet}) when is_binary(wallet) do
+    message
+    |> Map.get(:sender_wallet_address)
+    |> normalize_wallet() == normalize_wallet(wallet)
+  end
+
+  defp own_message?(_message, _room), do: false
+
+  defp message_sender_type(message), do: Map.get(message, :sender_type) || :human
+
+  defp message_author(message) do
+    sender_label = message |> Map.get(:sender_label) |> present_string()
+    sender_wallet = message |> Map.get(:sender_wallet_address) |> present_string()
+
+    cond do
+      not is_nil(sender_label) -> sender_label
+      not is_nil(sender_wallet) -> Format.short_wallet(sender_wallet)
+      true -> "Room member"
+    end
+  end
+
+  defp message_stamp(message) do
+    case Map.get(message, :sent_at) do
+      %DateTime{} = sent_at -> Calendar.strftime(sent_at, "%b %-d, %-I:%M %p UTC")
+      value when is_binary(value) -> Format.display_datetime(value)
+      _ -> "Now"
+    end
+  end
+
+  defp message_body(message), do: Map.get(message, :body) || ""
+
+  defp present_string(value) when is_binary(value) do
+    case String.trim(value) do
+      "" -> nil
+      trimmed -> trimmed
+    end
+  end
+
+  defp present_string(_value), do: nil
+
+  defp normalize_wallet(value) when is_binary(value),
+    do: value |> String.trim() |> String.downcase()
+
+  defp normalize_wallet(_value), do: nil
 end

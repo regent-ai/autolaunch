@@ -133,7 +133,7 @@ The main product routes are:
 - `/v1/auth/privy/xmtp/complete` for finishing wallet-backed XMTP room setup after the browser session opens
 - `/v1/app/prelaunch/*` for saved launch drafts, hosted metadata, and upload-backed launch assets
 - `/v1/app/lifecycle/*` for launch monitoring, finalize guidance, and vesting status
-- `/v1/app/regent/staking/*` for the separate REGENT staking rail
+- `/v1/app/regent/staking/*` for the Autolaunch web surface on the Platform-owned REGENT staking rail
 - `/v1/app/agents`, `/v1/app/launch/*`, `/v1/app/auctions/*`, `/v1/app/bids/*`, `/v1/app/subjects/*`, `/v1/app/contracts/*`, `/v1/app/agentbook/*`, and `/v1/app/ens/link/*` for the supporting JSON flows
 
 `/v1/app/agents` is the agent inventory. `/v1/app/agents/:id/readiness` checks whether an agent is ready to launch.
@@ -161,7 +161,7 @@ Action modes are intentionally split:
 The full environment list lives in [.env.example](.env.example). For local work, copy it to `.env.local` and run `direnv allow`. The important groups are:
 
 - App runtime: `DATABASE_URL` or `LOCAL_DATABASE_URL`, `SECRET_KEY_BASE`, `PHX_HOST`, `PORT`
-- Privy auth: `PRIVY_APP_ID`, `PRIVY_VERIFICATION_KEY`, `AUTOLAUNCH_XMTP_AGENT_PRIVATE_KEY`
+- Privy auth: `PRIVY_APP_ID`, `PRIVY_VERIFICATION_KEY`
 - Internal XMTP sync auth: `AUTOLAUNCH_INTERNAL_SHARED_SECRET`
 - SIWA sidecar: `SIWA_INTERNAL_URL`, `SIWA_SHARED_SECRET`
 - Upload storage: `AUTOLAUNCH_UPLOAD_DIR`
@@ -169,7 +169,7 @@ The full environment list lives in [.env.example](.env.example). For local work,
 - Launch contracts: `AUTOLAUNCH_REVENUE_SHARE_FACTORY_ADDRESS`, `AUTOLAUNCH_REVENUE_INGRESS_FACTORY_ADDRESS`, `AUTOLAUNCH_LBP_STRATEGY_FACTORY_ADDRESS`, `AUTOLAUNCH_TOKEN_FACTORY_ADDRESS`, `AUTOLAUNCH_ERC8004_SUBGRAPH_URL`
 - Base identity lookups: `AUTOLAUNCH_BASE_MAINNET_RPC_URL`, `AUTOLAUNCH_BASE_SEPOLIA_RPC_URL`, `AUTOLAUNCH_BASE_MAINNET_ERC8004_SUBGRAPH_URL`, `AUTOLAUNCH_BASE_SEPOLIA_ERC8004_SUBGRAPH_URL`, `AUTOLAUNCH_BASE_MAINNET_IDENTITY_REGISTRY_ADDRESS`, `AUTOLAUNCH_BASE_SEPOLIA_IDENTITY_REGISTRY_ADDRESS`
 - Base verifier address books: `AUTOLAUNCH_BASE_MAINNET_UNISWAP_V4_POOL_MANAGER`, `AUTOLAUNCH_BASE_SEPOLIA_UNISWAP_V4_POOL_MANAGER`, `AUTOLAUNCH_BASE_MAINNET_REVENUE_SHARE_FACTORY_ADDRESS`, `AUTOLAUNCH_BASE_SEPOLIA_REVENUE_SHARE_FACTORY_ADDRESS`, `AUTOLAUNCH_BASE_MAINNET_REVENUE_INGRESS_FACTORY_ADDRESS`, `AUTOLAUNCH_BASE_SEPOLIA_REVENUE_INGRESS_FACTORY_ADDRESS`, `AUTOLAUNCH_BASE_MAINNET_LBP_STRATEGY_FACTORY_ADDRESS`, `AUTOLAUNCH_BASE_SEPOLIA_LBP_STRATEGY_FACTORY_ADDRESS`
-- Launch-script ambient env: `AUTOLAUNCH_IDENTITY_REGISTRY_ADDRESS`, `AUTOLAUNCH_FACTORY_OWNER_ADDRESS`, `STRATEGY_OPERATOR`, `OFFICIAL_POOL_FEE`, `OFFICIAL_POOL_TICK_SPACING`, `CCA_FLOOR_PRICE_Q96`, `CCA_TICK_SPACING_Q96`, `CCA_REQUIRED_CURRENCY_RAISED`, optional `CCA_VALIDATION_HOOK`, optional `CCA_CLAIM_BLOCK_OFFSET`
+- Launch-script settings: `AUTOLAUNCH_IDENTITY_REGISTRY_ADDRESS`, `AUTOLAUNCH_FACTORY_OWNER_ADDRESS`, `STRATEGY_OPERATOR`, `OFFICIAL_POOL_FEE`, `OFFICIAL_POOL_TICK_SPACING`, `CCA_FLOOR_PRICE_Q96`, `CCA_TICK_SPACING_Q96`, `AUCTION_DURATION_BLOCKS`, `CCA_CLAIM_BLOCK_OFFSET`, `LBP_MIGRATION_BLOCK_OFFSET`, `LBP_SWEEP_BLOCK_OFFSET`, optional `CCA_VALIDATION_HOOK`. Autolaunch supplies `CCA_REQUIRED_CURRENCY_RAISED` from the launch job when it runs the deploy script.
 - Regent staking rail: `REGENT_STAKING_RPC_URL`, `REGENT_STAKING_CHAIN_ID`, `REGENT_STAKING_CHAIN_LABEL`, `REGENT_REVENUE_STAKING_ADDRESS`, `REGENT_STAKING_OPERATOR_WALLETS`
 - AgentBook and World ID: `WORLD_ID_APP_ID`, `WORLD_ID_ACTION`, `WORLD_ID_RP_ID`, `WORLD_ID_SIGNING_KEY`, `WORLDCHAIN_RPC_URL`, `WORLDCHAIN_AGENTBOOK_ADDRESS`, `WORLDCHAIN_AGENTBOOK_RELAY_URL`, `BASE_MAINNET_RPC_URL`, `BASE_AGENTBOOK_ADDRESS`, `BASE_AGENTBOOK_RELAY_URL`, `BASE_SEPOLIA_RPC_URL`, `BASE_SEPOLIA_AGENTBOOK_ADDRESS`, `BASE_SEPOLIA_AGENTBOOK_RELAY_URL`
 
@@ -234,7 +234,7 @@ The CLI is the first stop for launch planning, launch execution, monitoring, fin
 - API and CLI changes start in the YAML source-of-truth files, then the app and CLI are updated to match.
 - Autolaunch HTTP behavior lives in [`docs/api-contract.openapiv3.yaml`](docs/api-contract.openapiv3.yaml).
 - Autolaunch CLI behavior lives in [`docs/cli-contract.yaml`](docs/cli-contract.yaml).
-- Shared Regent staking behavior lives in [`../regents-cli/docs/regent-services-contract.openapiv3.yaml`](../regents-cli/docs/regent-services-contract.openapiv3.yaml).
+- Agent-signed Regent staking behavior is Platform-owned and lives in [`../platform/api-contract.openapiv3.yaml`](../platform/api-contract.openapiv3.yaml). Autolaunch hosts its own browser route surface for the same staking rail.
 - Keep one current contract shape. Remove obsolete handling instead of documenting or preserving it.
 - Use Foundry for EVM contract development and testing.
 - Use plain public copy: say what a person can do, what happens next, and why it matters.

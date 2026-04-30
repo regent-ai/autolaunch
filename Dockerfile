@@ -14,6 +14,8 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
   build-essential \
   git \
   ca-certificates \
+  nodejs \
+  npm \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /workspace
@@ -39,6 +41,7 @@ COPY autolaunch/priv priv
 COPY autolaunch/contracts contracts
 COPY autolaunch/rel rel
 
+RUN npm --prefix assets ci
 RUN mix assets.deploy
 RUN mix compile
 RUN mix release

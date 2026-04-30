@@ -32,6 +32,9 @@ contract RevenueShareSplitterTest is Test {
     mapping(address => SubjectRegistry) internal registryOfSplitter;
     mapping(address => bytes32) internal subjectIdOfSplitter;
 
+    event AccountSynced(address indexed account);
+    event SubjectLifecycleSynced(bool active, bool retiring, bool retired);
+
     address internal constant TREASURY = address(0xA11CE);
     address internal constant PROTOCOL_TREASURY = address(0xBEEF);
     address internal constant ALICE = address(0xA1);
@@ -63,6 +66,23 @@ contract RevenueShareSplitterTest is Test {
         _stake(splitter, stakeToken, CAROL, CAROL_STAKE);
         _stake(splitter, stakeToken, DAVE, DAVE_STAKE);
         _stake(splitter, stakeToken, EVE, EVE_STAKE);
+    }
+
+    function testSyncEmitsAccountSynced() external {
+        vm.expectEmit(true, false, false, true, address(splitter));
+        emit AccountSynced(ALICE);
+
+        splitter.sync(ALICE);
+    }
+
+    function testSubjectLifecycleSyncEmitsInactiveState() external {
+        SubjectRegistry registry = registryOfSplitter[address(splitter)];
+        bytes32 subjectId = subjectIdOfSplitter[address(splitter)];
+
+        vm.expectEmit(false, false, false, true, address(splitter));
+        emit SubjectLifecycleSynced(false, false, false);
+
+        registry.updateSubject(subjectId, address(splitter), TREASURY, false, "XYZ splitter");
     }
 
     function testMainScenarioAccounting() external {
@@ -549,7 +569,7 @@ contract RevenueShareSplitterTest is Test {
 
         ingressSplitter.proposeEligibleRevenueShare(8000);
 
-        RevenueIngressAccount(payable(ingress)).sweepUSDC(bytes32("before-activation"));
+        RevenueIngressAccount(payable(ingress)).sweepUSDC();
 
         assertEq(ingressSplitter.eligibleRevenueShareBps(), 10_000);
         assertEq(ingressSplitter.pendingEligibleRevenueShareBps(), 8000);
@@ -582,7 +602,7 @@ contract RevenueShareSplitterTest is Test {
         vm.prank(ALICE);
         ingressSplitter.activateEligibleRevenueShare();
 
-        RevenueIngressAccount(payable(ingress)).sweepUSDC(bytes32("after-activation"));
+        RevenueIngressAccount(payable(ingress)).sweepUSDC();
 
         assertEq(ingressSplitter.eligibleRevenueShareBps(), 8000);
         assertEq(ingressSplitter.protocolReserveUsdc(), 10 * USDC);
@@ -642,8 +662,8 @@ contract RevenueShareSplitterTest is Test {
 
         usdc.mint(ingressB, 500 * USDC);
 
-        RevenueIngressAccount(payable(ingressA)).sweepUSDC(bytes32("ingress-a"));
-        RevenueIngressAccount(payable(ingressB)).sweepUSDC(bytes32("ingress-b"));
+        RevenueIngressAccount(payable(ingressA)).sweepUSDC();
+        RevenueIngressAccount(payable(ingressB)).sweepUSDC();
 
         assertEq(ingressSplitter.protocolReserveUsdc(), 15 * USDC);
         assertEq(ingressSplitter.stakerEligibleInflowUsdc(), 1188 * USDC);
@@ -883,14 +903,21 @@ contract RevenueShareSplitterTest is Test {
     }
 
     function testPausePreservesPrincipalExit() external {
+        usdc.mint(address(this), INITIAL_INGRESS_DEPOSIT);
+        usdc.approve(address(splitter), INITIAL_INGRESS_DEPOSIT);
+        splitter.depositUSDC(INITIAL_INGRESS_DEPOSIT, bytes32("direct"), bytes32("pause"));
         _fundStakeTokenRewards(splitter, stakeToken, 1000 * XYZ);
         splitter.setEmissionAprBps(MAX_APR_BPS);
         vm.warp(block.timestamp + 30 days);
         splitter.setPaused(true);
 
-        vm.expectRevert("PAUSED");
         vm.prank(ALICE);
-        splitter.claimStakeToken(ALICE);
+        uint256 usdcClaimed = splitter.claimUSDC(ALICE);
+        assertGt(usdcClaimed, 0);
+
+        vm.prank(ALICE);
+        uint256 claimed = splitter.claimStakeToken(ALICE);
+        assertGt(claimed, 0);
 
         vm.expectRevert("PAUSED");
         vm.prank(ALICE);
@@ -908,7 +935,7 @@ contract RevenueShareSplitterTest is Test {
         splitter.unstake(50 * XYZ, ALICE);
 
         assertEq(splitter.stakedBalance(ALICE), ALICE_STAKE - 50 * XYZ);
-        assertEq(stakeToken.balanceOf(ALICE), 50 * XYZ);
+        assertEq(stakeToken.balanceOf(ALICE), 50 * XYZ + claimed);
     }
 
     function testTopUpsByAnyCallerIncreaseRewardInventoryOnly() external {

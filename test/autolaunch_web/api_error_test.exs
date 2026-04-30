@@ -8,7 +8,12 @@ defmodule AutolaunchWeb.ApiErrorTest do
       conn
       |> Plug.Conn.put_resp_header("x-request-id", "req_autolaunch_test")
       |> Map.put(:request_path, "/v1/app/test")
-      |> ApiError.render(:unprocessable_entity, "invalid_launch", "Launch details are incomplete")
+      |> ApiError.render(
+        :unprocessable_entity,
+        "invalid_launch",
+        "Launch details are incomplete",
+        %{"next_steps" => "Check the launch details."}
+      )
 
     assert %{
              "ok" => false,
@@ -19,7 +24,7 @@ defmodule AutolaunchWeb.ApiErrorTest do
                "path" => "/v1/app/test",
                "request_id" => "req_autolaunch_test",
                "message" => "Launch details are incomplete",
-               "next_steps" => nil
+               "next_steps" => "Check the launch details."
              }
            } = json_response(conn, 422)
   end

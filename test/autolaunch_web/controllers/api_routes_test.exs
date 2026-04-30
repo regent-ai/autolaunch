@@ -2,6 +2,7 @@ defmodule AutolaunchWeb.ApiRoutesTest do
   use AutolaunchWeb.ConnCase, async: false
 
   alias AutolaunchWeb.Api.RegentStakingController
+  alias AutolaunchWeb.Api.SubjectController
 
   @app_only_product_routes [
     {:post, "/regent/staking/deposit-usdc/prepare", RegentStakingController, :prepare_deposit},
@@ -16,6 +17,10 @@ defmodule AutolaunchWeb.ApiRoutesTest do
     {:post, "/me/profile/refresh"},
     {:get, "/me/holdings"},
     {:get, "/me/bids"}
+  ]
+
+  @agent_only_product_routes [
+    {:get, "/subjects/:id/accounting-tags", SubjectController, :accounting_tags}
   ]
 
   @public_app_routes [
@@ -85,9 +90,20 @@ defmodule AutolaunchWeb.ApiRoutesTest do
     agent_routes =
       "/v1/agent"
       |> product_route_specs()
+      |> Enum.reject(&agent_only_product_route?/1)
       |> normalize_route_specs("/v1/agent")
 
     assert app_routes == agent_routes
+  end
+
+  test "agent-only accounting labels stay out of the browser session API" do
+    app_routes = product_route_specs("/v1/app")
+    agent_routes = product_route_specs("/v1/agent")
+
+    for route <- @agent_only_product_routes do
+      refute route in normalize_route_specs(app_routes, "/v1/app")
+      assert route in normalize_route_specs(agent_routes, "/v1/agent")
+    end
   end
 
   test "app-only staking preparation routes stay out of the agent API" do
@@ -114,7 +130,7 @@ defmodule AutolaunchWeb.ApiRoutesTest do
     documented_routes =
       "docs/api-contract.openapiv3.yaml"
       |> openapi_routes()
-      |> Enum.reject(&shared_regent_staking_route?/1)
+      |> Enum.reject(&platform_regent_staking_route?/1)
       |> Enum.sort()
 
     phoenix_routes =
@@ -123,32 +139,31 @@ defmodule AutolaunchWeb.ApiRoutesTest do
       |> Enum.filter(fn {_verb, path} ->
         String.starts_with?(path, "/v1/app/") or String.starts_with?(path, "/v1/agent/")
       end)
-      |> Enum.reject(&shared_regent_staking_route?/1)
+      |> Enum.reject(&platform_regent_staking_route?/1)
       |> Enum.sort()
 
     assert phoenix_routes == documented_routes
   end
 
-  test "Autolaunch mirrors the shared Regent staking agent contract" do
+  test "Autolaunch mirrors the Platform Regent staking agent contract" do
     documented_routes =
-      "../regents-cli/docs/regent-services-contract.openapiv3.yaml"
+      "../platform/api-contract.openapiv3.yaml"
       |> openapi_routes()
-      |> Enum.filter(&shared_regent_staking_route?/1)
+      |> Enum.filter(&platform_regent_staking_route?/1)
       |> Enum.sort()
 
     phoenix_routes =
       AutolaunchWeb.Router.__routes__()
       |> Enum.map(&{&1.verb, &1.path})
-      |> Enum.filter(&shared_regent_staking_route?/1)
+      |> Enum.filter(&platform_regent_staking_route?/1)
       |> Enum.filter(fn {_verb, path} -> String.starts_with?(path, "/v1/agent/") end)
       |> Enum.sort()
 
     assert documented_routes != [],
            """
-           Regent staking agent routes are served by Autolaunch, but the shared services contract
-           at ../regents-cli/docs/regent-services-contract.openapiv3.yaml does not list them.
-           Add the /v1/agent/regent/staking routes to that shared contract, then regenerate
-           the CLI bindings from the shared contract.
+           Regent staking agent routes are mirrored by Autolaunch, but the Platform contract
+           at ../platform/api-contract.openapiv3.yaml does not list them. Add the
+           /v1/agent/regent/staking routes to the Platform contract first.
            """
 
     assert phoenix_routes == documented_routes
@@ -208,6 +223,10 @@ defmodule AutolaunchWeb.ApiRoutesTest do
     {verb, String.replace_prefix(path, "/v1/app", "")} in @human_browser_product_routes
   end
 
+  defp agent_only_product_route?({verb, path, plug, plug_opts}) do
+    {verb, String.replace_prefix(path, "/v1/agent", ""), plug, plug_opts} in @agent_only_product_routes
+  end
+
   defp openapi_routes(path) do
     path
     |> File.read!()
@@ -250,10 +269,10 @@ defmodule AutolaunchWeb.ApiRoutesTest do
     String.replace(path, ~r/\{([^}]+)\}/, ":\\1")
   end
 
-  defp shared_regent_staking_route?({_verb, path}), do: shared_regent_staking_path?(path)
-  defp shared_regent_staking_route?(path), do: shared_regent_staking_path?(path)
+  defp platform_regent_staking_route?({_verb, path}), do: platform_regent_staking_path?(path)
+  defp platform_regent_staking_route?(path), do: platform_regent_staking_path?(path)
 
-  defp shared_regent_staking_path?(path) do
+  defp platform_regent_staking_path?(path) do
     String.starts_with?(path, "/v1/agent/regent/staking")
   end
 end

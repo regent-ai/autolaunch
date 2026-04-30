@@ -5,8 +5,8 @@ defmodule AutolaunchWeb.ApiError do
 
   def render(conn, status, code, message, meta \\ %{}) do
     status_code = Plug.Conn.Status.code(status)
-    next_steps = Map.get(meta, :next_steps) || Map.get(meta, "next_steps")
-    meta = Map.drop(meta, [:next_steps, "next_steps"])
+    next_steps = Map.get(meta, "next_steps")
+    meta = Map.delete(meta, "next_steps")
 
     conn
     |> put_status(status)

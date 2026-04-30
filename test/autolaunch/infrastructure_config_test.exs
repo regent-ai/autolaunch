@@ -66,6 +66,7 @@ defmodule Autolaunch.InfrastructureConfigTest do
     refute runtime =~ "DATABASE_DIRECT_URL"
     assert runtime =~ "ssl: true"
     assert runtime =~ "prepare: :unnamed"
+    assert runtime =~ ~s(SET search_path TO "autolaunch",public)
     assert runtime =~ ~s|env.("ECTO_POOL_SIZE", "5")|
     assert runtime =~ ~s(migration_default_prefix: "autolaunch")
     assert runtime =~ ~s(migration_source: "schema_migrations_autolaunch")
@@ -77,6 +78,7 @@ defmodule Autolaunch.InfrastructureConfigTest do
     assert release =~ ~s|System.fetch_env!("DATABASE_DIRECT_URL")|
     refute release =~ ~s|System.fetch_env!("DATABASE_URL")|
     assert release =~ ~s(@schema "autolaunch")
+    assert release =~ ~S(SET search_path TO "#{@schema}",public)
     assert release =~ ~s(@migration_source "schema_migrations_autolaunch")
     refute release =~ ~s(@schema "platform")
     refute release =~ ~s(@schema "techtree")

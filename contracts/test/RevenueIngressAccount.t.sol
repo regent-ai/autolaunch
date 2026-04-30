@@ -57,7 +57,7 @@ contract RevenueIngressAccountTest is Test {
     function testSweepRecognizesRevenueInsideSplitter() external {
         usdc.mint(address(ingress), 1000e18);
 
-        (uint256 balance, uint256 recognized) = ingress.sweepUSDC(keccak256("invoice-1"));
+        (uint256 balance, uint256 recognized) = ingress.sweepUSDC();
 
         assertEq(balance, 1000e18);
         assertEq(recognized, 1000e18);
@@ -65,6 +65,66 @@ contract RevenueIngressAccountTest is Test {
         assertEq(usdc.balanceOf(address(splitter)), 1000e18);
         assertEq(splitter.treasuryResidualUsdc(), 990e18);
         assertEq(splitter.protocolReserveUsdc(), 10e18);
+    }
+
+    function testDepositUSDCRecordsAccountingTag() external {
+        bytes32 sourceTag = bytes32("invoice-1");
+        usdc.mint(address(this), 1000e18);
+        usdc.approve(address(ingress), 1000e18);
+
+        uint256 received = ingress.depositUSDC(1000e18, sourceTag);
+
+        assertEq(received, 1000e18);
+        assertEq(usdc.balanceOf(address(ingress)), 1000e18);
+        assertEq(ingress.accountingTagCount(), 1);
+
+        (uint256 blockNumber, address depositor, uint256 amount, bytes32 tag) =
+            ingress.accountingTagAt(0);
+        assertEq(blockNumber, block.number);
+        assertEq(depositor, address(this));
+        assertEq(amount, 1000e18);
+        assertEq(tag, sourceTag);
+    }
+
+    function testAccountingTagsSinceBlockPaginatesAndFilters() external {
+        usdc.mint(address(this), 6e18);
+        usdc.approve(address(ingress), 6e18);
+
+        ingress.depositUSDC(1e18, bytes32("old"));
+        uint256 fromBlock = block.number + 1;
+        vm.roll(fromBlock);
+        ingress.depositUSDC(2e18, bytes32("new-1"));
+        vm.roll(fromBlock + 1);
+        ingress.depositUSDC(3e18, bytes32("new-2"));
+
+        (RevenueIngressAccount.AccountingTag[] memory first, uint256 nextCursor, bool hasMore) =
+            ingress.accountingTagsSinceBlock(fromBlock, 0, 1);
+        assertEq(first.length, 1);
+        assertEq(first[0].amount, 2e18);
+        assertEq(first[0].sourceTag, bytes32("new-1"));
+        assertEq(nextCursor, 2);
+        assertTrue(hasMore);
+
+        (RevenueIngressAccount.AccountingTag[] memory second, uint256 finalCursor, bool more) =
+            ingress.accountingTagsSinceBlock(fromBlock, nextCursor, 100);
+        assertEq(second.length, 1);
+        assertEq(second[0].amount, 3e18);
+        assertEq(second[0].sourceTag, bytes32("new-2"));
+        assertEq(finalCursor, 3);
+        assertFalse(more);
+    }
+
+    function testAccountingTagsRejectInvalidPagination() external {
+        uint256 maxPageSize = ingress.MAX_ACCOUNTING_TAG_PAGE_SIZE();
+
+        vm.expectRevert("LIMIT_ZERO");
+        ingress.accountingTagsSinceBlock(0, 0, 0);
+
+        vm.expectRevert("LIMIT_TOO_HIGH");
+        ingress.accountingTagsSinceBlock(0, 0, maxPageSize + 1);
+
+        vm.expectRevert("CURSOR_OOB");
+        ingress.accountingTagsSinceBlock(0, 1, 1);
     }
 
     function testOwnerCanRescueNonUsdcToken() external {
@@ -95,10 +155,10 @@ contract RevenueIngressAccountTest is Test {
 
     function testSecondSweepRevertsWhenNothingRemains() external {
         usdc.mint(address(ingress), 1000e18);
-        ingress.sweepUSDC(keccak256("invoice-1"));
+        ingress.sweepUSDC();
 
         vm.expectRevert("NOTHING_TO_SWEEP");
-        ingress.sweepUSDC(keccak256("invoice-2"));
+        ingress.sweepUSDC();
     }
 
     function testSweepRevertsWhenSubjectIsInactive() external {
@@ -109,6 +169,6 @@ contract RevenueIngressAccountTest is Test {
         usdc.mint(address(ingress), 1000e18);
 
         vm.expectRevert("SUBJECT_INACTIVE");
-        ingress.sweepUSDC(keccak256("invoice-3"));
+        ingress.sweepUSDC();
     }
 }

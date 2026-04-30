@@ -15,7 +15,7 @@ Keep this file short and current. Use it as the fast start map for new coding ag
 ## Contract-First Rule
 
 - `api-contract.openapiv3.yaml` is the source of truth for the product's HTTP backend contract, including routes, auth, request bodies, response shapes, and stable error envelopes.
-- `regent-services-contract.openapiv3.yaml` is the source of truth for shared HTTP backend contracts that are not owned by one product, such as `regent-staking`.
+- `regent-services-contract.openapiv3.yaml` is the source of truth for shared HTTP backend contracts that are not owned by one product, such as shared SIWA auth.
 - `cli-contract.yaml` is the source of truth for the product's shipped CLI surface, including command names, flags/args, auth mode, whether a command is HTTP-backed or local/runtime-backed, and which backend contract operation it is allowed to use.
 
 Start contract work here, in this order:
@@ -83,7 +83,7 @@ Current browser capabilities:
 - `Contracts` owns operator contract reads and prepared transaction payloads
 - `Agentbook` owns human proof registration, lookup, and verification
 - `Trust` owns agent trust reads and X-link follow-up
-- `RegentStaking` owns the shared staking rail
+- `RegentStaking` hosts the Autolaunch web surface for the Platform-owned `$REGENT` staking rail
 - `BetaReadiness` owns the read-only public beta go/no-go check.
 - `XMTPMirror` owns the mirrored Autolaunch public-room model and stays aligned with Techtree's room flow
 - `LocalCache` owns short-lived hot reads. Cache keys include a product prefix, chain/job/subject identifiers where relevant, a digest for wallet address lists, and a subject cache epoch. Mutating subject actions bump the subject epoch instead of carrying stale reads forward.
@@ -127,7 +127,7 @@ Start Solidity work with:
 - Agent auth is SIWA-based.
 - A Regent identity is a saved Agent account: wallet, registry address, and token ID.
 - The browser wizard exists, but the preferred operator flow is CLI-first.
-- `regent-staking` is a separate shared rail and should stay distinct from the Base launch flow.
+- `regent-staking` is Platform-owned. Autolaunch hosts a near-identical web UI for users, and the staking rail stays distinct from the Base launch flow.
 - The Autolaunch public room now follows the same mirrored XMTP group-chat model as Techtree. Keep room identity, membership command queueing, and internal sync endpoints aligned across both repos.
 - Main public CTA: if the reader already has an agent, use `regents-cli`; if they do not have an agent yet, send them to `regents.sh`.
 - Public copy should describe what a person can do, what happens next, and why it matters. Do not expose framework names, internal route wiring, cache mechanics, signing internals, legacy behavior, or compatibility plans in public UI text.

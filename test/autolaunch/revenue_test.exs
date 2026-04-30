@@ -435,7 +435,7 @@ defmodule Autolaunch.RevenueTest do
       transaction_hash: tx_hash,
       from: @wallet,
       to: @ingress,
-      input: Abi.encode_sweep_usdc(@subject_id),
+      input: Abi.encode_sweep_usdc(),
       value: "0x0",
       block_number: nil
     })

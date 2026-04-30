@@ -1,7 +1,6 @@
 import type { Hook } from "phoenix_live_view"
 
 import { animate, stagger } from "../../vendor/anime.esm.js"
-import { requireEthereumProvider, signWithConnectedWallet } from "./privy-wallet.ts"
 
 type PublicRoomRoot = HTMLElement & {
   __publicChatSeenKeys?: Set<string>
@@ -72,37 +71,6 @@ export const AutolaunchXmtpRoom: Hook = {
     root.__publicChatHeartbeat = window.setInterval(() => {
       this.pushEvent("public_chat_heartbeat", {})
     }, 30_000)
-
-    this.handleEvent("xmtp:sign-request", async (payload) => {
-      const { request_id, signature_text, wallet_address } = payload as {
-        request_id: string
-        signature_text: string
-        wallet_address?: string | null
-      }
-
-      try {
-        animateStatus(status, "Check your wallet to finish joining.", true)
-
-        const provider = await requireEthereumProvider()
-        const { signature } = await signWithConnectedWallet(
-          provider,
-          String(signature_text ?? ""),
-          typeof wallet_address === "string" ? wallet_address : null,
-        )
-
-        animateStatus(status, "Joining room...", true)
-
-        this.pushEvent("public_chat_join_signature_signed", {
-          request_id,
-          signature,
-        })
-      } catch {
-        const message = "Joining was not finished. Try again when you are ready."
-
-        animateStatus(status, message, true)
-        this.pushEvent("public_chat_join_signature_failed", { message })
-      }
-    })
   },
 
   updated() {

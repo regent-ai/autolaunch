@@ -15,9 +15,10 @@ defmodule Autolaunch.Launch.BidFlow do
 
   def quote_bid(auction_id, attrs, current_human \\ nil) do
     with auction when is_map(auction) <- AuctionDetails.get_auction(auction_id, current_human),
-         {:ok, amount_decimal} <- Core.required_decimal(Map.get(attrs, :amount), :amount_required),
+         {:ok, amount_decimal} <-
+           Core.required_decimal(Map.get(attrs, "amount"), :amount_required),
          {:ok, max_price_decimal} <-
-           Core.required_decimal(Map.get(attrs, :max_price), :max_price_required),
+           Core.required_decimal(Map.get(attrs, "max_price"), :max_price_required),
          {:ok, amount_wei} <- Core.decimal_to_wei(amount_decimal),
          {:ok, max_price_q96} <- Core.decimal_price_to_q96(max_price_decimal),
          {:ok, raw_quote} <-
@@ -67,11 +68,12 @@ defmodule Autolaunch.Launch.BidFlow do
   def place_bid(auction_id, attrs, %HumanUser{} = human) do
     with :ok <- Core.ensure_authenticated_human(human),
          {:ok, wallet_address} <- Core.required_address(human.wallet_address),
-         {:ok, tx_hash} <- Core.required_tx_hash(Map.get(attrs, :tx_hash)),
+         {:ok, tx_hash} <- Core.required_tx_hash(Map.get(attrs, "tx_hash")),
          {:ok, auction} <- fetch_auction_for_bid(auction_id, human),
-         {:ok, amount_decimal} <- Core.required_decimal(Map.get(attrs, :amount), :amount_required),
+         {:ok, amount_decimal} <-
+           Core.required_decimal(Map.get(attrs, "amount"), :amount_required),
          {:ok, max_price_decimal} <-
-           Core.required_decimal(Map.get(attrs, :max_price), :max_price_required),
+           Core.required_decimal(Map.get(attrs, "max_price"), :max_price_required),
          {:ok, amount_wei} <- Core.decimal_to_wei(amount_decimal),
          {:ok, max_price_q96} <- Core.decimal_price_to_q96(max_price_decimal),
          {:ok, snapshot} <- CCAContract.snapshot(auction.chain_id, auction.auction_address),
@@ -105,10 +107,10 @@ defmodule Autolaunch.Launch.BidFlow do
         current_clearing_price: Core.q96_to_decimal(snapshot.checkpoint.clearing_price_q96),
         current_status: "active",
         estimated_tokens_if_end_now:
-          Core.decimal_from_string(Map.get(attrs, :estimated_tokens_if_end_now)),
+          Core.decimal_from_string(Map.get(attrs, "estimated_tokens_if_end_now")),
         estimated_tokens_if_no_other_bids_change:
-          Core.decimal_from_string(Map.get(attrs, :estimated_tokens_if_no_other_bids_change)),
-        inactive_above_price: Core.decimal_from_string(Map.get(attrs, :inactive_above_price)),
+          Core.decimal_from_string(Map.get(attrs, "estimated_tokens_if_no_other_bids_change")),
+        inactive_above_price: Core.decimal_from_string(Map.get(attrs, "inactive_above_price")),
         quote_snapshot: quote_snapshot,
         inserted_at: now,
         updated_at: now
@@ -126,13 +128,13 @@ defmodule Autolaunch.Launch.BidFlow do
               current_clearing_price: Core.q96_to_decimal(snapshot.checkpoint.clearing_price_q96),
               current_status: "active",
               estimated_tokens_if_end_now:
-                Core.decimal_from_string(Map.get(attrs, :estimated_tokens_if_end_now)),
+                Core.decimal_from_string(Map.get(attrs, "estimated_tokens_if_end_now")),
               estimated_tokens_if_no_other_bids_change:
                 Core.decimal_from_string(
-                  Map.get(attrs, :estimated_tokens_if_no_other_bids_change)
+                  Map.get(attrs, "estimated_tokens_if_no_other_bids_change")
                 ),
               inactive_above_price:
-                Core.decimal_from_string(Map.get(attrs, :inactive_above_price)),
+                Core.decimal_from_string(Map.get(attrs, "inactive_above_price")),
               quote_snapshot: quote_snapshot,
               updated_at: now
             ]
@@ -184,7 +186,7 @@ defmodule Autolaunch.Launch.BidFlow do
   def exit_bid(bid_id, attrs, %HumanUser{} = human) do
     with :ok <- Core.ensure_authenticated_human(human),
          {:ok, wallet_address} <- Core.required_address(human.wallet_address),
-         {:ok, tx_hash} <- Core.required_tx_hash(Map.get(attrs, :tx_hash)),
+         {:ok, tx_hash} <- Core.required_tx_hash(Map.get(attrs, "tx_hash")),
          %Bid{} = bid <- Repo.get(Bid, bid_id),
          :ok <- ensure_bid_belongs_to_owner(bid, wallet_address),
          {:ok, auction} <- fetch_auction_for_bid(bid.auction_id, human),
@@ -216,7 +218,7 @@ defmodule Autolaunch.Launch.BidFlow do
   def claim_bid(bid_id, attrs, %HumanUser{} = human) do
     with :ok <- Core.ensure_authenticated_human(human),
          {:ok, wallet_address} <- Core.required_address(human.wallet_address),
-         {:ok, tx_hash} <- Core.required_tx_hash(Map.get(attrs, :tx_hash)),
+         {:ok, tx_hash} <- Core.required_tx_hash(Map.get(attrs, "tx_hash")),
          %Bid{} = bid <- Repo.get(Bid, bid_id),
          :ok <- ensure_bid_belongs_to_owner(bid, wallet_address),
          {:ok, auction} <- fetch_auction_for_bid(bid.auction_id, human),
@@ -293,14 +295,14 @@ defmodule Autolaunch.Launch.BidFlow do
     %{
       "quote_mode" => "onchain_exact_v1",
       "current_clearing_price" =>
-        Map.get(attrs, :current_clearing_price) ||
+        Map.get(attrs, "current_clearing_price") ||
           Core.q96_price_to_string(snapshot.checkpoint.clearing_price_q96),
-      "estimated_tokens_if_end_now" => Map.get(attrs, :estimated_tokens_if_end_now),
+      "estimated_tokens_if_end_now" => Map.get(attrs, "estimated_tokens_if_end_now"),
       "estimated_tokens_if_no_other_bids_change" =>
-        Map.get(attrs, :estimated_tokens_if_no_other_bids_change),
-      "inactive_above_price" => Map.get(attrs, :inactive_above_price),
-      "status_band" => Map.get(attrs, :status_band),
-      "projected_clearing_price" => Map.get(attrs, :projected_clearing_price)
+        Map.get(attrs, "estimated_tokens_if_no_other_bids_change"),
+      "inactive_above_price" => Map.get(attrs, "inactive_above_price"),
+      "status_band" => Map.get(attrs, "status_band"),
+      "projected_clearing_price" => Map.get(attrs, "projected_clearing_price")
     }
   end
 
@@ -351,7 +353,7 @@ defmodule Autolaunch.Launch.BidFlow do
   defp returnable_bid?(_auction, _market_position, _status), do: false
 
   defp filter_positions(positions, filters) do
-    case Map.get(filters, :status) do
+    case Map.get(filters, "status") do
       nil -> positions
       "" -> positions
       status -> Enum.filter(positions, &(&1.status == status))

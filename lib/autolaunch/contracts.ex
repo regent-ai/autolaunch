@@ -664,7 +664,7 @@ defmodule Autolaunch.Contracts do
   defp normalize_address(value) when is_binary(value), do: String.downcase(String.trim(value))
   defp normalize_address(_value), do: nil
   defp map_value(nil, _key), do: nil
-  defp map_value(map, key), do: Map.get(map, key) || Map.get(map, Atom.to_string(key))
+  defp map_value(map, key), do: Map.get(map, key)
   defp present?(value) when is_binary(value), do: String.trim(value) != ""
   defp present?(nil), do: false
   defp present?(_value), do: true

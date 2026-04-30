@@ -16,6 +16,7 @@ defmodule Autolaunch.Revenue do
 
   defdelegate get_ingress(subject_id, current_human \\ nil), to: IngressAccounts
   defdelegate ingress_state(subject_id, current_human \\ nil), to: IngressAccounts
+  defdelegate accounting_tags(subject_id, attrs, current_human \\ nil), to: IngressAccounts
 
   defdelegate stake(subject_id, attrs, current_human), to: Actions
   defdelegate unstake(subject_id, attrs, current_human), to: Actions

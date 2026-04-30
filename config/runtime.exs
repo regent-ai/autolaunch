@@ -75,25 +75,6 @@ if config_env() != :test do
 
   config :autolaunch, :internal_shared_secret, env.("AUTOLAUNCH_INTERNAL_SHARED_SECRET", "")
 
-  config :autolaunch, Autolaunch.Xmtp,
-    rooms: [
-      %{
-        key: "public-chatbox",
-        name: "Autolaunch Room",
-        description: "The shared Autolaunch chat room.",
-        app_data: "public-chatbox",
-        agent_private_key: env.("AUTOLAUNCH_XMTP_AGENT_PRIVATE_KEY", ""),
-        moderator_wallets: [],
-        capacity: 200,
-        presence_timeout_ms: :timer.minutes(2),
-        presence_check_interval_ms: :timer.seconds(30),
-        policy_options: %{
-          allowed_kinds: [:human, :agent],
-          required_claims: %{}
-        }
-      }
-    ]
-
   config :autolaunch, :siwa,
     internal_url: env.("SIWA_INTERNAL_URL", "http://siwa-sidecar:4100"),
     shared_secret: env.("SIWA_SHARED_SECRET", ""),
@@ -239,6 +220,7 @@ if config_env() == :prod do
     url: database_url,
     ssl: true,
     prepare: :unnamed,
+    after_connect: {Postgrex, :query!, [~s(SET search_path TO "autolaunch",public), []]},
     pool_size: String.to_integer(env.("ECTO_POOL_SIZE", "5")),
     migration_default_prefix: "autolaunch",
     migration_source: "schema_migrations_autolaunch"

@@ -9,18 +9,18 @@ defmodule Autolaunch.Launch.Params do
     agent_safe_address
     total_supply
     launch_notes
-  )a
+  )
   @create_job_keys @preview_keys ++
-                     ~w(wallet_address registry_address token_id message signature nonce issued_at broadcast)a
-  @quote_keys ~w(amount max_price estimated_tokens_if_end_now estimated_tokens_if_no_other_bids_change inactive_above_price status_band projected_clearing_price current_clearing_price tx_hash)a
-  @position_filter_keys ~w(status)a
-  @auction_filter_keys ~w(mode sort)a
-  @return_filter_keys ~w(limit offset)a
+                     ~w(wallet_address registry_address token_id message signature nonce issued_at broadcast)
+  @quote_keys ~w(amount max_price estimated_tokens_if_end_now estimated_tokens_if_no_other_bids_change inactive_above_price status_band projected_clearing_price current_clearing_price tx_hash)
+  @position_filter_keys ~w(status)
+  @auction_filter_keys ~w(mode sort)
+  @return_filter_keys ~w(limit offset)
 
   def preview_attrs(attrs), do: normalize_keys(attrs, @preview_keys)
   def create_job_attrs(attrs), do: normalize_keys(attrs, @create_job_keys)
   def quote_attrs(attrs), do: normalize_keys(attrs, @quote_keys)
-  def bid_registration_attrs(attrs), do: normalize_keys(attrs, [:tx_hash])
+  def bid_registration_attrs(attrs), do: normalize_keys(attrs, ["tx_hash"])
   def position_filters(filters), do: normalize_keys(filters, @position_filter_keys)
   def auction_filters(filters), do: normalize_keys(filters, @auction_filter_keys)
   def return_filters(filters), do: normalize_keys(filters, @return_filter_keys)
@@ -37,6 +37,6 @@ defmodule Autolaunch.Launch.Params do
   defp normalize_keys(_value, _keys), do: %{}
 
   defp fetch(map, key) do
-    Map.fetch(map, Atom.to_string(key))
+    Map.fetch(map, key)
   end
 end

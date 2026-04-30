@@ -501,7 +501,7 @@ defmodule Autolaunch.Contracts.Dispatch do
       ActionParams.prepare_tx(
         subject.chain_id,
         ingress,
-        Revenue.Abi.encode_sweep_usdc(subject.subject_id),
+        Revenue.Abi.encode_sweep_usdc(),
         "ingress_account",
         "sweep",
         %{ingress_address: ingress}

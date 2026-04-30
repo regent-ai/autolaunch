@@ -352,9 +352,6 @@ defmodule AutolaunchWeb.SubjectLive.Components do
   defp proof_status(%{recognized_revenue_proof: %{status: status}}) when is_binary(status),
     do: status
 
-  defp proof_status(%{recognized_revenue_proof: %{"status" => status}}) when is_binary(status),
-    do: status
-
   defp proof_status(_subject), do: "Unavailable"
 
   attr :label, :string, required: true

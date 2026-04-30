@@ -17,7 +17,6 @@ defmodule Autolaunch.Application do
         launch_job_poller_child(),
         AutolaunchWeb.RateLimiter,
         Autolaunch.XmtpIdentity,
-        Autolaunch.Xmtp,
         AutolaunchWeb.Endpoint
       ]
       |> Enum.reject(&is_nil/1)

@@ -59,7 +59,8 @@ defmodule AutolaunchWeb.HomeLive do
     {:noreply, reload_home(socket)}
   end
 
-  def handle_info({:xmtp_public_room, :refresh}, socket) do
+  def handle_info({:public_site_event, %{event: event}}, socket)
+      when event in [:xmtp_room_message, :xmtp_room_membership] do
     {:noreply, assign_public_chat(socket)}
   end
 
@@ -68,31 +69,9 @@ defmodule AutolaunchWeb.HomeLive do
       {:ok, panel} ->
         {:noreply, assign_public_chat_panel(socket, panel)}
 
-      {:needs_signature, request} ->
-        {:noreply, push_join_signature_request(socket, request)}
-
       {:error, reason} ->
         {:noreply, put_public_chat_status(socket, PublicChat.reason_message(reason))}
     end
-  end
-
-  def handle_event(
-        "public_chat_join_signature_signed",
-        %{"request_id" => request_id, "signature" => signature},
-        socket
-      ) do
-    case PublicChat.complete_join_signature(socket.assigns.current_human, request_id, signature) do
-      {:ok, panel} ->
-        {:noreply, assign_public_chat_panel(socket, panel)}
-
-      {:error, reason} ->
-        {:noreply, put_public_chat_status(socket, PublicChat.reason_message(reason))}
-    end
-  end
-
-  def handle_event("public_chat_join_signature_failed", _params, socket) do
-    {:noreply,
-     put_public_chat_status(socket, "Joining was not finished. Try again when you are ready.")}
   end
 
   def handle_event("public_chat_send", %{"public_chat" => %{"body" => body}}, socket) do
@@ -285,16 +264,6 @@ defmodule AutolaunchWeb.HomeLive do
 
   defp put_public_chat_status(socket, message) do
     assign(socket, :public_chat, Map.put(socket.assigns.public_chat, :status, message))
-  end
-
-  defp push_join_signature_request(socket, request) do
-    socket
-    |> assign(:public_chat, request.panel)
-    |> push_event("xmtp:sign-request", %{
-      request_id: request.request_id,
-      signature_text: request.signature_text,
-      wallet_address: request.wallet_address
-    })
   end
 
   defp reset_public_chat_form(socket), do: assign_public_chat_form(socket, "")

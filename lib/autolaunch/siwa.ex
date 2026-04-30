@@ -7,10 +7,10 @@ defmodule Autolaunch.Siwa do
 
   def issue_nonce(params) do
     payload = %{
-      "wallet_address" => Map.fetch!(params, :wallet_address),
-      "chain_id" => Map.fetch!(params, :chain_id),
-      "registry_address" => Map.fetch!(params, :registry_address),
-      "token_id" => Map.fetch!(params, :token_id),
+      "wallet_address" => Map.fetch!(params, "wallet_address"),
+      "chain_id" => Map.fetch!(params, "chain_id"),
+      "registry_address" => Map.fetch!(params, "registry_address"),
+      "token_id" => Map.fetch!(params, "token_id"),
       "audience" => @audience
     }
 
@@ -20,14 +20,14 @@ defmodule Autolaunch.Siwa do
   def verify_wallet_signature(params) do
     payload =
       %{
-        "wallet_address" => Map.fetch!(params, :wallet_address),
-        "chain_id" => Map.fetch!(params, :chain_id),
-        "registry_address" => Map.fetch!(params, :registry_address),
-        "token_id" => Map.fetch!(params, :token_id),
+        "wallet_address" => Map.fetch!(params, "wallet_address"),
+        "chain_id" => Map.fetch!(params, "chain_id"),
+        "registry_address" => Map.fetch!(params, "registry_address"),
+        "token_id" => Map.fetch!(params, "token_id"),
         "audience" => @audience,
-        "nonce" => Map.fetch!(params, :nonce),
-        "message" => Map.fetch!(params, :message),
-        "signature" => Map.fetch!(params, :signature)
+        "nonce" => Map.fetch!(params, "nonce"),
+        "message" => Map.fetch!(params, "message"),
+        "signature" => Map.fetch!(params, "signature")
       }
 
     case proxy("/v1/agent/siwa/verify", payload) do

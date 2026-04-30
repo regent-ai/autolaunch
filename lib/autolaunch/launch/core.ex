@@ -151,21 +151,21 @@ defmodule Autolaunch.Launch.Core do
 
   def preview_launch(attrs, %HumanUser{} = human) do
     with :ok <- ensure_authenticated_human(human),
-         agent when is_map(agent) <- get_agent(human, Map.get(attrs, :agent_id)),
+         agent when is_map(agent) <- get_agent(human, Map.get(attrs, "agent_id")),
          :ok <- ensure_agent_eligible(agent),
          {:ok, token_name} <-
-           required_text(Map.get(attrs, :token_name), 80, :token_name_required),
+           required_text(Map.get(attrs, "token_name"), 80, :token_name_required),
          {:ok, token_symbol} <-
-           required_text(Map.get(attrs, :token_symbol), 16, :token_symbol_required),
+           required_text(Map.get(attrs, "token_symbol"), 16, :token_symbol_required),
          {:ok, minimum_raise_decimal} <-
-           required_decimal(Map.get(attrs, :minimum_raise_usdc), :minimum_raise_required),
+           required_decimal(Map.get(attrs, "minimum_raise_usdc"), :minimum_raise_required),
          :ok <- ensure_positive_decimal(minimum_raise_decimal, :minimum_raise_required),
          {:ok, minimum_raise_raw} <- decimal_to_wei(minimum_raise_decimal),
          {:ok, agent_safe_address} <-
-           required_address(Map.get(attrs, :agent_safe_address)),
+           required_address(Map.get(attrs, "agent_safe_address")),
          {:ok, chain} <- normalize_launch_chain() do
-      total_supply = normalize_total_supply(Map.get(attrs, :total_supply))
-      launch_notes = normalize_optional_text(Map.get(attrs, :launch_notes), 1_000)
+      total_supply = normalize_total_supply(Map.get(attrs, "total_supply"))
+      launch_notes = normalize_optional_text(Map.get(attrs, "launch_notes"), 1_000)
       trust = trust_summary(agent.agent_id, agent, %{ens_name: agent.ens})
 
       preview = %{
@@ -228,27 +228,27 @@ defmodule Autolaunch.Launch.Core do
   def create_launch_job(attrs, %HumanUser{} = human, request_ip, opts) do
     with :ok <- ensure_authenticated_human(human),
          {:ok, preview} <- preview_launch(attrs, human),
-         {:ok, wallet_address} <- required_address(Map.get(attrs, :wallet_address)),
-         {:ok, registry_address} <- required_address(Map.get(attrs, :registry_address)),
-         {:ok, token_id} <- required_text(Map.get(attrs, :token_id), 255, :token_id_required),
-         {:ok, message} <- required_text(Map.get(attrs, :message), 8_000, :message_required),
+         {:ok, wallet_address} <- required_address(Map.get(attrs, "wallet_address")),
+         {:ok, registry_address} <- required_address(Map.get(attrs, "registry_address")),
+         {:ok, token_id} <- required_text(Map.get(attrs, "token_id"), 255, :token_id_required),
+         {:ok, message} <- required_text(Map.get(attrs, "message"), 8_000, :message_required),
          {:ok, signature} <-
-           required_text(Map.get(attrs, :signature), 4_000, :signature_required),
-         {:ok, nonce} <- required_text(Map.get(attrs, :nonce), 255, :nonce_required),
+           required_text(Map.get(attrs, "signature"), 4_000, :signature_required),
+         {:ok, nonce} <- required_text(Map.get(attrs, "nonce"), 255, :nonce_required),
          :ok <- ensure_wallet_matches_human(human, wallet_address),
          {:ok, chain_id} <- launch_chain_id(),
          {:ok, _verification} <-
            Siwa.verify_wallet_signature(%{
-             wallet_address: wallet_address,
-             chain_id: chain_id,
-             registry_address: registry_address,
-             token_id: token_id,
-             nonce: nonce,
-             message: message,
-             signature: signature
+             "wallet_address" => wallet_address,
+             "chain_id" => chain_id,
+             "registry_address" => registry_address,
+             "token_id" => token_id,
+             "nonce" => nonce,
+             "message" => message,
+             "signature" => signature
            }) do
-      issued_at = parse_issued_at(Map.get(attrs, :issued_at))
-      broadcast = truthy?(Map.get(attrs, :broadcast, true))
+      issued_at = parse_issued_at(Map.get(attrs, "issued_at"))
+      broadcast = truthy?(Map.get(attrs, "broadcast", true))
       job_id = "job_" <> Ecto.UUID.generate()
 
       agent = preview.agent

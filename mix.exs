@@ -81,7 +81,7 @@ defmodule Autolaunch.MixProject do
         "esbuild autolaunch --minify",
         "phx.digest"
       ],
-      precommit: ["compile --warnings-as-errors", "format", "test", "autolaunch.release_gate"]
+      precommit: ["autolaunch.release_gate"]
     ]
   end
 

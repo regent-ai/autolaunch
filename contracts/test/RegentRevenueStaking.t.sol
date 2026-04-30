@@ -24,6 +24,8 @@ contract RegentRevenueStakingTest is Test {
     MintableBurnableERC20Mock internal usdc;
     RegentRevenueStaking internal staking;
 
+    event AccountSynced(address indexed account);
+
     function setUp() external {
         regent = new MintableBurnableERC20Mock("Regent", "REGENT", 18);
         usdc = new MintableBurnableERC20Mock("USD Coin", "USDC", 6);
@@ -36,6 +38,13 @@ contract RegentRevenueStakingTest is Test {
         regent.mint(BOB, 300 * REGENT);
         regent.mint(CAROL, 500 * REGENT);
         regent.mint(FUNDER, 10_000 * REGENT);
+    }
+
+    function testSyncEmitsAccountSynced() external {
+        vm.expectEmit(true, false, false, true, address(staking));
+        emit AccountSynced(ALICE);
+
+        staking.sync(ALICE);
     }
 
     function testSingleStakerDepositAndClaimUsesFixedSupplyDenominator() external {
@@ -411,8 +420,11 @@ contract RegentRevenueStakingTest is Test {
         smallStaking.claimAndRestakeRegent();
     }
 
-    function testPauseBlocksFundingClaimsAndStakeButNotUnstake() external {
+    function testPauseBlocksFundingStakeAndRestakeButNotClaimsOrUnstake() external {
         _stake(ALICE, 100 * REGENT);
+        usdc.mint(address(this), 1000 * USDC);
+        usdc.approve(address(staking), 1000 * USDC);
+        staking.depositUSDC(1000 * USDC, bytes32("manual"), bytes32("pause"));
         _fundRegentRewards(1000 * REGENT);
 
         vm.prank(OWNER);
@@ -423,9 +435,13 @@ contract RegentRevenueStakingTest is Test {
         vm.prank(OWNER);
         staking.setPaused(true);
 
-        vm.expectRevert("PAUSED");
         vm.prank(ALICE);
-        staking.claimRegent(ALICE);
+        uint256 usdcClaimed = staking.claimUSDC(ALICE);
+        assertGt(usdcClaimed, 0);
+
+        vm.prank(ALICE);
+        uint256 claimed = staking.claimRegent(ALICE);
+        assertGt(claimed, 0);
 
         vm.expectRevert("PAUSED");
         vm.prank(ALICE);
@@ -446,7 +462,7 @@ contract RegentRevenueStakingTest is Test {
         staking.unstake(50 * REGENT, ALICE);
 
         assertEq(staking.stakedBalance(ALICE), 50 * REGENT);
-        assertEq(regent.balanceOf(ALICE), 150 * REGENT);
+        assertEq(regent.balanceOf(ALICE), 150 * REGENT + claimed);
     }
 
     function testUnstakeStillWorksWhileRegentClaimsAreUnderfunded() external {

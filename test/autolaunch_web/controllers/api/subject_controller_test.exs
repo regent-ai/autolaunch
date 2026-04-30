@@ -9,6 +9,9 @@ defmodule AutolaunchWeb.Api.SubjectControllerTest do
   @splitter "0x9999999999999999999999999999999999999999"
   @token "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
   @wallet "0x1111111111111111111111111111111111111111"
+  @agent_registry "0x9999000000000000000000000000000000008004"
+  @agent_token_id "42"
+  @receipt_secret "subject-controller-agent-secret"
 
   defmodule FakeRpc do
     @splitter "0x9999999999999999999999999999999999999999"
@@ -82,7 +85,12 @@ defmodule AutolaunchWeb.Api.SubjectControllerTest do
     end
 
     def tx_receipt(_chain_id, _tx_hash, _opts), do: {:ok, Process.get(:fake_rpc_receipt)}
-    def get_logs(_chain_id, _filter, _opts), do: {:ok, []}
+
+    def get_logs(_chain_id, %{"topics" => [topic | _]} = _filter, _opts) do
+      {:ok, Process.get({:fake_rpc_logs, topic}, Process.get(:fake_rpc_logs, []))}
+    end
+
+    def get_logs(_chain_id, _filter, _opts), do: {:ok, Process.get(:fake_rpc_logs, [])}
 
     defp encode_uint(value) do
       value
@@ -117,8 +125,21 @@ defmodule AutolaunchWeb.Api.SubjectControllerTest do
   setup %{conn: conn} do
     previous_adapter = Application.get_env(:autolaunch, :cca_rpc_adapter)
     previous_launch = Application.get_env(:autolaunch, :launch, [])
+    previous_siwa = Application.get_env(:autolaunch, :siwa, [])
+    port = available_port()
+
+    start_supervised!(
+      {Bandit, plug: Autolaunch.TestSupport.SiwaBrokerStub, ip: {127, 0, 0, 1}, port: port}
+    )
 
     Application.put_env(:autolaunch, :cca_rpc_adapter, FakeRpc)
+
+    Application.put_env(:autolaunch, :siwa,
+      internal_url: "http://127.0.0.1:#{port}",
+      shared_secret: @receipt_secret,
+      http_connect_timeout_ms: 2_000,
+      http_receive_timeout_ms: 5_000
+    )
 
     Application.put_env(
       :autolaunch,
@@ -138,6 +159,7 @@ defmodule AutolaunchWeb.Api.SubjectControllerTest do
       end
 
       Application.put_env(:autolaunch, :launch, previous_launch)
+      Application.put_env(:autolaunch, :siwa, previous_siwa)
     end)
 
     {:ok, human} =
@@ -240,6 +262,108 @@ defmodule AutolaunchWeb.Api.SubjectControllerTest do
                  "is_default" => true,
                  "usdc_balance" => "7",
                  "usdc_balance_raw" => 7_000_000
+               }
+             ]
+           } = json_response(conn, 200)
+  end
+
+  test "agent accounting tags returns payment labels from ingress logs", %{conn: conn} do
+    Process.put({:fake_rpc_logs, Autolaunch.Revenue.Abi.accounting_tag_recorded_topic0()}, [
+      %{
+        address: "0x7777777777777777777777777777777777777777",
+        topics: [
+          Autolaunch.Revenue.Abi.accounting_tag_recorded_topic0(),
+          encode_topic_uint(0),
+          encode_topic_address(@wallet)
+        ],
+        data: encode_log_words([12, 1_250_000, "0x" <> String.duplicate("ab", 32)]),
+        block_number: 12,
+        transaction_hash: "0x" <> String.duplicate("1", 64),
+        log_index: 0
+      },
+      %{
+        address: "0x7777777777777777777777777777777777777777",
+        topics: [
+          Autolaunch.Revenue.Abi.accounting_tag_recorded_topic0(),
+          encode_topic_uint(1),
+          encode_topic_address(@wallet)
+        ],
+        data: encode_log_words([13, 2_000_000, "0x" <> String.duplicate("cd", 32)]),
+        block_number: 13,
+        transaction_hash: "0x" <> String.duplicate("2", 64),
+        log_index: 1
+      }
+    ])
+
+    Process.put({:fake_rpc_logs, Autolaunch.Revenue.Abi.usdc_revenue_deposited_topic0()}, [
+      %{
+        address: @splitter,
+        topics: [
+          Autolaunch.Revenue.Abi.usdc_revenue_deposited_topic0(),
+          Autolaunch.Revenue.Abi.direct_deposit_source_kind_topic(),
+          encode_topic_address(@wallet),
+          encode_topic_uint(0)
+        ],
+        data:
+          encode_log_words([
+            3_500_000,
+            0,
+            1_000,
+            0,
+            0,
+            0,
+            0,
+            "0x" <> String.duplicate("ef", 32)
+          ]),
+        block_number: 14,
+        transaction_hash: "0x" <> String.duplicate("3", 64),
+        log_index: 2
+      }
+    ])
+
+    conn =
+      conn
+      |> with_agent_headers()
+      |> get("/v1/agent/subjects/#{@subject_id}/accounting-tags?from_block=12&limit=3")
+
+    assert %{
+             "ok" => true,
+             "subject_id" => @subject_id,
+             "chain_id" => 84_532,
+             "from_block" => 12,
+             "cursor" => 0,
+             "limit" => 3,
+             "next_cursor" => 3,
+             "has_more" => false,
+             "accounting_tags" => [
+               %{
+                 "source" => "ingress_deposit",
+                 "ingress_address" => "0x7777777777777777777777777777777777777777",
+                 "tag_index" => 0,
+                 "block_number" => 12,
+                 "depositor" => @wallet,
+                 "amount_raw" => 1_250_000,
+                 "amount" => "1.25",
+                 "label" => "0x" <> _,
+                 "transaction_hash" => "0x" <> _
+               },
+               %{
+                 "source" => "ingress_deposit",
+                 "ingress_address" => "0x7777777777777777777777777777777777777777",
+                 "tag_index" => 1,
+                 "block_number" => 13,
+                 "amount_raw" => 2_000_000,
+                 "amount" => "2"
+               },
+               %{
+                 "source" => "direct_deposit",
+                 "ingress_address" => nil,
+                 "splitter_address" => @splitter,
+                 "tag_index" => nil,
+                 "block_number" => 14,
+                 "depositor" => @wallet,
+                 "amount_raw" => 3_500_000,
+                 "amount" => "3.5"
                }
              ]
            } = json_response(conn, 200)
@@ -406,7 +530,7 @@ defmodule AutolaunchWeb.Api.SubjectControllerTest do
       transaction_hash: tx_hash,
       from: @wallet,
       to: "0x7777777777777777777777777777777777777777",
-      input: Autolaunch.Revenue.Abi.encode_sweep_usdc(@subject_id),
+      input: Autolaunch.Revenue.Abi.encode_sweep_usdc(),
       value: "0x0",
       block_number: nil
     })
@@ -441,4 +565,69 @@ defmodule AutolaunchWeb.Api.SubjectControllerTest do
     assert %{"ok" => false, "error" => %{"code" => "invalid_transaction_hash"}} =
              json_response(conn, 422)
   end
+
+  defp with_agent_headers(conn) do
+    conn
+    |> put_req_header("accept", "application/json")
+    |> put_req_header("x-agent-wallet-address", @wallet)
+    |> put_req_header("x-agent-chain-id", "84532")
+    |> put_req_header("x-agent-registry-address", @agent_registry)
+    |> put_req_header("x-agent-token-id", @agent_token_id)
+    |> put_req_header("x-siwa-receipt", receipt_token("autolaunch"))
+  end
+
+  defp receipt_token(audience) do
+    now_ms = DateTime.utc_now() |> DateTime.to_unix(:millisecond)
+
+    payload =
+      %{
+        "typ" => "siwa_receipt",
+        "jti" => Ecto.UUID.generate(),
+        "sub" => @wallet,
+        "aud" => audience,
+        "verified" => "onchain",
+        "iat" => now_ms,
+        "exp" => now_ms + 600_000,
+        "chain_id" => 84_532,
+        "nonce" => "nonce-#{System.unique_integer([:positive])}",
+        "key_id" => @wallet,
+        "registry_address" => @agent_registry,
+        "token_id" => @agent_token_id
+      }
+      |> Jason.encode!()
+      |> Base.url_encode64(padding: false)
+
+    signature =
+      :crypto.mac(:hmac, :sha256, @receipt_secret, payload)
+      |> Base.url_encode64(padding: false)
+
+    "#{payload}.#{signature}"
+  end
+
+  defp available_port do
+    {:ok, socket} =
+      :gen_tcp.listen(0, [:binary, packet: :raw, active: false, ip: {127, 0, 0, 1}])
+
+    {:ok, port} = :inet.port(socket)
+    :ok = :gen_tcp.close(socket)
+    port
+  end
+
+  defp encode_log_words(values) do
+    "0x" <> Enum.map_join(values, "", &encode_word/1)
+  end
+
+  defp encode_topic_uint(value), do: "0x" <> encode_word(value)
+
+  defp encode_topic_address("0x" <> address) do
+    "0x" <> String.pad_leading(String.downcase(address), 64, "0")
+  end
+
+  defp encode_word(value) when is_integer(value) and value >= 0 do
+    value
+    |> Integer.to_string(16)
+    |> String.pad_leading(64, "0")
+  end
+
+  defp encode_word("0x" <> hex) when byte_size(hex) == 64, do: String.downcase(hex)
 end

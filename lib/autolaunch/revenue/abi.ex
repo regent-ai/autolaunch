@@ -1,6 +1,10 @@
 defmodule Autolaunch.Revenue.Abi do
   @moduledoc false
 
+  @accounting_tag_recorded_topic0 "0xae9e7bd0e01f8c044658ed6a1226227cc52a7cd7a92be97733bf4be855780c64"
+  @usdc_revenue_deposited_topic0 "0xfc73d207b0a0d30ff602b1a48023083a572a95cbbf70c466e34c184382c69db4"
+  @direct_deposit_source_kind_topic "0x0000000000000000000000000000000000000000000000000000000000000000"
+
   @selectors %{
     ingress_account_count: "0xca23dd76",
     ingress_account_at: "0xb87d9995",
@@ -38,10 +42,18 @@ defmodule Autolaunch.Revenue.Abi do
     claim_usdc: "0x42852610",
     claim_stake_token: "0xa47b7e27",
     claim_and_restake_stake_token: "0x9de65fcc",
-    sweep_usdc: "0xbe25fb30",
+    sweep_usdc: "0xf4d1e0cb",
+    ingress_deposit_usdc: "0xe96ba32e",
+    accounting_tag_count: "0x13c5797a",
+    accounting_tag_at: "0x33a00799",
+    accounting_tags_since_block: "0x1e679e7b",
     balance_of: "0x70a08231",
     can_manage_subject: "0x41c2ab07"
   }
+
+  def accounting_tag_recorded_topic0, do: @accounting_tag_recorded_topic0
+  def usdc_revenue_deposited_topic0, do: @usdc_revenue_deposited_topic0
+  def direct_deposit_source_kind_topic, do: @direct_deposit_source_kind_topic
 
   def selector(name), do: Map.fetch!(@selectors, name)
 
@@ -95,9 +107,7 @@ defmodule Autolaunch.Revenue.Abi do
     selector(:claim_and_restake_stake_token)
   end
 
-  def encode_sweep_usdc(source_ref) do
-    encode_bytes32_call(:sweep_usdc, source_ref)
-  end
+  def encode_sweep_usdc, do: selector(:sweep_usdc)
 
   def decode_call_data("0x" <> data) when is_binary(data) and byte_size(data) >= 8 do
     <<selector::binary-size(8), args::binary>> = data
@@ -108,7 +118,7 @@ defmodule Autolaunch.Revenue.Abi do
       "42852610" -> decode_claim_usdc_call(args)
       "a47b7e27" -> decode_claim_stake_token_call(args)
       "9de65fcc" -> decode_claim_and_restake_stake_token_call(args)
-      "be25fb30" -> decode_sweep_usdc_call(args)
+      "f4d1e0cb" -> decode_sweep_usdc_call(args)
       _ -> {:error, :unsupported_call_selector}
     end
   end
@@ -141,6 +151,88 @@ defmodule Autolaunch.Revenue.Abi do
   def decode_bytes32_word(<<"0x", hex::binary>>) when byte_size(hex) == 64 do
     {:ok, "0x" <> String.downcase(hex)}
   end
+
+  def decode_accounting_tag_log(%{
+        address: ingress_address,
+        topics: [@accounting_tag_recorded_topic0, tag_index_topic, depositor_topic],
+        data: data,
+        block_number: log_block_number,
+        transaction_hash: transaction_hash,
+        log_index: log_index
+      }) do
+    with {:ok, tag_index} <- decode_uint256_word(tag_index_topic),
+         {:ok, depositor} <- decode_address_word(depositor_topic),
+         {:ok, [block_number_word, amount_word, source_tag_word]} <- decode_words_payload(data, 3),
+         {:ok, block_number} <- decode_uint256_word(block_number_word),
+         {:ok, amount} <- decode_uint256_word(amount_word),
+         {:ok, source_tag} <- decode_bytes32_word(source_tag_word) do
+      {:ok,
+       %{
+         ingress_address: String.downcase(ingress_address),
+         tag_index: tag_index,
+         block_number: block_number,
+         log_block_number: log_block_number,
+         depositor: depositor,
+         amount_raw: amount,
+         label: source_tag,
+         source: "ingress_deposit",
+         transaction_hash: transaction_hash,
+         log_index: log_index
+       }}
+    else
+      _ -> {:error, :invalid_accounting_tag_log}
+    end
+  end
+
+  def decode_accounting_tag_log(_log), do: {:error, :invalid_accounting_tag_log}
+
+  def decode_direct_revenue_log(%{
+        address: splitter_address,
+        topics: [
+          @usdc_revenue_deposited_topic0,
+          @direct_deposit_source_kind_topic,
+          depositor_topic,
+          _source_ref_topic
+        ],
+        data: data,
+        block_number: log_block_number,
+        transaction_hash: transaction_hash,
+        log_index: log_index
+      }) do
+    with {:ok, depositor} <- decode_address_word(depositor_topic),
+         {:ok,
+          [
+            amount_word,
+            _protocol_amount_word,
+            _eligible_share_bps_word,
+            _staker_eligible_amount_word,
+            _treasury_reserved_amount_word,
+            _staker_entitlement_word,
+            _treasury_residual_amount_word,
+            source_tag_word
+          ]} <- decode_words_payload(data, 8),
+         {:ok, amount} <- decode_uint256_word(amount_word),
+         {:ok, source_tag} <- decode_bytes32_word(source_tag_word) do
+      {:ok,
+       %{
+         splitter_address: String.downcase(splitter_address),
+         ingress_address: nil,
+         tag_index: nil,
+         block_number: log_block_number,
+         log_block_number: log_block_number,
+         depositor: depositor,
+         amount_raw: amount,
+         label: source_tag,
+         source: "direct_deposit",
+         transaction_hash: transaction_hash,
+         log_index: log_index
+       }}
+    else
+      _ -> {:error, :invalid_direct_revenue_log}
+    end
+  end
+
+  def decode_direct_revenue_log(_log), do: {:error, :invalid_direct_revenue_log}
 
   def encode_uint256(value) when is_integer(value) and value >= 0 do
     value
@@ -194,9 +286,8 @@ defmodule Autolaunch.Revenue.Abi do
   end
 
   defp decode_sweep_usdc_call(args) do
-    with {:ok, [source_ref_word]} <- decode_words(args, 1),
-         {:ok, source_ref} <- decode_bytes32_word(source_ref_word) do
-      {:ok, %{action: :sweep_ingress, source_ref: source_ref}}
+    with {:ok, []} <- decode_words(args, 0) do
+      {:ok, %{action: :sweep_ingress}}
     end
   end
 
@@ -220,6 +311,9 @@ defmodule Autolaunch.Revenue.Abi do
       {:error, :invalid_call_data}
     end
   end
+
+  defp decode_words_payload("0x" <> args, expected_count), do: decode_words(args, expected_count)
+  defp decode_words_payload(_args, _expected_count), do: {:error, :invalid_call_data}
 
   defp split_words(_data, 0, acc), do: Enum.reverse(acc)
 

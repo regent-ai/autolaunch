@@ -130,6 +130,8 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
     event USDCTreasuryReservedWithdrawn(uint256 amount, address indexed recipient);
     event USDCProtocolReserveWithdrawn(uint256 amount, address indexed recipient);
     event USDCDustReassigned(uint256 amount, address indexed recipient);
+    event AccountSynced(address indexed account);
+    event SubjectLifecycleSynced(bool active, bool retiring, bool retired);
 
     constructor(
         address stakeToken_,
@@ -368,7 +370,7 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
         );
     }
 
-    function recordIngressSweep(uint256 amount, bytes32 sourceRef)
+    function recordIngressSweep(uint256 amount)
         external
         override
         whenNotPaused
@@ -388,7 +390,7 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
             RevenueSourceKind.AuthorizedIngress,
             msg.sender,
             bytes32("ingress_sweep"),
-            sourceRef
+            subjectId
         );
     }
 
@@ -421,6 +423,7 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
     function sync(address account) external whenNotPaused nonReentrant {
         require(account != address(0), "ACCOUNT_ZERO");
         _sync(account);
+        emit AccountSynced(account);
     }
 
     function previewClaimableUSDC(address account) public view override returns (uint256) {
@@ -461,12 +464,7 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
         return claimable <= available ? claimable : available;
     }
 
-    function claimUSDC(address recipient)
-        external
-        whenNotPaused
-        nonReentrant
-        returns (uint256 amount)
-    {
+    function claimUSDC(address recipient) external nonReentrant returns (uint256 amount) {
         require(recipient != address(0), "RECIPIENT_ZERO");
 
         _sync(msg.sender);
@@ -480,12 +478,7 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
         usdc.safeTransfer(recipient, amount);
     }
 
-    function claimStakeToken(address recipient)
-        external
-        whenNotPaused
-        nonReentrant
-        returns (uint256 amount)
-    {
+    function claimStakeToken(address recipient) external nonReentrant returns (uint256 amount) {
         require(recipient != address(0), "RECIPIENT_ZERO");
 
         _sync(msg.sender);
@@ -596,6 +589,7 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
             _settleStakeTokenEmissions();
             subjectLifecycleRetired = true;
             lastEmissionUpdate = block.timestamp;
+            emit SubjectLifecycleSynced(active_, retiring_, subjectLifecycleRetired);
             return;
         }
 
@@ -603,6 +597,7 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
             _settleStakeTokenEmissions();
         }
         lastEmissionUpdate = block.timestamp;
+        emit SubjectLifecycleSynced(active_, retiring_, subjectLifecycleRetired);
     }
 
     function availableStakeTokenRewardInventory() public view returns (uint256 available) {

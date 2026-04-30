@@ -498,7 +498,7 @@ defmodule Autolaunch.Lifecycle do
   defp merge_launch_auction(_response_auction, auction), do: auction
 
   defp map_value(nil, _key), do: nil
-  defp map_value(map, key), do: Map.get(map, key) || Map.get(map, Atom.to_string(key))
+  defp map_value(map, key), do: Map.get(map, key)
 
   defp address_or_nil(value) when is_binary(value), do: value
   defp address_or_nil(_value), do: nil
@@ -511,9 +511,6 @@ defmodule Autolaunch.Lifecycle do
   defp tx_hash_param(%{"tx_hash" => <<"0x", rest::binary>> = tx_hash})
        when byte_size(rest) == 64,
        do: {:ok, String.downcase(tx_hash)}
-
-  defp tx_hash_param(%{tx_hash: <<"0x", rest::binary>> = tx_hash}) when byte_size(rest) == 64,
-    do: {:ok, String.downcase(tx_hash)}
 
   defp tx_hash_param(_attrs), do: {:error, :invalid_transaction_hash}
 end

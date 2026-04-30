@@ -44,11 +44,11 @@ defmodule Autolaunch.Launch.Directory do
   end
 
   def list_auction_returns(filters \\ %{}, current_human \\ nil) do
-    limit = Core.normalize_limit(Map.get(filters, :limit), 20)
-    offset = Core.normalize_offset(Map.get(filters, :offset), 0)
+    limit = Core.normalize_limit(Map.get(filters, "limit"), 20)
+    offset = Core.normalize_offset(Map.get(filters, "offset"), 0)
 
     items =
-      list_auctions(%{mode: "failed_minimum", sort: "failure_recent"}, current_human)
+      list_auctions(%{"mode" => "failed_minimum", "sort" => "failure_recent"}, current_human)
       |> Enum.drop(offset)
       |> Enum.take(limit)
 
@@ -62,7 +62,7 @@ defmodule Autolaunch.Launch.Directory do
 
   defp filter_auctions(auctions, filters) do
     auctions
-    |> maybe_filter_mode(Map.get(filters, :mode, "biddable"))
+    |> maybe_filter_mode(Map.get(filters, "mode", "biddable"))
   end
 
   defp maybe_filter_mode(auctions, nil), do: Enum.filter(auctions, &(&1.phase == "biddable"))
@@ -75,7 +75,7 @@ defmodule Autolaunch.Launch.Directory do
   defp maybe_filter_mode(auctions, mode), do: Enum.filter(auctions, &(&1.phase == mode))
 
   defp sort_auctions(auctions, filters) do
-    case Map.get(filters, :sort, "newest") do
+    case Map.get(filters, "sort", "newest") do
       "oldest" ->
         Enum.sort_by(auctions, &Core.sort_timestamp(&1.started_at, &1.created_at), :asc)
 

@@ -6,6 +6,7 @@ defmodule Autolaunch.Release do
   @app :autolaunch
   @schema "autolaunch"
   @migration_source "schema_migrations_autolaunch"
+  @schema_search_path ~s(SET search_path TO "#{@schema}",public)
 
   def migrate do
     load_app()
@@ -49,6 +50,7 @@ defmodule Autolaunch.Release do
         |> Keyword.put(:url, direct_url)
         |> Keyword.put(:ssl, true)
         |> Keyword.put(:prepare, :unnamed)
+        |> Keyword.put(:after_connect, {Postgrex, :query!, [@schema_search_path, []]})
         |> Keyword.put(:pool_size, String.to_integer(System.get_env("ECTO_POOL_SIZE") || "5"))
         |> Keyword.put(:migration_default_prefix, @schema)
         |> Keyword.put(:migration_source, @migration_source)

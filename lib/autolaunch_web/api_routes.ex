@@ -4,6 +4,7 @@ defmodule AutolaunchWeb.ApiRoutes do
   defmacro product_api_routes(opts \\ []) do
     include_app_staking_prepare? = Keyword.get(opts, :include_app_staking_prepare?, false)
     include_human_browser_routes? = Keyword.get(opts, :include_human_browser_routes?, false)
+    include_agent_accounting_tags? = Keyword.get(opts, :include_agent_accounting_tags?, false)
 
     quote do
       get "/agents", AgentController, :index
@@ -18,6 +19,11 @@ defmodule AutolaunchWeb.ApiRoutes do
 
       get "/subjects/:id", SubjectController, :show
       get "/subjects/:id/ingress", SubjectController, :ingress
+
+      if unquote(include_agent_accounting_tags?) do
+        get "/subjects/:id/accounting-tags", SubjectController, :accounting_tags
+      end
+
       post "/subjects/:id/stake", SubjectController, :stake
       post "/subjects/:id/unstake", SubjectController, :unstake
       post "/subjects/:id/claim-usdc", SubjectController, :claim_usdc

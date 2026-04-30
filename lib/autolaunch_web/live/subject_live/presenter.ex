@@ -266,7 +266,7 @@ defmodule AutolaunchWeb.SubjectLive.Presenter do
   defp subject_value(subject, key) when is_map(subject), do: Map.get(subject, key, "0")
 
   defp proof_value(proof, key) do
-    case Map.get(proof, key) || Map.get(proof, Atom.to_string(key)) do
+    case Map.get(proof, key) do
       nil -> "Unavailable"
       "" -> "Unavailable"
       value -> to_string(value)

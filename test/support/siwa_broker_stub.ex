@@ -19,7 +19,7 @@ defmodule Autolaunch.TestSupport.SiwaBrokerStub do
     audience = List.first(get_req_header(conn, "x-siwa-audience"))
     secret = Application.get_env(:autolaunch, :siwa, []) |> Keyword.get(:shared_secret)
 
-    case Autolaunch.SiwaReceipt.verify_request_headers(headers,
+    case Autolaunch.TestSupport.SiwaReceipt.verify_request_headers(headers,
            audience: audience,
            secret: secret
          ) do

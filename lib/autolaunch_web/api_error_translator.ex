@@ -147,7 +147,8 @@ defmodule AutolaunchWeb.ApiErrorTranslator do
     do: {:unprocessable_entity, "agentbook_invalid", message}
 
   def translate(:agentbook, {:transaction_pending, tx_hash}),
-    do: {:accepted, "transaction_pending", "Transaction is still pending", %{tx_hash: tx_hash}}
+    do:
+      {:accepted, "transaction_pending", "Transaction is still pending", %{"tx_hash" => tx_hash}}
 
   def translate(:agentbook, reason),
     do: {:unprocessable_entity, "agentbook_invalid", describe(reason)}
