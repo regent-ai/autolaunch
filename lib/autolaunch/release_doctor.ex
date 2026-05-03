@@ -15,8 +15,7 @@ defmodule Autolaunch.ReleaseDoctor do
     {:revenue_share_factory_address, "revenue share factory address"},
     {:revenue_ingress_factory_address, "revenue ingress factory address"},
     {:lbp_strategy_factory_address, "Regent LBP strategy factory address"},
-    {:token_factory_address, "token factory address"},
-    {:identity_registry_address, "identity registry address"}
+    {:token_factory_address, "token factory address"}
   ]
   @verifier_chain_address_checks [
     {:pool_manager_addresses, "Uniswap v4 pool manager address"},
@@ -24,7 +23,12 @@ defmodule Autolaunch.ReleaseDoctor do
     {:revenue_share_factory_addresses, "revenue share factory address"},
     {:revenue_ingress_factory_addresses, "revenue ingress factory address"},
     {:chain_rpc_urls, "RPC url"},
-    {:erc8004_subgraph_urls, "ERC-8004 subgraph url"},
+    {:erc8004_subgraph_urls, "ERC-8004 subgraph url"}
+  ]
+  @identity_warning_checks [
+    {:identity_registry_address, "identity registry address"}
+  ]
+  @verifier_identity_warning_checks [
     {:identity_registry_addresses, "identity registry address"}
   ]
   @trust_networks [
@@ -49,7 +53,9 @@ defmodule Autolaunch.ReleaseDoctor do
       ] ++
         launch_address_checks() ++
         launch_contract_code_checks() ++
-        launch_script_input_checks() ++ verifier_chain_address_checks() ++ trust_checks()
+        launch_identity_warning_checks() ++
+        launch_script_input_checks() ++
+        verifier_chain_address_checks() ++ verifier_identity_warning_checks() ++ trust_checks()
 
     %{
       ok: Enum.all?(checks, &blocking_check_ok?/1),
@@ -217,8 +223,7 @@ defmodule Autolaunch.ReleaseDoctor do
       {:revenue_share_factory_address, "revenue share factory"},
       {:revenue_ingress_factory_address, "revenue ingress factory"},
       {:lbp_strategy_factory_address, "Regent LBP strategy factory"},
-      {:token_factory_address, "token factory"},
-      {:identity_registry_address, "identity registry"}
+      {:token_factory_address, "token factory"}
     ]
     |> Enum.map(fn {key, label} ->
       address = InfrastructureConfig.launch_value(key)
@@ -226,30 +231,39 @@ defmodule Autolaunch.ReleaseDoctor do
     end)
   end
 
-  defp contract_code_check(chain_id, key, label, address) do
+  defp launch_identity_warning_checks do
+    chain_id = launch_chain_id()
+
+    Enum.map(@identity_warning_checks, fn {key, label} ->
+      address = InfrastructureConfig.launch_value(key)
+      contract_code_check(chain_id, key, label, address, :warning)
+    end)
+  end
+
+  defp contract_code_check(chain_id, key, label, address, severity \\ :error) do
     cond do
       not configured_address?(address) ->
-        fail_check("launch_code_#{key}", :error, "#{label} address is missing or invalid.")
+        fail_check("launch_code_#{key}", severity, "#{label} address is missing or invalid.")
 
       true ->
         case Rpc.code_at(chain_id, address) do
           {:ok, code} when is_binary(code) and code not in ["0x", "0X"] ->
-            ok_check("launch_code_#{key}", :error, "#{label} has contract code.")
+            ok_check("launch_code_#{key}", severity, "#{label} has contract code.")
 
           {:ok, _empty} ->
-            fail_check("launch_code_#{key}", :error, "#{label} has no contract code.")
+            fail_check("launch_code_#{key}", severity, "#{label} has no contract code.")
 
           {:error, reason} ->
             fail_check(
               "launch_code_#{key}",
-              :error,
+              severity,
               "#{label} code check failed: #{inspect(reason)}"
             )
 
           other ->
             fail_check(
               "launch_code_#{key}",
-              :error,
+              severity,
               "#{label} code check returned #{inspect(other)}"
             )
         end
@@ -297,6 +311,23 @@ defmodule Autolaunch.ReleaseDoctor do
           "launch_#{key}_#{chain_id}",
           :error,
           "#{chain_label} #{label} is missing or invalid."
+        )
+      end
+    end
+  end
+
+  defp verifier_identity_warning_checks do
+    for %{id: chain_id, label: chain_label} <- InfrastructureConfig.base_chains(),
+        {key, label} <- @verifier_identity_warning_checks do
+      value = InfrastructureConfig.chain_text(key, chain_id)
+
+      if configured_address?(value) do
+        ok_check("launch_#{key}_#{chain_id}", :warning, "#{chain_label} #{label} is configured.")
+      else
+        fail_check(
+          "launch_#{key}_#{chain_id}",
+          :warning,
+          "#{chain_label} #{label} is missing or invalid. Trust follow-up will stay unavailable until it is configured."
         )
       end
     end

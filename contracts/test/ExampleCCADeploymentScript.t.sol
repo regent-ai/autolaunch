@@ -4,12 +4,15 @@ pragma solidity ^0.8.26;
 import {Test} from "forge-std/Test.sol";
 
 import {AuctionParameters} from "src/cca/interfaces/IContinuousClearingAuction.sol";
+import {AutolaunchLaunchToken} from "src/AutolaunchLaunchToken.sol";
+import {AutolaunchTokenFactory} from "src/AutolaunchTokenFactory.sol";
 import {LaunchDeploymentController} from "src/LaunchDeploymentController.sol";
 import {LaunchFeeRegistry} from "src/LaunchFeeRegistry.sol";
 import {RegentLBPStrategy} from "src/RegentLBPStrategy.sol";
 import {RegentLBPStrategyFactory} from "src/RegentLBPStrategyFactory.sol";
 import {RevenueIngressFactory} from "src/revenue/RevenueIngressFactory.sol";
 import {RevenueShareFactory} from "src/revenue/RevenueShareFactory.sol";
+import {RevenueShareSplitterDeployer} from "src/revenue/RevenueShareSplitterDeployer.sol";
 import {RevenueShareSplitter} from "src/revenue/RevenueShareSplitter.sol";
 import {SubjectRegistry} from "src/revenue/SubjectRegistry.sol";
 import {ExampleCCADeploymentScript} from "scripts/ExampleCCADeploymentScript.s.sol";
@@ -17,7 +20,6 @@ import {
     MockContinuousClearingAuctionFactory
 } from "test/mocks/MockContinuousClearingAuctionFactory.sol";
 import {MockHookPoolManager} from "test/mocks/MockHookPoolManager.sol";
-import {MockLaunchToken, MockTokenFactory} from "test/mocks/MockTokenFactory.sol";
 
 contract ExampleCCADeploymentScriptTest is Test {
     address internal constant AGENT_SAFE = address(0x4321);
@@ -37,7 +39,7 @@ contract ExampleCCADeploymentScriptTest is Test {
     RevenueShareFactory internal revenueShareFactory;
     RevenueIngressFactory internal revenueIngressFactory;
     RegentLBPStrategyFactory internal strategyFactory;
-    MockTokenFactory internal tokenFactory;
+    AutolaunchTokenFactory internal tokenFactory;
 
     function setUp() external {
         script = new ExampleCCADeploymentScript();
@@ -45,11 +47,13 @@ contract ExampleCCADeploymentScriptTest is Test {
         auctionFactory = new MockContinuousClearingAuctionFactory();
         poolManager = new MockHookPoolManager();
         subjectRegistry = new SubjectRegistry(address(this));
-        revenueShareFactory = new RevenueShareFactory(address(script), USDC, subjectRegistry);
+        revenueShareFactory = new RevenueShareFactory(
+            address(script), USDC, subjectRegistry, new RevenueShareSplitterDeployer()
+        );
         revenueIngressFactory =
             new RevenueIngressFactory(USDC, address(subjectRegistry), address(script));
         strategyFactory = new RegentLBPStrategyFactory(address(script));
-        tokenFactory = new MockTokenFactory();
+        tokenFactory = new AutolaunchTokenFactory();
         subjectRegistry.transferOwnership(address(revenueShareFactory));
 
         vm.prank(address(script));
@@ -100,7 +104,7 @@ contract ExampleCCADeploymentScriptTest is Test {
         uint256 expectedReserveAmount = (TOTAL_SUPPLY * 500) / 10_000;
         uint256 expectedVestingAmount = TOTAL_SUPPLY - expectedAuctionAmount - expectedReserveAmount;
 
-        MockLaunchToken token = MockLaunchToken(result.tokenAddress);
+        AutolaunchLaunchToken token = AutolaunchLaunchToken(result.tokenAddress);
         assertEq(token.balanceOf(result.auctionAddress), expectedAuctionAmount);
         assertEq(token.balanceOf(result.strategyAddress), expectedReserveAmount);
         assertEq(token.balanceOf(result.vestingWalletAddress), expectedVestingAmount);
@@ -147,7 +151,11 @@ contract ExampleCCADeploymentScriptTest is Test {
         assertEq(parameters.requiredCurrencyRaised, 1 ether);
         assertEq(parameters.claimBlock, parameters.endBlock + 64);
         assertEq(parameters.validationHook, address(0));
-        assertEq(parameters.endBlock - parameters.startBlock, 9258);
+        assertEq(parameters.endBlock - parameters.startBlock, 86_400);
+        assertEq(
+            parameters.auctionStepsData,
+            abi.encodePacked(uint24(115), uint40(22_400), uint24(116), uint40(64_000))
+        );
 
         assertEq(
             revenueIngressFactory.defaultIngressOfSubject(result.subjectId),

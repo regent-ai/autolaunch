@@ -48,6 +48,7 @@ defmodule Mix.Tasks.Autolaunch.DoctorTest do
         cca_tick_spacing_q96: "79228162514264337593543950336",
         cca_floor_price_q96: "79228162514264337593543950336",
         auction_duration_blocks: "9258",
+        cca_start_block_offset: "300",
         cca_claim_block_offset: "64",
         lbp_migration_block_offset: "128",
         lbp_sweep_block_offset: "256",

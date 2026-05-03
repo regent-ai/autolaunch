@@ -216,12 +216,19 @@ contract LaunchPoolFeeHook is Owned, IHooks {
     ) internal pure returns (SwapFeeComputation memory feeData) {
         bool chargeCurrency0 = _unspecifiedCurrency0(params);
         int128 chargedDelta = chargeCurrency0 ? delta.amount0() : delta.amount1();
-        if (chargedDelta < 0) chargedDelta = -chargedDelta;
+        uint128 chargedAmount = _absUint128(chargedDelta);
 
         address chargedCurrency =
             chargeCurrency0 ? Currency.unwrap(key.currency0) : Currency.unwrap(key.currency1);
         require(chargedCurrency == quoteToken, "QUOTE_TOKEN_MISMATCH");
-        feeData = _feeData(quoteToken, uint128(chargedDelta), params.amountSpecified < 0);
+        feeData = _feeData(quoteToken, chargedAmount, params.amountSpecified < 0);
+    }
+
+    function _absUint128(int128 value) internal pure returns (uint128) {
+        require(value != type(int128).min, "DELTA_OVERFLOW");
+        int128 magnitude = value < 0 ? -value : value;
+        // forge-lint: disable-next-line(unsafe-typecast)
+        return uint128(magnitude);
     }
 
     function _feeData(address quoteToken, uint256 chargedAmount, bool exactInput)
