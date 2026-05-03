@@ -4,8 +4,10 @@ pragma solidity ^0.8.26;
 import {Script} from "forge-std/Script.sol";
 import {console2} from "forge-std/console2.sol";
 
+import {AutolaunchTokenFactory} from "src/AutolaunchTokenFactory.sol";
 import {SubjectRegistry} from "src/revenue/SubjectRegistry.sol";
 import {RevenueShareFactory} from "src/revenue/RevenueShareFactory.sol";
+import {RevenueShareSplitterDeployer} from "src/revenue/RevenueShareSplitterDeployer.sol";
 import {RevenueIngressFactory} from "src/revenue/RevenueIngressFactory.sol";
 import {RegentLBPStrategyFactory} from "src/RegentLBPStrategyFactory.sol";
 import {BaseUsdc} from "src/libraries/BaseUsdc.sol";
@@ -22,7 +24,8 @@ contract DeployAutolaunchInfraScript is Script {
             SubjectRegistry subjectRegistry,
             RevenueShareFactory revenueShareFactory,
             RevenueIngressFactory revenueIngressFactory,
-            RegentLBPStrategyFactory strategyFactory
+            RegentLBPStrategyFactory strategyFactory,
+            AutolaunchTokenFactory tokenFactory
         )
     {
         ScriptConfig memory cfg = loadConfigFromEnv();
@@ -36,17 +39,21 @@ contract DeployAutolaunchInfraScript is Script {
             SubjectRegistry subjectRegistry,
             RevenueShareFactory revenueShareFactory,
             RevenueIngressFactory revenueIngressFactory,
-            RegentLBPStrategyFactory strategyFactory
+            RegentLBPStrategyFactory strategyFactory,
+            AutolaunchTokenFactory tokenFactory
         )
     {
         validateConfig(cfg);
 
         vm.startBroadcast(cfg.owner);
         subjectRegistry = new SubjectRegistry(cfg.owner);
-        revenueShareFactory = new RevenueShareFactory(cfg.owner, cfg.usdc, subjectRegistry);
+        RevenueShareSplitterDeployer splitterDeployer = new RevenueShareSplitterDeployer();
+        revenueShareFactory =
+            new RevenueShareFactory(cfg.owner, cfg.usdc, subjectRegistry, splitterDeployer);
         revenueIngressFactory =
             new RevenueIngressFactory(cfg.usdc, address(subjectRegistry), cfg.owner);
         strategyFactory = new RegentLBPStrategyFactory(cfg.owner);
+        tokenFactory = new AutolaunchTokenFactory();
         subjectRegistry.transferOwnership(address(revenueShareFactory));
         revenueShareFactory.acceptSubjectRegistryOwnership();
         vm.stopBroadcast();
@@ -72,7 +79,8 @@ contract DeployAutolaunchInfraScript is Script {
             SubjectRegistry subjectRegistry,
             RevenueShareFactory revenueShareFactory,
             RevenueIngressFactory revenueIngressFactory,
-            RegentLBPStrategyFactory strategyFactory
+            RegentLBPStrategyFactory strategyFactory,
+            AutolaunchTokenFactory tokenFactory
         ) = deploy(cfg);
 
         console2.log(
@@ -85,6 +93,8 @@ contract DeployAutolaunchInfraScript is Script {
                 vm.toString(address(revenueIngressFactory)),
                 "\",\"strategyFactoryAddress\":\"",
                 vm.toString(address(strategyFactory)),
+                "\",\"tokenFactoryAddress\":\"",
+                vm.toString(address(tokenFactory)),
                 "\",\"usdcAddress\":\"",
                 vm.toString(cfg.usdc),
                 "\",\"revenueShareFactoryOwner\":\"",

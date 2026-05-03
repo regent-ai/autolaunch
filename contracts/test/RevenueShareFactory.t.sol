@@ -4,6 +4,7 @@ pragma solidity ^0.8.26;
 import {Test} from "forge-std/Test.sol";
 
 import {RevenueShareFactory} from "src/revenue/RevenueShareFactory.sol";
+import {RevenueShareSplitterDeployer} from "src/revenue/RevenueShareSplitterDeployer.sol";
 import {SubjectRegistry} from "src/revenue/SubjectRegistry.sol";
 import {MintableBurnableERC20Mock} from "test/mocks/MintableBurnableERC20Mock.sol";
 
@@ -24,7 +25,9 @@ contract RevenueShareFactoryTest is Test {
 
     function setUp() external {
         subjectRegistry = new SubjectRegistry(OWNER);
-        factory = new RevenueShareFactory(OWNER, USDC, subjectRegistry);
+        factory = new RevenueShareFactory(
+            OWNER, USDC, subjectRegistry, new RevenueShareSplitterDeployer()
+        );
         stakeToken = new MintableBurnableERC20Mock("Agent", "AGENT", 18);
         stakeToken.mint(address(this), 1000 ether);
 
