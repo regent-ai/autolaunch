@@ -52,6 +52,22 @@ contract DeployRegentRevenueStakingScriptTest is Test {
         script.validateConfig(cfg);
     }
 
+    function testValidateConfigRejectsMissingTokenCode() external {
+        DeployRegentRevenueStakingScript.ScriptConfig memory cfg = _defaultScriptConfig();
+        cfg.regentToken = address(0xC0FFEE);
+
+        vm.expectRevert("REGENT_TOKEN_NO_CODE");
+        script.validateConfig(cfg);
+    }
+
+    function testValidateConfigRejectsRegentTokenAsUsdc() external {
+        DeployRegentRevenueStakingScript.ScriptConfig memory cfg = _defaultScriptConfig();
+        cfg.regentToken = address(usdc);
+
+        vm.expectRevert("REGENT_TOKEN_IS_USDC");
+        script.validateConfig(cfg);
+    }
+
     function testDeployCreatesConfiguredStakingContract() external {
         RegentRevenueStaking staking = script.deploy(_defaultScriptConfig());
 

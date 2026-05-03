@@ -10,7 +10,8 @@ contract RegentRevenueStaking is Owned {
     using SafeTransferLib for address;
 
     enum RevenueSourceKind {
-        DirectDeposit
+        DirectDeposit,
+        SurplusRedeposit
     }
 
     uint256 public constant BPS_DENOMINATOR = 10_000;
@@ -32,10 +33,17 @@ contract RegentRevenueStaking is Owned {
     uint256 public treasuryResidualUsdc;
     uint256 public totalUsdcReceived;
     uint256 public directDepositUsdc;
+    uint256 public surplusRedepositUsdc;
+    uint256 public totalUsdcCreditedToStakers;
+    uint256 public totalClaimedUsdc;
+    uint256 public totalSurplusUsdcRedeposited;
+    uint256 public totalSurplusUsdcSwept;
     uint256 public unclaimedRegentLiability;
     uint256 public totalEmittedRegent;
     uint256 public totalFundedRegent;
     uint256 public totalClaimedRegent;
+    uint256 public totalRewardTokenPoolSwept;
+    uint256 public totalRewardTokenPoolRefunded;
 
     mapping(address => uint256) public stakedBalance;
     mapping(address => uint256) public rewardDebtUsdc;
@@ -59,11 +67,22 @@ contract RegentRevenueStaking is Owned {
         bytes32 indexed sourceRef
     );
     event USDCRewardClaimed(address indexed account, uint256 amount, address recipient);
+    event USDCSurplusRedeposited(
+        uint256 amount,
+        uint256 stakerRewardsCredited,
+        uint256 treasuryResidualIncrease,
+        address indexed caller,
+        bytes32 sourceTag,
+        bytes32 indexed sourceRef
+    );
+    event USDCSurplusSwept(uint256 amount, address indexed recipient);
     event RewardTokenFunded(address indexed caller, uint256 amountReceived);
     event RewardTokenClaimed(address indexed account, uint256 amount, address recipient);
     event RewardTokenCompounded(
         address indexed account, uint256 amount, uint256 newStakeBalance, uint256 totalStaked
     );
+    event RewardTokenPoolSwept(uint256 amount, address indexed recipient);
+    event RewardTokenPoolRefunded(uint256 amount, address indexed recipient);
     event TreasuryResidualWithdrawn(uint256 amount, address indexed recipient);
     event AccountSynced(address indexed account);
 
@@ -76,7 +95,9 @@ contract RegentRevenueStaking is Owned {
     ) Owned(owner_) {
         require(stakeToken_ != address(0), "STAKE_TOKEN_ZERO");
         require(usdc_ != address(0), "USDC_ZERO");
+        require(stakeToken_ != usdc_, "STAKE_TOKEN_IS_USDC");
         require(treasuryRecipient_ != address(0), "TREASURY_ZERO");
+        require(owner_ != address(0), "OWNER_ZERO");
         require(revenueShareSupplyDenominator_ != 0, "SUPPLY_DENOMINATOR_ZERO");
 
         stakeToken = stakeToken_;
@@ -105,6 +126,7 @@ contract RegentRevenueStaking is Owned {
 
     function setTreasuryRecipient(address treasuryRecipient_) external onlyOwner {
         require(treasuryRecipient_ != address(0), "TREASURY_ZERO");
+        require(treasuryRecipient_ != address(this), "TREASURY_IS_SELF");
         treasuryRecipient = treasuryRecipient_;
         emit TreasuryRecipientSet(treasuryRecipient_);
     }
@@ -121,6 +143,7 @@ contract RegentRevenueStaking is Owned {
     function stake(uint256 amount, address receiver) external whenNotPaused nonReentrant {
         require(amount != 0, "AMOUNT_ZERO");
         require(receiver != address(0), "RECEIVER_ZERO");
+        require(receiver != address(this), "RECEIVER_IS_SELF");
 
         _sync(receiver);
         require(totalStaked + amount <= revenueShareSupplyDenominator, "STAKE_CAP_EXCEEDED");
@@ -135,6 +158,7 @@ contract RegentRevenueStaking is Owned {
     function unstake(uint256 amount, address recipient) external nonReentrant {
         require(amount != 0, "AMOUNT_ZERO");
         require(recipient != address(0), "RECIPIENT_ZERO");
+        require(recipient != address(this), "RECIPIENT_IS_SELF");
 
         _sync(msg.sender);
 
@@ -196,6 +220,7 @@ contract RegentRevenueStaking is Owned {
 
     function claimUSDC(address recipient) external nonReentrant returns (uint256 amount) {
         require(recipient != address(0), "RECIPIENT_ZERO");
+        require(recipient != address(this), "RECIPIENT_IS_SELF");
 
         _sync(msg.sender);
         amount = storedClaimableUsdc[msg.sender];
@@ -204,12 +229,14 @@ contract RegentRevenueStaking is Owned {
         }
 
         storedClaimableUsdc[msg.sender] = 0;
+        _recordUsdcClaim(amount);
         emit USDCRewardClaimed(msg.sender, amount, recipient);
         usdc.safeTransfer(recipient, amount);
     }
 
     function claimRegent(address recipient) external nonReentrant returns (uint256 amount) {
         require(recipient != address(0), "RECIPIENT_ZERO");
+        require(recipient != address(this), "RECIPIENT_IS_SELF");
 
         _sync(msg.sender);
         amount = storedClaimableRegent[msg.sender];
@@ -285,7 +312,9 @@ contract RegentRevenueStaking is Owned {
         nonReentrant
     {
         require(msg.sender == treasuryRecipient || msg.sender == owner, "ONLY_TREASURY");
+        require(amount != 0, "AMOUNT_ZERO");
         require(recipient != address(0), "RECIPIENT_ZERO");
+        require(recipient != address(this), "RECIPIENT_IS_SELF");
         require(treasuryResidualUsdc >= amount, "TREASURY_BALANCE_LOW");
 
         treasuryResidualUsdc -= amount;
@@ -293,7 +322,87 @@ contract RegentRevenueStaking is Owned {
         usdc.safeTransfer(recipient, amount);
     }
 
+    function sweepRegentRewardPool(uint256 amount) external whenNotPaused nonReentrant {
+        require(msg.sender == treasuryRecipient || msg.sender == owner, "ONLY_TREASURY");
+
+        totalRewardTokenPoolSwept += amount;
+        _withdrawRegentRewardPool(amount, treasuryRecipient);
+        emit RewardTokenPoolSwept(amount, treasuryRecipient);
+    }
+
+    function refundRegentRewardPool(uint256 amount, address recipient)
+        external
+        whenNotPaused
+        onlyOwner
+        nonReentrant
+    {
+        totalRewardTokenPoolRefunded += amount;
+        _withdrawRegentRewardPool(amount, recipient);
+        emit RewardTokenPoolRefunded(amount, recipient);
+    }
+
+    function redepositSurplusUSDC(uint256 amount, bytes32 sourceTag, bytes32 sourceRef)
+        external
+        whenNotPaused
+        onlyOwner
+        nonReentrant
+    {
+        require(amount != 0, "AMOUNT_ZERO");
+        require(surplusUsdc() >= amount, "SURPLUS_BALANCE_LOW");
+        _settleRegentEmissions();
+
+        uint256 beforeCredited = totalUsdcCreditedToStakers;
+        uint256 beforeTreasury = treasuryResidualUsdc;
+        totalSurplusUsdcRedeposited += amount;
+        _recordRevenue(amount, RevenueSourceKind.SurplusRedeposit, msg.sender, sourceTag, sourceRef);
+
+        emit USDCSurplusRedeposited(
+            amount,
+            totalUsdcCreditedToStakers - beforeCredited,
+            treasuryResidualUsdc - beforeTreasury,
+            msg.sender,
+            sourceTag,
+            sourceRef
+        );
+    }
+
+    function sweepSurplusUSDC(uint256 amount, address recipient)
+        external
+        whenNotPaused
+        nonReentrant
+    {
+        require(msg.sender == treasuryRecipient || msg.sender == owner, "ONLY_TREASURY");
+        require(amount != 0, "AMOUNT_ZERO");
+        require(recipient != address(0), "RECIPIENT_ZERO");
+        require(recipient != address(this), "RECIPIENT_IS_SELF");
+        require(surplusUsdc() >= amount, "SURPLUS_BALANCE_LOW");
+
+        totalSurplusUsdcSwept += amount;
+        emit USDCSurplusSwept(amount, recipient);
+        usdc.safeTransfer(recipient, amount);
+    }
+
+    function reservedUsdc() public view returns (uint256) {
+        uint256 stakerLiability = totalUsdcCreditedToStakers - totalClaimedUsdc;
+        return treasuryResidualUsdc + stakerLiability;
+    }
+
+    function surplusUsdc() public view returns (uint256) {
+        uint256 balance = IERC20SupplyMinimal(usdc).balanceOf(address(this));
+        uint256 reserved = reservedUsdc();
+        if (balance <= reserved) {
+            return 0;
+        }
+        unchecked {
+            return balance - reserved;
+        }
+    }
+
     function availableRegentRewardInventory() public view returns (uint256 available) {
+        return regentRewardPool();
+    }
+
+    function regentRewardPool() public view returns (uint256 available) {
         uint256 balance = IERC20SupplyMinimal(stakeToken).balanceOf(address(this));
         if (balance <= totalStaked) {
             return 0;
@@ -362,6 +471,8 @@ contract RegentRevenueStaking is Owned {
         totalUsdcReceived += received;
         if (sourceKind == RevenueSourceKind.DirectDeposit) {
             directDepositUsdc += received;
+        } else if (sourceKind == RevenueSourceKind.SurplusRedeposit) {
+            surplusRedepositUsdc += received;
         }
 
         uint256 stakerPool = received;
@@ -380,6 +491,7 @@ contract RegentRevenueStaking is Owned {
         }
 
         uint256 treasuryIncrease = received - creditedToStakers;
+        totalUsdcCreditedToStakers += creditedToStakers;
         treasuryResidualUsdc += treasuryIncrease;
 
         emit USDCRevenueDeposited(
@@ -391,6 +503,25 @@ contract RegentRevenueStaking is Owned {
             sourceTag,
             sourceRef
         );
+    }
+
+    function _recordUsdcClaim(uint256 amount) internal {
+        uint256 outstandingCredit = totalUsdcCreditedToStakers - totalClaimedUsdc;
+        if (amount > outstandingCredit) {
+            uint256 roundingOverage = amount - outstandingCredit;
+            treasuryResidualUsdc -= roundingOverage;
+            totalUsdcCreditedToStakers += roundingOverage;
+        }
+        totalClaimedUsdc += amount;
+    }
+
+    function _withdrawRegentRewardPool(uint256 amount, address recipient) internal {
+        require(amount != 0, "AMOUNT_ZERO");
+        require(recipient != address(0), "RECIPIENT_ZERO");
+        require(recipient != address(this), "RECIPIENT_IS_SELF");
+        require(regentRewardPool() >= amount, "REWARD_POOL_LOW");
+
+        _pushExactStakeToken(recipient, amount);
     }
 
     function _previewAccRewardPerTokenRegent() internal view returns (uint256 currentAcc) {

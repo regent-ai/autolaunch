@@ -67,6 +67,89 @@ contract RegentRevenueStakingTest is Test {
         assertEq(staking.previewClaimableUSDC(ALICE), 0);
     }
 
+    function testDirectTransferCreatesSurplusButNoClaimableUsdc() external {
+        _stake(ALICE, 200 * REGENT);
+
+        usdc.mint(address(staking), 1000 * USDC);
+
+        assertEq(staking.surplusUsdc(), 1000 * USDC);
+        assertEq(staking.reservedUsdc(), 0);
+        assertEq(staking.previewClaimableUSDC(ALICE), 0);
+        assertEq(staking.totalUsdcReceived(), 0);
+    }
+
+    function testRedepositSurplusCreditsStakersAndTreasury() external {
+        _stake(ALICE, 200 * REGENT);
+        usdc.mint(address(staking), 1000 * USDC);
+
+        vm.prank(OWNER);
+        staking.redepositSurplusUSDC(1000 * USDC, bytes32("surplus"), bytes32("manual"));
+
+        assertEq(staking.totalUsdcReceived(), 1000 * USDC);
+        assertEq(staking.surplusRedepositUsdc(), 1000 * USDC);
+        assertEq(staking.totalSurplusUsdcRedeposited(), 1000 * USDC);
+        assertEq(staking.totalUsdcCreditedToStakers(), 200 * USDC);
+        assertEq(staking.previewClaimableUSDC(ALICE), 200 * USDC);
+        assertEq(staking.treasuryResidualUsdc(), 800 * USDC);
+        assertEq(staking.reservedUsdc(), 1000 * USDC);
+        assertEq(staking.surplusUsdc(), 0);
+    }
+
+    function testSweepSurplusCannotWithdrawReservedStakerRewardsOrTreasuryResidual() external {
+        _stake(ALICE, 200 * REGENT);
+
+        usdc.mint(address(this), 1000 * USDC);
+        usdc.approve(address(staking), type(uint256).max);
+        staking.depositUSDC(1000 * USDC, bytes32("manual"), bytes32("round-1"));
+
+        assertEq(staking.reservedUsdc(), 1000 * USDC);
+        assertEq(staking.surplusUsdc(), 0);
+
+        vm.prank(OWNER);
+        vm.expectRevert("SURPLUS_BALANCE_LOW");
+        staking.sweepSurplusUSDC(1, TREASURY);
+
+        usdc.mint(address(staking), 10 * USDC);
+
+        vm.prank(TREASURY);
+        staking.sweepSurplusUSDC(10 * USDC, TREASURY);
+
+        assertEq(usdc.balanceOf(TREASURY), 10 * USDC);
+        assertEq(staking.reservedUsdc(), 1000 * USDC);
+        assertEq(staking.totalSurplusUsdcSwept(), 10 * USDC);
+    }
+
+    function testClaimUsdcReducesReservedUsdc() external {
+        _stake(ALICE, 200 * REGENT);
+        usdc.mint(address(staking), 1000 * USDC);
+
+        vm.prank(OWNER);
+        staking.redepositSurplusUSDC(1000 * USDC, bytes32("surplus"), bytes32("manual"));
+
+        assertEq(staking.reservedUsdc(), 1000 * USDC);
+
+        vm.prank(ALICE);
+        staking.claimUSDC(ALICE);
+
+        assertEq(staking.totalClaimedUsdc(), 200 * USDC);
+        assertEq(staking.reservedUsdc(), 800 * USDC);
+        assertEq(usdc.balanceOf(address(staking)), 800 * USDC);
+    }
+
+    function testRedepositSurplusUsesFixedDenominatorModel() external {
+        _stake(ALICE, 200 * REGENT);
+        _stake(BOB, 300 * REGENT);
+        usdc.mint(address(staking), 1000 * USDC);
+
+        vm.prank(OWNER);
+        staking.redepositSurplusUSDC(1000 * USDC, bytes32("surplus"), bytes32("manual"));
+
+        assertEq(staking.previewClaimableUSDC(ALICE), 200 * USDC);
+        assertEq(staking.previewClaimableUSDC(BOB), 300 * USDC);
+        assertEq(staking.treasuryResidualUsdc(), 500 * USDC);
+        assertEq(staking.totalUsdcCreditedToStakers(), 500 * USDC);
+    }
+
     function testMultipleStakersReceiveProRataShareAcrossDeposits() external {
         _stake(ALICE, 200 * REGENT);
         _stake(BOB, 300 * REGENT);
@@ -182,6 +265,98 @@ contract RegentRevenueStakingTest is Test {
 
         assertEq(usdc.balanceOf(TREASURY), 90 * USDC);
         assertEq(staking.treasuryResidualUsdc(), 0);
+    }
+
+    function testTreasuryWithdrawalRejectsZeroAmount() external {
+        vm.prank(TREASURY);
+        vm.expectRevert("AMOUNT_ZERO");
+        staking.withdrawTreasuryResidual(0, TREASURY);
+    }
+
+    function testRejectsSelfRecipients() external {
+        _stake(ALICE, 100 * REGENT);
+        usdc.mint(address(this), 100 * USDC);
+        usdc.approve(address(staking), type(uint256).max);
+        staking.depositUSDC(100 * USDC, bytes32("manual"), bytes32("round-1"));
+        _fundRegentRewards(1000 * REGENT);
+
+        vm.expectRevert("RECEIVER_IS_SELF");
+        vm.prank(ALICE);
+        staking.stake(REGENT, address(staking));
+
+        vm.expectRevert("RECIPIENT_IS_SELF");
+        vm.prank(ALICE);
+        staking.claimUSDC(address(staking));
+
+        vm.prank(OWNER);
+        staking.setEmissionAprBps(MAX_APR_BPS);
+        vm.warp(block.timestamp + 30 days);
+
+        vm.expectRevert("RECIPIENT_IS_SELF");
+        vm.prank(ALICE);
+        staking.claimRegent(address(staking));
+
+        vm.expectRevert("RECIPIENT_IS_SELF");
+        vm.prank(ALICE);
+        staking.unstake(REGENT, address(staking));
+
+        vm.expectRevert("TREASURY_IS_SELF");
+        vm.prank(OWNER);
+        staking.setTreasuryRecipient(address(staking));
+    }
+
+    function testConstructorRejectsRegentTokenAsUsdc() external {
+        vm.expectRevert("STAKE_TOKEN_IS_USDC");
+        new RegentRevenueStaking(
+            address(regent), address(regent), TREASURY, REVENUE_SHARE_SUPPLY_DENOMINATOR, OWNER
+        );
+    }
+
+    function testTreasuryWithdrawalRejectsZeroAndRecipientSelf() external {
+        usdc.mint(address(this), 100 * USDC);
+        usdc.approve(address(staking), type(uint256).max);
+        staking.depositUSDC(100 * USDC, bytes32("manual"), bytes32("round-1"));
+
+        vm.startPrank(TREASURY);
+        vm.expectRevert("AMOUNT_ZERO");
+        staking.withdrawTreasuryResidual(0, TREASURY);
+
+        vm.expectRevert("RECIPIENT_IS_SELF");
+        staking.withdrawTreasuryResidual(1 * USDC, address(staking));
+        vm.stopPrank();
+    }
+
+    function testUsdcClaimAndSurplusSweepRejectRecipientSelf() external {
+        _stake(ALICE, 200 * REGENT);
+        usdc.mint(address(this), 1000 * USDC);
+        usdc.approve(address(staking), type(uint256).max);
+        staking.depositUSDC(1000 * USDC, bytes32("manual"), bytes32("round-1"));
+        usdc.mint(address(staking), 10 * USDC);
+
+        vm.prank(ALICE);
+        vm.expectRevert("RECIPIENT_IS_SELF");
+        staking.claimUSDC(address(staking));
+
+        vm.prank(OWNER);
+        vm.expectRevert("RECIPIENT_IS_SELF");
+        staking.sweepSurplusUSDC(10 * USDC, address(staking));
+    }
+
+    function testStakeTokenExitPathsRejectRecipientSelf() external {
+        _stake(ALICE, 100 * REGENT);
+        _fundRegentRewards(1000 * REGENT);
+
+        vm.prank(OWNER);
+        staking.setEmissionAprBps(MAX_APR_BPS);
+        vm.warp(block.timestamp + 30 days);
+
+        vm.prank(ALICE);
+        vm.expectRevert("RECIPIENT_IS_SELF");
+        staking.claimRegent(address(staking));
+
+        vm.prank(ALICE);
+        vm.expectRevert("RECIPIENT_IS_SELF");
+        staking.unstake(1 * REGENT, address(staking));
     }
 
     function testEmissionAprAccruesAndClaimTransfersRegent() external {
@@ -489,6 +664,140 @@ contract RegentRevenueStakingTest is Test {
         assertEq(staking.availableRegentRewardInventory(), initialInventory + 250 * REGENT);
         assertEq(staking.stakedBalance(ALICE), 100 * REGENT);
         assertEq(staking.totalFundedRegent(), 250 * REGENT);
+    }
+
+    function testDirectRegentTransferBecomesRewardPoolInventory() external {
+        _stake(ALICE, 100 * REGENT);
+
+        regent.mint(address(staking), 250 * REGENT);
+
+        assertEq(staking.regentRewardPool(), 250 * REGENT);
+        assertEq(staking.availableRegentRewardInventory(), 250 * REGENT);
+        assertEq(staking.totalFundedRegent(), 0);
+
+        vm.prank(OWNER);
+        staking.setEmissionAprBps(MAX_APR_BPS);
+        vm.warp(block.timestamp + 30 days);
+
+        uint256 claimable = staking.previewClaimableRegent(ALICE);
+        assertGt(claimable, 0);
+        assertLe(claimable, 250 * REGENT);
+
+        vm.prank(ALICE);
+        uint256 claimed = staking.claimRegent(ALICE);
+
+        assertEq(claimed, claimable);
+        assertEq(regent.balanceOf(ALICE), 100 * REGENT + claimable);
+    }
+
+    function testOwnerCanRefundRegentRewardPoolWithoutTouchingPrincipal() external {
+        _stake(ALICE, 100 * REGENT);
+        regent.mint(address(staking), 250 * REGENT);
+
+        vm.prank(OWNER);
+        staking.refundRegentRewardPool(75 * REGENT, FUNDER);
+
+        assertEq(regent.balanceOf(FUNDER), 10_075 * REGENT);
+        assertEq(staking.totalRewardTokenPoolRefunded(), 75 * REGENT);
+        assertEq(staking.regentRewardPool(), 175 * REGENT);
+        assertEq(regent.balanceOf(address(staking)), 275 * REGENT);
+
+        vm.prank(ALICE);
+        staking.unstake(100 * REGENT, ALICE);
+
+        assertEq(regent.balanceOf(ALICE), 200 * REGENT);
+        assertEq(regent.balanceOf(address(staking)), 175 * REGENT);
+    }
+
+    function testOwnerCannotRefundMoreThanRegentRewardPool() external {
+        _stake(ALICE, 100 * REGENT);
+        regent.mint(address(staking), 25 * REGENT);
+
+        vm.prank(OWNER);
+        vm.expectRevert("REWARD_POOL_LOW");
+        staking.refundRegentRewardPool(26 * REGENT, FUNDER);
+
+        assertEq(staking.regentRewardPool(), 25 * REGENT);
+        assertEq(regent.balanceOf(address(staking)), 125 * REGENT);
+
+        vm.prank(ALICE);
+        staking.unstake(100 * REGENT, ALICE);
+
+        assertEq(regent.balanceOf(ALICE), 200 * REGENT);
+    }
+
+    function testTreasuryCanSweepRegentRewardPoolWithoutTouchingPrincipal() external {
+        _stake(ALICE, 100 * REGENT);
+        _fundRegentRewards(50 * REGENT);
+        regent.mint(address(staking), 25 * REGENT);
+
+        assertEq(staking.regentRewardPool(), 75 * REGENT);
+
+        vm.prank(TREASURY);
+        vm.expectRevert("REWARD_POOL_LOW");
+        staking.sweepRegentRewardPool(76 * REGENT);
+
+        vm.prank(TREASURY);
+        staking.sweepRegentRewardPool(75 * REGENT);
+
+        assertEq(staking.totalRewardTokenPoolSwept(), 75 * REGENT);
+        assertEq(regent.balanceOf(TREASURY), 75 * REGENT);
+        assertEq(staking.regentRewardPool(), 0);
+        assertEq(regent.balanceOf(address(staking)), staking.totalStaked());
+
+        vm.prank(ALICE);
+        staking.unstake(100 * REGENT, ALICE);
+
+        assertEq(regent.balanceOf(ALICE), 200 * REGENT);
+        assertEq(regent.balanceOf(address(staking)), 0);
+    }
+
+    function testRewardPoolWithdrawalsRejectBadCallersAndRecipients() external {
+        regent.mint(address(staking), 100 * REGENT);
+
+        vm.prank(ALICE);
+        vm.expectRevert("ONLY_TREASURY");
+        staking.sweepRegentRewardPool(1 * REGENT);
+
+        vm.prank(OWNER);
+        vm.expectRevert("RECIPIENT_ZERO");
+        staking.refundRegentRewardPool(1 * REGENT, address(0));
+
+        vm.prank(OWNER);
+        vm.expectRevert("RECIPIENT_IS_SELF");
+        staking.refundRegentRewardPool(1 * REGENT, address(staking));
+
+        vm.prank(OWNER);
+        vm.expectRevert("AMOUNT_ZERO");
+        staking.refundRegentRewardPool(0, FUNDER);
+    }
+
+    function testSurplusUsdcCanBeSwept() external {
+        usdc.mint(address(staking), 100 * USDC);
+
+        assertEq(staking.surplusUsdc(), 100 * USDC);
+
+        vm.prank(TREASURY);
+        staking.sweepSurplusUSDC(100 * USDC, TREASURY);
+
+        assertEq(usdc.balanceOf(TREASURY), 100 * USDC);
+        assertEq(staking.totalSurplusUsdcSwept(), 100 * USDC);
+        assertEq(staking.surplusUsdc(), 0);
+    }
+
+    function testSurplusUsdcCanBeRedepositedIntoAccounting() external {
+        _stake(ALICE, 200 * REGENT);
+        usdc.mint(address(staking), 1000 * USDC);
+
+        vm.prank(OWNER);
+        staking.redepositSurplusUSDC(1000 * USDC, bytes32("surplus"), bytes32("manual-redeposit"));
+
+        assertEq(staking.surplusUsdc(), 0);
+        assertEq(staking.totalSurplusUsdcRedeposited(), 1000 * USDC);
+        assertEq(staking.surplusRedepositUsdc(), 1000 * USDC);
+        assertEq(staking.previewClaimableUSDC(ALICE), 200 * USDC);
+        assertEq(staking.treasuryResidualUsdc(), 800 * USDC);
+        assertEq(staking.reservedUsdc(), usdc.balanceOf(address(staking)));
     }
 
     function testLiabilityTracksMaterializedRoundedClaims() external {

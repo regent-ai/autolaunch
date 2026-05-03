@@ -22,7 +22,8 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
     enum RevenueSourceKind {
         DirectDeposit,
         AuthorizedIngress,
-        LaunchFee
+        LaunchFee,
+        SurplusRedeposit
     }
 
     uint256 public constant BPS_DENOMINATOR = 10_000;
@@ -70,13 +71,20 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
     uint256 public totalEmittedStakeToken;
     uint256 public totalFundedStakeToken;
     uint256 public totalClaimedStakeToken;
+    uint256 public totalRewardTokenPoolSwept;
+    uint256 public totalRewardTokenPoolRefunded;
     uint256 public totalUsdcReceived;
     uint256 public directDepositUsdc;
     uint256 public verifiedIngressUsdc;
     uint256 public launchFeeUsdc;
+    uint256 public surplusRedepositUsdc;
     uint256 public regentSkimUsdc;
     uint256 public stakerEligibleInflowUsdc;
     uint256 public treasuryReservedInflowUsdc;
+    uint256 public totalUsdcCreditedToStakers;
+    uint256 public totalClaimedUsdc;
+    uint256 public totalSurplusUsdcRedeposited;
+    uint256 public totalSurplusUsdcSwept;
 
     mapping(address => uint256) public stakedBalance;
     mapping(address => uint256) public rewardDebtUsdc;
@@ -121,11 +129,22 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
         bytes32 indexed sourceRef
     );
     event USDCRewardClaimed(address indexed account, uint256 amount, address recipient);
+    event USDCSurplusRedeposited(
+        uint256 amount,
+        uint256 stakerRewardsCredited,
+        uint256 treasuryResidualIncrease,
+        address indexed caller,
+        bytes32 sourceTag,
+        bytes32 indexed sourceRef
+    );
+    event USDCSurplusSwept(uint256 amount, address indexed recipient);
     event RewardTokenFunded(address indexed caller, uint256 amountReceived);
     event RewardTokenClaimed(address indexed account, uint256 amount, address recipient);
     event RewardTokenCompounded(
         address indexed account, uint256 amount, uint256 newStakeBalance, uint256 totalStaked
     );
+    event RewardTokenPoolSwept(uint256 amount, address indexed recipient);
+    event RewardTokenPoolRefunded(uint256 amount, address indexed recipient);
     event USDCTreasuryResidualWithdrawn(uint256 amount, address indexed recipient);
     event USDCTreasuryReservedWithdrawn(uint256 amount, address indexed recipient);
     event USDCProtocolReserveWithdrawn(uint256 amount, address indexed recipient);
@@ -147,11 +166,13 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
     ) Owned(owner_) {
         require(stakeToken_ != address(0), "STAKE_TOKEN_ZERO");
         require(usdc_ != address(0), "USDC_ZERO");
+        require(stakeToken_ != usdc_, "STAKE_TOKEN_IS_USDC");
         require(ingressFactory_ != address(0), "INGRESS_FACTORY_ZERO");
         require(subjectRegistry_ != address(0), "SUBJECT_REGISTRY_ZERO");
         require(subjectId_ != bytes32(0), "SUBJECT_ZERO");
         require(treasuryRecipient_ != address(0), "TREASURY_ZERO");
         require(protocolRecipient_ != address(0), "PROTOCOL_ZERO");
+        require(owner_ != address(0), "OWNER_ZERO");
         require(revenueShareSupplyDenominator_ != 0, "SUPPLY_DENOMINATOR_ZERO");
 
         stakeToken = stakeToken_;
@@ -207,6 +228,7 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
 
     function proposeTreasuryRecipientRotation(address newRecipient) external onlyOwner {
         require(newRecipient != address(0), "TREASURY_ZERO");
+        require(newRecipient != address(this), "TREASURY_IS_SELF");
         require(newRecipient != treasuryRecipient, "TREASURY_UNCHANGED");
 
         uint64 eta = uint64(block.timestamp) + treasuryRotationDelay;
@@ -288,6 +310,7 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
 
     function setProtocolRecipient(address protocolRecipient_) external onlyOwner {
         require(protocolRecipient_ != address(0), "PROTOCOL_ZERO");
+        require(protocolRecipient_ != address(this), "PROTOCOL_IS_SELF");
         protocolRecipient = protocolRecipient_;
         emit ProtocolRecipientSet(protocolRecipient_);
     }
@@ -314,6 +337,7 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
     {
         require(amount != 0, "AMOUNT_ZERO");
         require(receiver != address(0), "RECEIVER_ZERO");
+        require(receiver != address(this), "RECEIVER_IS_SELF");
 
         _sync(receiver);
         require(totalStaked + amount <= revenueShareSupplyDenominator, "STAKE_CAP_EXCEEDED");
@@ -328,6 +352,7 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
     function unstake(uint256 amount, address recipient) external nonReentrant {
         require(amount != 0, "AMOUNT_ZERO");
         require(recipient != address(0), "RECIPIENT_ZERO");
+        require(recipient != address(this), "RECIPIENT_IS_SELF");
 
         _sync(msg.sender);
 
@@ -389,6 +414,7 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
             eligibleRevenueShareBps,
             RevenueSourceKind.AuthorizedIngress,
             msg.sender,
+            // forge-lint: disable-next-line(unsafe-typecast)
             bytes32("ingress_sweep"),
             subjectId
         );
@@ -415,6 +441,7 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
             eligibleRevenueShareBps,
             RevenueSourceKind.LaunchFee,
             vault,
+            // forge-lint: disable-next-line(unsafe-typecast)
             bytes32("launch_treasury"),
             sourceRef
         );
@@ -466,6 +493,7 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
 
     function claimUSDC(address recipient) external nonReentrant returns (uint256 amount) {
         require(recipient != address(0), "RECIPIENT_ZERO");
+        require(recipient != address(this), "RECIPIENT_IS_SELF");
 
         _sync(msg.sender);
         amount = storedClaimableUsdc[msg.sender];
@@ -474,12 +502,14 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
         }
 
         storedClaimableUsdc[msg.sender] = 0;
+        _recordUsdcClaim(amount);
         emit USDCRewardClaimed(msg.sender, amount, recipient);
         usdc.safeTransfer(recipient, amount);
     }
 
     function claimStakeToken(address recipient) external nonReentrant returns (uint256 amount) {
         require(recipient != address(0), "RECIPIENT_ZERO");
+        require(recipient != address(this), "RECIPIENT_IS_SELF");
 
         _sync(msg.sender);
         amount = storedClaimableStakeToken[msg.sender];
@@ -527,6 +557,7 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
         onlyTreasurySweepCaller
         nonReentrant
     {
+        require(amount != 0, "AMOUNT_ZERO");
         require(treasuryResidualUsdc >= amount, "TREASURY_BALANCE_LOW");
 
         treasuryResidualUsdc -= amount;
@@ -540,6 +571,7 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
         onlyTreasurySweepCaller
         nonReentrant
     {
+        require(amount != 0, "AMOUNT_ZERO");
         require(treasuryReservedUsdc >= amount, "TREASURY_RESERVED_BALANCE_LOW");
 
         treasuryReservedUsdc -= amount;
@@ -553,6 +585,7 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
         onlyProtocolSweepCaller
         nonReentrant
     {
+        require(amount != 0, "AMOUNT_ZERO");
         require(protocolReserveUsdc >= amount, "PROTOCOL_BALANCE_LOW");
 
         protocolReserveUsdc -= amount;
@@ -561,10 +594,82 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
     }
 
     function reassignUndistributedDustToTreasury(uint256 amount) external onlyOwner nonReentrant {
+        require(amount != 0, "AMOUNT_ZERO");
         require(undistributedDustUsdc >= amount, "DUST_BALANCE_LOW");
         undistributedDustUsdc -= amount;
         treasuryResidualUsdc += amount;
         emit USDCDustReassigned(amount, treasuryRecipient);
+    }
+
+    function redepositSurplusUSDC(uint256 amount, bytes32 sourceTag, bytes32 sourceRef)
+        external
+        whenNotPaused
+        onlyActiveSubject
+        onlyOwner
+        nonReentrant
+    {
+        require(amount != 0, "AMOUNT_ZERO");
+        require(surplusUsdc() >= amount, "SURPLUS_BALANCE_LOW");
+        _settleStakeTokenEmissions();
+
+        uint256 beforeCredited = totalUsdcCreditedToStakers;
+        uint256 beforeTreasury = treasuryResidualUsdc;
+        totalSurplusUsdcRedeposited += amount;
+        _recordRevenue(
+            amount,
+            eligibleRevenueShareBps,
+            RevenueSourceKind.SurplusRedeposit,
+            msg.sender,
+            sourceTag,
+            sourceRef
+        );
+
+        emit USDCSurplusRedeposited(
+            amount,
+            totalUsdcCreditedToStakers - beforeCredited,
+            treasuryResidualUsdc - beforeTreasury,
+            msg.sender,
+            sourceTag,
+            sourceRef
+        );
+    }
+
+    function sweepSurplusUSDC(uint256 amount, address recipient)
+        external
+        whenNotPaused
+        onlyTreasurySweepCaller
+        nonReentrant
+    {
+        require(amount != 0, "AMOUNT_ZERO");
+        require(recipient != address(0), "RECIPIENT_ZERO");
+        require(recipient != address(this), "RECIPIENT_IS_SELF");
+        require(surplusUsdc() >= amount, "SURPLUS_BALANCE_LOW");
+
+        totalSurplusUsdcSwept += amount;
+        emit USDCSurplusSwept(amount, recipient);
+        usdc.safeTransfer(recipient, amount);
+    }
+
+    function sweepStakeTokenRewardPool(uint256 amount)
+        external
+        whenNotPaused
+        onlyTreasurySweepCaller
+        nonReentrant
+    {
+        totalRewardTokenPoolSwept += amount;
+        _withdrawStakeTokenRewardPool(amount, treasuryRecipient);
+        emit RewardTokenPoolSwept(amount, treasuryRecipient);
+    }
+
+    function refundStakeTokenRewardPool(uint256 amount, address recipient)
+        external
+        whenNotPaused
+        onlyOwner
+        nonReentrant
+    {
+        totalRewardTokenPoolRefunded += amount;
+        _withdrawStakeTokenRewardPool(amount, recipient);
+        emit RewardTokenPoolRefunded(amount, recipient);
     }
 
     function fundStakeTokenRewards(uint256 amount)
@@ -601,12 +706,33 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
     }
 
     function availableStakeTokenRewardInventory() public view returns (uint256 available) {
+        return stakeTokenRewardPool();
+    }
+
+    function stakeTokenRewardPool() public view returns (uint256 available) {
         uint256 balance = IERC20SupplyMinimal(stakeToken).balanceOf(address(this));
         if (balance <= totalStaked) {
             return 0;
         }
         unchecked {
             available = balance - totalStaked;
+        }
+    }
+
+    function reservedUsdc() public view returns (uint256) {
+        uint256 stakerLiability = totalUsdcCreditedToStakers - totalClaimedUsdc;
+        return protocolReserveUsdc + treasuryReservedUsdc + treasuryResidualUsdc
+            + undistributedDustUsdc + stakerLiability;
+    }
+
+    function surplusUsdc() public view returns (uint256) {
+        uint256 balance = IERC20SupplyMinimal(usdc).balanceOf(address(this));
+        uint256 reserved = reservedUsdc();
+        if (balance <= reserved) {
+            return 0;
+        }
+        unchecked {
+            return balance - reserved;
         }
     }
 
@@ -703,6 +829,8 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
             verifiedIngressUsdc += received;
         } else if (sourceKind == RevenueSourceKind.LaunchFee) {
             launchFeeUsdc += received;
+        } else if (sourceKind == RevenueSourceKind.SurplusRedeposit) {
+            surplusRedepositUsdc += received;
         }
         regentSkimUsdc += protocolAmount;
         stakerEligibleInflowUsdc += stakerEligibleAmount;
@@ -710,6 +838,7 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
         treasuryResidualUsdc += treasuryResidualAmount;
         treasuryReservedUsdc += treasuryReservedAmount;
         protocolReserveUsdc += protocolAmount;
+        totalUsdcCreditedToStakers += creditedByAccumulator;
         if (stakerEntitlement > creditedByAccumulator) {
             undistributedDustUsdc += stakerEntitlement - creditedByAccumulator;
         }
@@ -727,6 +856,25 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
             sourceTag,
             sourceRef
         );
+    }
+
+    function _recordUsdcClaim(uint256 amount) internal {
+        uint256 outstandingCredit = totalUsdcCreditedToStakers - totalClaimedUsdc;
+        if (amount > outstandingCredit) {
+            uint256 roundingOverage = amount - outstandingCredit;
+            treasuryResidualUsdc -= roundingOverage;
+            totalUsdcCreditedToStakers += roundingOverage;
+        }
+        totalClaimedUsdc += amount;
+    }
+
+    function _withdrawStakeTokenRewardPool(uint256 amount, address recipient) internal {
+        require(amount != 0, "AMOUNT_ZERO");
+        require(recipient != address(0), "RECIPIENT_ZERO");
+        require(recipient != address(this), "RECIPIENT_IS_SELF");
+        require(stakeTokenRewardPool() >= amount, "REWARD_POOL_LOW");
+
+        _pushExactStakeToken(recipient, amount);
     }
 
     function _previewAccRewardPerTokenStakeToken() internal view returns (uint256 currentAcc) {
@@ -818,6 +966,7 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
 
     function _toUint64(uint256 value) internal pure returns (uint64) {
         require(value <= type(uint64).max, "UINT64_OVERFLOW");
+        // forge-lint: disable-next-line(unsafe-typecast)
         return uint64(value);
     }
 
