@@ -60,7 +60,7 @@ flowchart TD
 
 ## Launch flow
 
-1. `LaunchDeploymentController` creates the launch token through the configured token factory.
+1. `LaunchDeploymentController` creates the launch token through `AutolaunchTokenFactory`.
 2. It splits supply into 10% auction, 5% LP reserve, and 85% vesting.
 3. It deploys the vesting wallet, strategy, fee registry, fee vault, and fee hook.
 4. The strategy creates the CCA auction and keeps the reserve allocation.

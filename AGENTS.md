@@ -4,6 +4,20 @@ This repo is the Autolaunch product app. It owns the Phoenix LiveView frontend a
 
 Keep this file short and current. Use it as the fast start map for new coding agents.
 
+## Regent Dependency Skills
+
+The Regent dependency skills are installed in `/Users/sean/Documents/regent/.agents/skills` and `/Users/sean/.codex/skills`. Open the matching skill before touching these areas:
+
+- `contract-first-cli-api`: product API routes, CLI command surfaces, OpenAPI files, CLI YAML, generated clients, and cross-repo API/CLI alignment.
+- `shared-siwa`: SIWA-backed agent auth, receipts, signed request envelopes, nonce/replay rules, and sidecar integration.
+- `xmtp-rooms`: Autolaunch public rooms, XMTP group mirrors, membership commands, presence, and room sync shared with Techtree.
+- `ens-agent-identity`: ENS links, Basenames, ERC-8004 identity, resolver reads, and prepared identity actions.
+- `agentbook-agentworld`: AgentBook, World ID trust evidence, proof lookup/registration, and launch trust summaries.
+- `privy-auth-boundary`: browser session exchange, human auth, Privy token verification, and human-vs-agent route boundaries.
+- `cachex-regent-cache`: hot subject reads, wallet position reads, obligation metrics, cache keys, TTLs, and invalidation.
+- `safe-viem-wallet-actions`: Safe setup, viem reads/writes, prepared transactions, wallet action envelopes, and transaction confirmation.
+- `observability-promex-sentry`: metrics, logs, Sentry, health checks, and private-data redaction.
+
 ## What This Repo Is
 
 - Phoenix + LiveView app for the Autolaunch product

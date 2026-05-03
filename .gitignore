@@ -17,6 +17,7 @@
 /.env.local
 /.env.*
 !/.env.example
+!/.env.local.example
 /.envrc
 /.direnv/
 /PLAN.md

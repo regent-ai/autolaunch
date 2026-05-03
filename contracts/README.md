@@ -9,6 +9,8 @@ The canonical product rules live in `/Users/sean/Documents/regent/autolaunch/doc
 ## Active core architecture
 
 - External CCA factory with USDC quote token
+- `src/AutolaunchTokenFactory.sol`
+- `src/AutolaunchLaunchToken.sol`
 - `src/LaunchDeploymentController.sol`
 - `src/AgentTokenVestingWallet.sol`
 - `src/RegentLBPStrategy.sol`
@@ -37,15 +39,16 @@ The canonical product rules live in `/Users/sean/Documents/regent/autolaunch/doc
 - `scripts/ExampleCCADeploymentScript.s.sol`
 - `scripts/DeployRegentRevenueStaking.s.sol`
 
-The launch script expects the active Base inputs, including `UNISWAP_V4_POSITION_MANAGER`, `OFFICIAL_POOL_FEE`, and `OFFICIAL_POOL_TICK_SPACING`.
+The launch script expects the active Base inputs, including `AUTOLAUNCH_TOKEN_FACTORY_ADDRESS`, `UNISWAP_V4_POSITION_MANAGER`, `OFFICIAL_POOL_FEE`, and `OFFICIAL_POOL_TICK_SPACING`. It builds the CCA token release schedule from `AUCTION_DURATION_BLOCKS`; `86400` Base Sepolia blocks is a 48-hour auction. `CCA_START_BLOCK_OFFSET=300` leaves about ten minutes for the staged broadcast to finish before bidding opens.
 
 Important script output markers stay unchanged:
 
 - `AUTOLAUNCH_INFRA_RESULT_JSON:`
 - `CCA_RESULT_JSON:`
 
-`AUTOLAUNCH_INFRA_RESULT_JSON` includes the current and pending revenue share factory
-owners. The pending owner must accept before shared infra is production-ready.
+`AUTOLAUNCH_INFRA_RESULT_JSON` includes `tokenFactoryAddress`. Use that value for
+`AUTOLAUNCH_TOKEN_FACTORY_ADDRESS`. It also includes the current and pending revenue
+share factory owners. The pending owner must accept before shared infra is production-ready.
 
 ## Test coverage
 
