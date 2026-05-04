@@ -87,9 +87,24 @@ defmodule Autolaunch.RegentStakingTest do
     assert prepared.expected_signer == @wallet
     assert prepared.idempotency_key == prepared.action_id
     assert is_binary(prepared.risk_copy)
-    assert prepared.tx_request.chain_id == @base_sepolia_chain_id
-    assert prepared.tx_request.to == @contract
-    assert String.starts_with?(prepared.tx_request.data, "0x7acb7757")
+    assert prepared.wallet_action.chain_id == @base_sepolia_chain_id
+    assert prepared.wallet_action.to == @contract
+    assert String.starts_with?(prepared.wallet_action.data, "0x7acb7757")
+  end
+
+  test "stake can prepare for a different receiving wallet", %{human: human} do
+    receiver = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+
+    assert {:ok, %{prepared: prepared}} =
+             RegentStaking.stake(%{"amount" => "1.5", "receiver" => receiver}, human)
+
+    encoded_receiver =
+      receiver
+      |> String.replace_prefix("0x", "")
+      |> String.pad_leading(64, "0")
+
+    assert prepared.expected_signer == @wallet
+    assert String.ends_with?(prepared.wallet_action.data, encoded_receiver)
   end
 
   test "stake uses the configured staking chain id", %{human: human} do
@@ -103,24 +118,28 @@ defmodule Autolaunch.RegentStakingTest do
     )
 
     assert {:ok, %{prepared: prepared}} = RegentStaking.stake(%{"amount" => "1.5"}, human)
-    assert prepared.tx_request.chain_id == 12_345
+    assert prepared.wallet_action.chain_id == 12_345
   end
 
   test "prepare_deposit_usdc encodes ascii source tags and refs" do
     assert {:ok, %{prepared: prepared}} =
-             RegentStaking.prepare_deposit_usdc(%{
-               "amount" => "250.5",
-               "source_tag" => "base_manual",
-               "source_ref" => "2026-03"
-             })
+             RegentStaking.prepare_deposit_usdc(
+               %{
+                 "amount" => "250.5",
+                 "source_tag" => "base_manual",
+                 "source_ref" => "2026-03"
+               },
+               @wallet
+             )
 
     assert prepared.resource == "regent_staking"
     assert prepared.action == "deposit_usdc"
     assert prepared.chain_id == @base_sepolia_chain_id
-    assert prepared.target == @contract
-    assert String.starts_with?(prepared.calldata, "0x7dc6bb98")
-    assert prepared.tx_request.to == @contract
-    assert prepared.expected_signer == nil
+    assert prepared.owner_product == "autolaunch"
+    assert prepared.resource_id == @contract
+    assert prepared.wallet_action.to == @contract
+    assert String.starts_with?(prepared.wallet_action.data, "0x7dc6bb98")
+    assert prepared.expected_signer == @wallet
     assert is_binary(prepared.expires_at)
     assert is_binary(prepared.idempotency_key)
     assert is_binary(prepared.risk_copy)
@@ -135,23 +154,27 @@ defmodule Autolaunch.RegentStakingTest do
     )
 
     assert {:ok, %{prepared: prepared}} =
-             RegentStaking.prepare_deposit_usdc(%{
-               "amount" => "1",
-               "source_tag" => "manual",
-               "source_ref" => "default"
-             })
+             RegentStaking.prepare_deposit_usdc(
+               %{
+                 "amount" => "1",
+                 "source_tag" => "manual",
+                 "source_ref" => "default"
+               },
+               @wallet
+             )
 
     assert prepared.chain_id == @base_chain_id
-    assert prepared.tx_request.chain_id == @base_chain_id
+    assert prepared.wallet_action.chain_id == @base_chain_id
   end
 
   test "prepare_withdraw_treasury defaults recipient to the configured treasury" do
     assert {:ok, %{prepared: prepared}} =
-             RegentStaking.prepare_withdraw_treasury(%{"amount" => "10"})
+             RegentStaking.prepare_withdraw_treasury(%{"amount" => "10"}, @wallet)
 
     assert prepared.action == "withdraw_treasury"
+    assert prepared.expected_signer == @wallet
     assert prepared.params.recipient == @treasury
-    assert String.starts_with?(prepared.calldata, "0xe13b5822")
+    assert String.starts_with?(prepared.wallet_action.data, "0xe13b5822")
   end
 
   test "overview fails cleanly when the rail is unconfigured" do

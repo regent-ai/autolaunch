@@ -24,7 +24,9 @@ defmodule AutolaunchWeb.Api.LaunchController do
 
     case launch_module().create_launch_job(params, current_human, request_ip) do
       {:ok, job} ->
-        json(conn, %{ok: true, job_id: job.job_id, status: job.status, job: job})
+        conn
+        |> put_status(:created)
+        |> json(%{ok: true, job_id: job.job_id, status: job.status, job: job})
 
       {:error, reason} ->
         ApiErrorTranslator.render(conn, :launch_create_job, reason)

@@ -6,6 +6,7 @@ import {console2} from "forge-std/console2.sol";
 
 import {SubjectRegistry} from "src/revenue/SubjectRegistry.sol";
 import {RevenueShareFactory} from "src/revenue/RevenueShareFactory.sol";
+import {RevenueShareSplitterDeployer} from "src/revenue/RevenueShareSplitterDeployer.sol";
 import {RevenueIngressFactory} from "src/revenue/RevenueIngressFactory.sol";
 import {RegentLBPStrategyFactory} from "src/RegentLBPStrategyFactory.sol";
 import {BaseUsdc} from "src/libraries/BaseUsdc.sol";
@@ -43,7 +44,9 @@ contract DeployAutolaunchInfraScript is Script {
 
         vm.startBroadcast(cfg.owner);
         subjectRegistry = new SubjectRegistry(cfg.owner);
-        revenueShareFactory = new RevenueShareFactory(cfg.owner, cfg.usdc, subjectRegistry);
+        RevenueShareSplitterDeployer splitterDeployer = new RevenueShareSplitterDeployer();
+        revenueShareFactory =
+            new RevenueShareFactory(cfg.owner, cfg.usdc, subjectRegistry, splitterDeployer);
         revenueIngressFactory =
             new RevenueIngressFactory(cfg.usdc, address(subjectRegistry), cfg.owner);
         strategyFactory = new RegentLBPStrategyFactory(cfg.owner);

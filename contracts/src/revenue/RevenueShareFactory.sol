@@ -3,11 +3,13 @@ pragma solidity ^0.8.26;
 
 import {Owned} from "src/auth/Owned.sol";
 import {RevenueShareSplitter} from "src/revenue/RevenueShareSplitter.sol";
+import {RevenueShareSplitterDeployer} from "src/revenue/RevenueShareSplitterDeployer.sol";
 import {SubjectRegistry} from "src/revenue/SubjectRegistry.sol";
 
 contract RevenueShareFactory is Owned {
     address public immutable usdc;
     SubjectRegistry public immutable subjectRegistry;
+    RevenueShareSplitterDeployer public immutable splitterDeployer;
 
     mapping(address => address) public splitterOfStakeToken;
     mapping(bytes32 => address) public splitterOfSubject;
@@ -27,11 +29,18 @@ contract RevenueShareFactory is Owned {
         address indexed currentOwner, address indexed pendingOwner
     );
 
-    constructor(address owner_, address usdc_, SubjectRegistry subjectRegistry_) Owned(owner_) {
+    constructor(
+        address owner_,
+        address usdc_,
+        SubjectRegistry subjectRegistry_,
+        RevenueShareSplitterDeployer splitterDeployer_
+    ) Owned(owner_) {
         require(usdc_ != address(0), "USDC_ZERO");
         require(address(subjectRegistry_) != address(0), "REGISTRY_ZERO");
+        require(address(splitterDeployer_) != address(0), "SPLITTER_DEPLOYER_ZERO");
         usdc = usdc_;
         subjectRegistry = subjectRegistry_;
+        splitterDeployer = splitterDeployer_;
     }
 
     modifier onlyAuthorizedCreator() {
@@ -82,7 +91,7 @@ contract RevenueShareFactory is Owned {
             require(identityAgentId != 0, "IDENTITY_AGENT_ID_ZERO");
         }
 
-        RevenueShareSplitter deployed = new RevenueShareSplitter(
+        RevenueShareSplitter deployed = splitterDeployer.deploy(
             stakeToken,
             usdc,
             ingressFactory,

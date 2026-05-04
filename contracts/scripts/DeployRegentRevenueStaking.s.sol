@@ -39,8 +39,11 @@ contract DeployRegentRevenueStakingScript is Script {
 
     function validateConfig(ScriptConfig memory cfg) public view {
         require(cfg.regentToken != address(0), "REGENT_TOKEN_ZERO");
+        require(cfg.regentToken.code.length != 0, "REGENT_TOKEN_NO_CODE");
         require(cfg.usdc != address(0), "USDC_ZERO");
+        require(cfg.regentToken != cfg.usdc, "REGENT_TOKEN_IS_USDC");
         require(cfg.usdc == BASE_MAINNET_USDC, "USDC_NOT_CANONICAL");
+        require(cfg.usdc.code.length != 0, "USDC_NO_CODE");
         BaseUsdc.requireCanonical(cfg.usdc);
         require(cfg.treasuryRecipient != address(0), "TREASURY_ZERO");
         require(cfg.owner != address(0), "OWNER_ZERO");

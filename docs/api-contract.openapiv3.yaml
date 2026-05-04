@@ -76,6 +76,25 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/HealthResponse" }
+  /prelaunch-assets/{file}:
+    get:
+      operationId: getPrelaunchAsset
+      tags: [prelaunch]
+      parameters:
+        - name: file
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Prelaunch asset
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Prelaunch asset not found
   /api/internal/xmtp/shards:
     get:
       operationId: autolaunchInternalXmtpListShards
@@ -405,7 +424,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/AmountRequest" }
+            schema: { $ref: "#/components/schemas/StakeRequest" }
       responses:
         "200":
           description: Stake transaction prepared
@@ -1203,7 +1222,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/AmountRequest" }
+            schema: { $ref: "#/components/schemas/StakeRequest" }
       responses:
         "200":
           description: Stake prepared
@@ -1573,7 +1592,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/AmountRequest" }
+            schema: { $ref: "#/components/schemas/StakeRequest" }
       responses:
         "200":
           description: Stake prepared
@@ -2319,6 +2338,41 @@ components:
     HexData:
       type: string
       pattern: "^0x[a-fA-F0-9]*$"
+    WalletAction:
+      type: object
+      additionalProperties: false
+      required: [action_id, owner_product, resource, resource_id, action, chain_id, to, value, data, expected_signer, expires_at, idempotency_key, simulation, risk_copy]
+      properties:
+        action_id: { type: string }
+        owner_product:
+          type: string
+          enum: [autolaunch]
+        resource: { type: string }
+        resource_id: { type: string }
+        action: { type: string }
+        chain_id: { $ref: "#/components/schemas/AutolaunchChainId" }
+        to: { $ref: "#/components/schemas/Address" }
+        value:
+          type: string
+          pattern: "^[0-9]+$"
+        data: { $ref: "#/components/schemas/HexData" }
+        expected_signer: { $ref: "#/components/schemas/Address" }
+        expires_at: { $ref: "#/components/schemas/DateTime" }
+        idempotency_key: { type: string }
+        simulation:
+          type: object
+          additionalProperties: false
+          required: [required, status]
+          properties:
+            required: { type: boolean }
+            status:
+              type: string
+              enum: [not_required, pending, passed, failed]
+            block_number:
+              anyOf:
+                - { type: integer, minimum: 0 }
+                - { type: "null" }
+        risk_copy: { type: string }
     LooseObject:
       type: object
       additionalProperties: true
@@ -2511,6 +2565,13 @@ components:
       properties:
         amount: { $ref: "#/components/schemas/DecimalString" }
       additionalProperties: false
+    StakeRequest:
+      type: object
+      required: [amount]
+      properties:
+        amount: { $ref: "#/components/schemas/DecimalString" }
+        receiver: { $ref: "#/components/schemas/Address" }
+      additionalProperties: false
     RegentStakingDepositPrepareRequest:
       type: object
       required: [amount, source_tag, source_ref]
@@ -2571,29 +2632,26 @@ components:
       required:
         - action_id
         - resource
+        - resource_id
         - action
         - chain_id
         - expected_signer
         - expires_at
         - idempotency_key
         - risk_copy
-        - tx_request
+        - wallet_action
       properties:
         action_id: { type: string }
         resource: { type: string }
+        resource_id: { type: string }
         action: { type: string }
         chain_id: { $ref: "#/components/schemas/AutolaunchChainId" }
-        target: { $ref: "#/components/schemas/Address" }
-        calldata: { $ref: "#/components/schemas/HexData" }
-        expected_signer:
-          anyOf:
-            - { $ref: "#/components/schemas/Address" }
-            - { type: "null" }
+        expected_signer: { $ref: "#/components/schemas/Address" }
         expires_at: { $ref: "#/components/schemas/DateTime" }
         idempotency_key: { type: string }
         risk_copy: { type: string }
-        tx_request:
-          $ref: "#/components/schemas/TxRequest"
+        wallet_action:
+          $ref: "#/components/schemas/WalletAction"
       additionalProperties: true
     PreparedActionEnvelope:
       type: object
@@ -2617,15 +2675,6 @@ components:
             - { type: "null" }
         prepared:
           $ref: "#/components/schemas/PreparedAction"
-      additionalProperties: false
-    TxRequest:
-      type: object
-      required: [chain_id, to, value, data]
-      properties:
-        chain_id: { $ref: "#/components/schemas/AutolaunchChainId" }
-        to: { $ref: "#/components/schemas/Address" }
-        value: { $ref: "#/components/schemas/HexData" }
-        data: { $ref: "#/components/schemas/HexData" }
       additionalProperties: false
     PrelaunchMetadataDraft:
       type: object

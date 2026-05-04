@@ -221,6 +221,8 @@ contract RegentLBPStrategy is IDistributionContract {
         uint256 tokenBalance = IERC20SupplyMinimal(token).balanceOf(address(this));
         uint256 tokenForLP = tokenBalance > reserveTokenAmount ? reserveTokenAmount : tokenBalance;
         require(tokenForLP != 0, "LP_TOKEN_ZERO");
+        uint128 currencyForLPUint128 = _toUint128(currencyForLP);
+        uint128 tokenForLPUint128 = _toUint128(tokenForLP);
 
         PoolKey memory poolKey = _poolKey();
         bytes32 poolId = PoolId.unwrap(poolKey.toId());
@@ -236,8 +238,8 @@ contract RegentLBPStrategy is IDistributionContract {
         migratedPoolId = poolId;
         migratedPositionId = positionId;
         migratedLiquidity = liquidity;
-        migratedCurrencyForLP = uint128(currencyForLP);
-        migratedTokenForLP = uint128(tokenForLP);
+        migratedCurrencyForLP = currencyForLPUint128;
+        migratedTokenForLP = tokenForLPUint128;
 
         token.safeTransfer(positionManager, tokenForLP);
         usdc.safeTransfer(positionManager, currencyForLP);
@@ -266,8 +268,8 @@ contract RegentLBPStrategy is IDistributionContract {
             poolId,
             positionId,
             positionRecipient,
-            uint128(currencyForLP),
-            uint128(tokenForLP),
+            currencyForLPUint128,
+            tokenForLPUint128,
             liquidity
         );
     }
@@ -366,8 +368,10 @@ contract RegentLBPStrategy is IDistributionContract {
         uint256 tokenForLP,
         bool tokenIsCurrency0
     ) internal view returns (bytes[] memory params) {
-        uint128 amount0Max = tokenIsCurrency0 ? uint128(tokenForLP) : uint128(currencyForLP);
-        uint128 amount1Max = tokenIsCurrency0 ? uint128(currencyForLP) : uint128(tokenForLP);
+        uint128 currencyForLPUint128 = _toUint128(currencyForLP);
+        uint128 tokenForLPUint128 = _toUint128(tokenForLP);
+        uint128 amount0Max = tokenIsCurrency0 ? tokenForLPUint128 : currencyForLPUint128;
+        uint128 amount1Max = tokenIsCurrency0 ? currencyForLPUint128 : tokenForLPUint128;
         int24 lowerTick = TickMath.minUsableTick(officialPoolTickSpacing);
         int24 upperTick = TickMath.maxUsableTick(officialPoolTickSpacing);
 
@@ -395,8 +399,10 @@ contract RegentLBPStrategy is IDistributionContract {
         uint256 currencyForLP,
         uint256 tokenForLP
     ) internal pure returns (uint128 liquidity) {
-        uint128 amount0 = tokenIsCurrency0 ? uint128(tokenForLP) : uint128(currencyForLP);
-        uint128 amount1 = tokenIsCurrency0 ? uint128(currencyForLP) : uint128(tokenForLP);
+        uint128 currencyForLPUint128 = _toUint128(currencyForLP);
+        uint128 tokenForLPUint128 = _toUint128(tokenForLP);
+        uint128 amount0 = tokenIsCurrency0 ? tokenForLPUint128 : currencyForLPUint128;
+        uint128 amount1 = tokenIsCurrency0 ? currencyForLPUint128 : tokenForLPUint128;
         liquidity = LiquidityAmounts.getLiquidityForAmounts(
             sqrtPriceX96,
             TickMath.getSqrtPriceAtTick(TickMath.minUsableTick(poolKey.tickSpacing)),
@@ -416,6 +422,13 @@ contract RegentLBPStrategy is IDistributionContract {
         uint256 ratioX192 = FullMath.mulDiv(amount1, uint256(1) << 192, amount0);
         uint256 sqrtPrice = Math.sqrt(ratioX192);
         require(sqrtPrice <= type(uint160).max, "SQRT_PRICE_OVERFLOW");
+        // forge-lint: disable-next-line(unsafe-typecast)
         sqrtPriceX96 = uint160(sqrtPrice);
+    }
+
+    function _toUint128(uint256 value) internal pure returns (uint128) {
+        require(value <= type(uint128).max, "UINT128_OVERFLOW");
+        // forge-lint: disable-next-line(unsafe-typecast)
+        return uint128(value);
     }
 }

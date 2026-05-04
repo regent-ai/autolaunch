@@ -217,6 +217,72 @@ contract LaunchPoolFeeHookTest is Test {
         _assertSwapFee(poolKey, true, -100e18, -100e18, 80e18);
     }
 
+    function testRejectsDirectBeforeSwapCallsFromNonPoolManager() external {
+        vm.expectRevert("ONLY_POOL_MANAGER");
+        hook.beforeSwap(
+            TRADER,
+            poolKey,
+            SwapParams({zeroForOne: true, amountSpecified: -100e18, sqrtPriceLimitX96: 0}),
+            bytes("")
+        );
+    }
+
+    function testRejectsDirectAfterSwapCallsFromNonPoolManager() external {
+        vm.expectRevert("ONLY_POOL_MANAGER");
+        hook.afterSwap(
+            TRADER,
+            poolKey,
+            SwapParams({zeroForOne: true, amountSpecified: -100e18, sqrtPriceLimitX96: 0}),
+            BalanceDelta.wrap(0),
+            bytes("")
+        );
+    }
+
+    function testRejectsPoolRegisteredForDifferentPoolManager() external {
+        MintableERC20Mock otherLaunchToken = new MintableERC20Mock("Other Launch", "OLAUNCH");
+        vm.prank(OWNER);
+        registry.registerPool(
+            LaunchFeeRegistry.PoolRegistration({
+                launchToken: address(otherLaunchToken),
+                quoteToken: address(quoteToken),
+                treasury: TREASURY,
+                regentRecipient: REGENT_RECIPIENT,
+                poolFee: POOL_FEE,
+                tickSpacing: TICK_SPACING,
+                poolManager: address(0xDEAD),
+                hook: address(hook)
+            })
+        );
+        PoolKey memory mismatchedPoolManagerKey =
+            _sortedPoolKey(address(otherLaunchToken), address(quoteToken), address(hook));
+
+        vm.expectRevert("POOL_MANAGER_MISMATCH");
+        _simulateSwap(mismatchedPoolManagerKey, true, -100e18, -100e18, 80e18);
+    }
+
+    function testRejectsPoolRegisteredForDifferentHook() external {
+        MintableERC20Mock otherLaunchToken = new MintableERC20Mock("Other Launch", "OLAUNCH");
+        address wrongHook = address(0x1234);
+        vm.prank(OWNER);
+        registry.registerPool(
+            LaunchFeeRegistry.PoolRegistration({
+                launchToken: address(otherLaunchToken),
+                quoteToken: address(quoteToken),
+                treasury: TREASURY,
+                regentRecipient: REGENT_RECIPIENT,
+                poolFee: POOL_FEE,
+                tickSpacing: TICK_SPACING,
+                poolManager: address(poolManager),
+                hook: wrongHook
+            })
+        );
+        PoolKey memory mismatchedHookKey =
+            _sortedPoolKey(address(otherLaunchToken), address(quoteToken), wrongHook);
+
+        vm.expectRevert("HOOK_MISMATCH");
+        _simulateSwap(mismatchedHookKey, true, -100e18, -100e18, 80e18);
+    }
+
     function testOddSmallFeeIsFullyAssignedToWithdrawableShares() external {
         _simulateSwap(poolKey, true, -50, -50, 49);
 

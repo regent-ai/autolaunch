@@ -26,7 +26,7 @@ defmodule AutolaunchWeb.PositionsLiveTest do
           tx_actions: %{
             exit: %{
               prepared: %{
-                tx_request: %{
+                wallet_action: %{
                   chain_id: 84_532,
                   to: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
                   data: "0xexit",
@@ -52,7 +52,7 @@ defmodule AutolaunchWeb.PositionsLiveTest do
             exit: nil,
             claim: %{
               prepared: %{
-                tx_request: %{
+                wallet_action: %{
                   chain_id: 84_532,
                   to: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
                   data: "0xclaim",

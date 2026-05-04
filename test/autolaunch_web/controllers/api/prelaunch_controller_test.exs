@@ -101,7 +101,7 @@ defmodule AutolaunchWeb.Api.PrelaunchControllerTest do
        }}
     end
 
-    def update_metadata("plan_alpha", _params, _human) do
+    def update_metadata("plan_alpha", %{"metadata" => _metadata}, _human) do
       {:ok,
        %{
          plan: %{plan_id: "plan_alpha", metadata_draft: %{"title" => "Atlas Launch"}},
@@ -111,6 +111,8 @@ defmodule AutolaunchWeb.Api.PrelaunchControllerTest do
          }
        }}
     end
+
+    def update_metadata("plan_alpha", _params, _human), do: {:error, :metadata_required}
 
     def update_metadata(_plan_id, _params, _human), do: {:error, :not_found}
 
@@ -152,7 +154,7 @@ defmodule AutolaunchWeb.Api.PrelaunchControllerTest do
       })
 
     assert %{"ok" => true, "plan" => %{"plan_id" => "plan_alpha"}} =
-             json_response(create_conn, 200)
+             json_response(create_conn, 201)
 
     show_conn = get(conn, "/v1/app/prelaunch/plans/plan_alpha")
 
@@ -247,5 +249,15 @@ defmodule AutolaunchWeb.Api.PrelaunchControllerTest do
              "ok" => true,
              "metadata_preview" => %{"title" => "Atlas Launch"}
            } = json_response(preview_conn, 200)
+  end
+
+  test "metadata update requires the canonical metadata wrapper", %{conn: conn} do
+    metadata_conn =
+      post(conn, "/v1/app/prelaunch/plans/plan_alpha/metadata", %{
+        "title" => "Atlas Launch"
+      })
+
+    assert %{"ok" => false, "error" => %{"code" => "metadata_required"}} =
+             json_response(metadata_conn, 422)
   end
 end

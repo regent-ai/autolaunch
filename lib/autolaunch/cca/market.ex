@@ -320,8 +320,7 @@ defmodule Autolaunch.CCA.Market do
       end)
       |> Enum.reverse()
 
-    case Enum.find(events, &(&1.amount_wei == amount_wei and &1.max_price_q96 == max_price_q96)) ||
-           List.first(events) do
+    case Enum.find(events, &(&1.amount_wei == amount_wei and &1.max_price_q96 == max_price_q96)) do
       nil -> {:error, :bid_submission_event_not_found}
       event -> {:ok, event}
     end

@@ -6,6 +6,9 @@ defmodule AutolaunchWeb.ContractsLiveTest do
   alias Autolaunch.Accounts
 
   defmodule ContextStub do
+    @expected_signer "0x1111111111111111111111111111111111111111"
+    @expires_at "2999-01-01T00:00:00Z"
+
     def admin_overview do
       {:ok,
        %{
@@ -198,20 +201,13 @@ defmodule AutolaunchWeb.ContractsLiveTest do
       {:ok,
        %{
          job_id: "job_contracts",
-         prepared: %{
-           resource: "strategy",
-           action: "migrate",
-           chain_id: 84_532,
-           target: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-           calldata: "0x8fd3ab80",
-           tx_request: %{
-             chain_id: 84_532,
-             to: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-             value: "0x0",
-             data: "0x8fd3ab80"
-           },
-           submission_mode: "prepare_only"
-         }
+         prepared:
+           prepared_action(
+             "strategy",
+             "migrate",
+             "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+             "0x8fd3ab80"
+           )
        }}
     end
 
@@ -225,20 +221,13 @@ defmodule AutolaunchWeb.ContractsLiveTest do
       {:ok,
        %{
          job_id: "job_contracts",
-         prepared: %{
-           resource: "revenue_splitter",
-           action: "pull_treasury_share",
-           chain_id: 84_532,
-           target: "0x9999999999999999999999999999999999999999",
-           calldata: "0x94af8446",
-           tx_request: %{
-             chain_id: 84_532,
-             to: "0x9999999999999999999999999999999999999999",
-             value: "0x0",
-             data: "0x94af8446"
-           },
-           submission_mode: "prepare_only"
-         }
+         prepared:
+           prepared_action(
+             "revenue_splitter",
+             "pull_treasury_share",
+             "0x9999999999999999999999999999999999999999",
+             "0x94af8446"
+           )
        }}
     end
 
@@ -246,41 +235,59 @@ defmodule AutolaunchWeb.ContractsLiveTest do
       {:ok,
        %{
          subject_id: "0x" <> String.duplicate("1a", 32),
-         prepared: %{
-           resource: "splitter",
-           action: "set_paused",
-           chain_id: 84_532,
-           target: "0x9999999999999999999999999999999999999999",
-           calldata: "0x16c38b3c",
-           tx_request: %{
-             chain_id: 84_532,
-             to: "0x9999999999999999999999999999999999999999",
-             value: "0x0",
-             data: "0x16c38b3c"
-           },
-           submission_mode: "prepare_only"
-         }
+         prepared:
+           prepared_action(
+             "splitter",
+             "set_paused",
+             "0x9999999999999999999999999999999999999999",
+             "0x16c38b3c"
+           )
        }}
     end
 
     def prepare_admin_action("revenue_share_factory", "set_authorized_creator", _attrs) do
       {:ok,
        %{
-         prepared: %{
-           resource: "revenue_share_factory",
-           action: "set_authorized_creator",
-           chain_id: 84_532,
-           target: "0x2222222222222222222222222222222222222222",
-           calldata: "0xe1434f4e",
-           tx_request: %{
-             chain_id: 84_532,
-             to: "0x2222222222222222222222222222222222222222",
-             value: "0x0",
-             data: "0xe1434f4e"
-           },
-           submission_mode: "prepare_only"
-         }
+         prepared:
+           prepared_action(
+             "revenue_share_factory",
+             "set_authorized_creator",
+             "0x2222222222222222222222222222222222222222",
+             "0xe1434f4e"
+           )
        }}
+    end
+
+    defp prepared_action(resource, action, to, data) do
+      action_id = "#{resource}:#{action}:#{String.slice(data, 2, 8)}"
+
+      %{
+        action_id: action_id,
+        resource: resource,
+        resource_id: to,
+        action: action,
+        chain_id: 84_532,
+        expected_signer: @expected_signer,
+        expires_at: @expires_at,
+        idempotency_key: action_id,
+        risk_copy: "Review the wallet transaction before signing.",
+        wallet_action: %{
+          action_id: action_id,
+          owner_product: "autolaunch",
+          resource: resource,
+          resource_id: to,
+          action: action,
+          chain_id: 84_532,
+          to: to,
+          value: "0",
+          data: data,
+          expected_signer: @expected_signer,
+          expires_at: @expires_at,
+          idempotency_key: action_id,
+          simulation: %{required: false, status: "not_required", block_number: nil},
+          risk_copy: "Review the wallet transaction before signing."
+        }
+      }
     end
   end
 

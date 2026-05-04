@@ -9,28 +9,49 @@ defmodule Autolaunch.Contracts.ActionParams do
     if blank?(to) or blank?(data) do
       {:error, :unsupported_action}
     else
-      value = Keyword.get(opts, :value, "0x0")
+      value = Keyword.get(opts, :value, "0")
+      value = decimal_value(value)
       action_id = action_id(chain_id, to, value, data, resource, action)
+      resource_id = resource_id(resource, params, to)
+      expected_signer = expected_signer(params, opts)
+
+      expires_at =
+        DateTime.utc_now()
+        |> DateTime.add(600, :second)
+        |> DateTime.truncate(:second)
+        |> DateTime.to_iso8601()
+
+      wallet_action = %{
+        action_id: action_id,
+        owner_product: "autolaunch",
+        resource: resource,
+        resource_id: resource_id,
+        action: action,
+        chain_id: chain_id,
+        to: to,
+        value: value,
+        data: data,
+        expected_signer: expected_signer,
+        expires_at: expires_at,
+        idempotency_key: action_id,
+        simulation: %{required: false, status: "not_required", block_number: nil},
+        risk_copy: risk_copy(resource, action)
+      }
 
       {:ok,
        %{
          action_id: action_id,
+         owner_product: "autolaunch",
          resource: resource,
+         resource_id: resource_id,
          action: action,
          chain_id: chain_id,
-         target: to,
-         calldata: data,
-         expected_signer: Keyword.get(opts, :expected_signer),
-         expires_at:
-           DateTime.utc_now()
-           |> DateTime.add(600, :second)
-           |> DateTime.truncate(:second)
-           |> DateTime.to_iso8601(),
+         expected_signer: expected_signer,
+         expires_at: expires_at,
          idempotency_key: action_id,
          risk_copy: risk_copy(resource, action),
-         tx_request: %{chain_id: chain_id, to: to, value: value, data: data},
-         params: params,
-         submission_mode: "prepare_only"
+         wallet_action: wallet_action,
+         params: params
        }}
     end
   end
@@ -125,6 +146,43 @@ defmodule Autolaunch.Contracts.ActionParams do
     |> Base.encode16(case: :lower)
     |> binary_part(0, 32)
   end
+
+  defp expected_signer(params, opts) do
+    Keyword.get(opts, :expected_signer) ||
+      Map.get(params, :expected_signer) ||
+      Map.get(params, "expected_signer")
+  end
+
+  defp resource_id(_resource, params, to) do
+    Map.get(params, :resource_id) ||
+      Map.get(params, "resource_id") ||
+      Map.get(params, :subject_id) ||
+      Map.get(params, "subject_id") ||
+      Map.get(params, :auction_id) ||
+      Map.get(params, "auction_id") ||
+      Map.get(params, :job_id) ||
+      Map.get(params, "job_id") ||
+      to
+  end
+
+  defp decimal_value(value) when is_integer(value), do: Integer.to_string(value)
+
+  defp decimal_value(value) when is_binary(value) do
+    trimmed = String.trim(value)
+
+    case trimmed do
+      "0x" <> hex ->
+        case Integer.parse(hex, 16) do
+          {parsed, ""} -> Integer.to_string(parsed)
+          _ -> "0"
+        end
+
+      _ ->
+        trimmed
+    end
+  end
+
+  defp decimal_value(_value), do: "0"
 
   defp risk_copy("revenue_splitter", "pull_treasury_share"),
     do: "Collects the subject treasury share from launch fees into the subject revenue split."

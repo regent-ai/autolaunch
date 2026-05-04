@@ -16,7 +16,7 @@ defmodule AutolaunchWeb.SubjectLive do
      |> assign(:active_view, "auction-detail")
      |> assign(:subject_id, subject_id)
      |> assign(:side_tab, "state")
-     |> assign(:stake_form, %{"amount" => ""})
+     |> assign(:stake_form, %{"amount" => "", "receiver" => ""})
      |> assign(:unstake_form, %{"amount" => ""})
      |> assign(:pending_actions, %{})
      |> assign(:subject_market, load_subject_market(subject_id))
@@ -150,9 +150,9 @@ defmodule AutolaunchWeb.SubjectLive do
                         <.wallet_tx_button
                           id="subject-stake-primary"
                           class="al-subject-primary-button"
-                          tx_request={@pending_actions[:stake].tx_request}
+                          wallet_action={@pending_actions[:stake].wallet_action}
                           register_endpoint={~p"/v1/app/subjects/#{@subject_id}/stake"}
-                          register_body={%{"amount" => @stake_form["amount"]}}
+                          register_body={stake_register_body(@stake_form)}
                           pending_message="Stake transaction sent. Waiting for confirmation."
                           success_message="Stake registered."
                         >
@@ -173,7 +173,7 @@ defmodule AutolaunchWeb.SubjectLive do
                         <.wallet_tx_button
                           id="subject-claim-primary"
                           class="al-subject-primary-button"
-                          tx_request={@pending_actions[:claim].tx_request}
+                          wallet_action={@pending_actions[:claim].wallet_action}
                           register_endpoint={~p"/v1/app/subjects/#{@subject_id}/claim-usdc"}
                           register_body={%{}}
                           pending_message="Claim transaction sent. Waiting for confirmation."
@@ -196,7 +196,7 @@ defmodule AutolaunchWeb.SubjectLive do
                         <.wallet_tx_button
                           id="subject-unstake-primary"
                           class="al-subject-primary-button"
-                          tx_request={@pending_actions[:unstake].tx_request}
+                          wallet_action={@pending_actions[:unstake].wallet_action}
                           register_endpoint={~p"/v1/app/subjects/#{@subject_id}/unstake"}
                           register_body={%{"amount" => @unstake_form["amount"]}}
                           pending_message="Unstake transaction sent. Waiting for confirmation."
@@ -219,7 +219,7 @@ defmodule AutolaunchWeb.SubjectLive do
                         <.wallet_tx_button
                           id="subject-claim-and-stake-primary"
                           class="al-subject-primary-button"
-                          tx_request={@pending_actions[:claim_and_stake_emissions].tx_request}
+                          wallet_action={@pending_actions[:claim_and_stake_emissions].wallet_action}
                           register_endpoint={~p"/v1/app/subjects/#{@subject_id}/claim-and-stake-emissions"}
                           register_body={%{}}
                           pending_message="Claim and stake sent. Waiting for confirmation."
@@ -291,6 +291,14 @@ defmodule AutolaunchWeb.SubjectLive do
                       value={@stake_form["amount"]}
                       placeholder="0.0"
                     />
+                    <label for="subject-stake-receiver">Stake for wallet</label>
+                    <input
+                      id="subject-stake-receiver"
+                      type="text"
+                      name="stake[receiver]"
+                      value={@stake_form["receiver"]}
+                      placeholder="Connected wallet"
+                    />
                   </form>
 
                   <div class="al-subject-action-footer">
@@ -298,9 +306,9 @@ defmodule AutolaunchWeb.SubjectLive do
                       <.wallet_tx_button
                         id="subject-stake"
                         class="al-subject-action-button"
-                        tx_request={@pending_actions[:stake].tx_request}
+                        wallet_action={@pending_actions[:stake].wallet_action}
                         register_endpoint={~p"/v1/app/subjects/#{@subject_id}/stake"}
-                        register_body={%{"amount" => @stake_form["amount"]}}
+                        register_body={stake_register_body(@stake_form)}
                         pending_message="Stake transaction sent. Waiting for confirmation."
                         success_message="Stake registered."
                       >
@@ -338,7 +346,7 @@ defmodule AutolaunchWeb.SubjectLive do
                       <.wallet_tx_button
                         id="subject-claim"
                         class="al-subject-action-button"
-                        tx_request={@pending_actions[:claim].tx_request}
+                        wallet_action={@pending_actions[:claim].wallet_action}
                         register_endpoint={~p"/v1/app/subjects/#{@subject_id}/claim-usdc"}
                         register_body={%{}}
                         pending_message="Claim transaction sent. Waiting for confirmation."
@@ -383,7 +391,7 @@ defmodule AutolaunchWeb.SubjectLive do
                       <.wallet_tx_button
                         id="subject-unstake"
                         class="al-subject-ghost-button"
-                        tx_request={@pending_actions[:unstake].tx_request}
+                        wallet_action={@pending_actions[:unstake].wallet_action}
                         register_endpoint={~p"/v1/app/subjects/#{@subject_id}/unstake"}
                         register_body={%{"amount" => @unstake_form["amount"]}}
                         pending_message="Unstake transaction sent. Waiting for confirmation."
@@ -416,7 +424,7 @@ defmodule AutolaunchWeb.SubjectLive do
                       <.wallet_tx_button
                         id="subject-claim-emissions"
                         class="al-subject-ghost-button"
-                        tx_request={@pending_actions[:claim_emissions].tx_request}
+                        wallet_action={@pending_actions[:claim_emissions].wallet_action}
                         register_endpoint={~p"/v1/app/subjects/#{@subject_id}/claim-emissions"}
                         register_body={%{}}
                         pending_message="Agent-token emission claim sent. Waiting for confirmation."
@@ -439,7 +447,7 @@ defmodule AutolaunchWeb.SubjectLive do
                       <.wallet_tx_button
                         id="subject-claim-and-stake-emissions"
                         class="al-subject-ghost-button"
-                        tx_request={@pending_actions[:claim_and_stake_emissions].tx_request}
+                        wallet_action={@pending_actions[:claim_and_stake_emissions].wallet_action}
                         register_endpoint={~p"/v1/app/subjects/#{@subject_id}/claim-and-stake-emissions"}
                         register_body={%{}}
                         pending_message="Agent-token emission claim and stake sent. Waiting for confirmation."
@@ -474,7 +482,7 @@ defmodule AutolaunchWeb.SubjectLive do
                           <.wallet_tx_button
                             id={"subject-sweep-#{ingress.address}"}
                             class="al-subject-ghost-button"
-                            tx_request={@pending_actions[{:sweep, ingress.address}].tx_request}
+                            wallet_action={@pending_actions[{:sweep, ingress.address}].wallet_action}
                             register_endpoint={~p"/v1/app/subjects/#{@subject_id}/ingress/#{ingress.address}/sweep"}
                             register_body={%{}}
                             pending_message="Sweep transaction sent. Waiting for confirmation."
@@ -1383,10 +1391,10 @@ defmodule AutolaunchWeb.SubjectLive do
       end
 
     case result do
-      {:ok, %{prepared: %{tx_request: tx_request} = prepared, subject: subject}} ->
+      {:ok, %{prepared: %{wallet_action: tx_request} = prepared, subject: subject}} ->
         socket
         |> assign(:subject, subject)
-        |> put_pending_action(action, %{tx_request: tx_request, prepared: prepared})
+        |> put_pending_action(action, %{wallet_action: tx_request, prepared: prepared})
 
       {:error, reason} ->
         put_flash(socket, :error, Presenter.action_error(reason))
@@ -1400,6 +1408,20 @@ defmodule AutolaunchWeb.SubjectLive do
       Map.put(socket.assigns.pending_actions, action, prepared_action)
     )
   end
+
+  defp stake_register_body(form) do
+    %{"amount" => Map.get(form, "amount", "")}
+    |> maybe_put_receiver(Map.get(form, "receiver"))
+  end
+
+  defp maybe_put_receiver(body, receiver) when is_binary(receiver) do
+    case String.trim(receiver) do
+      "" -> body
+      receiver -> Map.put(body, "receiver", receiver)
+    end
+  end
+
+  defp maybe_put_receiver(body, _receiver), do: body
 
   defp context_module do
     :autolaunch

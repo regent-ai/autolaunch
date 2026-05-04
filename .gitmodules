@@ -1,0 +1,18 @@
+[submodule "contracts/lib/openzeppelin-contracts"]
+	path = contracts/lib/openzeppelin-contracts
+	url = https://github.com/OpenZeppelin/openzeppelin-contracts.git
+[submodule "contracts/lib/permit2"]
+	path = contracts/lib/permit2
+	url = https://github.com/Uniswap/permit2.git
+[submodule "contracts/lib/solmate"]
+	path = contracts/lib/solmate
+	url = https://github.com/transmissions11/solmate.git
+[submodule "contracts/lib/solady"]
+	path = contracts/lib/solady
+	url = https://github.com/Vectorized/solady.git
+[submodule "contracts/lib/uerc20-factory"]
+	path = contracts/lib/uerc20-factory
+	url = https://github.com/Uniswap/uerc20-factory.git
+[submodule "contracts/lib/v4-periphery"]
+	path = contracts/lib/v4-periphery
+	url = https://github.com/Uniswap/v4-periphery.git

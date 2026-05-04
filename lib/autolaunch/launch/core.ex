@@ -491,12 +491,22 @@ defmodule Autolaunch.Launch.Core do
   defp ensure_agent_eligible(%{state: "eligible"}), do: :ok
   defp ensure_agent_eligible(agent), do: {:error, {:agent_not_eligible, agent}}
 
-  def serialize_tx_request(%{chain_id: chain_id, to: to, value_hex: value_hex, data: data}) do
+  def serialize_wallet_action(%{chain_id: chain_id, to: to, value_hex: value_hex, data: data} = action) do
     %{
+      action_id: Map.fetch!(action, :action_id),
+      owner_product: "autolaunch",
+      resource: Map.fetch!(action, :resource),
+      resource_id: Map.fetch!(action, :resource_id),
+      action: Map.fetch!(action, :action),
       chain_id: chain_id,
       to: to,
       value: value_hex,
-      data: data
+      data: data,
+      expected_signer: Map.fetch!(action, :expected_signer),
+      expires_at: Map.fetch!(action, :expires_at),
+      idempotency_key: Map.fetch!(action, :idempotency_key),
+      simulation: Map.fetch!(action, :simulation),
+      risk_copy: Map.fetch!(action, :risk_copy)
     }
   end
 
@@ -506,10 +516,10 @@ defmodule Autolaunch.Launch.Core do
     action
   end
 
-  def serialize_action_request(%{tx_request: tx_request} = action) do
+  def serialize_action_request(%{wallet_action: wallet_action} = action) do
     action
-    |> Map.drop([:tx_request])
-    |> Map.put(:tx_request, serialize_tx_request(tx_request))
+    |> Map.drop([:wallet_action])
+    |> Map.put(:wallet_action, wallet_action)
   end
 
   defp derive_position_status(%Bid{claimed_at: %DateTime{}}, _auction), do: "claimed"

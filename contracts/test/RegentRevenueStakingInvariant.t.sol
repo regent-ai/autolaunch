@@ -188,14 +188,15 @@ contract RegentRevenueStakingInvariantTest is StdInvariant, Test {
         assertGe(regent.balanceOf(address(staking)), staking.totalStaked());
     }
 
-    function invariant_claimedRegentNeverExceedsFundedRegent() external view {
-        assertLe(staking.totalClaimedRegent(), staking.totalFundedRegent());
+    function invariant_regentRewardPoolMatchesBalanceAbovePrincipal() external view {
+        uint256 balance = regent.balanceOf(address(staking));
+        uint256 expectedPool = balance > staking.totalStaked() ? balance - staking.totalStaked() : 0;
+        assertEq(staking.regentRewardPool(), expectedPool);
+        assertEq(staking.availableRegentRewardInventory(), expectedPool);
     }
 
     function invariant_usdcBalanceCoversTrackedClaimsAndTreasury() external view {
-        uint256 trackedUsdc = staking.treasuryResidualUsdc() + handler.sumClaimableUsdc();
-        uint256 roundingTolerance = handler.actorCount() * handler.successfulUsdcDeposits();
-        assertGe(usdc.balanceOf(address(staking)) + roundingTolerance, trackedUsdc);
+        assertGe(usdc.balanceOf(address(staking)), staking.reservedUsdc());
     }
 
     function invariant_materializedRegentLiabilityMatchesSyncedActors() external view {

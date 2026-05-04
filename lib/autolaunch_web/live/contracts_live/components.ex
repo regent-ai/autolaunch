@@ -85,12 +85,12 @@ defmodule AutolaunchWeb.ContractsLive.Components do
       <h3>{@prepared.resource} / {@prepared.action}</h3>
       <div class="al-contract-kv">
         <div><span>Chain id</span><strong>{AutolaunchWeb.Format.display_uint(@prepared.chain_id)}</strong></div>
-        <div><span>Target</span><strong>{AutolaunchWeb.Format.short_address(@prepared.target)}</strong></div>
-        <div><span>Submission mode</span><strong>{@prepared.submission_mode}</strong></div>
+        <div><span>Target</span><strong>{AutolaunchWeb.Format.short_address(@prepared.wallet_action.to)}</strong></div>
+        <div><span>Expires</span><strong>{@prepared.wallet_action.expires_at}</strong></div>
       </div>
       <div class="al-action-row">
-        <button type="button" class="al-submit" data-copy-value={Jason.encode!(@prepared.tx_request)}>Copy tx JSON</button>
-        <button type="button" class="al-ghost" data-copy-value={@prepared.calldata}>Copy calldata</button>
+        <button type="button" class="al-submit" data-copy-value={Jason.encode!(@prepared.wallet_action)}>Copy tx JSON</button>
+        <button type="button" class="al-ghost" data-copy-value={@prepared.wallet_action.data}>Copy calldata</button>
       </div>
       <pre class="al-contract-json"><code>{Jason.encode!(@prepared, pretty: true)}</code></pre>
     </article>

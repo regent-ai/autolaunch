@@ -55,10 +55,14 @@ defmodule Autolaunch.Launch.DeployCommand do
   def command_env(%Job{} = job, config) do
     [
       {"AUTOLAUNCH_OWNER_ADDRESS", job.owner_address},
-      {"AUTOLAUNCH_AGENT_ID", job.agent_id},
+      {"AUTOLAUNCH_AGENT_ID", identity_agent_id(job, config)},
       {"AUTOLAUNCH_AGENT_NAME", job.agent_name || ""},
       {"AUTOLAUNCH_TOKEN_NAME", job.token_name || ""},
       {"AUTOLAUNCH_TOKEN_SYMBOL", job.token_symbol || ""},
+      {"AUTOLAUNCH_TOKEN_METADATA_DESCRIPTION",
+       Keyword.get(config, :token_metadata_description, "")},
+      {"AUTOLAUNCH_TOKEN_METADATA_WEBSITE", Keyword.get(config, :token_metadata_website, "")},
+      {"AUTOLAUNCH_TOKEN_METADATA_IMAGE", Keyword.get(config, :token_metadata_image, "")},
       {"CCA_REQUIRED_CURRENCY_RAISED", job.minimum_raise_usdc_raw || "0"},
       {"AUTOLAUNCH_TOTAL_SUPPLY", job.total_supply},
       {"AUTOLAUNCH_AGENT_SAFE_ADDRESS", job.agent_safe_address || ""},
@@ -81,6 +85,7 @@ defmodule Autolaunch.Launch.DeployCommand do
       {"CCA_TICK_SPACING_Q96", config_text(config, :cca_tick_spacing_q96)},
       {"CCA_FLOOR_PRICE_Q96", config_text(config, :cca_floor_price_q96)},
       {"AUCTION_DURATION_BLOCKS", config_text(config, :auction_duration_blocks)},
+      {"CCA_START_BLOCK_OFFSET", config_text(config, :cca_start_block_offset)},
       {"CCA_CLAIM_BLOCK_OFFSET", config_text(config, :cca_claim_block_offset)},
       {"LBP_MIGRATION_BLOCK_OFFSET", config_text(config, :lbp_migration_block_offset)},
       {"LBP_SWEEP_BLOCK_OFFSET", config_text(config, :lbp_sweep_block_offset)},
@@ -91,8 +96,7 @@ defmodule Autolaunch.Launch.DeployCommand do
        config_value_for_chain(job.chain_id, :pool_manager_address, config)},
       {"AUTOLAUNCH_UNISWAP_V4_POSITION_MANAGER",
        config_value_for_chain(job.chain_id, :position_manager_address, config)},
-      {"AUTOLAUNCH_IDENTITY_REGISTRY_ADDRESS",
-       Keyword.get(config, :identity_registry_address, "")}
+      {"AUTOLAUNCH_IDENTITY_REGISTRY_ADDRESS", identity_registry_address(config)}
     ]
     |> maybe_append_optional_env(
       "CCA_VALIDATION_HOOK",
@@ -133,9 +137,6 @@ defmodule Autolaunch.Launch.DeployCommand do
       blank?(Keyword.get(config, :token_factory_address, "")) ->
         "Missing token factory address."
 
-      blank?(Keyword.get(config, :identity_registry_address, "")) ->
-        "Missing identity registry address."
-
       not valid_address?(Keyword.get(config, :factory_owner_address, "")) ->
         "Missing factory owner address."
 
@@ -157,6 +158,9 @@ defmodule Autolaunch.Launch.DeployCommand do
       not valid_integer?(Keyword.get(config, :auction_duration_blocks, ""), 1) ->
         "Missing auction duration."
 
+      not valid_integer?(Keyword.get(config, :cca_start_block_offset, ""), 0) ->
+        "Missing CCA start block offset."
+
       blank?(config_value_for_chain(chain_id, :pool_manager_address, config)) ->
         "Missing #{BaseChain.network_label(chain_id)} Uniswap v4 pool manager address."
 
@@ -170,16 +174,21 @@ defmodule Autolaunch.Launch.DeployCommand do
 
   defp credentials_args(config) do
     account = Keyword.get(config, :deploy_account, "")
+    sender = Keyword.get(config, :deploy_sender, "")
     password = Keyword.get(config, :deploy_password, "")
-    private_key = Keyword.get(config, :deploy_private_key, "")
 
-    cond do
-      account != "" and password != "" -> ["--account", account, "--password", password]
-      account != "" -> ["--account", account]
-      private_key != "" -> ["--private-key", private_key]
-      true -> []
-    end
+    []
+    |> append_arg("--account", account)
+    |> append_arg("--sender", sender)
+    |> append_password(account, password)
   end
+
+  defp append_arg(args, _flag, ""), do: args
+  defp append_arg(args, flag, value), do: args ++ [flag, value]
+
+  defp append_password(args, "", _password), do: args
+  defp append_password(args, _account, ""), do: args
+  defp append_password(args, _account, password), do: args ++ ["--password", password]
 
   defp broadcast_args(%Job{broadcast: true}), do: ["--broadcast"]
   defp broadcast_args(_job), do: []
@@ -197,6 +206,16 @@ defmodule Autolaunch.Launch.DeployCommand do
       :regent_multisig_address,
       "0x9fa152B0EAdbFe9A7c5C0a8e1D11784f22669a3e"
     )
+  end
+
+  defp identity_registry_address(config) do
+    address = Keyword.get(config, :identity_registry_address, "")
+
+    if valid_address?(address), do: address, else: ""
+  end
+
+  defp identity_agent_id(%Job{} = job, config) do
+    if identity_registry_address(config) == "", do: "", else: job.agent_id || ""
   end
 
   defp maybe_append_optional_env(env, vars, value) do

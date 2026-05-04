@@ -72,6 +72,7 @@ defmodule Autolaunch.ReleaseDoctorTest do
         cca_tick_spacing_q96: "79228162514264337593543950336",
         cca_floor_price_q96: "79228162514264337593543950336",
         auction_duration_blocks: "9258",
+        cca_start_block_offset: "300",
         cca_claim_block_offset: "64",
         lbp_migration_block_offset: "128",
         lbp_sweep_block_offset: "256",
@@ -168,6 +169,32 @@ defmodule Autolaunch.ReleaseDoctorTest do
 
     assert Enum.any?(checks, &(&1.key == "launch_chain_rpc_urls_8453" and not &1.ok))
     assert Enum.any?(checks, &(&1.key == "launch_erc8004_subgraph_urls_8453" and not &1.ok))
+  end
+
+  test "identity registry gaps are warnings only" do
+    launch =
+      Application.get_env(:autolaunch, :launch, [])
+      |> Keyword.put(:identity_registry_address, "")
+      |> Keyword.put(:identity_registry_addresses, %{
+        84_532 => "",
+        8_453 => ""
+      })
+
+    Application.put_env(:autolaunch, :launch, launch)
+
+    assert %{ok: true, checks: checks} = ReleaseDoctor.run()
+
+    assert Enum.any?(
+             checks,
+             &(&1.key == "launch_code_identity_registry_address" and &1.severity == :warning and
+                 not &1.ok)
+           )
+
+    assert Enum.any?(
+             checks,
+             &(&1.key == "launch_identity_registry_addresses_84532" and
+                 &1.severity == :warning and not &1.ok)
+           )
   end
 
   test "doctor fails when a path deploy binary exists but is not executable", %{tempdir: tempdir} do

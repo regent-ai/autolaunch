@@ -32,6 +32,13 @@ defmodule AutolaunchWeb.Api.RegentStakingControllerTest do
        }}
     end
 
+    def stake(%{"amount" => "1.5", "receiver" => _receiver}, _human) do
+      {:ok,
+       %{
+         prepared: prepared("stake", "0x7acb7757")
+       }}
+    end
+
     def stake(%{"amount" => "1.5"}, _human) do
       {:ok,
        %{
@@ -55,50 +62,73 @@ defmodule AutolaunchWeb.Api.RegentStakingControllerTest do
        }}
     end
 
-    def prepare_deposit_usdc(_params) do
+    def claim_regent(_params, _human), do: {:error, {:unexpected, "internal detail"}}
+
+    def prepare_deposit_usdc(_params, operator_wallet_address) do
       {:ok,
        %{
          prepared: %{
            action_id: "prepared_deposit_usdc",
+           owner_product: "autolaunch",
            resource: "regent_staking",
+           resource_id: "0x9999999999999999999999999999999999999999",
            action: "deposit_usdc",
            chain_id: 84_532,
-           target: "0x9999999999999999999999999999999999999999",
-           calldata: "0x7dc6bb98",
-           expected_signer: nil,
+           expected_signer: operator_wallet_address,
            expires_at: "2999-01-01T00:00:00Z",
            idempotency_key: "prepared_deposit_usdc",
            risk_copy: "Deposits Base USDC into the Regent staking rail.",
-           tx_request: %{
+           wallet_action: %{
+             action_id: "prepared_deposit_usdc",
+             owner_product: "autolaunch",
+             resource: "regent_staking",
+             resource_id: "0x9999999999999999999999999999999999999999",
+             action: "deposit_usdc",
              chain_id: 84_532,
              to: "0x9999999999999999999999999999999999999999",
-             value: "0x0",
-             data: "0x7dc6bb98"
+             value: "0",
+             data: "0x7dc6bb98",
+             expected_signer: operator_wallet_address,
+             expires_at: "2999-01-01T00:00:00Z",
+             idempotency_key: "prepared_deposit_usdc",
+             simulation: %{required: false, status: "not_required", block_number: nil},
+             risk_copy: "Deposits Base USDC into the Regent staking rail."
            }
          }
        }}
     end
 
-    def prepare_withdraw_treasury(_params) do
+    def prepare_withdraw_treasury(_params, operator_wallet_address) do
       {:ok,
        %{
          prepared: %{
            action_id: "prepared_withdraw_treasury",
+           owner_product: "autolaunch",
            resource: "regent_staking",
+           resource_id: "0x9999999999999999999999999999999999999999",
            action: "withdraw_treasury",
            chain_id: 84_532,
-           target: "0x9999999999999999999999999999999999999999",
-           calldata: "0xe13b5822",
-           expected_signer: nil,
+           expected_signer: operator_wallet_address,
            expires_at: "2999-01-01T00:00:00Z",
            idempotency_key: "prepared_withdraw_treasury",
            risk_copy:
              "Withdraws available Regent staking treasury USDC to the selected recipient.",
-           tx_request: %{
+           wallet_action: %{
+             action_id: "prepared_withdraw_treasury",
+             owner_product: "autolaunch",
+             resource: "regent_staking",
+             resource_id: "0x9999999999999999999999999999999999999999",
+             action: "withdraw_treasury",
              chain_id: 84_532,
              to: "0x9999999999999999999999999999999999999999",
-             value: "0x0",
-             data: "0xe13b5822"
+             value: "0",
+             data: "0xe13b5822",
+             expected_signer: operator_wallet_address,
+             expires_at: "2999-01-01T00:00:00Z",
+             idempotency_key: "prepared_withdraw_treasury",
+             simulation: %{required: false, status: "not_required", block_number: nil},
+             risk_copy:
+               "Withdraws available Regent staking treasury USDC to the selected recipient."
            }
          }
        }}
@@ -107,20 +137,30 @@ defmodule AutolaunchWeb.Api.RegentStakingControllerTest do
     defp prepared(action, data, expected_signer \\ "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa") do
       %{
         action_id: "prepared_#{action}",
+        owner_product: "autolaunch",
         resource: "regent_staking",
+        resource_id: "0x9999999999999999999999999999999999999999",
         action: action,
         chain_id: 84_532,
-        target: "0x9999999999999999999999999999999999999999",
-        calldata: data,
         expected_signer: expected_signer,
         expires_at: "2999-01-01T00:00:00Z",
         idempotency_key: "prepared_#{action}",
         risk_copy: "Review the wallet transaction before signing.",
-        tx_request: %{
+        wallet_action: %{
+          action_id: "prepared_#{action}",
+          owner_product: "autolaunch",
+          resource: "regent_staking",
+          resource_id: "0x9999999999999999999999999999999999999999",
+          action: action,
           chain_id: 84_532,
           to: "0x9999999999999999999999999999999999999999",
-          value: "0x0",
-          data: data
+          value: "0",
+          data: data,
+          expected_signer: expected_signer,
+          expires_at: "2999-01-01T00:00:00Z",
+          idempotency_key: "prepared_#{action}",
+          simulation: %{required: false, status: "not_required", block_number: nil},
+          risk_copy: "Review the wallet transaction before signing."
         }
       }
     end
@@ -203,7 +243,22 @@ defmodule AutolaunchWeb.Api.RegentStakingControllerTest do
              "prepared" => %{
                "expected_signer" => "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
                "idempotency_key" => "prepared_stake",
-               "tx_request" => %{"chain_id" => 84_532, "data" => "0x7acb7757"}
+               "wallet_action" => %{"chain_id" => 84_532, "data" => "0x7acb7757"}
+             }
+           } = json_response(conn, 200)
+  end
+
+  test "stake accepts a receiving wallet", %{conn: conn} do
+    receiver = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+
+    conn =
+      post(conn, "/v1/app/regent/staking/stake", %{"amount" => "1.5", "receiver" => receiver})
+
+    assert %{
+             "ok" => true,
+             "prepared" => %{
+               "expected_signer" => "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+               "wallet_action" => %{"data" => "0x7acb7757"}
              }
            } = json_response(conn, 200)
   end
@@ -219,9 +274,21 @@ defmodule AutolaunchWeb.Api.RegentStakingControllerTest do
              "prepared" => %{
                "expected_signer" => @agent_wallet,
                "idempotency_key" => "prepared_stake",
-               "tx_request" => %{"chain_id" => 84_532, "data" => "0x7acb7757"}
+               "wallet_action" => %{"chain_id" => 84_532, "data" => "0x7acb7757"}
              }
            } = json_response(conn, 200)
+  end
+
+  test "unknown API errors use stable public wording", %{conn: conn} do
+    conn = post(conn, "/v1/app/regent/staking/claim-regent", %{})
+
+    assert %{
+             "ok" => false,
+             "error" => %{
+               "code" => "regent_staking_invalid",
+               "message" => "Regent staking request could not be completed"
+             }
+           } = json_response(conn, 422)
   end
 
   test "deposit prepare requires a browser session", %{conn: conn} do
@@ -253,7 +320,8 @@ defmodule AutolaunchWeb.Api.RegentStakingControllerTest do
              "ok" => true,
              "prepared" => %{
                "action" => "deposit_usdc",
-               "tx_request" => %{"data" => "0x7dc6bb98"}
+               "expected_signer" => "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+               "wallet_action" => %{"data" => "0x7dc6bb98"}
              }
            } = json_response(conn, 200)
   end

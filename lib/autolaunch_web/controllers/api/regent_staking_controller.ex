@@ -38,11 +38,15 @@ defmodule AutolaunchWeb.Api.RegentStakingController do
   end
 
   def prepare_deposit(conn, params) do
-    render_operator_prepare(conn, fn -> context_module().prepare_deposit_usdc(params) end)
+    render_operator_prepare(conn, fn operator_wallet_address ->
+      context_module().prepare_deposit_usdc(params, operator_wallet_address)
+    end)
   end
 
   def prepare_withdraw_treasury(conn, params) do
-    render_operator_prepare(conn, fn -> context_module().prepare_withdraw_treasury(params) end)
+    render_operator_prepare(conn, fn operator_wallet_address ->
+      context_module().prepare_withdraw_treasury(params, operator_wallet_address)
+    end)
   end
 
   defp render_result(conn, result), do: render_api_result(conn, result, &translate_error/1)
@@ -78,15 +82,16 @@ defmodule AutolaunchWeb.Api.RegentStakingController do
       {:unprocessable_entity, "invalid_source_ref",
        "Source tag or source reference must be bytes32 hex or 32 bytes of text"}
 
-  defp translate_error(reason),
-    do: {:unprocessable_entity, "regent_staking_invalid", inspect(reason)}
+  defp translate_error(_reason),
+    do:
+      {:unprocessable_entity, "regent_staking_invalid",
+       "Regent staking request could not be completed"}
 
   defp render_operator_prepare(conn, fun) do
     with_current_human(conn, fn human ->
-      if RegentStakingAccess.authorized_operator?(human) do
-        render_result(conn, fun.())
-      else
-        render_result(conn, {:error, :operator_required})
+      case RegentStakingAccess.authorized_operator_wallet(human) do
+        {:ok, operator_wallet_address} -> render_result(conn, fun.(operator_wallet_address))
+        {:error, :operator_required} -> render_result(conn, {:error, :operator_required})
       end
     end)
   end

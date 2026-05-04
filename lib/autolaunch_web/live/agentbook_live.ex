@@ -264,7 +264,7 @@ defmodule AutolaunchWeb.AgentbookLive do
                 </p>
               </div>
 
-              <%= if session_tx_request(@active_session) && @active_session.status == "proof_ready" do %>
+              <%= if session_wallet_action(@active_session) && @active_session.status == "proof_ready" do %>
                 <div class="al-inline-banner">
                   <strong>Wallet confirmation needed</strong>
                   <p>
@@ -275,7 +275,7 @@ defmodule AutolaunchWeb.AgentbookLive do
                 <.wallet_tx_button
                   id="agentbook-register-wallet-tx"
                   class="al-submit"
-                  tx_request={session_tx_request(@active_session)}
+                  wallet_action={session_wallet_action(@active_session)}
                   register_endpoint={"/v1/app/agentbook/sessions/#{@active_session.session_id}/submit"}
                   register_body={%{}}
                   pending_message="AgentBook registration sent. Waiting for confirmation."
@@ -494,11 +494,11 @@ defmodule AutolaunchWeb.AgentbookLive do
   defp error_message(error) when is_binary(error), do: error
   defp error_message(error), do: inspect(error)
 
-  defp session_tx_request(session) when is_map(session) do
-    Map.get(session, :tx_request)
+  defp session_wallet_action(session) when is_map(session) do
+    Map.get(session, :wallet_action)
   end
 
-  defp session_tx_request(_session), do: nil
+  defp session_wallet_action(_session), do: nil
 
   defp session_human_id(session) when is_map(session) do
     Map.get(session, :human_id)

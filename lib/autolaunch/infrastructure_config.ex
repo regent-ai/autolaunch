@@ -11,8 +11,7 @@ defmodule Autolaunch.InfrastructureConfig do
     :revenue_share_factory_address,
     :revenue_ingress_factory_address,
     :lbp_strategy_factory_address,
-    :token_factory_address,
-    :identity_registry_address
+    :token_factory_address
   ]
 
   @verifier_address_keys [
@@ -22,8 +21,7 @@ defmodule Autolaunch.InfrastructureConfig do
     :revenue_ingress_factory_addresses,
     :lbp_strategy_factory_addresses,
     :chain_rpc_urls,
-    :erc8004_subgraph_urls,
-    :identity_registry_addresses
+    :erc8004_subgraph_urls
   ]
 
   @launch_script_inputs [
@@ -34,6 +32,7 @@ defmodule Autolaunch.InfrastructureConfig do
     {:cca_tick_spacing_q96, "CCA_TICK_SPACING_Q96", {:integer, min: 1}},
     {:cca_floor_price_q96, "CCA_FLOOR_PRICE_Q96", {:integer, min: 1}},
     {:auction_duration_blocks, "AUCTION_DURATION_BLOCKS", {:integer, min: 1}},
+    {:cca_start_block_offset, "CCA_START_BLOCK_OFFSET", {:integer, min: 0}},
     {:cca_claim_block_offset, "CCA_CLAIM_BLOCK_OFFSET", {:integer, min: 0}},
     {:lbp_migration_block_offset, "LBP_MIGRATION_BLOCK_OFFSET", {:integer, min: 0}},
     {:lbp_sweep_block_offset, "LBP_SWEEP_BLOCK_OFFSET", {:integer, min: 0}}

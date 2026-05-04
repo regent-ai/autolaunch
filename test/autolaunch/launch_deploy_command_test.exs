@@ -12,6 +12,10 @@ defmodule Autolaunch.LaunchDeployCommandTest do
     assert env["AUTOLAUNCH_IDENTITY_REGISTRY_ADDRESS"] ==
              "0x9999999999999999999999999999999999999999"
 
+    assert env["AUTOLAUNCH_AGENT_ID"] == "84532:42"
+    assert env["AUTOLAUNCH_TOKEN_METADATA_DESCRIPTION"] == "Atlas launch"
+    assert env["AUTOLAUNCH_TOKEN_METADATA_WEBSITE"] == "https://atlas.example"
+    assert env["AUTOLAUNCH_TOKEN_METADATA_IMAGE"] == "ipfs://atlas"
     assert env["STRATEGY_OPERATOR"] == "0x9999999999999999999999999999999999999998"
     assert env["AUTOLAUNCH_FACTORY_OWNER_ADDRESS"] == "0x9999999999999999999999999999999999999997"
     assert env["OFFICIAL_POOL_FEE"] == "0"
@@ -19,10 +23,15 @@ defmodule Autolaunch.LaunchDeployCommandTest do
     assert env["CCA_TICK_SPACING_Q96"] == "79228162514264337593543950336"
     assert env["CCA_FLOOR_PRICE_Q96"] == "79228162514264337593543950336"
     assert env["CCA_REQUIRED_CURRENCY_RAISED"] == "1000000"
-    assert env["AUCTION_DURATION_BLOCKS"] == "9258"
+    assert env["AUCTION_DURATION_BLOCKS"] == "86400"
+    assert env["CCA_START_BLOCK_OFFSET"] == "300"
     assert env["CCA_CLAIM_BLOCK_OFFSET"] == "64"
     assert env["LBP_MIGRATION_BLOCK_OFFSET"] == "128"
     assert env["LBP_SWEEP_BLOCK_OFFSET"] == "256"
+
+    assert "--account" in command.args
+    assert "--sender" in command.args
+    refute "--private-key" in command.args
   end
 
   test "build fails before running forge when a required script input is missing" do
@@ -37,6 +46,16 @@ defmodule Autolaunch.LaunchDeployCommandTest do
 
     assert {:error, "Missing factory owner address.", %{stdout_tail: "", stderr_tail: ""}} =
              DeployCommand.build(job(), config)
+  end
+
+  test "build leaves identity env blank when the registry is not configured" do
+    config = Keyword.put(launch_config(), :identity_registry_address, "")
+
+    assert {:ok, command} = DeployCommand.build(job(), config)
+
+    env = Map.new(command.opts[:env])
+    assert env["AUTOLAUNCH_IDENTITY_REGISTRY_ADDRESS"] == ""
+    assert env["AUTOLAUNCH_AGENT_ID"] == ""
   end
 
   defp job do
@@ -69,14 +88,20 @@ defmodule Autolaunch.LaunchDeployCommandTest do
       revenue_ingress_factory_address: "0x4444444444444444444444444444444444444444",
       lbp_strategy_factory_address: "0x5555555555555555555555555555555555555555",
       token_factory_address: "0x6666666666666666666666666666666666666666",
+      token_metadata_description: "Atlas launch",
+      token_metadata_website: "https://atlas.example",
+      token_metadata_image: "ipfs://atlas",
       regent_multisig_address: "0x7777777777777777777777777777777777777777",
+      deploy_account: "autolaunch-infra",
+      deploy_sender: "0x1515eefa0d418ef1a8cd788b57eb36b6d7437b86",
       factory_owner_address: "0x9999999999999999999999999999999999999997",
       strategy_operator: "0x9999999999999999999999999999999999999998",
       official_pool_fee: "0",
       official_pool_tick_spacing: "60",
       cca_tick_spacing_q96: "79228162514264337593543950336",
       cca_floor_price_q96: "79228162514264337593543950336",
-      auction_duration_blocks: "9258",
+      auction_duration_blocks: "86400",
+      cca_start_block_offset: "300",
       cca_claim_block_offset: "64",
       lbp_migration_block_offset: "128",
       lbp_sweep_block_offset: "256",

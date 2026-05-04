@@ -2,6 +2,7 @@ defmodule AutolaunchWeb.Api.ControllerHelpers do
   @moduledoc false
 
   import Phoenix.Controller, only: [json: 2]
+  import Plug.Conn, only: [put_status: 2]
 
   alias AutolaunchWeb.ApiError
 
@@ -28,6 +29,12 @@ defmodule AutolaunchWeb.Api.ControllerHelpers do
   end
 
   def render_api_result(conn, {:ok, payload}, _translate_error, opts) do
+    conn =
+      case Keyword.get(opts, :status) do
+        nil -> conn
+        status -> put_status(conn, status)
+      end
+
     payload =
       case Keyword.get(opts, :root_key) do
         nil -> payload

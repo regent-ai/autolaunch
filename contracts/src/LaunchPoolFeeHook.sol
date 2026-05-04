@@ -29,6 +29,9 @@ contract LaunchPoolFeeHook is Owned, IHooks {
     uint256 public constant TREASURY_FEE_BPS = 100;
     uint256 public constant REGENT_MULTISIG_FEE_BPS = 100;
     uint256 public constant BPS_DENOMINATOR = 10_000;
+    // High-risk v4 permissions: beforeSwap, afterSwap, beforeSwapReturnDelta, and
+    // afterSwapReturnDelta. The return-delta permissions are required so the hook can
+    // charge the configured quote-token fee through PoolManager accounting.
     uint160 public constant REQUIRED_HOOK_FLAGS = Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG
         | Hooks.BEFORE_SWAP_RETURNS_DELTA_FLAG | Hooks.AFTER_SWAP_RETURNS_DELTA_FLAG;
 
@@ -216,12 +219,19 @@ contract LaunchPoolFeeHook is Owned, IHooks {
     ) internal pure returns (SwapFeeComputation memory feeData) {
         bool chargeCurrency0 = _unspecifiedCurrency0(params);
         int128 chargedDelta = chargeCurrency0 ? delta.amount0() : delta.amount1();
-        if (chargedDelta < 0) chargedDelta = -chargedDelta;
+        uint128 chargedAmount = _absUint128(chargedDelta);
 
         address chargedCurrency =
             chargeCurrency0 ? Currency.unwrap(key.currency0) : Currency.unwrap(key.currency1);
         require(chargedCurrency == quoteToken, "QUOTE_TOKEN_MISMATCH");
-        feeData = _feeData(quoteToken, uint128(chargedDelta), params.amountSpecified < 0);
+        feeData = _feeData(quoteToken, chargedAmount, params.amountSpecified < 0);
+    }
+
+    function _absUint128(int128 value) internal pure returns (uint128) {
+        require(value != type(int128).min, "DELTA_OVERFLOW");
+        int128 magnitude = value < 0 ? -value : value;
+        // forge-lint: disable-next-line(unsafe-typecast)
+        return uint128(magnitude);
     }
 
     function _feeData(address quoteToken, uint256 chargedAmount, bool exactInput)

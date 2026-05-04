@@ -120,7 +120,7 @@ defmodule AutolaunchWeb.Api.LifecycleControllerTest do
              prepared: %{
                resource: "strategy",
                action: "migrate",
-               tx_request: %{
+               wallet_action: %{
                  chain_id: 84_532,
                  to: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
                  value: "0x0",
@@ -461,7 +461,7 @@ defmodule AutolaunchWeb.Api.LifecycleControllerTest do
              "prepared" => %{
                "resource" => "strategy",
                "action" => "migrate",
-               "tx_request" => %{"data" => "0x8fd3ab80"}
+               "wallet_action" => %{"data" => "0x8fd3ab80"}
              }
            } = json_response(conn, 200)
   end

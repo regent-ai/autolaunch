@@ -11,7 +11,9 @@ defmodule AutolaunchWeb.Api.PrelaunchController do
   end
 
   def create(conn, params) do
-    render_result(conn, context_module().create_plan(params, conn.assigns[:current_human]), :plan)
+    render_result(conn, context_module().create_plan(params, conn.assigns[:current_human]), :plan,
+      status: :created
+    )
   end
 
   def show(conn, %{"id" => plan_id}) do
@@ -79,8 +81,14 @@ defmodule AutolaunchWeb.Api.PrelaunchController do
     )
   end
 
-  defp render_result(conn, result, root_key),
-    do: render_api_result(conn, result, &translate_error/1, root_key: root_key)
+  defp render_result(conn, result, root_key, opts \\ []),
+    do:
+      render_api_result(
+        conn,
+        result,
+        &translate_error/1,
+        Keyword.merge([root_key: root_key], opts)
+      )
 
   defp translate_error(:unauthorized),
     do: {:unauthorized, "auth_required", "Privy session required"}
@@ -98,8 +106,11 @@ defmodule AutolaunchWeb.Api.PrelaunchController do
     do:
       {:unprocessable_entity, "invalid_media_type", "Image type must be png, jpeg, webp, or gif"}
 
-  defp translate_error(reason),
-    do: {:unprocessable_entity, "prelaunch_invalid", inspect(reason)}
+  defp translate_error(:metadata_required),
+    do: {:unprocessable_entity, "metadata_required", "Metadata is required"}
+
+  defp translate_error(_reason),
+    do: {:unprocessable_entity, "prelaunch_invalid", "Prelaunch request could not be completed"}
 
   defp context_module do
     configured_module(:prelaunch_api, :context_module, Prelaunch)

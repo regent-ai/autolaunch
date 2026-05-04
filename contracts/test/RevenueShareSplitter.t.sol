@@ -839,6 +839,12 @@ contract RevenueShareSplitterTest is Test {
         assertEq(splitter.treasuryResidualUsdc(), 0);
     }
 
+    function testSweepTreasuryResidualUSDCRejectsZeroAmount() external {
+        vm.prank(TREASURY);
+        vm.expectRevert("AMOUNT_ZERO");
+        splitter.sweepTreasuryResidualUSDC(0);
+    }
+
     function testSweepProtocolReserveUSDCIsRestrictedToProtocolOrOwner() external {
         usdc.mint(address(this), INITIAL_INGRESS_DEPOSIT);
         usdc.approve(address(splitter), INITIAL_INGRESS_DEPOSIT);
@@ -855,6 +861,223 @@ contract RevenueShareSplitterTest is Test {
 
         assertEq(usdc.balanceOf(PROTOCOL_TREASURY), amount);
         assertEq(splitter.protocolReserveUsdc(), 0);
+    }
+
+    function testZeroValueReserveSweepsAndDustReassignRevert() external {
+        vm.prank(TREASURY);
+        vm.expectRevert("AMOUNT_ZERO");
+        splitter.sweepTreasuryReservedUSDC(0);
+
+        vm.prank(PROTOCOL_TREASURY);
+        vm.expectRevert("AMOUNT_ZERO");
+        splitter.sweepProtocolReserveUSDC(0);
+
+        vm.expectRevert("AMOUNT_ZERO");
+        splitter.reassignUndistributedDustToTreasury(0);
+    }
+
+    function testRejectsSelfRecipients() external {
+        usdc.mint(address(this), INITIAL_INGRESS_DEPOSIT);
+        usdc.approve(address(splitter), INITIAL_INGRESS_DEPOSIT);
+        splitter.depositUSDC(INITIAL_INGRESS_DEPOSIT, bytes32("direct"), bytes32("round-1"));
+        _fundStakeTokenRewards(splitter, stakeToken, 1000 * XYZ);
+
+        stakeToken.mint(ALICE, XYZ);
+        vm.startPrank(ALICE);
+        stakeToken.approve(address(splitter), type(uint256).max);
+        vm.expectRevert("RECEIVER_IS_SELF");
+        splitter.stake(XYZ, address(splitter));
+
+        vm.expectRevert("RECIPIENT_IS_SELF");
+        splitter.claimUSDC(address(splitter));
+        vm.stopPrank();
+
+        splitter.setEmissionAprBps(MAX_APR_BPS);
+        vm.warp(block.timestamp + 30 days);
+
+        vm.expectRevert("RECIPIENT_IS_SELF");
+        vm.prank(ALICE);
+        splitter.claimStakeToken(address(splitter));
+
+        vm.expectRevert("RECIPIENT_IS_SELF");
+        vm.prank(ALICE);
+        splitter.unstake(XYZ, address(splitter));
+
+        vm.expectRevert("TREASURY_IS_SELF");
+        splitter.proposeTreasuryRecipientRotation(address(splitter));
+
+        vm.expectRevert("PROTOCOL_IS_SELF");
+        splitter.setProtocolRecipient(address(splitter));
+    }
+
+    function testConstructorRejectsStakeTokenAsUsdc() external {
+        SubjectRegistry registry = registryOfSplitter[address(splitter)];
+        vm.expectRevert("STAKE_TOKEN_IS_USDC");
+        new RevenueShareSplitter(
+            address(usdc),
+            address(usdc),
+            INGRESS_FACTORY,
+            address(registry),
+            keccak256("bad-token-pair"),
+            TREASURY,
+            PROTOCOL_TREASURY,
+            INITIAL_SUPPLY_DENOMINATOR,
+            "bad-token-pair",
+            address(this)
+        );
+    }
+
+    function testDirectStakeTokenTransferBecomesRewardPoolInventory() external {
+        uint256 inventoryBefore = splitter.availableStakeTokenRewardInventory();
+
+        stakeToken.mint(address(splitter), 123 * XYZ);
+
+        assertEq(inventoryBefore, 0);
+        assertEq(splitter.stakeTokenRewardPool(), 123 * XYZ);
+        assertEq(splitter.availableStakeTokenRewardInventory(), 123 * XYZ);
+        assertEq(splitter.totalFundedStakeToken(), 0);
+    }
+
+    function testOwnerCanRefundStakeTokenRewardPoolWithoutTouchingPrincipal() external {
+        uint256 principalBefore = splitter.totalStaked();
+        stakeToken.mint(address(splitter), 123 * XYZ);
+
+        splitter.refundStakeTokenRewardPool(23 * XYZ, FUNDER);
+
+        assertEq(stakeToken.balanceOf(FUNDER), 10_023 * XYZ);
+        assertEq(splitter.totalRewardTokenPoolRefunded(), 23 * XYZ);
+        assertEq(splitter.stakeTokenRewardPool(), 100 * XYZ);
+        assertEq(stakeToken.balanceOf(address(splitter)), principalBefore + 100 * XYZ);
+
+        vm.prank(ALICE);
+        splitter.unstake(ALICE_STAKE, ALICE);
+
+        assertEq(stakeToken.balanceOf(ALICE), ALICE_STAKE);
+        assertEq(stakeToken.balanceOf(address(splitter)), splitter.totalStaked() + 100 * XYZ);
+    }
+
+    function testOwnerCannotRefundMoreThanStakeTokenRewardPool() external {
+        uint256 principalBefore = splitter.totalStaked();
+        stakeToken.mint(address(splitter), 25 * XYZ);
+
+        vm.expectRevert("REWARD_POOL_LOW");
+        splitter.refundStakeTokenRewardPool(26 * XYZ, FUNDER);
+
+        assertEq(splitter.stakeTokenRewardPool(), 25 * XYZ);
+        assertEq(stakeToken.balanceOf(address(splitter)), principalBefore + 25 * XYZ);
+
+        vm.prank(ALICE);
+        splitter.unstake(ALICE_STAKE, ALICE);
+
+        assertEq(stakeToken.balanceOf(ALICE), ALICE_STAKE);
+    }
+
+    function testTreasuryCanSweepStakeTokenRewardPoolWithoutTouchingPrincipal() external {
+        uint256 principalBefore = splitter.totalStaked();
+        _fundStakeTokenRewards(splitter, stakeToken, 50 * XYZ);
+        stakeToken.mint(address(splitter), 25 * XYZ);
+
+        assertEq(splitter.stakeTokenRewardPool(), 75 * XYZ);
+        assertEq(splitter.sweepableStakeTokenRewardPool(), 75 * XYZ);
+
+        vm.prank(TREASURY);
+        vm.expectRevert("REWARD_POOL_LOW");
+        splitter.sweepStakeTokenRewardPool(76 * XYZ);
+
+        vm.prank(TREASURY);
+        splitter.sweepStakeTokenRewardPool(75 * XYZ);
+
+        assertEq(splitter.totalRewardTokenPoolSwept(), 75 * XYZ);
+        assertEq(stakeToken.balanceOf(TREASURY), 550 * XYZ + 75 * XYZ);
+        assertEq(splitter.stakeTokenRewardPool(), 0);
+        assertEq(stakeToken.balanceOf(address(splitter)), principalBefore);
+
+        vm.prank(ALICE);
+        splitter.unstake(ALICE_STAKE, ALICE);
+
+        assertEq(stakeToken.balanceOf(ALICE), ALICE_STAKE);
+        assertEq(stakeToken.balanceOf(address(splitter)), splitter.totalStaked());
+    }
+
+    function testStakeTokenRewardPoolWithdrawalsCannotDrainAccruedRewards() external {
+        _fundStakeTokenRewards(splitter, stakeToken, 50 * XYZ);
+        stakeToken.mint(address(splitter), 25 * XYZ);
+
+        splitter.setEmissionAprBps(MAX_APR_BPS);
+        vm.warp(block.timestamp + 30 days);
+
+        uint256 aliceOwed = splitter.previewClaimableStakeToken(ALICE);
+        uint256 owed = aliceOwed + splitter.previewClaimableStakeToken(BOB)
+            + splitter.previewClaimableStakeToken(CAROL) + splitter.previewClaimableStakeToken(DAVE)
+            + splitter.previewClaimableStakeToken(EVE);
+        uint256 reserved = splitter.reservedStakeTokenRewards();
+        assertGt(owed, 0);
+        assertGe(reserved, owed);
+        assertEq(splitter.sweepableStakeTokenRewardPool(), 75 * XYZ - reserved);
+
+        vm.prank(TREASURY);
+        vm.expectRevert("REWARD_POOL_LOW");
+        splitter.sweepStakeTokenRewardPool(75 * XYZ);
+
+        vm.prank(TREASURY);
+        splitter.sweepStakeTokenRewardPool(75 * XYZ - reserved);
+
+        assertEq(splitter.stakeTokenRewardPool(), reserved);
+        assertEq(splitter.sweepableStakeTokenRewardPool(), 0);
+
+        vm.prank(ALICE);
+        uint256 claimed = splitter.claimStakeToken(ALICE);
+
+        assertEq(claimed, aliceOwed);
+        assertEq(stakeToken.balanceOf(ALICE), aliceOwed);
+    }
+
+    function testStakeTokenRewardPoolWithdrawalsRejectBadCallersAndRecipients() external {
+        stakeToken.mint(address(splitter), 100 * XYZ);
+
+        vm.prank(ALICE);
+        vm.expectRevert("ONLY_TREASURY");
+        splitter.sweepStakeTokenRewardPool(1 * XYZ);
+
+        vm.prank(ALICE);
+        vm.expectRevert("ONLY_OWNER");
+        splitter.refundStakeTokenRewardPool(1 * XYZ, FUNDER);
+
+        vm.expectRevert("RECIPIENT_ZERO");
+        splitter.refundStakeTokenRewardPool(1 * XYZ, address(0));
+
+        vm.expectRevert("RECIPIENT_IS_SELF");
+        splitter.refundStakeTokenRewardPool(1 * XYZ, address(splitter));
+
+        vm.expectRevert("AMOUNT_ZERO");
+        splitter.refundStakeTokenRewardPool(0, FUNDER);
+    }
+
+    function testSurplusUsdcCanBeSwept() external {
+        usdc.mint(address(splitter), 100 * USDC);
+
+        assertEq(splitter.surplusUsdc(), 100 * USDC);
+
+        vm.prank(TREASURY);
+        splitter.sweepSurplusUSDC(100 * USDC, TREASURY);
+
+        assertEq(usdc.balanceOf(TREASURY), 100 * USDC);
+        assertEq(splitter.totalSurplusUsdcSwept(), 100 * USDC);
+        assertEq(splitter.surplusUsdc(), 0);
+    }
+
+    function testSurplusUsdcCanBeRedepositedIntoSplitterAccounting() external {
+        usdc.mint(address(splitter), 1000 * USDC);
+
+        splitter.redepositSurplusUSDC(1000 * USDC, bytes32("surplus"), bytes32("manual-redeposit"));
+
+        assertEq(splitter.surplusUsdc(), 0);
+        assertEq(splitter.totalSurplusUsdcRedeposited(), 1000 * USDC);
+        assertEq(splitter.surplusRedepositUsdc(), 1000 * USDC);
+        assertEq(splitter.protocolReserveUsdc(), 10 * USDC);
+        assertEq(splitter.previewClaimableUSDC(ALICE), 198 * USDC);
+        assertEq(splitter.treasuryResidualUsdc(), 594 * USDC);
+        assertEq(splitter.reservedUsdc(), usdc.balanceOf(address(splitter)));
     }
 
     function testTreasuryRecipientRotationDelay() external {
@@ -900,6 +1123,82 @@ contract RevenueShareSplitterTest is Test {
         assertEq(claimed, 1980 * USDC);
         assertEq(usdc.balanceOf(ALICE), 1980 * USDC);
         assertEq(splitter.treasuryRecipient(), TREASURY);
+    }
+
+    function testDirectTransferCreatesSurplusButNoClaimableUsdc() external {
+        usdc.mint(address(splitter), 1000 * USDC);
+
+        assertEq(splitter.surplusUsdc(), 1000 * USDC);
+        assertEq(splitter.reservedUsdc(), 0);
+        assertEq(splitter.previewClaimableUSDC(ALICE), 0);
+        assertEq(splitter.totalUsdcReceived(), 0);
+    }
+
+    function testRedepositSurplusCreditsStakersTreasuryAndProtocol() external {
+        usdc.mint(address(splitter), 1000 * USDC);
+
+        splitter.redepositSurplusUSDC(1000 * USDC, bytes32("surplus"), bytes32("manual"));
+
+        assertEq(splitter.totalUsdcReceived(), 1000 * USDC);
+        assertEq(splitter.surplusRedepositUsdc(), 1000 * USDC);
+        assertEq(splitter.totalSurplusUsdcRedeposited(), 1000 * USDC);
+        assertEq(splitter.protocolReserveUsdc(), 10 * USDC);
+        assertEq(splitter.totalUsdcCreditedToStakers(), 396 * USDC);
+        assertEq(splitter.previewClaimableUSDC(ALICE), 198 * USDC);
+        assertEq(splitter.previewClaimableUSDC(BOB), 99 * USDC);
+        assertEq(splitter.treasuryResidualUsdc(), 594 * USDC);
+        assertEq(splitter.reservedUsdc(), 1000 * USDC);
+        assertEq(splitter.surplusUsdc(), 0);
+    }
+
+    function testSweepSurplusCannotWithdrawReservedSplitterUsdc() external {
+        usdc.mint(address(this), 1000 * USDC);
+        usdc.approve(address(splitter), type(uint256).max);
+        splitter.depositUSDC(1000 * USDC, bytes32("direct"), bytes32("round-1"));
+
+        assertEq(splitter.reservedUsdc(), 1000 * USDC);
+        assertEq(splitter.surplusUsdc(), 0);
+
+        vm.expectRevert("SURPLUS_BALANCE_LOW");
+        splitter.sweepSurplusUSDC(1, TREASURY);
+
+        usdc.mint(address(splitter), 10 * USDC);
+        vm.prank(TREASURY);
+        splitter.sweepSurplusUSDC(10 * USDC, TREASURY);
+
+        assertEq(usdc.balanceOf(TREASURY), 10 * USDC);
+        assertEq(splitter.reservedUsdc(), 1000 * USDC);
+        assertEq(splitter.totalSurplusUsdcSwept(), 10 * USDC);
+    }
+
+    function testClaimUsdcReducesSplitterReservedUsdc() external {
+        usdc.mint(address(splitter), 1000 * USDC);
+        splitter.redepositSurplusUSDC(1000 * USDC, bytes32("surplus"), bytes32("manual"));
+
+        assertEq(splitter.reservedUsdc(), 1000 * USDC);
+
+        vm.prank(ALICE);
+        splitter.claimUSDC(ALICE);
+
+        assertEq(splitter.totalClaimedUsdc(), 198 * USDC);
+        assertEq(splitter.reservedUsdc(), 802 * USDC);
+        assertEq(usdc.balanceOf(address(splitter)), 802 * USDC);
+    }
+
+    function testSplitterUsdcRecoveryRejectsSelfAndZero() external {
+        usdc.mint(address(splitter), 1000 * USDC);
+        splitter.redepositSurplusUSDC(1000 * USDC, bytes32("surplus"), bytes32("manual"));
+        usdc.mint(address(splitter), 10 * USDC);
+
+        vm.prank(ALICE);
+        vm.expectRevert("RECIPIENT_IS_SELF");
+        splitter.claimUSDC(address(splitter));
+
+        vm.expectRevert("AMOUNT_ZERO");
+        splitter.sweepTreasuryResidualUSDC(0);
+
+        vm.expectRevert("RECIPIENT_IS_SELF");
+        splitter.sweepSurplusUSDC(10 * USDC, address(splitter));
     }
 
     function testPausePreservesPrincipalExit() external {

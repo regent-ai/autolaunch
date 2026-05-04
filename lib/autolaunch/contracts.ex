@@ -84,13 +84,13 @@ defmodule Autolaunch.Contracts do
   def prepare_job_action(job_id, resource, action, attrs, current_human \\ nil) do
     with {:ok, %{job: job, scope: _scope}} <- job_state(job_id, current_human),
          {:ok, prepared} <- Dispatch.build_job_action(job, resource, action, attrs) do
-      {:ok, %{job_id: job_id, prepared: prepared}}
+      {:ok, %{job_id: job_id, prepared: put_expected_signer(prepared, signer_for(current_human) || job.owner_address)}}
     end
   end
 
   def prepare_job_action_for_job(%{} = job, resource, action, attrs) do
     with {:ok, prepared} <- Dispatch.build_job_action(job, resource, action, attrs) do
-      {:ok, %{job_id: job.job_id, prepared: prepared}}
+      {:ok, %{job_id: job.job_id, prepared: put_expected_signer(prepared, job.owner_address)}}
     end
   end
 
@@ -102,7 +102,7 @@ defmodule Autolaunch.Contracts do
            Dispatch.build_subject_action(subject, registry, resource, action, attrs, %{
              ingress_factory_address: ingress_factory_address(subject.chain_id)
            }) do
-      {:ok, %{subject_id: subject.subject_id, prepared: prepared}}
+      {:ok, %{subject_id: subject.subject_id, prepared: put_expected_signer(prepared, signer_for(current_human))}}
     end
   end
 
@@ -113,9 +113,28 @@ defmodule Autolaunch.Contracts do
              ingress_factory_address: ingress_factory_address(launch_chain_id()),
              revenue_share_factory_address: revenue_share_factory_address(launch_chain_id())
            }) do
-      {:ok, %{prepared: prepared}}
+      {:ok, %{prepared: put_expected_signer(prepared, Map.get(attrs, "expected_signer") || Map.get(attrs, :expected_signer))}}
     end
   end
+
+  defp put_expected_signer(%{wallet_action: wallet_action} = prepared, signer)
+       when is_binary(signer) and signer != "" do
+    signer = normalize_address(signer)
+
+    prepared
+    |> Map.put(:expected_signer, signer)
+    |> Map.put(:wallet_action, Map.put(wallet_action, :expected_signer, signer))
+  end
+
+  defp put_expected_signer(prepared, _signer), do: prepared
+
+  defp signer_for(%HumanUser{} = current_human) do
+    [current_human.wallet_address | List.wrap(current_human.wallet_addresses)]
+    |> Enum.find(&(is_binary(&1) and String.trim(&1) != ""))
+    |> normalize_address()
+  end
+
+  defp signer_for(_current_human), do: nil
 
   defp authorize_job_scope(%{owner_address: owner_address}, %HumanUser{} = current_human) do
     wallets =

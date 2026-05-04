@@ -2,6 +2,14 @@
 
 This is the canonical contracts home for Autolaunch.
 
+## Regent Dependency Skills
+
+The Regent dependency skills are installed in `/Users/sean/Documents/regent/.agents/skills` and `/Users/sean/.codex/skills`. Foundry remains the primary contracts workflow. Also open:
+
+- `safe-viem-wallet-actions` when contract changes affect prepared transactions, Safe flows, ABI calls, wallet action envelopes, or confirmation paths.
+- `contract-first-cli-api` when contract changes require app, API, CLI, generated binding, or operator-documentation changes.
+- `observability-promex-sentry` if deployment, verification, or operator tooling changes metrics, logs, or private-data handling.
+
 ## Scope
 
 - Put all Autolaunch Solidity contracts, Foundry scripts, and Foundry tests here.

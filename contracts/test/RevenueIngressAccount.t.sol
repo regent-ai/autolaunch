@@ -6,6 +6,7 @@ import {Test} from "forge-std/Test.sol";
 import {RevenueIngressAccount} from "src/revenue/RevenueIngressAccount.sol";
 import {RevenueIngressFactory} from "src/revenue/RevenueIngressFactory.sol";
 import {RevenueShareFactory} from "src/revenue/RevenueShareFactory.sol";
+import {RevenueShareSplitterDeployer} from "src/revenue/RevenueShareSplitterDeployer.sol";
 import {RevenueShareSplitter} from "src/revenue/RevenueShareSplitter.sol";
 import {SubjectRegistry} from "src/revenue/SubjectRegistry.sol";
 import {MintableERC20Mock} from "test/mocks/MintableERC20Mock.sol";
@@ -29,7 +30,9 @@ contract RevenueIngressAccountTest is Test {
         stakeToken = new MintableERC20Mock("Agent", "AGENT");
         stakeToken.mint(address(this), 1000e18);
         subjectRegistry = new SubjectRegistry(address(this));
-        revenueShareFactory = new RevenueShareFactory(address(this), address(usdc), subjectRegistry);
+        revenueShareFactory = new RevenueShareFactory(
+            address(this), address(usdc), subjectRegistry, new RevenueShareSplitterDeployer()
+        );
         ingressFactory =
             new RevenueIngressFactory(address(usdc), address(subjectRegistry), address(this));
         subjectRegistry.transferOwnership(address(revenueShareFactory));

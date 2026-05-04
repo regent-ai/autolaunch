@@ -390,7 +390,7 @@ defmodule AutolaunchWeb.Api.SubjectControllerTest do
                "expected_signer" => @wallet,
                "idempotency_key" => idempotency_key,
                "risk_copy" => risk_copy,
-               "tx_request" => %{
+               "wallet_action" => %{
                  "chain_id" => 84_532,
                  "to" => @splitter,
                  "data" => data

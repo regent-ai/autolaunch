@@ -437,7 +437,7 @@ defmodule AutolaunchWeb.EnsLinkLive do
           <.wallet_tx_button
             id={"ens-action-#{slugify(@title)}"}
             class="al-submit"
-            tx_request={@tx_request}
+            wallet_action={@tx_request}
             pending_message={@pending_message}
             success_message={@success_message}
           >

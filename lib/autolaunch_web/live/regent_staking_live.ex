@@ -15,7 +15,7 @@ defmodule AutolaunchWeb.RegentStakingLive do
      |> Refreshable.subscribe([:regent, :system])
      |> assign(:page_title, "$REGENT Staking")
      |> assign(:active_view, "regent-staking")
-     |> assign(:stake_form, %{"amount" => ""})
+     |> assign(:stake_form, %{"amount" => "", "receiver" => ""})
      |> assign(:unstake_form, %{"amount" => ""})
      |> assign(:deposit_form, %{
        "amount" => "",
@@ -119,7 +119,7 @@ defmodule AutolaunchWeb.RegentStakingLive do
                 <.wallet_tx_button
                   id="regent-stake-primary"
                   class="al-regent-primary-button"
-                  tx_request={@pending_actions[:stake].tx_request}
+                  wallet_action={@pending_actions[:stake].wallet_action}
                   pending_message="Stake transaction sent. Waiting for confirmation."
                   success_message="Stake confirmed."
                 >
@@ -142,7 +142,7 @@ defmodule AutolaunchWeb.RegentStakingLive do
                 <.wallet_tx_button
                   id="regent-claim-usdc-primary"
                   class="al-regent-secondary-button"
-                  tx_request={@pending_actions[:claim_usdc].tx_request}
+                  wallet_action={@pending_actions[:claim_usdc].wallet_action}
                   pending_message="USDC claim sent. Waiting for confirmation."
                   success_message="USDC claim confirmed."
                 >
@@ -192,6 +192,8 @@ defmodule AutolaunchWeb.RegentStakingLive do
               <form phx-change="stake_changed" class="al-regent-form">
                 <label for="regent-stake-amount">Amount</label>
                 <input id="regent-stake-amount" name="stake[amount]" type="text" inputmode="decimal" value={@stake_form["amount"]} placeholder="0.0" />
+                <label for="regent-stake-receiver">Stake for wallet</label>
+                <input id="regent-stake-receiver" name="stake[receiver]" type="text" value={@stake_form["receiver"]} placeholder="Connected wallet" />
               </form>
               <.prepared_button
                 id="regent-stake"
@@ -369,7 +371,7 @@ defmodule AutolaunchWeb.RegentStakingLive do
       <.wallet_tx_button
         id={@id}
         class={@class}
-        tx_request={@pending.tx_request}
+        wallet_action={@pending.wallet_action}
         pending_message={@pending_message}
         success_message={@success_message}
       >
@@ -410,14 +412,17 @@ defmodule AutolaunchWeb.RegentStakingLive do
   end
 
   defp prepare_action(socket, "deposit_usdc") do
-    prepare_operator_action(socket, :deposit_usdc, fn ->
-      context_module().prepare_deposit_usdc(socket.assigns.deposit_form)
+    prepare_operator_action(socket, :deposit_usdc, fn operator_wallet_address ->
+      context_module().prepare_deposit_usdc(socket.assigns.deposit_form, operator_wallet_address)
     end)
   end
 
   defp prepare_action(socket, "withdraw_treasury") do
-    prepare_operator_action(socket, :withdraw_treasury, fn ->
-      context_module().prepare_withdraw_treasury(socket.assigns.treasury_form)
+    prepare_operator_action(socket, :withdraw_treasury, fn operator_wallet_address ->
+      context_module().prepare_withdraw_treasury(
+        socket.assigns.treasury_form,
+        operator_wallet_address
+      )
     end)
   end
 
@@ -427,8 +432,8 @@ defmodule AutolaunchWeb.RegentStakingLive do
 
   defp prepare(socket, key, fun) do
     case fun.(socket.assigns.current_human) do
-      {:ok, %{prepared: %{tx_request: tx_request}} = prepared} ->
-        put_pending(socket, key, %{tx_request: tx_request, prepared: prepared})
+      {:ok, %{prepared: %{wallet_action: tx_request}} = prepared} ->
+        put_pending(socket, key, %{wallet_action: tx_request, prepared: prepared})
 
       {:error, reason} ->
         put_action_error(socket, Presenter.action_error(reason))
@@ -440,16 +445,18 @@ defmodule AutolaunchWeb.RegentStakingLive do
   end
 
   defp prepare_operator_action(socket, key, fun) do
-    if RegentStakingAccess.authorized_operator?(socket.assigns.current_human) do
-      case fun.() do
-        {:ok, %{prepared: %{tx_request: tx_request}} = prepared} ->
-          put_pending(socket, key, %{tx_request: tx_request, prepared: prepared})
+    case RegentStakingAccess.authorized_operator_wallet(socket.assigns.current_human) do
+      {:ok, operator_wallet_address} ->
+        case fun.(operator_wallet_address) do
+          {:ok, %{prepared: %{wallet_action: tx_request}} = prepared} ->
+            put_pending(socket, key, %{wallet_action: tx_request, prepared: prepared})
 
-        {:error, reason} ->
-          put_action_error(socket, Presenter.action_error(reason))
-      end
-    else
-      put_action_error(socket, Presenter.action_error(:operator_required))
+          {:error, reason} ->
+            put_action_error(socket, Presenter.action_error(reason))
+        end
+
+      {:error, :operator_required} ->
+        put_action_error(socket, Presenter.action_error(:operator_required))
     end
   end
 

@@ -9,6 +9,7 @@ The canonical product rules live in `/Users/sean/Documents/regent/autolaunch/doc
 ## Active core architecture
 
 - External CCA factory with USDC quote token
+- Uniswap UERC20 factory for launch token creation
 - `src/LaunchDeploymentController.sol`
 - `src/AgentTokenVestingWallet.sol`
 - `src/RegentLBPStrategy.sol`
@@ -34,24 +35,29 @@ The canonical product rules live in `/Users/sean/Documents/regent/autolaunch/doc
 ## Deployment helpers
 
 - `scripts/DeployAutolaunchInfra.s.sol`
+- `scripts/DeployUERC20Factory.s.sol`
 - `scripts/ExampleCCADeploymentScript.s.sol`
 - `scripts/DeployRegentRevenueStaking.s.sol`
 
-The launch script expects the active Base inputs, including `UNISWAP_V4_POSITION_MANAGER`, `OFFICIAL_POOL_FEE`, and `OFFICIAL_POOL_TICK_SPACING`.
+The launch script expects the active Base inputs, including `AUTOLAUNCH_TOKEN_FACTORY_ADDRESS`, `AUTOLAUNCH_UNISWAP_V4_POSITION_MANAGER`, `OFFICIAL_POOL_FEE`, and `OFFICIAL_POOL_TICK_SPACING`. `AUTOLAUNCH_TOKEN_FACTORY_ADDRESS` must point to a UERC20-compatible factory. Base Sepolia needs a deployed UERC20 factory for rehearsal because the documented upstream factory address does not currently have code there. The script builds the CCA token release schedule from `AUCTION_DURATION_BLOCKS`; `86400` Base Sepolia blocks is a 48-hour auction. `CCA_START_BLOCK_OFFSET=300` leaves about ten minutes for the staged broadcast to finish before bidding opens.
 
 Important script output markers stay unchanged:
 
 - `AUTOLAUNCH_INFRA_RESULT_JSON:`
 - `CCA_RESULT_JSON:`
 
-`AUTOLAUNCH_INFRA_RESULT_JSON` includes the current and pending revenue share factory
-owners. The pending owner must accept before shared infra is production-ready.
+`AUTOLAUNCH_INFRA_RESULT_JSON` only includes Regent shared infra addresses. Deploy
+`DeployUERC20Factory.s.sol` first when a UERC20 factory is not already deployed on the
+target chain, then set `AUTOLAUNCH_TOKEN_FACTORY_ADDRESS` from
+`UERC20_FACTORY_RESULT_JSON.factoryAddress`. For rehearsals, use a CCA tick spacing equal
+to 1% of the floor price unless there is a specific reason to use tighter ticks.
 
 ## Test coverage
 
 Launch-side tests:
 
 - `test/LaunchDeploymentController.t.sol`
+- `test/DeployUERC20Factory.t.sol`
 - `test/RegentLBPStrategy.t.sol`
 - `test/RegentLBPStrategyFactory.t.sol`
 - `test/LaunchFeeVault.t.sol`
@@ -84,3 +90,4 @@ forge test
 - `CONTRACTS.md`
 - `docs/ARCHITECTURE_GUIDE.md`
 - `docs/FOUNDRY_TESTING_GUIDE.md`
+- `docs/LAUNCH_POOL_FEE_HOOK_SECURITY.md`

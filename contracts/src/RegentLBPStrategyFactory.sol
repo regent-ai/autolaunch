@@ -83,6 +83,7 @@ contract RegentLBPStrategyFactory is Owned, IDistributionStrategy {
                         sweepBlock: cfg.sweepBlock,
                         lpCurrencyBps: cfg.lpCurrencyBps,
                         tokenSplitToAuctionMps: cfg.tokenSplitToAuctionMps,
+                        // forge-lint: disable-next-line(unsafe-typecast)
                         totalStrategySupply: uint128(amount),
                         auctionTokenAmount: cfg.auctionTokenAmount,
                         reserveTokenAmount: cfg.reserveTokenAmount

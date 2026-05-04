@@ -268,7 +268,7 @@ defmodule AutolaunchWeb.AuctionLive do
                   :if={@quote && @quote.prepared}
                   id={"submit-bid-#{@auction_id}"}
                   class="al-submit"
-                  tx_request={@quote.prepared.tx_request}
+                  wallet_action={@quote.prepared.wallet_action}
                   register_endpoint={~p"/v1/app/auctions/#{@auction_id}/bids"}
                   register_body={%{
                     "amount" => @quote.amount,
@@ -520,7 +520,7 @@ defmodule AutolaunchWeb.AuctionLive do
                       :if={return_action(position)}
                       id={"auction-return-#{position.bid_id}"}
                       class="al-submit"
-                      tx_request={return_action(position).prepared.tx_request}
+                      wallet_action={return_action(position).prepared.wallet_action}
                       register_endpoint={~p"/v1/app/bids/#{position.bid_id}/return-usdc"}
                       pending_message="Return transaction sent. Waiting for confirmation."
                       success_message="USDC return registered."
@@ -532,7 +532,7 @@ defmodule AutolaunchWeb.AuctionLive do
                       :if={tx_action(position, :exit) && is_nil(return_action(position))}
                       id={"auction-exit-#{position.bid_id}"}
                       class="al-ghost"
-                      tx_request={tx_action(position, :exit).prepared.tx_request}
+                      wallet_action={tx_action(position, :exit).prepared.wallet_action}
                       register_endpoint={~p"/v1/app/bids/#{position.bid_id}/exit"}
                       pending_message="Exit transaction sent. Waiting for confirmation."
                       success_message="Bid exit registered."
@@ -544,7 +544,7 @@ defmodule AutolaunchWeb.AuctionLive do
                       :if={tx_action(position, :claim)}
                       id={"auction-claim-#{position.bid_id}"}
                       class="al-submit"
-                      tx_request={tx_action(position, :claim).prepared.tx_request}
+                      wallet_action={tx_action(position, :claim).prepared.wallet_action}
                       register_endpoint={~p"/v1/app/bids/#{position.bid_id}/claim"}
                       pending_message="Claim transaction sent. Waiting for confirmation."
                       success_message="Claim registered."

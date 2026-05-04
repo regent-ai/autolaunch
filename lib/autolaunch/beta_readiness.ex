@@ -15,8 +15,7 @@ defmodule Autolaunch.BetaReadiness do
     revenue_share_factory_address: "AUTOLAUNCH_REVENUE_SHARE_FACTORY_ADDRESS",
     revenue_ingress_factory_address: "AUTOLAUNCH_REVENUE_INGRESS_FACTORY_ADDRESS",
     lbp_strategy_factory_address: "AUTOLAUNCH_LBP_STRATEGY_FACTORY_ADDRESS",
-    token_factory_address: "AUTOLAUNCH_TOKEN_FACTORY_ADDRESS",
-    identity_registry_address: "AUTOLAUNCH_IDENTITY_REGISTRY_ADDRESS"
+    token_factory_address: "AUTOLAUNCH_TOKEN_FACTORY_ADDRESS (UERC20 factory)"
   }
   @expected_routes [
     {:get, "/"},

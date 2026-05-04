@@ -48,7 +48,7 @@ defmodule Autolaunch.DocsExamplesTest do
     finalize_response = bundle["finalize_response"]
     assert finalize_response["settlement_state"] == "awaiting_migration"
     assert finalize_response["prepared"]["action"] == "migrate"
-    assert finalize_response["prepared"]["tx_request"]["chain_id"] == 84_532
+    assert finalize_response["prepared"]["wallet_action"]["chain_id"] == 84_532
 
     vesting_status = bundle["vesting_status"]
     assert vesting_status["release_ready"] == true
@@ -62,10 +62,10 @@ defmodule Autolaunch.DocsExamplesTest do
 
     regent_staking_prepare = bundle["regent_staking_prepare"]
     assert regent_staking_prepare["prepared"]["chain_id"] == 8_453
-    assert regent_staking_prepare["prepared"]["tx_request"]["chain_id"] == 8_453
+    assert regent_staking_prepare["prepared"]["wallet_action"]["chain_id"] == 8_453
 
     bid_quote = bundle["bid_quote"]
-    assert bid_quote["prepared"]["tx_request"]["chain_id"] == 84_532
+    assert bid_quote["prepared"]["wallet_action"]["chain_id"] == 84_532
 
     assert bid_quote["prepared"]["expected_signer"] ==
              "0x1111111111111111111111111111111111111111"
@@ -74,7 +74,7 @@ defmodule Autolaunch.DocsExamplesTest do
 
     position = bundle["position"]
     assert position["status"] == "claimable"
-    assert position["tx_actions"]["claim"]["prepared"]["tx_request"]["chain_id"] == 84_532
+    assert position["tx_actions"]["claim"]["prepared"]["wallet_action"]["chain_id"] == 84_532
     assert position["next_action_label"] == "Claim purchased tokens now."
 
     reputation_prompt = bundle["reputation_prompt"]
