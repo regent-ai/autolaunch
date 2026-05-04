@@ -18,7 +18,7 @@ defmodule Autolaunch.ContractsDispatchTest do
 
     assert prepared.resource == "strategy"
     assert prepared.action == "migrate"
-    assert prepared.tx_request.to == "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    assert prepared.wallet_action.to == "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
   end
 
   test "job dispatch prepares the new settlement transactions" do
@@ -37,24 +37,24 @@ defmodule Autolaunch.ContractsDispatchTest do
              Dispatch.build_job_action(job, "strategy", "recover_failed_auction", %{})
 
     assert recover.action == "recover_failed_auction"
-    assert recover.tx_request.to == job.strategy_address
+    assert recover.wallet_action.to == job.strategy_address
 
     assert {:ok, auction_currency} =
              Dispatch.build_job_action(job, "auction", "sweep_currency", %{})
 
     assert auction_currency.action == "sweep_currency"
-    assert auction_currency.tx_request.to == job.auction_address
+    assert auction_currency.wallet_action.to == job.auction_address
 
     assert {:ok, auction_tokens} =
              Dispatch.build_job_action(job, "auction", "sweep_unsold_tokens", %{})
 
     assert auction_tokens.action == "sweep_unsold_tokens"
-    assert auction_tokens.tx_request.to == job.auction_address
+    assert auction_tokens.wallet_action.to == job.auction_address
 
     assert {:ok, splitter_acceptance} =
              Dispatch.build_job_action(job, "revenue_splitter", "accept_ownership", %{})
 
-    assert splitter_acceptance.tx_request.to == job.revenue_share_splitter_address
+    assert splitter_acceptance.wallet_action.to == job.revenue_share_splitter_address
 
     assert {:ok, treasury_pull} =
              Dispatch.build_job_action(job, "revenue_splitter", "pull_treasury_share", %{
@@ -63,9 +63,9 @@ defmodule Autolaunch.ContractsDispatchTest do
 
     assert treasury_pull.resource == "revenue_splitter"
     assert treasury_pull.action == "pull_treasury_share"
-    assert treasury_pull.tx_request.to == job.revenue_share_splitter_address
-    refute treasury_pull.tx_request.to == job.launch_fee_vault_address
-    assert String.starts_with?(treasury_pull.tx_request.data, "0x94af8446")
+    assert treasury_pull.wallet_action.to == job.revenue_share_splitter_address
+    refute treasury_pull.wallet_action.to == job.launch_fee_vault_address
+    assert String.starts_with?(treasury_pull.wallet_action.data, "0x94af8446")
     assert is_binary(treasury_pull.action_id)
     assert treasury_pull.idempotency_key == treasury_pull.action_id
     assert treasury_pull.expected_signer == nil
@@ -80,17 +80,17 @@ defmodule Autolaunch.ContractsDispatchTest do
     assert {:ok, registry_acceptance} =
              Dispatch.build_job_action(job, "fee_registry", "accept_ownership", %{})
 
-    assert registry_acceptance.tx_request.to == job.launch_fee_registry_address
+    assert registry_acceptance.wallet_action.to == job.launch_fee_registry_address
 
     assert {:ok, vault_acceptance} =
              Dispatch.build_job_action(job, "fee_vault", "accept_ownership", %{})
 
-    assert vault_acceptance.tx_request.to == job.launch_fee_vault_address
+    assert vault_acceptance.wallet_action.to == job.launch_fee_vault_address
 
     assert {:ok, hook_acceptance} =
              Dispatch.build_job_action(job, "hook", "accept_ownership", %{})
 
-    assert hook_acceptance.tx_request.to == job.hook_address
+    assert hook_acceptance.wallet_action.to == job.hook_address
   end
 
   test "subject dispatch returns stable invalid address and ingress errors" do

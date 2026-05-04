@@ -41,8 +41,9 @@ defmodule AutolaunchWeb.Api.LifecycleController do
   defp translate_error(:invalid_transaction_hash),
     do: {:unprocessable_entity, "invalid_transaction_hash", "Transaction hash is invalid"}
 
-  defp translate_error(reason),
-    do: {:unprocessable_entity, "lifecycle_invalid", inspect(reason)}
+  defp translate_error(_reason),
+    do:
+      {:unprocessable_entity, "lifecycle_invalid", "Launch status request could not be completed"}
 
   defp context_module do
     configured_module(:lifecycle_api, :context_module, Lifecycle)

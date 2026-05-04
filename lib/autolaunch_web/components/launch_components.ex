@@ -228,7 +228,7 @@ defmodule AutolaunchWeb.LaunchComponents do
   end
 
   attr :id, :string, required: true
-  attr :tx_request, :map, required: true
+  attr :wallet_action, :map, required: true
   attr :register_endpoint, :string, default: nil
   attr :register_body, :map, default: %{}
   attr :pending_message, :string, required: true
@@ -245,10 +245,10 @@ defmodule AutolaunchWeb.LaunchComponents do
       type="button"
       class={@class}
       phx-hook="WalletTxButton"
-      data-chain-id={@tx_request.chain_id}
-      data-to={@tx_request.to}
-      data-data={@tx_request.data}
-      data-value={@tx_request.value}
+      data-chain-id={@wallet_action.chain_id}
+      data-to={@wallet_action.to}
+      data-data={@wallet_action.data}
+      data-value={@wallet_action.value}
       data-register-endpoint={@register_endpoint}
       data-register-body={@encoded_register_body}
       data-pending-message={@pending_message}

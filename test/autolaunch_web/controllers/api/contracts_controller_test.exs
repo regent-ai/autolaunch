@@ -74,7 +74,7 @@ defmodule AutolaunchWeb.Api.ContractsControllerTest do
              prepared: %{
                resource: "strategy",
                action: "migrate",
-               tx_request: %{
+               wallet_action: %{
                  chain_id: 84_532,
                  to: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
                  value: "0x0",
@@ -107,7 +107,7 @@ defmodule AutolaunchWeb.Api.ContractsControllerTest do
                resource: "vesting",
                action: "propose_beneficiary_rotation",
                params: %{"beneficiary" => beneficiary},
-               tx_request: %{
+               wallet_action: %{
                  chain_id: 84_532,
                  to: "0xdddddddddddddddddddddddddddddddddddddddd",
                  value: "0x0",
@@ -140,7 +140,7 @@ defmodule AutolaunchWeb.Api.ContractsControllerTest do
                resource: "revenue_splitter",
                action: "pull_treasury_share",
                params: %{"amount" => amount},
-               tx_request: %{
+               wallet_action: %{
                  chain_id: 84_532,
                  to: "0x9999999999999999999999999999999999999999",
                  value: "0x0",
@@ -191,7 +191,7 @@ defmodule AutolaunchWeb.Api.ContractsControllerTest do
              prepared: %{
                resource: "splitter",
                action: "set_paused",
-               tx_request: %{
+               wallet_action: %{
                  chain_id: 84_532,
                  to: "0x9999999999999999999999999999999999999999",
                  value: "0x0",
@@ -223,7 +223,7 @@ defmodule AutolaunchWeb.Api.ContractsControllerTest do
              prepared: %{
                resource: "splitter",
                action: "sweep_treasury_residual",
-               tx_request: %{
+               wallet_action: %{
                  chain_id: 84_532,
                  to: "0x9999999999999999999999999999999999999999",
                  value: "0x0",
@@ -256,7 +256,7 @@ defmodule AutolaunchWeb.Api.ContractsControllerTest do
                resource: "registry",
                action: "rotate_safe",
                params: %{"new_safe" => new_safe},
-               tx_request: %{
+               wallet_action: %{
                  chain_id: 84_532,
                  to: "0x2222222222222222222222222222222222222222",
                  value: "0x0",
@@ -287,7 +287,7 @@ defmodule AutolaunchWeb.Api.ContractsControllerTest do
          prepared: %{
            resource: "revenue_share_factory",
            action: "set_authorized_creator",
-           tx_request: %{
+           wallet_action: %{
              chain_id: 84_532,
              to: "0x1111111111111111111111111111111111111111",
              value: "0x0",
@@ -557,7 +557,7 @@ defmodule AutolaunchWeb.Api.ContractsControllerTest do
              "prepared" => %{
                "resource" => "strategy",
                "action" => "migrate",
-               "tx_request" => %{"data" => "0x8fd3ab80"}
+               "wallet_action" => %{"data" => "0x8fd3ab80"}
              }
            } = json_response(conn, 200)
   end
@@ -579,7 +579,7 @@ defmodule AutolaunchWeb.Api.ContractsControllerTest do
              "ok" => true,
              "prepared" => %{
                "action" => "propose_beneficiary_rotation",
-               "tx_request" => %{"data" => "0xc178cb2d"}
+               "wallet_action" => %{"data" => "0xc178cb2d"}
              }
            } = json_response(conn, 200)
   end
@@ -602,7 +602,7 @@ defmodule AutolaunchWeb.Api.ContractsControllerTest do
              "prepared" => %{
                "resource" => "revenue_splitter",
                "action" => "pull_treasury_share",
-               "tx_request" => %{"data" => "0x94af8446"}
+               "wallet_action" => %{"data" => "0x94af8446"}
              }
            } = json_response(conn, 200)
   end
@@ -629,7 +629,7 @@ defmodule AutolaunchWeb.Api.ContractsControllerTest do
              "prepared" => %{
                "resource" => "splitter",
                "action" => "set_paused",
-               "tx_request" => %{"data" => "0x16c38b3c"}
+               "wallet_action" => %{"data" => "0x16c38b3c"}
              }
            } = json_response(conn, 200)
   end
@@ -655,7 +655,7 @@ defmodule AutolaunchWeb.Api.ContractsControllerTest do
              "ok" => true,
              "prepared" => %{
                "action" => "sweep_treasury_residual",
-               "tx_request" => %{"data" => "0xe37459b1"}
+               "wallet_action" => %{"data" => "0xe37459b1"}
              }
            } = json_response(sweep_conn, 200)
 
@@ -674,7 +674,7 @@ defmodule AutolaunchWeb.Api.ContractsControllerTest do
              "ok" => true,
              "prepared" => %{
                "action" => "rotate_safe",
-               "tx_request" => %{"data" => "0xdbf6fd39"}
+               "wallet_action" => %{"data" => "0xdbf6fd39"}
              }
            } = json_response(rotate_conn, 200)
   end
@@ -697,7 +697,7 @@ defmodule AutolaunchWeb.Api.ContractsControllerTest do
              "prepared" => %{
                "resource" => "revenue_share_factory",
                "action" => "set_authorized_creator",
-               "tx_request" => %{"data" => "0xe1434f4e"}
+               "wallet_action" => %{"data" => "0xe1434f4e"}
              }
            } = json_response(conn, 200)
   end

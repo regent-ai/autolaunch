@@ -49,11 +49,21 @@ defmodule AutolaunchWeb.AgentbookLiveTest do
          contract_address: "0xA23aB2712eA7BBa896930544C7d6636a96b944dA",
          nonce: 9,
          deep_link_uri: "worldapp://verify",
-         tx_request: %{
+         wallet_action: %{
+           action_id: "agentbook-register:sess_live",
+           owner_product: "autolaunch",
+           resource: "agentbook",
+           resource_id: "sess_live",
+           action: "register_agentbook_proof",
            to: "0xA23aB2712eA7BBa896930544C7d6636a96b944dA",
            data: "0xabc",
-           value: "0x0",
-           chain_id: 480
+           value: "0",
+           chain_id: 480,
+           expected_signer: "0x1111111111111111111111111111111111111111",
+           expires_at: "2999-01-01T00:00:00Z",
+           idempotency_key: "agentbook-register:sess_live",
+           simulation: %{required: false, status: "not_required", block_number: nil},
+           risk_copy: "Registers this wallet as the agent wallet in AgentBook."
          }
        }}
     end

@@ -8,10 +8,17 @@ defmodule Autolaunch.InfrastructureConfigTest do
   setup do
     previous_launch = Application.get_env(:autolaunch, :launch, [])
     previous_regent_staking = Application.get_env(:autolaunch, :regent_staking, [])
+    previous_required_env = System.get_env("AUTOLAUNCH_TEST_REQUIRED_ENV")
 
     on_exit(fn ->
       Application.put_env(:autolaunch, :launch, previous_launch)
       Application.put_env(:autolaunch, :regent_staking, previous_regent_staking)
+
+      if is_nil(previous_required_env) do
+        System.delete_env("AUTOLAUNCH_TEST_REQUIRED_ENV")
+      else
+        System.put_env("AUTOLAUNCH_TEST_REQUIRED_ENV", previous_required_env)
+      end
     end)
 
     :ok
@@ -62,7 +69,8 @@ defmodule Autolaunch.InfrastructureConfigTest do
   test "production runtime uses pooled database URL settings" do
     runtime = File.read!(Path.join(@root, "config/runtime.exs"))
 
-    assert runtime =~ ~s|env.("DATABASE_URL", "")|
+    assert runtime =~ ~s|Autolaunch.ConfigEnvLocal.fetch_required("DATABASE_URL")|
+    assert runtime =~ ~s|Autolaunch.ConfigEnvLocal.fetch_required("SECRET_KEY_BASE")|
     refute runtime =~ "DATABASE_DIRECT_URL"
     assert runtime =~ "ssl: true"
     assert runtime =~ "prepare: :unnamed"
@@ -70,6 +78,14 @@ defmodule Autolaunch.InfrastructureConfigTest do
     assert runtime =~ ~s|env.("ECTO_POOL_SIZE", "5")|
     assert runtime =~ ~s(migration_default_prefix: "autolaunch")
     assert runtime =~ ~s(migration_source: "schema_migrations_autolaunch")
+  end
+
+  test "required production env rejects blank values" do
+    System.put_env("AUTOLAUNCH_TEST_REQUIRED_ENV", "   ")
+
+    assert_raise RuntimeError, ~r/AUTOLAUNCH_TEST_REQUIRED_ENV is missing or blank/, fn ->
+      Autolaunch.ConfigEnvLocal.fetch_required("AUTOLAUNCH_TEST_REQUIRED_ENV")
+    end
   end
 
   test "release migrations use the direct database URL and autolaunch schema only" do

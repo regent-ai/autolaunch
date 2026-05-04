@@ -121,7 +121,7 @@ defmodule Autolaunch.Prelaunch do
 
   def update_metadata(plan_id, attrs, %HumanUser{} = human) do
     with %Plan{} = plan <- load_plan(plan_id, human.privy_user_id),
-         metadata <- metadata_draft(Map.get(attrs, "metadata") || attrs),
+         {:ok, metadata} <- required_metadata(attrs),
          {:ok, plan} <-
            plan
            |> Plan.update_changeset(%{metadata_draft: metadata})
@@ -133,6 +133,7 @@ defmodule Autolaunch.Prelaunch do
        }}
     else
       nil -> {:error, :not_found}
+      {:error, _reason} = error -> error
     end
   end
 
@@ -357,6 +358,11 @@ defmodule Autolaunch.Prelaunch do
   end
 
   defp metadata_draft(_value), do: %{}
+
+  defp required_metadata(%{"metadata" => metadata}) when is_map(metadata),
+    do: {:ok, metadata_draft(metadata)}
+
+  defp required_metadata(_attrs), do: {:error, :metadata_required}
 
   defp launch_chain_id do
     InfrastructureConfig.launch_chain_id!()

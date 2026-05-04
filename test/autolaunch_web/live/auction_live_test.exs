@@ -61,7 +61,7 @@ defmodule AutolaunchWeb.AuctionLiveTest do
              do: %{
                expected_signer: "0x1111111111111111111111111111111111111111",
                chain_id: 84_532,
-               tx_request: %{
+               wallet_action: %{
                  chain_id: 84_532,
                  to: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
                  data: "0x1234",
@@ -94,7 +94,7 @@ defmodule AutolaunchWeb.AuctionLiveTest do
             exit: nil,
             claim: %{
               prepared: %{
-                tx_request: %{
+                wallet_action: %{
                   chain_id: 84_532,
                   to: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
                   data: "0xclaim",

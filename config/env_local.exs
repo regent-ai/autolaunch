@@ -5,6 +5,21 @@ defmodule Autolaunch.ConfigEnvLocal do
     System.get_env(key) || Map.get(values(), key, default)
   end
 
+  def fetch_required(key) do
+    case fetch(key, "") do
+      value when is_binary(value) ->
+        value
+        |> String.trim()
+        |> case do
+          "" -> raise_missing!(key)
+          trimmed -> trimmed
+        end
+
+      _ ->
+        raise_missing!(key)
+    end
+  end
+
   def values do
     case File.read(@env_local_path) do
       {:ok, contents} ->
@@ -51,5 +66,11 @@ defmodule Autolaunch.ConfigEnvLocal do
           nil
       end
     end
+  end
+
+  defp raise_missing!(key) do
+    raise """
+    environment variable #{key} is missing or blank.
+    """
   end
 end

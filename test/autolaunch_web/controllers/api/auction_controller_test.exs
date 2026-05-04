@@ -63,20 +63,30 @@ defmodule AutolaunchWeb.Api.AuctionControllerTest do
            if(human,
              do: %{
                action_id: "bid_quote",
+               owner_product: "autolaunch",
                resource: "auction",
+               resource_id: id,
                action: "submit_bid",
                chain_id: 84_532,
-               target: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-               calldata: "0x1234",
                expected_signer: "0x1111111111111111111111111111111111111111",
                expires_at: "2999-01-01T00:00:00Z",
                idempotency_key: "bid_quote",
                risk_copy: "Submits a Base USDC bid for this auction.",
-               tx_request: %{
+               wallet_action: %{
+                 action_id: "bid_quote",
+                 owner_product: "autolaunch",
+                 resource: "auction",
+                 resource_id: id,
+                 action: "submit_bid",
                  chain_id: 84_532,
                  to: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-                 value: "0x0",
-                 data: "0x1234"
+                 value: "0",
+                 data: "0x1234",
+                 expected_signer: "0x1111111111111111111111111111111111111111",
+                 expires_at: "2999-01-01T00:00:00Z",
+                 idempotency_key: "bid_quote",
+                 simulation: %{required: false, status: "not_required", block_number: nil},
+                 risk_copy: "Submits a Base USDC bid for this auction."
                }
              },
              else: nil
@@ -141,7 +151,7 @@ defmodule AutolaunchWeb.Api.AuctionControllerTest do
              "status_band" => "active",
              "prepared" => %{
                "expected_signer" => @wallet,
-               "tx_request" => %{"chain_id" => 84_532}
+               "wallet_action" => %{"chain_id" => 84_532}
              }
            } = json_response(conn, 200)
   end
@@ -164,5 +174,15 @@ defmodule AutolaunchWeb.Api.AuctionControllerTest do
 
     assert %{"ok" => false, "error" => %{"code" => "transaction_pending"}} =
              json_response(conn, 202)
+  end
+
+  test "create_bid returns created when the bid is registered", %{conn: conn, human: human} do
+    conn = init_test_session(conn, privy_user_id: human.privy_user_id)
+
+    conn =
+      post(conn, "/v1/app/auctions/auc_1/bids", %{"tx_hash" => "0x" <> String.duplicate("1", 64)})
+
+    assert %{"ok" => true, "bid" => %{"bid_id" => "auc_1:7", "status" => "active"}} =
+             json_response(conn, 201)
   end
 end

@@ -214,7 +214,8 @@ defmodule Autolaunch.Revenue.Core do
 
   defp build_write_request(action, subject, wallet_address, attrs)
        when action in [:stake, :unstake] do
-    with {:ok, amount_wei} <- required_amount_wei(attrs) do
+    with {:ok, amount_wei} <- required_amount_wei(attrs),
+         {:ok, receiver} <- amount_action_receiver(action, attrs, wallet_address) do
       {:ok,
        %{
          subject: subject,
@@ -226,8 +227,8 @@ defmodule Autolaunch.Revenue.Core do
              chain_id: subject.chain_id,
              to: subject.splitter_address,
              value_hex: "0x0",
-             data: amount_action_call(action, amount_wei, wallet_address),
-             params: %{amount: Integer.to_string(amount_wei)}
+             data: amount_action_call(action, amount_wei, receiver),
+             params: amount_action_params(action, amount_wei, receiver)
            )
        }}
     end
@@ -297,18 +298,60 @@ defmodule Autolaunch.Revenue.Core do
        ) do
     with {:ok, registration_attrs} <-
            registration_attrs(action, subject, wallet_address, attrs, tx_hash, expected_to),
-         {:ok, registration} <- ensure_registration(registration_attrs) do
-      register_action_with_registration(
-        action,
-        subject,
-        wallet_address,
-        attrs,
-        tx_hash,
-        expected_to,
-        current_human,
-        registration,
-        registration_attrs
-      )
+         {:ok, registration} <- existing_registration(registration_attrs) do
+      case registration do
+        nil ->
+          validate_and_create_registration(
+            action,
+            subject,
+            wallet_address,
+            attrs,
+            tx_hash,
+            expected_to,
+            current_human,
+            registration_attrs
+          )
+
+        %SubjectActionRegistration{} = registration ->
+          register_action_with_registration(
+            action,
+            subject,
+            wallet_address,
+            attrs,
+            tx_hash,
+            expected_to,
+            current_human,
+            registration,
+            registration_attrs
+          )
+      end
+    end
+  end
+
+  defp validate_and_create_registration(
+         action,
+         subject,
+         wallet_address,
+         attrs,
+         tx_hash,
+         expected_to,
+         current_human,
+         registration_attrs
+       ) do
+    with {:ok, receipt_state} <-
+           validate_registration_submission(
+             action,
+             subject,
+             wallet_address,
+             attrs,
+             tx_hash,
+             expected_to,
+             registration_attrs
+           ),
+         {:ok, registration} <- insert_registration(registration_attrs),
+         {:ok, result} <-
+           finalize_registration(registration, receipt_state, subject, current_human) do
+      {:ok, result}
     end
   end
 
@@ -335,19 +378,15 @@ defmodule Autolaunch.Revenue.Core do
         end
 
       true ->
-        receipt_state = fetch_receipt_state(subject.chain_id, tx_hash)
-
-        with {:ok, tx} <- fetch_transaction(subject.chain_id, tx_hash),
-             :ok <-
-               validate_registered_action(
+        with {:ok, receipt_state} <-
+               validate_registration_submission(
                  action,
                  subject,
                  wallet_address,
                  attrs,
-                 tx,
+                 tx_hash,
                  expected_to,
-                 registration_attrs,
-                 receipt_state
+                 registration_attrs
                ),
              {:ok, result} <-
                finalize_registration(registration, receipt_state, subject, current_human) do
@@ -380,12 +419,10 @@ defmodule Autolaunch.Revenue.Core do
     end
   end
 
-  defp ensure_registration(registration_attrs) do
+  defp existing_registration(registration_attrs) do
     case Repo.get_by(SubjectActionRegistration, tx_hash: registration_attrs.tx_hash) do
       nil ->
-        %SubjectActionRegistration{}
-        |> SubjectActionRegistration.create_changeset(registration_attrs)
-        |> Repo.insert()
+        {:ok, nil}
 
       %SubjectActionRegistration{} = registration ->
         if registration_scope_matches?(registration, registration_attrs) do
@@ -456,6 +493,33 @@ defmodule Autolaunch.Revenue.Core do
     end
   end
 
+  defp validate_registration_submission(
+         action,
+         subject,
+         wallet_address,
+         attrs,
+         tx_hash,
+         expected_to,
+         registration_attrs
+       ) do
+    with {:ok, receipt_state} <-
+           fetch_receipt_state(subject.chain_id, tx_hash, wallet_address, expected_to),
+         {:ok, tx} <- fetch_transaction(subject.chain_id, tx_hash),
+         :ok <-
+           validate_registered_action(
+             action,
+             subject,
+             wallet_address,
+             attrs,
+             tx,
+             expected_to,
+             registration_attrs,
+             receipt_state
+           ) do
+      {:ok, receipt_state}
+    end
+  end
+
   defp validate_registered_action(
          action,
          _subject,
@@ -468,6 +532,7 @@ defmodule Autolaunch.Revenue.Core do
        )
        when action in [:stake, :unstake] do
     with {:ok, amount_wei} <- required_amount_wei(attrs),
+         {:ok, expected_receiver} <- amount_action_receiver(action, attrs, wallet_address),
          :ok <- validate_tx_sender(tx, wallet_address),
          :ok <- validate_tx_target(tx, expected_to) do
       case Abi.decode_call_data(tx.input) do
@@ -483,7 +548,7 @@ defmodule Autolaunch.Revenue.Core do
                :ok <-
                  validate_equal(
                    normalize_address(Map.get(decoded, decoded_address_key)),
-                   normalize_address(wallet_address),
+                   normalize_address(expected_receiver),
                    :transaction_data_mismatch
                  ),
                :ok <-
@@ -580,36 +645,18 @@ defmodule Autolaunch.Revenue.Core do
          _subject,
          _wallet_address,
          _attrs,
-         nil,
-         _expected_to,
-         _registration_attrs,
-         :pending
-       ),
-       do: :ok
-
-  defp validate_registered_action(
-         _action,
-         _subject,
-         _wallet_address,
-         _attrs,
-         nil,
-         _expected_to,
-         _registration_attrs,
-         _receipt_state
-       ),
-       do: {:error, :transaction_data_mismatch}
-
-  defp validate_registered_action(
-         _action,
-         _subject,
-         _wallet_address,
-         _attrs,
          _tx,
          _expected_to,
          _registration_attrs,
          _receipt_state
        ),
        do: {:error, :transaction_data_mismatch}
+
+  defp insert_registration(registration_attrs) do
+    %SubjectActionRegistration{}
+    |> SubjectActionRegistration.create_changeset(registration_attrs)
+    |> Repo.insert()
+  end
 
   defp read_accounting_tags(subject, from_block, cursor, limit) do
     with {:ok, ingress_tags} <- read_ingress_accounting_tags(subject, from_block),
@@ -724,11 +771,40 @@ defmodule Autolaunch.Revenue.Core do
     parse_token_amount(Map.get(attrs, "amount"))
   end
 
-  defp amount_action_call(:stake, amount_wei, wallet_address),
-    do: Abi.encode_stake(amount_wei, wallet_address)
+  defp amount_action_receiver(:stake, attrs, wallet_address),
+    do: optional_receiver(attrs, wallet_address)
 
-  defp amount_action_call(:unstake, amount_wei, wallet_address),
-    do: Abi.encode_unstake(amount_wei, wallet_address)
+  defp amount_action_receiver(:unstake, _attrs, wallet_address), do: {:ok, wallet_address}
+
+  defp optional_receiver(attrs, default_receiver) do
+    case optional_text(Map.get(attrs, "receiver")) do
+      nil -> {:ok, default_receiver}
+      receiver -> normalize_required_address(receiver)
+    end
+  end
+
+  defp optional_text(value) when is_binary(value) do
+    value
+    |> String.trim()
+    |> case do
+      "" -> nil
+      text -> text
+    end
+  end
+
+  defp optional_text(_value), do: nil
+
+  defp amount_action_call(:stake, amount_wei, receiver),
+    do: Abi.encode_stake(amount_wei, receiver)
+
+  defp amount_action_call(:unstake, amount_wei, recipient),
+    do: Abi.encode_unstake(amount_wei, recipient)
+
+  defp amount_action_params(:stake, amount_wei, receiver),
+    do: %{amount: Integer.to_string(amount_wei), receiver: receiver}
+
+  defp amount_action_params(:unstake, amount_wei, _recipient),
+    do: %{amount: Integer.to_string(amount_wei)}
 
   defp single_recipient_action_call(:claim_usdc, wallet_address),
     do: Abi.encode_claim_usdc(wallet_address)
@@ -743,38 +819,63 @@ defmodule Autolaunch.Revenue.Core do
   defp action_name(:claim_and_stake_emissions), do: "claim_and_stake_emissions"
   defp action_name(:sweep_ingress), do: "sweep_ingress"
 
-  defp validate_receipt_state(_tx, chain_id, tx_hash) do
+  defp validate_receipt_state(chain_id, tx_hash, wallet_address, expected_to) do
     case Rpc.tx_receipt(chain_id, tx_hash) do
-      {:ok, %{status: 1, block_number: block_number}} ->
-        {:confirmed, block_number}
-
-      {:ok, %{status: 1}} ->
-        {:confirmed, nil}
-
-      {:ok, %{status: 0}} ->
-        {:failed, :transaction_failed}
-
       {:ok, nil} ->
-        :pending
+        {:ok, :pending}
 
-      {:error, _} ->
-        :pending
+      {:ok, receipt} when is_map(receipt) ->
+        with :ok <- validate_receipt_hash(receipt, tx_hash),
+             :ok <- validate_receipt_sender(receipt, wallet_address),
+             :ok <- validate_receipt_target(receipt, expected_to) do
+          {:ok, receipt_status(receipt)}
+        end
+
+      {:error, _reason} ->
+        {:ok, :pending}
 
       _ ->
-        :pending
+        {:ok, :pending}
     end
   end
 
   defp fetch_transaction(chain_id, tx_hash) do
     case Rpc.tx_by_hash(chain_id, tx_hash) do
-      {:ok, tx} -> {:ok, tx}
+      {:ok, nil} -> {:error, :transaction_data_mismatch}
+      {:ok, tx} when is_map(tx) -> {:ok, tx}
       {:error, _} -> {:error, :transaction_data_mismatch}
+      _ -> {:error, :transaction_data_mismatch}
     end
   end
 
-  defp fetch_receipt_state(chain_id, tx_hash) do
-    validate_receipt_state(%{}, chain_id, tx_hash)
+  defp fetch_receipt_state(chain_id, tx_hash, wallet_address, expected_to) do
+    validate_receipt_state(chain_id, tx_hash, wallet_address, expected_to)
   end
+
+  defp receipt_status(%{status: 1, block_number: block_number}), do: {:confirmed, block_number}
+  defp receipt_status(%{status: 1}), do: {:confirmed, nil}
+  defp receipt_status(%{status: 0}), do: {:failed, :transaction_failed}
+  defp receipt_status(_receipt), do: :pending
+
+  defp validate_receipt_hash(%{transaction_hash: receipt_tx_hash}, tx_hash) do
+    validate_equal(
+      normalize_hash(receipt_tx_hash),
+      normalize_hash(tx_hash),
+      :transaction_data_mismatch
+    )
+  end
+
+  defp validate_receipt_hash(_receipt, _tx_hash), do: {:error, :transaction_data_mismatch}
+
+  defp validate_receipt_sender(%{from: from}, wallet_address),
+    do: validate_tx_sender(%{from: from}, wallet_address)
+
+  defp validate_receipt_sender(_receipt, _wallet_address), do: {:error, :forbidden}
+
+  defp validate_receipt_target(%{to: to}, expected_to),
+    do: validate_tx_target(%{to: to}, expected_to)
+
+  defp validate_receipt_target(_receipt, _expected_to), do: {:error, :transaction_target_mismatch}
 
   defp error_code_atom(nil), do: nil
   defp error_code_atom(code) when is_atom(code), do: code
@@ -1750,6 +1851,9 @@ defmodule Autolaunch.Revenue.Core do
 
   defp normalize_address(value) when is_binary(value), do: String.downcase(String.trim(value))
   defp normalize_address(_value), do: nil
+
+  defp normalize_hash(value) when is_binary(value), do: String.downcase(String.trim(value))
+  defp normalize_hash(value), do: value
 
   defp revenue_ingress_factory_address(chain_id) do
     case launch_chain_id() do

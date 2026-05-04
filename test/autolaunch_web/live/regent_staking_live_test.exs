@@ -40,15 +40,21 @@ defmodule AutolaunchWeb.RegentStakingLiveTest do
     def claim_regent(_attrs, _human), do: tx("0xclaimregent")
     def claim_and_restake_regent(_attrs, _human), do: tx("0xrestake")
 
-    def prepare_deposit_usdc(%{
-          "amount" => "2.0",
-          "source_tag" => "manual",
-          "source_ref" => "regent-staking"
-        }) do
+    def prepare_deposit_usdc(
+          %{
+            "amount" => "2.0",
+            "source_tag" => "manual",
+            "source_ref" => "regent-staking"
+          },
+          "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ) do
       prepared_tx("0xdeposit")
     end
 
-    def prepare_withdraw_treasury(%{"amount" => "1.0", "recipient" => ""}) do
+    def prepare_withdraw_treasury(
+          %{"amount" => "1.0", "recipient" => ""},
+          "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ) do
       prepared_tx("0xwithdraw")
     end
 
@@ -56,7 +62,7 @@ defmodule AutolaunchWeb.RegentStakingLiveTest do
       {:ok,
        %{
          prepared: %{
-           tx_request: %{
+           wallet_action: %{
              chain_id: 8453,
              to: "0x9999999999999999999999999999999999999999",
              value: "0x0",
@@ -70,7 +76,7 @@ defmodule AutolaunchWeb.RegentStakingLiveTest do
       {:ok,
        %{
          prepared: %{
-           tx_request: %{
+           wallet_action: %{
              chain_id: 8453,
              to: "0x9999999999999999999999999999999999999999",
              value: "0x0",

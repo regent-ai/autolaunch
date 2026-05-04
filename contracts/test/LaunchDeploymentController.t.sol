@@ -6,8 +6,6 @@ import {Vm} from "forge-std/Vm.sol";
 import {Hooks} from "@uniswap/v4-core/src/libraries/Hooks.sol";
 
 import {AuctionParameters} from "src/cca/interfaces/IContinuousClearingAuction.sol";
-import {AutolaunchLaunchToken} from "src/AutolaunchLaunchToken.sol";
-import {AutolaunchTokenFactory} from "src/AutolaunchTokenFactory.sol";
 import {LaunchFeeInfraDeployer} from "src/LaunchFeeInfraDeployer.sol";
 import {LaunchDeploymentController} from "src/LaunchDeploymentController.sol";
 import {LaunchFeeRegistry} from "src/LaunchFeeRegistry.sol";
@@ -27,6 +25,17 @@ import {
     MockContinuousClearingAuctionFactory
 } from "test/mocks/MockContinuousClearingAuctionFactory.sol";
 import {MockHookPoolManager} from "test/mocks/MockHookPoolManager.sol";
+import {UERC20Factory} from "@uniswap/uerc20-factory/src/factories/UERC20Factory.sol";
+import {UERC20Metadata} from "@uniswap/uerc20-factory/src/libraries/UERC20MetadataLibrary.sol";
+
+interface IUERC20LaunchToken {
+    function balanceOf(address account) external view returns (uint256);
+    function totalSupply() external view returns (uint256);
+    function decimals() external view returns (uint8);
+    function creator() external view returns (address);
+    function graffiti() external view returns (bytes32);
+    function tokenURI() external view returns (string memory);
+}
 
 contract LaunchDeploymentControllerTest is Test {
     address internal constant AGENT_SAFE = address(0xABCD);
@@ -47,7 +56,7 @@ contract LaunchDeploymentControllerTest is Test {
     LaunchDeploymentController internal controller;
     MockContinuousClearingAuctionFactory internal auctionFactory;
     MockHookPoolManager internal poolManager;
-    AutolaunchTokenFactory internal tokenFactory;
+    UERC20Factory internal tokenFactory;
     LaunchFeeInfraDeployer internal feeInfraDeployer;
     SubjectRegistry internal subjectRegistry;
     RevenueShareFactory internal revenueShareFactory;
@@ -61,7 +70,7 @@ contract LaunchDeploymentControllerTest is Test {
         feeInfraDeployer = new LaunchFeeInfraDeployer();
         auctionFactory = new MockContinuousClearingAuctionFactory();
         poolManager = new MockHookPoolManager();
-        tokenFactory = new AutolaunchTokenFactory();
+        tokenFactory = new UERC20Factory();
         strategyFactory = new RegentLBPStrategyFactory(address(this));
         usdc = _installCanonicalUsdcMock();
         subjectRegistry = new SubjectRegistry(address(this));
@@ -171,10 +180,15 @@ contract LaunchDeploymentControllerTest is Test {
         uint256 expectedReserveAmount = (TOTAL_SUPPLY * 500) / 10_000;
         uint256 expectedVestingAmount = TOTAL_SUPPLY - expectedAuctionAmount - expectedReserveAmount;
 
-        AutolaunchLaunchToken token = AutolaunchLaunchToken(result.tokenAddress);
+        IUERC20LaunchToken token = IUERC20LaunchToken(result.tokenAddress);
         assertEq(token.balanceOf(result.auctionAddress), expectedAuctionAmount);
         assertEq(token.balanceOf(result.strategyAddress), expectedReserveAmount);
         assertEq(token.balanceOf(result.vestingWalletAddress), expectedVestingAmount);
+        assertEq(token.decimals(), 18);
+        assertEq(token.totalSupply(), TOTAL_SUPPLY);
+        assertEq(token.creator(), address(controller));
+        assertEq(token.graffiti(), keccak256(abi.encode(AGENT_SAFE)));
+        assertTrue(bytes(token.tokenURI()).length > 0);
 
         RegentLBPStrategy strategy = RegentLBPStrategy(result.strategyAddress);
         assertEq(strategy.auctionAddress(), result.auctionAddress);
@@ -285,7 +299,7 @@ contract LaunchDeploymentControllerTest is Test {
         uint256 expectedReserveAmount = (TOTAL_SUPPLY * 500) / 10_000;
         uint256 expectedVestingAmount = TOTAL_SUPPLY - expectedAuctionAmount - expectedReserveAmount;
 
-        AutolaunchLaunchToken token = AutolaunchLaunchToken(result.tokenAddress);
+        IUERC20LaunchToken token = IUERC20LaunchToken(result.tokenAddress);
         assertEq(token.balanceOf(result.auctionAddress), expectedAuctionAmount);
         assertEq(token.balanceOf(result.strategyAddress), expectedReserveAmount);
         assertEq(token.balanceOf(result.vestingWalletAddress), expectedVestingAmount);
@@ -466,8 +480,8 @@ contract LaunchDeploymentControllerTest is Test {
         cfg.tokenName = "Agent Coin";
         cfg.tokenSymbol = "AGENT";
         cfg.subjectLabel = "Agent Coin";
-        cfg.tokenFactoryData = bytes("");
-        cfg.tokenFactorySalt = bytes32(0);
+        cfg.tokenFactoryData = abi.encode(UERC20Metadata({description: "", website: "", image: ""}));
+        cfg.tokenFactoryGraffiti = keccak256(abi.encode(AGENT_SAFE));
         cfg.launchFeeHookSalt = _launchFeeHookSalt(address(feeInfraDeployer), address(poolManager));
     }
 

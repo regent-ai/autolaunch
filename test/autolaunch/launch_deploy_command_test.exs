@@ -13,6 +13,9 @@ defmodule Autolaunch.LaunchDeployCommandTest do
              "0x9999999999999999999999999999999999999999"
 
     assert env["AUTOLAUNCH_AGENT_ID"] == "84532:42"
+    assert env["AUTOLAUNCH_TOKEN_METADATA_DESCRIPTION"] == "Atlas launch"
+    assert env["AUTOLAUNCH_TOKEN_METADATA_WEBSITE"] == "https://atlas.example"
+    assert env["AUTOLAUNCH_TOKEN_METADATA_IMAGE"] == "ipfs://atlas"
     assert env["STRATEGY_OPERATOR"] == "0x9999999999999999999999999999999999999998"
     assert env["AUTOLAUNCH_FACTORY_OWNER_ADDRESS"] == "0x9999999999999999999999999999999999999997"
     assert env["OFFICIAL_POOL_FEE"] == "0"
@@ -25,6 +28,10 @@ defmodule Autolaunch.LaunchDeployCommandTest do
     assert env["CCA_CLAIM_BLOCK_OFFSET"] == "64"
     assert env["LBP_MIGRATION_BLOCK_OFFSET"] == "128"
     assert env["LBP_SWEEP_BLOCK_OFFSET"] == "256"
+
+    assert "--account" in command.args
+    assert "--sender" in command.args
+    refute "--private-key" in command.args
   end
 
   test "build fails before running forge when a required script input is missing" do
@@ -81,7 +88,12 @@ defmodule Autolaunch.LaunchDeployCommandTest do
       revenue_ingress_factory_address: "0x4444444444444444444444444444444444444444",
       lbp_strategy_factory_address: "0x5555555555555555555555555555555555555555",
       token_factory_address: "0x6666666666666666666666666666666666666666",
+      token_metadata_description: "Atlas launch",
+      token_metadata_website: "https://atlas.example",
+      token_metadata_image: "ipfs://atlas",
       regent_multisig_address: "0x7777777777777777777777777777777777777777",
+      deploy_account: "autolaunch-infra",
+      deploy_sender: "0x1515eefa0d418ef1a8cd788b57eb36b6d7437b86",
       factory_owner_address: "0x9999999999999999999999999999999999999997",
       strategy_operator: "0x9999999999999999999999999999999999999998",
       official_pool_fee: "0",

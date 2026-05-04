@@ -91,6 +91,7 @@ defmodule Autolaunch.RegentStaking do
   def stake(attrs, current_human) do
     with {:ok, cfg} <- config(),
          {:ok, wallet_address} <- required_wallet(current_human),
+         {:ok, receiver} <- optional_receiver(attrs, wallet_address),
          {:ok, amount} <- parse_amount(Map.get(attrs, "amount"), @token_decimals) do
       {:ok,
        %{
@@ -103,8 +104,8 @@ defmodule Autolaunch.RegentStaking do
              chain_id: cfg.chain_id,
              to: cfg.contract_address,
              value_hex: "0x0",
-             data: Abi.encode_stake(amount, wallet_address),
-             params: %{amount: Integer.to_string(amount)}
+             data: Abi.encode_stake(amount, receiver),
+             params: %{amount: Integer.to_string(amount), receiver: receiver}
            )
        }}
     end
@@ -192,8 +193,9 @@ defmodule Autolaunch.RegentStaking do
     end
   end
 
-  def prepare_deposit_usdc(attrs) do
+  def prepare_deposit_usdc(attrs, operator_wallet_address) do
     with {:ok, cfg} <- config(),
+         {:ok, expected_signer} <- normalize_required_address(operator_wallet_address),
          {:ok, amount} <- parse_amount(Map.get(attrs, "amount"), @usdc_decimals),
          {:ok, source_tag} <- bytes32_param(Map.get(attrs, "source_tag"), :source_tag_required),
          {:ok, source_ref} <- bytes32_param(Map.get(attrs, "source_ref"), :source_ref_required) do
@@ -209,14 +211,16 @@ defmodule Autolaunch.RegentStaking do
                amount: Integer.to_string(amount),
                source_tag: source_tag,
                source_ref: source_ref
-             }
+             },
+             expected_signer
            )
        }}
     end
   end
 
-  def prepare_withdraw_treasury(attrs) do
+  def prepare_withdraw_treasury(attrs, operator_wallet_address) do
     with {:ok, cfg} <- config(),
+         {:ok, expected_signer} <- normalize_required_address(operator_wallet_address),
          treasury_recipient <-
            call_address(cfg.chain_id, cfg.contract_address, Abi.encode_call(:treasury_recipient)),
          {:ok, amount} <- parse_amount(Map.get(attrs, "amount"), @usdc_decimals),
@@ -230,7 +234,8 @@ defmodule Autolaunch.RegentStaking do
              "withdraw_treasury",
              cfg.contract_address,
              Abi.encode_withdraw_treasury_residual(amount, recipient),
-             %{amount: Integer.to_string(amount), recipient: recipient}
+             %{amount: Integer.to_string(amount), recipient: recipient},
+             expected_signer
            )
        }}
     end
@@ -379,7 +384,7 @@ defmodule Autolaunch.RegentStaking do
     }
   end
 
-  defp prepare_payload(cfg, action, target, calldata, params) do
+  defp prepare_payload(cfg, action, target, calldata, params, expected_signer) do
     {:ok, prepared} =
       ActionParams.prepare_tx(
         cfg.chain_id,
@@ -388,7 +393,7 @@ defmodule Autolaunch.RegentStaking do
         "regent_staking",
         action,
         params,
-        expected_signer: nil
+        expected_signer: expected_signer
       )
 
     prepared
@@ -514,6 +519,24 @@ defmodule Autolaunch.RegentStaking do
   end
 
   defp bytes32_param(_value, missing_error), do: {:error, missing_error}
+
+  defp optional_receiver(attrs, default_receiver) do
+    case optional_text(Map.get(attrs, "receiver")) do
+      nil -> {:ok, default_receiver}
+      receiver -> normalize_required_address(receiver)
+    end
+  end
+
+  defp optional_text(value) when is_binary(value) do
+    value
+    |> String.trim()
+    |> case do
+      "" -> nil
+      text -> text
+    end
+  end
+
+  defp optional_text(_value), do: nil
 
   defp normalize_required_address(value) do
     Evm.normalize_required_address(value)

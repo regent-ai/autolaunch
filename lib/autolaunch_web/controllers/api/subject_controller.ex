@@ -105,6 +105,9 @@ defmodule AutolaunchWeb.Api.SubjectController do
   defp translate_error(:amount_required),
     do: {:unprocessable_entity, "amount_required", "Amount is required"}
 
+  defp translate_error(:invalid_address),
+    do: {:unprocessable_entity, "invalid_address", "Wallet address is invalid"}
+
   defp translate_error(:invalid_ingress_address),
     do: {:unprocessable_entity, "invalid_ingress_address", "USDC intake address is invalid"}
 
@@ -132,6 +135,6 @@ defmodule AutolaunchWeb.Api.SubjectController do
     do:
       {:bad_gateway, "invalid_accounting_tag_log", "Payment labels could not be loaded right now"}
 
-  defp translate_error(reason),
-    do: {:unprocessable_entity, "subject_invalid", inspect(reason)}
+  defp translate_error(_reason),
+    do: {:unprocessable_entity, "subject_invalid", "Subject request could not be completed"}
 end

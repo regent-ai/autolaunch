@@ -302,16 +302,35 @@
       "all_accepted": true
     },
     "prepared": {
+      "action_id": "strategy_migrate",
+      "owner_product": "autolaunch",
       "resource": "strategy",
+      "resource_id": "job_queued",
       "action": "migrate",
       "chain_id": 84532,
-      "target": "0x9999999999999999999999999999999999999999",
-      "calldata": "0x8fd3ab80",
-      "tx_request": {
+      "expected_signer": "0x1111111111111111111111111111111111111111",
+      "expires_at": "2026-03-27T12:10:00Z",
+      "idempotency_key": "strategy_migrate",
+      "risk_copy": "Moves the launch into settlement.",
+      "wallet_action": {
+        "action_id": "strategy_migrate",
+        "owner_product": "autolaunch",
+        "resource": "strategy",
+        "resource_id": "job_queued",
+        "action": "migrate",
         "chain_id": 84532,
         "to": "0x9999999999999999999999999999999999999999",
-        "value": "0x0",
-        "data": "0x8fd3ab80"
+        "value": "0",
+        "data": "0x8fd3ab80",
+        "expected_signer": "0x1111111111111111111111111111111111111111",
+        "expires_at": "2026-03-27T12:10:00Z",
+        "idempotency_key": "strategy_migrate",
+        "simulation": {
+          "required": false,
+          "status": "not_required",
+          "block_number": null
+        },
+        "risk_copy": "Moves the launch into settlement."
       }
     }
   },
@@ -357,21 +376,40 @@
   "regent_staking_prepare": {
     "ok": true,
     "prepared": {
+      "action_id": "regent_staking_deposit_usdc",
+      "owner_product": "autolaunch",
       "resource": "regent_staking",
+      "resource_id": "regent_staking",
       "action": "deposit_usdc",
       "chain_id": 8453,
-      "target": "0x1111111111111111111111111111111111111111",
-      "calldata": "0x7dc6bb98",
+      "expected_signer": "0x1111111111111111111111111111111111111111",
+      "expires_at": "2026-03-27T12:10:00Z",
+      "idempotency_key": "regent_staking_deposit_usdc",
+      "risk_copy": "Adds Base USDC to the Regent staking treasury.",
       "params": {
         "amount": "250500000",
         "source_tag": "0x626173655f6d616e75616c000000000000000000000000000000000000000000",
         "source_ref": "0x323032362d303300000000000000000000000000000000000000000000000000"
       },
-      "tx_request": {
+      "wallet_action": {
+        "action_id": "regent_staking_deposit_usdc",
+        "owner_product": "autolaunch",
+        "resource": "regent_staking",
+        "resource_id": "regent_staking",
+        "action": "deposit_usdc",
         "chain_id": 8453,
         "to": "0x1111111111111111111111111111111111111111",
-        "value": "0x0",
-        "data": "0x7dc6bb98"
+        "value": "0",
+        "data": "0x7dc6bb98",
+        "expected_signer": "0x1111111111111111111111111111111111111111",
+        "expires_at": "2026-03-27T12:10:00Z",
+        "idempotency_key": "regent_staking_deposit_usdc",
+        "simulation": {
+          "required": false,
+          "status": "not_required",
+          "block_number": null
+        },
+        "risk_copy": "Adds Base USDC to the Regent staking treasury."
       }
     }
   },
@@ -392,20 +430,34 @@
     "warnings": [],
     "prepared": {
       "action_id": "auction_bid_quote",
+      "owner_product": "autolaunch",
       "resource": "auction",
+      "resource_id": "auc_queued",
       "action": "submit_bid",
       "chain_id": 84532,
-      "target": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-      "calldata": "0x1234",
       "expected_signer": "0x1111111111111111111111111111111111111111",
       "expires_at": "2026-03-27T12:10:00Z",
       "idempotency_key": "auction_bid_quote",
       "risk_copy": "Submits a Base USDC bid for this auction.",
-      "tx_request": {
+      "wallet_action": {
+        "action_id": "auction_bid_quote",
+        "owner_product": "autolaunch",
+        "resource": "auction",
+        "resource_id": "auc_queued",
+        "action": "submit_bid",
         "chain_id": 84532,
         "to": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "value": "0x0",
-        "data": "0x1234"
+        "value": "0",
+        "data": "0x1234",
+        "expected_signer": "0x1111111111111111111111111111111111111111",
+        "expires_at": "2026-03-27T12:10:00Z",
+        "idempotency_key": "auction_bid_quote",
+        "simulation": {
+          "required": false,
+          "status": "not_required",
+          "block_number": null
+        },
+        "risk_copy": "Submits a Base USDC bid for this auction."
       }
     }
   },
@@ -430,20 +482,34 @@
       "claim": {
         "prepared": {
           "action_id": "auction_claim_bid",
+          "owner_product": "autolaunch",
           "resource": "auction",
+          "resource_id": "bid_7",
           "action": "claim_bid",
           "chain_id": 84532,
-          "target": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-          "calldata": "0x5678",
           "expected_signer": "0x1111111111111111111111111111111111111111",
           "expires_at": "2026-03-27T12:10:00Z",
           "idempotency_key": "auction_claim_bid",
           "risk_copy": "Claims tokens purchased by this auction bid.",
-          "tx_request": {
+          "wallet_action": {
+            "action_id": "auction_claim_bid",
+            "owner_product": "autolaunch",
+            "resource": "auction",
+            "resource_id": "bid_7",
+            "action": "claim_bid",
             "chain_id": 84532,
             "to": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-            "value": "0x0",
-            "data": "0x5678"
+            "value": "0",
+            "data": "0x5678",
+            "expected_signer": "0x1111111111111111111111111111111111111111",
+            "expires_at": "2026-03-27T12:10:00Z",
+            "idempotency_key": "auction_claim_bid",
+            "simulation": {
+              "required": false,
+              "status": "not_required",
+              "block_number": null
+            },
+            "risk_copy": "Claims tokens purchased by this auction bid."
           }
         }
       }

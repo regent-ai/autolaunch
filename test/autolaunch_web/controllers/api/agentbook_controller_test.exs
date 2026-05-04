@@ -47,7 +47,8 @@ defmodule AutolaunchWeb.Api.AgentbookControllerTest do
          description: "Register agent wallet in AgentBook",
          expected_signer: session.agent_address,
          expires_at: DateTime.to_iso8601(session.expires_at),
-         risk: "Registers this wallet as the agent wallet in AgentBook."
+         idempotency_key: "agentbook-register:#{session.session_id}",
+         risk_copy: "Registers this wallet as the agent wallet in AgentBook."
        })}
     end
 
@@ -125,7 +126,14 @@ defmodule AutolaunchWeb.Api.AgentbookControllerTest do
              "ok" => true,
              "session" => %{
                "status" => "proof_ready",
-               "tx_request" => %{"to" => "0xA23aB2712eA7BBa896930544C7d6636a96b944dA"}
+               "wallet_action" => %{
+                 "owner_product" => "autolaunch",
+                 "resource" => "agentbook",
+                 "resource_id" => ^session_id,
+                 "to" => "0xA23aB2712eA7BBa896930544C7d6636a96b944dA",
+                 "value" => "0",
+                 "simulation" => %{"required" => false, "status" => "not_required"}
+               }
              }
            } = json_response(conn, 200)
   end

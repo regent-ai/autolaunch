@@ -7,8 +7,8 @@ interface ITokenFactory {
         string calldata symbol,
         uint8 decimals,
         uint256 totalSupply,
-        address owner,
+        address recipient,
         bytes calldata configData,
-        bytes32 salt
+        bytes32 graffiti
     ) external returns (address token);
 }

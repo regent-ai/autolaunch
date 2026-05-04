@@ -147,7 +147,7 @@ defmodule AutolaunchWeb.Api.LaunchControllerTest do
 
     conn = post(conn, "/v1/app/launch/jobs", launch_job_payload("good"))
 
-    assert %{"ok" => true, "job_id" => "job_123", "status" => "queued"} = json_response(conn, 200)
+    assert %{"ok" => true, "job_id" => "job_123", "status" => "queued"} = json_response(conn, 201)
   end
 
   test "create_job ignores spoofed forwarded headers when recording the request ip", %{
@@ -165,7 +165,7 @@ defmodule AutolaunchWeb.Api.LaunchControllerTest do
     assert %{
              "ok" => true,
              "job" => %{"request_ip" => "203.0.113.10"}
-           } = json_response(conn, 200)
+           } = json_response(conn, 201)
   end
 
   test "launch job creation returns signature verification failures", %{

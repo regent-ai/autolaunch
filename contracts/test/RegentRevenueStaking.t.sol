@@ -732,6 +732,7 @@ contract RegentRevenueStakingTest is Test {
         regent.mint(address(staking), 25 * REGENT);
 
         assertEq(staking.regentRewardPool(), 75 * REGENT);
+        assertEq(staking.sweepableRegentRewardPool(), 75 * REGENT);
 
         vm.prank(TREASURY);
         vm.expectRevert("REWARD_POOL_LOW");
@@ -750,6 +751,37 @@ contract RegentRevenueStakingTest is Test {
 
         assertEq(regent.balanceOf(ALICE), 200 * REGENT);
         assertEq(regent.balanceOf(address(staking)), 0);
+    }
+
+    function testRewardPoolWithdrawalsCannotDrainAccruedRegentRewards() external {
+        _stake(ALICE, 100 * REGENT);
+        _fundRegentRewards(50 * REGENT);
+        regent.mint(address(staking), 25 * REGENT);
+
+        vm.prank(OWNER);
+        staking.setEmissionAprBps(MAX_APR_BPS);
+        vm.warp(block.timestamp + 30 days);
+
+        uint256 owed = staking.previewClaimableRegent(ALICE);
+        assertGt(owed, 0);
+        assertEq(staking.reservedRegentRewards(), owed);
+        assertEq(staking.sweepableRegentRewardPool(), 75 * REGENT - owed);
+
+        vm.prank(TREASURY);
+        vm.expectRevert("REWARD_POOL_LOW");
+        staking.sweepRegentRewardPool(75 * REGENT);
+
+        vm.prank(TREASURY);
+        staking.sweepRegentRewardPool(75 * REGENT - owed);
+
+        assertEq(staking.regentRewardPool(), owed);
+        assertEq(staking.sweepableRegentRewardPool(), 0);
+
+        vm.prank(ALICE);
+        uint256 claimed = staking.claimRegent(ALICE);
+
+        assertEq(claimed, owed);
+        assertEq(regent.balanceOf(ALICE), 100 * REGENT + owed);
     }
 
     function testRewardPoolWithdrawalsRejectBadCallersAndRecipients() external {

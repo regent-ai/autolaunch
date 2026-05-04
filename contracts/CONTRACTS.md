@@ -8,13 +8,8 @@ This package now covers the full Autolaunch contract system, from launch through
 
 - `LaunchDeploymentController`
   - assembles the launch stack in one call
-  - deploys the token, strategy-owned auction, vesting wallet, fee plumbing, subject splitter, and default ingress
+  - creates the UERC20 launch token, strategy-owned auction, vesting wallet, fee plumbing, subject splitter, and default ingress
   - threads the official pool fee, tick spacing, and position manager into the strategy config
-- `AutolaunchTokenFactory`
-  - creates fixed-supply 18-decimal launch tokens
-  - mints the full supply to the launch controller recipient
-- `AutolaunchLaunchToken`
-  - plain ERC-20 launch token with no owner and no later mint path
 - `AgentTokenVestingWallet`
   - holds the 85% retained launch allocation on a timestamp vesting schedule
 - `RegentLBPStrategy`
@@ -56,20 +51,21 @@ This package now covers the full Autolaunch contract system, from launch through
 ## External dependencies
 
 - external CCA factory
+- UERC20-compatible token factory
 - optional ERC-8004 identity registry for launch identity links
 - USDC
 - official Uniswap v4 pool manager and position manager
 
 ## Deployment flow
 
-1. Deploy shared Autolaunch infra with `DeployAutolaunchInfra.s.sol`.
-2. Run `ExampleCCADeploymentScript.s.sol` to create a launch.
-3. The launch script returns the full stack through `CCA_RESULT_JSON:`.
+1. Deploy or confirm a UERC20-compatible token factory and set `AUTOLAUNCH_TOKEN_FACTORY_ADDRESS`.
+2. Deploy shared Regent Autolaunch infra with `DeployAutolaunchInfra.s.sol`.
+3. Run `ExampleCCADeploymentScript.s.sol` to create a launch.
+4. The launch script returns the full stack through `CCA_RESULT_JSON:`.
 
 For a 48-hour Base Sepolia auction, set `AUCTION_DURATION_BLOCKS=86400`. The script builds the required CCA auction-step data from that duration.
 
-`AUTOLAUNCH_TOKEN_FACTORY_ADDRESS` comes from
-`AUTOLAUNCH_INFRA_RESULT_JSON.tokenFactoryAddress`.
+For rehearsals, set CCA tick spacing to 1% of the floor price unless there is a specific reason to use tighter ticks. The script rejects zero floor price, zero tick spacing, misaligned floor/tick values, and auction steps that do not exactly cover the configured duration and supply schedule.
 
 ## What the launch script creates
 

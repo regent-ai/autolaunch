@@ -54,7 +54,9 @@ defmodule AutolaunchWeb.Api.AuctionController do
   def create_bid(conn, %{"id" => id} = params) do
     case launch_module().place_bid(id, params, conn.assigns[:current_human]) do
       {:ok, bid} ->
-        json(conn, %{ok: true, bid: bid})
+        conn
+        |> put_status(:created)
+        |> json(%{ok: true, bid: bid})
 
       {:error, reason} ->
         ApiErrorTranslator.render(conn, :auction_create_bid, reason)

@@ -656,6 +656,7 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
         onlyTreasurySweepCaller
         nonReentrant
     {
+        _settleStakeTokenEmissions();
         totalRewardTokenPoolSwept += amount;
         _withdrawStakeTokenRewardPool(amount, treasuryRecipient);
         emit RewardTokenPoolSwept(amount, treasuryRecipient);
@@ -667,6 +668,7 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
         onlyOwner
         nonReentrant
     {
+        _settleStakeTokenEmissions();
         totalRewardTokenPoolRefunded += amount;
         _withdrawStakeTokenRewardPool(amount, recipient);
         emit RewardTokenPoolRefunded(amount, recipient);
@@ -719,6 +721,27 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
         }
     }
 
+    function reservedStakeTokenRewards() public view returns (uint256) {
+        uint256 emitted = _previewTotalEmittedStakeToken();
+        if (emitted <= totalClaimedStakeToken) {
+            return 0;
+        }
+        unchecked {
+            return emitted - totalClaimedStakeToken;
+        }
+    }
+
+    function sweepableStakeTokenRewardPool() public view returns (uint256) {
+        uint256 pool = stakeTokenRewardPool();
+        uint256 reserved = reservedStakeTokenRewards();
+        if (pool <= reserved) {
+            return 0;
+        }
+        unchecked {
+            return pool - reserved;
+        }
+    }
+
     function reservedUsdc() public view returns (uint256) {
         uint256 stakerLiability = totalUsdcCreditedToStakers - totalClaimedUsdc;
         return protocolReserveUsdc + treasuryReservedUsdc + treasuryResidualUsdc
@@ -737,8 +760,8 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
     }
 
     function stakeTokenRewardShortfall() external view returns (uint256) {
-        uint256 liability = unclaimedStakeTokenLiability;
-        uint256 available = availableStakeTokenRewardInventory();
+        uint256 liability = reservedStakeTokenRewards();
+        uint256 available = stakeTokenRewardPool();
         if (liability <= available) {
             return 0;
         }
@@ -872,9 +895,19 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
         require(amount != 0, "AMOUNT_ZERO");
         require(recipient != address(0), "RECIPIENT_ZERO");
         require(recipient != address(this), "RECIPIENT_IS_SELF");
-        require(stakeTokenRewardPool() >= amount, "REWARD_POOL_LOW");
+        require(sweepableStakeTokenRewardPool() >= amount, "REWARD_POOL_LOW");
 
         _pushExactStakeToken(recipient, amount);
+    }
+
+    function _previewTotalEmittedStakeToken() internal view returns (uint256) {
+        uint256 currentAcc = _previewAccRewardPerTokenStakeToken();
+        if (currentAcc <= accRewardPerTokenStakeToken || totalStaked == 0) {
+            return totalEmittedStakeToken;
+        }
+
+        uint256 deltaAcc = currentAcc - accRewardPerTokenStakeToken;
+        return totalEmittedStakeToken + FullMath.mulDiv(totalStaked, deltaAcc, ACC_PRECISION);
     }
 
     function _previewAccRewardPerTokenStakeToken() internal view returns (uint256 currentAcc) {

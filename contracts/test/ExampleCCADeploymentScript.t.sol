@@ -4,8 +4,6 @@ pragma solidity ^0.8.26;
 import {Test} from "forge-std/Test.sol";
 
 import {AuctionParameters} from "src/cca/interfaces/IContinuousClearingAuction.sol";
-import {AutolaunchLaunchToken} from "src/AutolaunchLaunchToken.sol";
-import {AutolaunchTokenFactory} from "src/AutolaunchTokenFactory.sol";
 import {LaunchDeploymentController} from "src/LaunchDeploymentController.sol";
 import {LaunchFeeRegistry} from "src/LaunchFeeRegistry.sol";
 import {RegentLBPStrategy} from "src/RegentLBPStrategy.sol";
@@ -20,6 +18,16 @@ import {
     MockContinuousClearingAuctionFactory
 } from "test/mocks/MockContinuousClearingAuctionFactory.sol";
 import {MockHookPoolManager} from "test/mocks/MockHookPoolManager.sol";
+import {UERC20Factory} from "@uniswap/uerc20-factory/src/factories/UERC20Factory.sol";
+
+interface IUERC20LaunchToken {
+    function balanceOf(address account) external view returns (uint256);
+    function decimals() external view returns (uint8);
+    function totalSupply() external view returns (uint256);
+    function creator() external view returns (address);
+    function graffiti() external view returns (bytes32);
+    function tokenURI() external view returns (string memory);
+}
 
 contract ExampleCCADeploymentScriptTest is Test {
     address internal constant AGENT_SAFE = address(0x4321);
@@ -29,8 +37,8 @@ contract ExampleCCADeploymentScriptTest is Test {
     address internal constant USDC = 0x036CbD53842c5426634e7929541eC2318f3dCF7e;
     uint256 internal constant IDENTITY_AGENT_ID = 42;
     uint256 internal constant TOTAL_SUPPLY = 1_000_000_000_000_000_000_000;
-    uint256 internal constant CCA_TICK_SPACING_Q96 = 1_000_000_000_000_000;
-    uint256 internal constant CCA_FLOOR_PRICE_Q96 = 79_228_162_514_264_334_008_320;
+    uint256 internal constant CCA_TICK_SPACING_Q96 = 792_281_625_142_643_340_083;
+    uint256 internal constant CCA_FLOOR_PRICE_Q96 = 79_228_162_514_264_334_008_300;
 
     ExampleCCADeploymentScript internal script;
     MockContinuousClearingAuctionFactory internal auctionFactory;
@@ -39,7 +47,7 @@ contract ExampleCCADeploymentScriptTest is Test {
     RevenueShareFactory internal revenueShareFactory;
     RevenueIngressFactory internal revenueIngressFactory;
     RegentLBPStrategyFactory internal strategyFactory;
-    AutolaunchTokenFactory internal tokenFactory;
+    UERC20Factory internal tokenFactory;
 
     function setUp() external {
         script = new ExampleCCADeploymentScript();
@@ -53,7 +61,7 @@ contract ExampleCCADeploymentScriptTest is Test {
         revenueIngressFactory =
             new RevenueIngressFactory(USDC, address(subjectRegistry), address(script));
         strategyFactory = new RegentLBPStrategyFactory(address(script));
-        tokenFactory = new AutolaunchTokenFactory();
+        tokenFactory = new UERC20Factory();
         subjectRegistry.transferOwnership(address(revenueShareFactory));
 
         vm.prank(address(script));
@@ -78,6 +86,9 @@ contract ExampleCCADeploymentScriptTest is Test {
         _setEnvAddress("STRATEGY_OPERATOR", STRATEGY_OPERATOR);
         vm.setEnv("AUTOLAUNCH_TOKEN_NAME", "Launch Agent");
         vm.setEnv("AUTOLAUNCH_TOKEN_SYMBOL", "LAGENT");
+        vm.setEnv("AUTOLAUNCH_TOKEN_METADATA_DESCRIPTION", "Regent launch rehearsal");
+        vm.setEnv("AUTOLAUNCH_TOKEN_METADATA_WEBSITE", "https://autolaunch.sh");
+        vm.setEnv("AUTOLAUNCH_TOKEN_METADATA_IMAGE", "");
         vm.setEnv("AUTOLAUNCH_AGENT_ID", "1:42");
         vm.setEnv("AUTOLAUNCH_TOTAL_SUPPLY", vm.toString(TOTAL_SUPPLY));
         vm.setEnv("CCA_TICK_SPACING_Q96", vm.toString(CCA_TICK_SPACING_Q96));
@@ -104,10 +115,13 @@ contract ExampleCCADeploymentScriptTest is Test {
         uint256 expectedReserveAmount = (TOTAL_SUPPLY * 500) / 10_000;
         uint256 expectedVestingAmount = TOTAL_SUPPLY - expectedAuctionAmount - expectedReserveAmount;
 
-        AutolaunchLaunchToken token = AutolaunchLaunchToken(result.tokenAddress);
+        IUERC20LaunchToken token = IUERC20LaunchToken(result.tokenAddress);
         assertEq(token.balanceOf(result.auctionAddress), expectedAuctionAmount);
         assertEq(token.balanceOf(result.strategyAddress), expectedReserveAmount);
         assertEq(token.balanceOf(result.vestingWalletAddress), expectedVestingAmount);
+        assertEq(token.decimals(), 18);
+        assertEq(token.totalSupply(), TOTAL_SUPPLY);
+        assertTrue(bytes(token.tokenURI()).length > 0);
         assertEq(auctionFactory.lastAmount(), expectedAuctionAmount);
         RegentLBPStrategy strategy = RegentLBPStrategy(result.strategyAddress);
         assertEq(strategy.officialPoolFee(), 0);
@@ -162,6 +176,8 @@ contract ExampleCCADeploymentScriptTest is Test {
             result.defaultIngressAddress
         );
         address controller = strategy.auctionCreator();
+        assertEq(token.creator(), controller);
+        assertEq(token.graffiti(), keccak256(abi.encode(AGENT_SAFE)));
         assertFalse(revenueShareFactory.authorizedCreators(controller));
         assertFalse(revenueIngressFactory.authorizedCreators(controller));
         assertFalse(strategyFactory.authorizedCreators(controller));

@@ -59,6 +59,10 @@ defmodule Autolaunch.Launch.DeployCommand do
       {"AUTOLAUNCH_AGENT_NAME", job.agent_name || ""},
       {"AUTOLAUNCH_TOKEN_NAME", job.token_name || ""},
       {"AUTOLAUNCH_TOKEN_SYMBOL", job.token_symbol || ""},
+      {"AUTOLAUNCH_TOKEN_METADATA_DESCRIPTION",
+       Keyword.get(config, :token_metadata_description, "")},
+      {"AUTOLAUNCH_TOKEN_METADATA_WEBSITE", Keyword.get(config, :token_metadata_website, "")},
+      {"AUTOLAUNCH_TOKEN_METADATA_IMAGE", Keyword.get(config, :token_metadata_image, "")},
       {"CCA_REQUIRED_CURRENCY_RAISED", job.minimum_raise_usdc_raw || "0"},
       {"AUTOLAUNCH_TOTAL_SUPPLY", job.total_supply},
       {"AUTOLAUNCH_AGENT_SAFE_ADDRESS", job.agent_safe_address || ""},
@@ -170,16 +174,21 @@ defmodule Autolaunch.Launch.DeployCommand do
 
   defp credentials_args(config) do
     account = Keyword.get(config, :deploy_account, "")
+    sender = Keyword.get(config, :deploy_sender, "")
     password = Keyword.get(config, :deploy_password, "")
-    private_key = Keyword.get(config, :deploy_private_key, "")
 
-    cond do
-      account != "" and password != "" -> ["--account", account, "--password", password]
-      account != "" -> ["--account", account]
-      private_key != "" -> ["--private-key", private_key]
-      true -> []
-    end
+    []
+    |> append_arg("--account", account)
+    |> append_arg("--sender", sender)
+    |> append_password(account, password)
   end
+
+  defp append_arg(args, _flag, ""), do: args
+  defp append_arg(args, flag, value), do: args ++ [flag, value]
+
+  defp append_password(args, "", _password), do: args
+  defp append_password(args, _account, ""), do: args
+  defp append_password(args, _account, password), do: args ++ ["--password", password]
 
   defp broadcast_args(%Job{broadcast: true}), do: ["--broadcast"]
   defp broadcast_args(_job), do: []

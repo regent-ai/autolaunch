@@ -14,6 +14,17 @@ import {RevenueShareFactory} from "src/revenue/RevenueShareFactory.sol";
 import {BaseUsdc} from "src/libraries/BaseUsdc.sol";
 import {AuctionStepsBuilder} from "src/cca/libraries/AuctionStepsBuilder.sol";
 import {HookMiner} from "src/libraries/HookMiner.sol";
+import {UERC20Metadata} from "@uniswap/uerc20-factory/src/libraries/UERC20MetadataLibrary.sol";
+
+interface IUERC20FactoryShape {
+    function getUERC20Address(
+        string memory name,
+        string memory symbol,
+        uint8 decimals,
+        address creator,
+        bytes32 graffiti
+    ) external view returns (address);
+}
 
 contract ExampleCCADeploymentScript is Script {
     using AuctionStepsBuilder for bytes;
@@ -52,6 +63,9 @@ contract ExampleCCADeploymentScript is Script {
         bytes auctionStepsData;
         string tokenName;
         string tokenSymbol;
+        string tokenDescription;
+        string tokenWebsite;
+        string tokenImage;
         string subjectLabel;
     }
 
@@ -179,7 +193,12 @@ contract ExampleCCADeploymentScript is Script {
         cfg.auctionStepsData = _evenAuctionSteps(auctionDurationBlocks);
         cfg.tokenName = vm.envOr("AUTOLAUNCH_TOKEN_NAME", string("Regent Agent Token"));
         cfg.tokenSymbol = vm.envOr("AUTOLAUNCH_TOKEN_SYMBOL", string("RAGENT"));
+        cfg.tokenDescription = vm.envOr("AUTOLAUNCH_TOKEN_METADATA_DESCRIPTION", string(""));
+        cfg.tokenWebsite = vm.envOr("AUTOLAUNCH_TOKEN_METADATA_WEBSITE", string(""));
+        cfg.tokenImage = vm.envOr("AUTOLAUNCH_TOKEN_METADATA_IMAGE", string(""));
         cfg.subjectLabel = vm.envOr("AUTOLAUNCH_SUBJECT_LABEL", cfg.tokenName);
+        _validateCcaConfig(cfg, auctionDurationBlocks);
+        _requireUerc20FactoryShape(cfg);
     }
 
     function deployFromEnv()
@@ -227,46 +246,86 @@ contract ExampleCCADeploymentScript is Script {
     function _controllerConfig(ScriptConfig memory cfg)
         internal
         pure
-        returns (LaunchDeploymentController.DeploymentConfig memory)
+        returns (LaunchDeploymentController.DeploymentConfig memory deployCfg)
     {
-        return LaunchDeploymentController.DeploymentConfig({
-            agentSafe: cfg.agentSafe,
-            feeInfraDeployer: cfg.feeInfraDeployer,
-            revenueShareFactory: cfg.revenueShareFactory,
-            revenueIngressFactory: cfg.revenueIngressFactory,
-            identityRegistry: cfg.identityRegistry,
-            tokenFactory: cfg.tokenFactory,
-            strategyFactory: cfg.strategyFactory,
-            auctionInitializerFactory: cfg.auctionInitializerFactory,
-            poolManager: cfg.poolManager,
-            positionManager: cfg.positionManager,
-            positionRecipient: cfg.positionRecipient,
-            strategyOperator: cfg.strategyOperator,
-            usdcToken: cfg.usdcToken,
-            regentRecipient: cfg.regentRecipient,
-            validationHook: cfg.validationHook,
-            identityAgentId: cfg.agentId,
-            totalSupply: cfg.totalSupply,
-            officialPoolFee: cfg.officialPoolFee,
-            officialPoolTickSpacing: cfg.officialPoolTickSpacing,
-            auctionTickSpacing: cfg.auctionTickSpacing,
-            startBlock: cfg.startBlock,
-            endBlock: cfg.endBlock,
-            claimBlock: cfg.claimBlock,
-            migrationBlock: cfg.migrationBlock,
-            sweepBlock: cfg.sweepBlock,
-            vestingStartTimestamp: cfg.vestingStartTimestamp,
-            vestingDurationSeconds: cfg.vestingDurationSeconds,
-            floorPrice: cfg.floorPrice,
-            requiredCurrencyRaised: cfg.requiredCurrencyRaised,
-            auctionStepsData: cfg.auctionStepsData,
-            tokenName: cfg.tokenName,
-            tokenSymbol: cfg.tokenSymbol,
-            subjectLabel: cfg.subjectLabel,
-            tokenFactoryData: bytes(""),
-            tokenFactorySalt: bytes32(0),
-            launchFeeHookSalt: _launchFeeHookSalt(cfg.feeInfraDeployer, cfg.poolManager)
-        });
+        deployCfg.agentSafe = cfg.agentSafe;
+        deployCfg.feeInfraDeployer = cfg.feeInfraDeployer;
+        deployCfg.revenueShareFactory = cfg.revenueShareFactory;
+        deployCfg.revenueIngressFactory = cfg.revenueIngressFactory;
+        deployCfg.identityRegistry = cfg.identityRegistry;
+        deployCfg.tokenFactory = cfg.tokenFactory;
+        deployCfg.strategyFactory = cfg.strategyFactory;
+        deployCfg.auctionInitializerFactory = cfg.auctionInitializerFactory;
+        deployCfg.poolManager = cfg.poolManager;
+        deployCfg.positionManager = cfg.positionManager;
+        deployCfg.positionRecipient = cfg.positionRecipient;
+        deployCfg.strategyOperator = cfg.strategyOperator;
+        deployCfg.usdcToken = cfg.usdcToken;
+        deployCfg.regentRecipient = cfg.regentRecipient;
+        deployCfg.validationHook = cfg.validationHook;
+        deployCfg.identityAgentId = cfg.agentId;
+        deployCfg.totalSupply = cfg.totalSupply;
+        deployCfg.officialPoolFee = cfg.officialPoolFee;
+        deployCfg.officialPoolTickSpacing = cfg.officialPoolTickSpacing;
+        deployCfg.auctionTickSpacing = cfg.auctionTickSpacing;
+        deployCfg.startBlock = cfg.startBlock;
+        deployCfg.endBlock = cfg.endBlock;
+        deployCfg.claimBlock = cfg.claimBlock;
+        deployCfg.migrationBlock = cfg.migrationBlock;
+        deployCfg.sweepBlock = cfg.sweepBlock;
+        deployCfg.vestingStartTimestamp = cfg.vestingStartTimestamp;
+        deployCfg.vestingDurationSeconds = cfg.vestingDurationSeconds;
+        deployCfg.floorPrice = cfg.floorPrice;
+        deployCfg.requiredCurrencyRaised = cfg.requiredCurrencyRaised;
+        deployCfg.auctionStepsData = cfg.auctionStepsData;
+        deployCfg.tokenName = cfg.tokenName;
+        deployCfg.tokenSymbol = cfg.tokenSymbol;
+        deployCfg.subjectLabel = cfg.subjectLabel;
+        deployCfg.tokenFactoryData = _tokenFactoryData(cfg);
+        deployCfg.tokenFactoryGraffiti = _tokenFactoryGraffiti(cfg);
+        deployCfg.launchFeeHookSalt = _launchFeeHookSalt(cfg.feeInfraDeployer, cfg.poolManager);
+    }
+
+    function _tokenFactoryData(ScriptConfig memory cfg) internal pure returns (bytes memory) {
+        return abi.encode(
+            UERC20Metadata({
+                description: cfg.tokenDescription, website: cfg.tokenWebsite, image: cfg.tokenImage
+            })
+        );
+    }
+
+    function _tokenFactoryGraffiti(ScriptConfig memory cfg) internal pure returns (bytes32) {
+        return keccak256(abi.encode(cfg.agentSafe));
+    }
+
+    function _requireUerc20FactoryShape(ScriptConfig memory cfg) internal view {
+        require(cfg.tokenFactory.code.length > 0, "TOKEN_FACTORY_NOT_DEPLOYED");
+
+        try IUERC20FactoryShape(cfg.tokenFactory)
+            .getUERC20Address(
+                cfg.tokenName, cfg.tokenSymbol, 18, address(this), _tokenFactoryGraffiti(cfg)
+            ) returns (
+            address predicted
+        ) {
+            require(predicted != address(0), "TOKEN_FACTORY_UERC20_ZERO");
+        } catch {
+            revert("TOKEN_FACTORY_NOT_UERC20");
+        }
+    }
+
+    function _validateCcaConfig(ScriptConfig memory cfg, uint256 auctionDurationBlocks)
+        internal
+        pure
+    {
+        require(cfg.startBlock < cfg.endBlock, "START_BLOCK_INVALID");
+        require(cfg.endBlock <= cfg.claimBlock, "CLAIM_BEFORE_END");
+        require(cfg.migrationBlock > cfg.endBlock, "MIGRATION_BEFORE_END");
+        require(cfg.sweepBlock > cfg.migrationBlock, "SWEEP_BEFORE_MIGRATION");
+        require(cfg.floorPrice > 0, "FLOOR_PRICE_ZERO");
+        require(cfg.auctionTickSpacing > 0, "AUCTION_TICK_SPACING_ZERO");
+        require(cfg.floorPrice % cfg.auctionTickSpacing == 0, "FLOOR_PRICE_TICK_MISALIGNED");
+        require(cfg.auctionTickSpacing >= cfg.floorPrice / 10_000, "AUCTION_TICK_SPACING_TOO_SMALL");
+        _validateAuctionStepsData(cfg.auctionStepsData, auctionDurationBlocks);
     }
 
     function _launchFeeHookSalt(address feeInfraDeployer, address poolManager)
@@ -318,7 +377,7 @@ contract ExampleCCADeploymentScript is Script {
         vm.startBroadcast(cfg.factoryOwner);
 
         LaunchDeploymentController.DeploymentResult memory result = _deploy(cfg);
-        address factoryAddress = cfgFactoryAddress();
+        address factoryAddress = cfg.auctionInitializerFactory;
         address broadcaster = cfg.factoryOwner;
 
         _logDeploymentResult(factoryAddress, broadcaster, result);
@@ -414,6 +473,31 @@ contract ExampleCCADeploymentScript is Script {
         }
     }
 
+    function _validateAuctionStepsData(bytes memory steps, uint256 durationBlocks) internal pure {
+        require(steps.length != 0, "AUCTION_STEPS_EMPTY");
+        require(steps.length % 8 == 0, "AUCTION_STEPS_LENGTH");
+
+        uint256 totalMps;
+        uint256 totalBlocks;
+
+        for (uint256 offset; offset < steps.length; offset += 8) {
+            uint256 packed;
+            assembly {
+                packed := shr(192, mload(add(add(steps, 0x20), offset)))
+            }
+
+            uint256 stepMps = packed >> 40;
+            uint256 blockDelta = packed & type(uint40).max;
+            require(blockDelta != 0, "AUCTION_STEP_BLOCKS_ZERO");
+
+            totalMps += stepMps * blockDelta;
+            totalBlocks += blockDelta;
+        }
+
+        require(totalMps == MPS_TOTAL, "AUCTION_STEPS_MPS");
+        require(totalBlocks == durationBlocks, "AUCTION_STEPS_BLOCKS");
+    }
+
     function _logDeploymentResult(
         address factoryAddress,
         address broadcaster,
@@ -467,9 +551,5 @@ contract ExampleCCADeploymentScript is Script {
             vm.toString(result.poolId),
             "\"}"
         );
-    }
-
-    function cfgFactoryAddress() internal view returns (address) {
-        return _loadConfig().auctionInitializerFactory;
     }
 }

@@ -250,8 +250,24 @@ defmodule Autolaunch.RevenueTest do
     assert prepared.expected_signer == @wallet
     assert prepared.idempotency_key == prepared.action_id
     assert prepared.params.subject_id == @subject_id
-    assert prepared.tx_request.to == @splitter
-    assert String.starts_with?(prepared.tx_request.data, "0x7acb7757")
+    assert prepared.wallet_action.to == @splitter
+    assert String.starts_with?(prepared.wallet_action.data, "0x7acb7757")
+  end
+
+  test "stake can prepare for a different receiving wallet", %{human: human} do
+    receiver = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+
+    assert {:ok, %{prepared: prepared}} =
+             Revenue.stake(@subject_id, %{"amount" => "1.5", "receiver" => receiver}, human)
+
+    encoded_receiver =
+      receiver
+      |> String.replace_prefix("0x", "")
+      |> String.pad_leading(64, "0")
+
+    assert prepared.expected_signer == @wallet
+    assert prepared.params.receiver == receiver
+    assert String.ends_with?(prepared.wallet_action.data, encoded_receiver)
   end
 
   test "revenue actions keep missing subject, wallet, data, and amount reasons separate", %{
@@ -315,6 +331,29 @@ defmodule Autolaunch.RevenueTest do
              Revenue.stake(@subject_id, %{"tx_hash" => "0x" <> String.duplicate("b", 64)}, human)
   end
 
+  test "stake with tx hash accepts a different receiving wallet", %{human: human} do
+    tx_hash = "0x" <> String.duplicate("b", 64)
+    receiver = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+
+    Process.put(:fake_rpc_transaction, %{
+      transaction_hash: tx_hash,
+      from: @wallet,
+      to: @splitter,
+      input: Abi.encode_stake(1_500_000_000_000_000_000, receiver),
+      value: "0x0",
+      block_number: nil
+    })
+
+    Process.put(:fake_rpc_receipt, nil)
+
+    assert {:error, :transaction_pending} =
+             Revenue.stake(
+               @subject_id,
+               %{"amount" => "1.5", "receiver" => receiver, "tx_hash" => tx_hash},
+               human
+             )
+  end
+
   test "stake selector mismatch returns transaction_data_mismatch", %{human: human} do
     tx_hash = "0x" <> String.duplicate("c", 64)
 
@@ -331,6 +370,8 @@ defmodule Autolaunch.RevenueTest do
 
     assert {:error, :transaction_data_mismatch} =
              Revenue.stake(@subject_id, %{"amount" => "1.5", "tx_hash" => tx_hash}, human)
+
+    refute Repo.get_by(SubjectActionRegistration, tx_hash: tx_hash)
   end
 
   test "unstake decoded amount mismatch returns transaction_data_mismatch", %{human: human} do
@@ -349,6 +390,8 @@ defmodule Autolaunch.RevenueTest do
 
     assert {:error, :transaction_data_mismatch} =
              Revenue.unstake(@subject_id, %{"amount" => "1.0", "tx_hash" => tx_hash}, human)
+
+    refute Repo.get_by(SubjectActionRegistration, tx_hash: tx_hash)
   end
 
   test "same tx hash on a different action is rejected", %{human: human} do
@@ -396,6 +439,32 @@ defmodule Autolaunch.RevenueTest do
              Revenue.claim_usdc(@subject_id, %{"tx_hash" => tx_hash}, human)
 
     assert subject.subject_id == @subject_id
+  end
+
+  test "claim_usdc receipt target mismatch does not persist a registration", %{human: human} do
+    tx_hash = "0x" <> String.duplicate("1", 64)
+
+    Process.put(:fake_rpc_transaction, %{
+      transaction_hash: tx_hash,
+      from: @wallet,
+      to: @splitter,
+      input: Abi.encode_claim_usdc(@wallet),
+      value: "0x0",
+      block_number: nil
+    })
+
+    Process.put(:fake_rpc_receipt, %{
+      transaction_hash: tx_hash,
+      status: 1,
+      from: @wallet,
+      to: "0x2222222222222222222222222222222222222222",
+      logs: []
+    })
+
+    assert {:error, :transaction_target_mismatch} =
+             Revenue.claim_usdc(@subject_id, %{"tx_hash" => tx_hash}, human)
+
+    refute Repo.get_by(SubjectActionRegistration, tx_hash: tx_hash)
   end
 
   test "claim_usdc records failed receipts as rejected", %{human: human} do

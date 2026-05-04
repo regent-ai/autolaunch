@@ -124,7 +124,8 @@ defmodule Autolaunch.Agentbook do
       connector_uri: created.connector_uri,
       deep_link_uri: created.deep_link_uri,
       proof_payload: created.proof_payload,
-      tx_request: ReadModel.tx_request(created.tx_request),
+      tx_request:
+        ReadModel.wallet_action(created.tx_request, created.session_id, created.agent_address),
       status: status_string(created.status),
       tx_hash: created.tx_hash,
       human_id: created.human_id,
@@ -170,7 +171,9 @@ defmodule Autolaunch.Agentbook do
     |> Session.update_changeset(%{
       status: status_string(updated.status),
       proof_payload: updated.proof_payload || session.proof_payload,
-      tx_request: ReadModel.tx_request(updated.tx_request) || session.tx_request,
+      tx_request:
+        ReadModel.wallet_action(updated.tx_request, session.session_id, session.agent_address) ||
+          session.tx_request,
       tx_hash: updated.tx_hash || session.tx_hash,
       human_id: updated.human_id || session.human_id,
       error_text: updated.error_text,

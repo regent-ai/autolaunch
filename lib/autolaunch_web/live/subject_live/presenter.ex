@@ -136,6 +136,8 @@ defmodule AutolaunchWeb.SubjectLive.Presenter do
   def action_error(:amount_required),
     do: "Enter an amount before preparing the wallet transaction."
 
+  def action_error(:invalid_address), do: "Wallet address is invalid."
+
   def action_error(_reason), do: "Unable to prepare the wallet transaction right now."
 
   def routing_snapshot(nil) do

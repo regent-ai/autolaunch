@@ -75,7 +75,7 @@ defmodule AutolaunchWeb.SubjectLiveTest do
        %{
          subject: get_subject(@subject_id, nil) |> elem(1),
          prepared: %{
-           tx_request: %{
+           wallet_action: %{
              chain_id: 84_532,
              to: "0x9999999999999999999999999999999999999999",
              value: "0x0",
@@ -90,7 +90,7 @@ defmodule AutolaunchWeb.SubjectLiveTest do
        %{
          subject: get_subject(@subject_id, nil) |> elem(1),
          prepared: %{
-           tx_request: %{
+           wallet_action: %{
              chain_id: 84_532,
              to: "0x9999999999999999999999999999999999999999",
              value: "0x0",
@@ -105,7 +105,7 @@ defmodule AutolaunchWeb.SubjectLiveTest do
        %{
          subject: get_subject(@subject_id, nil) |> elem(1),
          prepared: %{
-           tx_request: %{
+           wallet_action: %{
              chain_id: 84_532,
              to: "0x9999999999999999999999999999999999999999",
              value: "0x0",
@@ -120,7 +120,7 @@ defmodule AutolaunchWeb.SubjectLiveTest do
        %{
          subject: get_subject(@subject_id, nil) |> elem(1),
          prepared: %{
-           tx_request: %{
+           wallet_action: %{
              chain_id: 84_532,
              to: "0x7777777777777777777777777777777777777777",
              value: "0x0",

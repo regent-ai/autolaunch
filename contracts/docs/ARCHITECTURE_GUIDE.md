@@ -16,6 +16,7 @@ Autolaunch has one launch stack and one ongoing revenue stack.
 ## Core contracts
 
 - external CCA factory
+- UERC20-compatible token factory
 - `LaunchDeploymentController`
 - `AgentTokenVestingWallet`
 - `RegentLBPStrategy`
@@ -35,7 +36,7 @@ Autolaunch has one launch stack and one ongoing revenue stack.
 ```mermaid
 flowchart TD
     CCA["External CCA Factory"] --> CTRL["LaunchDeploymentController"]
-    CTRL --> TOKEN["Factory Token"]
+    CTRL --> TOKEN["UERC20 Token"]
     CTRL --> VEST["AgentTokenVestingWallet"]
     CTRL --> STRAT["RegentLBPStrategy"]
     STRAT --> AUCTION["CCA Auction"]
@@ -60,7 +61,7 @@ flowchart TD
 
 ## Launch flow
 
-1. `LaunchDeploymentController` creates the launch token through `AutolaunchTokenFactory`.
+1. `LaunchDeploymentController` creates the launch token through a UERC20-compatible factory.
 2. It splits supply into 10% auction, 5% LP reserve, and 85% vesting.
 3. It deploys the vesting wallet, strategy, fee registry, fee vault, and fee hook.
 4. The strategy creates the CCA auction and keeps the reserve allocation.

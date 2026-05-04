@@ -15,7 +15,7 @@ defmodule Autolaunch.ReleaseDoctor do
     {:revenue_share_factory_address, "revenue share factory address"},
     {:revenue_ingress_factory_address, "revenue ingress factory address"},
     {:lbp_strategy_factory_address, "Regent LBP strategy factory address"},
-    {:token_factory_address, "token factory address"}
+    {:token_factory_address, "UERC20 token factory address"}
   ]
   @verifier_chain_address_checks [
     {:pool_manager_addresses, "Uniswap v4 pool manager address"},
@@ -223,7 +223,7 @@ defmodule Autolaunch.ReleaseDoctor do
       {:revenue_share_factory_address, "revenue share factory"},
       {:revenue_ingress_factory_address, "revenue ingress factory"},
       {:lbp_strategy_factory_address, "Regent LBP strategy factory"},
-      {:token_factory_address, "token factory"}
+      {:token_factory_address, "UERC20 token factory"}
     ]
     |> Enum.map(fn {key, label} ->
       address = InfrastructureConfig.launch_value(key)

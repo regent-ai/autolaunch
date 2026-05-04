@@ -325,6 +325,7 @@ contract RegentRevenueStaking is Owned {
     function sweepRegentRewardPool(uint256 amount) external whenNotPaused nonReentrant {
         require(msg.sender == treasuryRecipient || msg.sender == owner, "ONLY_TREASURY");
 
+        _settleRegentEmissions();
         totalRewardTokenPoolSwept += amount;
         _withdrawRegentRewardPool(amount, treasuryRecipient);
         emit RewardTokenPoolSwept(amount, treasuryRecipient);
@@ -336,6 +337,7 @@ contract RegentRevenueStaking is Owned {
         onlyOwner
         nonReentrant
     {
+        _settleRegentEmissions();
         totalRewardTokenPoolRefunded += amount;
         _withdrawRegentRewardPool(amount, recipient);
         emit RewardTokenPoolRefunded(amount, recipient);
@@ -412,9 +414,30 @@ contract RegentRevenueStaking is Owned {
         }
     }
 
+    function reservedRegentRewards() public view returns (uint256) {
+        uint256 emitted = _previewTotalEmittedRegent();
+        if (emitted <= totalClaimedRegent) {
+            return 0;
+        }
+        unchecked {
+            return emitted - totalClaimedRegent;
+        }
+    }
+
+    function sweepableRegentRewardPool() public view returns (uint256) {
+        uint256 pool = regentRewardPool();
+        uint256 reserved = reservedRegentRewards();
+        if (pool <= reserved) {
+            return 0;
+        }
+        unchecked {
+            return pool - reserved;
+        }
+    }
+
     function regentRewardShortfall() external view returns (uint256) {
-        uint256 liability = unclaimedRegentLiability;
-        uint256 available = availableRegentRewardInventory();
+        uint256 liability = reservedRegentRewards();
+        uint256 available = regentRewardPool();
         if (liability <= available) {
             return 0;
         }
@@ -519,9 +542,19 @@ contract RegentRevenueStaking is Owned {
         require(amount != 0, "AMOUNT_ZERO");
         require(recipient != address(0), "RECIPIENT_ZERO");
         require(recipient != address(this), "RECIPIENT_IS_SELF");
-        require(regentRewardPool() >= amount, "REWARD_POOL_LOW");
+        require(sweepableRegentRewardPool() >= amount, "REWARD_POOL_LOW");
 
         _pushExactStakeToken(recipient, amount);
+    }
+
+    function _previewTotalEmittedRegent() internal view returns (uint256) {
+        uint256 currentAcc = _previewAccRewardPerTokenRegent();
+        if (currentAcc <= accRewardPerTokenRegent || totalStaked == 0) {
+            return totalEmittedRegent;
+        }
+
+        uint256 deltaAcc = currentAcc - accRewardPerTokenRegent;
+        return totalEmittedRegent + FullMath.mulDiv(totalStaked, deltaAcc, ACC_PRECISION);
     }
 
     function _previewAccRewardPerTokenRegent() internal view returns (uint256 currentAcc) {

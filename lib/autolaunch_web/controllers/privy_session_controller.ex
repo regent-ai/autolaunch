@@ -401,12 +401,12 @@ defmodule AutolaunchWeb.PrivySessionController do
     |> json(%{ok: false, error: %{code: code, message: message}})
   end
 
-  defp unexpected_error(conn, reason) do
+  defp unexpected_error(conn, _reason) do
     conn
     |> put_status(:unprocessable_entity)
     |> json(%{
       ok: false,
-      error: %{code: "xmtp_setup_failed", message: inspect(reason)}
+      error: %{code: "xmtp_setup_failed", message: "XMTP setup could not be completed"}
     })
   end
 

@@ -130,6 +130,9 @@ if config_env() != :test do
     },
     lbp_strategy_factory_address: env.("AUTOLAUNCH_LBP_STRATEGY_FACTORY_ADDRESS", ""),
     token_factory_address: env.("AUTOLAUNCH_TOKEN_FACTORY_ADDRESS", ""),
+    token_metadata_description: env.("AUTOLAUNCH_TOKEN_METADATA_DESCRIPTION", ""),
+    token_metadata_website: env.("AUTOLAUNCH_TOKEN_METADATA_WEBSITE", ""),
+    token_metadata_image: env.("AUTOLAUNCH_TOKEN_METADATA_IMAGE", ""),
     erc8004_subgraph_url: env.("AUTOLAUNCH_ERC8004_SUBGRAPH_URL", ""),
     identity_registry_address: env.("AUTOLAUNCH_IDENTITY_REGISTRY_ADDRESS", ""),
     factory_owner_address: env.("AUTOLAUNCH_FACTORY_OWNER_ADDRESS", ""),
@@ -159,8 +162,8 @@ if config_env() != :test do
     regent_multisig_address:
       env.("REGENT_MULTISIG_ADDRESS", "0x9fa152B0EAdbFe9A7c5C0a8e1D11784f22669a3e"),
     deploy_account: env.("AUTOLAUNCH_DEPLOY_ACCOUNT", ""),
+    deploy_sender: env.("AUTOLAUNCH_DEPLOY_SENDER", ""),
     deploy_password: env.("AUTOLAUNCH_DEPLOY_PASSWORD", ""),
-    deploy_private_key: env.("AUTOLAUNCH_DEPLOY_PRIVATE_KEY", ""),
     mock_deploy: env_bool.("AUTOLAUNCH_MOCK_DEPLOY", false)
 
   config :autolaunch, :regent_staking,
@@ -204,16 +207,10 @@ end
 
 if config_env() == :prod do
   database_url =
-    env.("DATABASE_URL", "") ||
-      raise """
-      environment variable DATABASE_URL is missing.
-      """
+    Autolaunch.ConfigEnvLocal.fetch_required("DATABASE_URL")
 
   secret_key_base =
-    env.("SECRET_KEY_BASE", "") ||
-      raise """
-      environment variable SECRET_KEY_BASE is missing.
-      """
+    Autolaunch.ConfigEnvLocal.fetch_required("SECRET_KEY_BASE")
 
   host = env.("PHX_HOST", "autolaunch.sh")
 

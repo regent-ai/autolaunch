@@ -29,6 +29,9 @@ contract LaunchPoolFeeHook is Owned, IHooks {
     uint256 public constant TREASURY_FEE_BPS = 100;
     uint256 public constant REGENT_MULTISIG_FEE_BPS = 100;
     uint256 public constant BPS_DENOMINATOR = 10_000;
+    // High-risk v4 permissions: beforeSwap, afterSwap, beforeSwapReturnDelta, and
+    // afterSwapReturnDelta. The return-delta permissions are required so the hook can
+    // charge the configured quote-token fee through PoolManager accounting.
     uint160 public constant REQUIRED_HOOK_FLAGS = Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG
         | Hooks.BEFORE_SWAP_RETURNS_DELTA_FLAG | Hooks.AFTER_SWAP_RETURNS_DELTA_FLAG;
 

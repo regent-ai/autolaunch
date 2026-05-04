@@ -67,9 +67,7 @@ defmodule Mix.Tasks.Autolaunch.ReleaseGate do
     phoenix_routes =
       AutolaunchWeb.Router.__routes__()
       |> Enum.map(&{&1.verb, &1.path})
-      |> Enum.filter(fn {_verb, path} ->
-        String.starts_with?(path, "/v1/app/") or String.starts_with?(path, "/v1/agent/")
-      end)
+      |> Enum.filter(fn {_verb, path} -> contract_checked_path?(path) end)
       |> Enum.reject(&platform_regent_staking_route?/1)
       |> Enum.sort()
 
@@ -188,16 +186,20 @@ defmodule Mix.Tasks.Autolaunch.ReleaseGate do
     |> String.split("\n")
     |> Enum.reduce({MapSet.new(), nil}, fn line, {routes, current_path} ->
       cond do
-        Regex.match?(~r/^  \/v1\/(app|agent)\//, line) ->
+        Regex.match?(~r/^  \//, line) ->
           [_, path] = Regex.run(~r/^  ([^:]+):/, line)
-          {routes, openapi_path_to_phoenix(path)}
+
+          phoenix_path = openapi_path_to_phoenix(path)
+
+          if contract_checked_path?(phoenix_path) do
+            {routes, phoenix_path}
+          else
+            {routes, nil}
+          end
 
         current_path && Regex.match?(~r/^    (get|post|patch|delete):/, line) ->
           [_, method] = Regex.run(~r/^    (get|post|patch|delete):/, line)
           {MapSet.put(routes, {String.to_atom(method), current_path}), current_path}
-
-        Regex.match?(~r/^  \//, line) ->
-          {routes, nil}
 
         true ->
           {routes, current_path}
@@ -228,5 +230,13 @@ defmodule Mix.Tasks.Autolaunch.ReleaseGate do
 
   defp platform_regent_staking_path?(path) do
     String.starts_with?(path, "/v1/agent/regent/staking")
+  end
+
+  defp contract_checked_path?(path) do
+    path == "/health" or path == "/prelaunch-assets/:file" or
+      String.starts_with?(path, "/api/internal/") or
+      String.starts_with?(path, "/v1/auth/") or
+      String.starts_with?(path, "/v1/app/") or
+      String.starts_with?(path, "/v1/agent/")
   end
 end

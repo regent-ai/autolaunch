@@ -110,6 +110,25 @@ command_groups:
       - autolaunch subjects claim-emissions
       - autolaunch subjects claim-and-stake-emissions
       - autolaunch subjects sweep-ingress
+    command_flags:
+      autolaunch holdings stake:
+        - name: --amount
+          type: string
+          required: true
+          description: Amount of subject tokens to stake.
+        - name: --receiver
+          type: string
+          required: false
+          description: Optional wallet address that receives the stake position.
+      autolaunch subjects stake:
+        - name: --amount
+          type: string
+          required: true
+          description: Amount of subject tokens to stake.
+        - name: --receiver
+          type: string
+          required: false
+          description: Optional wallet address that receives the stake position.
     path_templates:
       - /v1/agent/auctions
       - /v1/agent/auction-returns

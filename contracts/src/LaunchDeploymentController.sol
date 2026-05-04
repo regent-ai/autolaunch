@@ -62,7 +62,7 @@ contract LaunchDeploymentController is Owned {
         string tokenSymbol;
         string subjectLabel;
         bytes tokenFactoryData;
-        bytes32 tokenFactorySalt;
+        bytes32 tokenFactoryGraffiti;
         bytes32 launchFeeHookSalt;
     }
 
@@ -385,6 +385,9 @@ contract LaunchDeploymentController is Owned {
         require(cfg.sweepBlock > cfg.migrationBlock, "SWEEP_BEFORE_MIGRATION");
         require(cfg.vestingDurationSeconds != 0, "VESTING_DURATION_ZERO");
         require(cfg.floorPrice > 0, "FLOOR_PRICE_ZERO");
+        require(cfg.auctionTickSpacing > 0, "AUCTION_TICK_SPACING_ZERO");
+        require(cfg.floorPrice % cfg.auctionTickSpacing == 0, "FLOOR_PRICE_TICK_MISALIGNED");
+        require(cfg.auctionTickSpacing >= cfg.floorPrice / 10_000, "AUCTION_TICK_SPACING_TOO_SMALL");
         _validateAuctionStepsData(cfg.auctionStepsData, cfg.endBlock - cfg.startBlock);
         require(bytes(cfg.tokenName).length != 0, "NAME_EMPTY");
         require(bytes(cfg.tokenSymbol).length != 0, "SYMBOL_EMPTY");
@@ -448,7 +451,7 @@ contract LaunchDeploymentController is Owned {
                 cfg.totalSupply,
                 address(this),
                 cfg.tokenFactoryData,
-                cfg.tokenFactorySalt
+                cfg.tokenFactoryGraffiti
             );
         require(token != address(0), "TOKEN_NOT_CREATED");
     }

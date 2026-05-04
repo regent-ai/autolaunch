@@ -85,6 +85,31 @@ defmodule Autolaunch.MarketTrackingTest do
     assert tracked.onchain_bid_id == "7"
   end
 
+  test "place_bid rejects receipts without the exact bid amount and max price", %{
+    human: human,
+    auction: auction
+  } do
+    Process.put(:fake_rpc_scenario, :mismatched_bid_event)
+
+    assert {:error, :bid_submission_event_not_found} =
+             Launch.place_bid(
+               auction.source_job_id,
+               %{
+                 "tx_hash" => tx_hash("11"),
+                 "amount" => "2.0",
+                 "max_price" => "3.0",
+                 "current_clearing_price" => "2.0",
+                 "estimated_tokens_if_end_now" => "0",
+                 "estimated_tokens_if_no_other_bids_change" => "0.666667",
+                 "inactive_above_price" => "3.0",
+                 "status_band" => "active"
+               },
+               human
+             )
+
+    refute Repo.get(Bid, "auc_live:7")
+  end
+
   test "list_positions exposes claim action once the exited bid is claimable", %{
     human: human,
     auction: auction
@@ -114,7 +139,7 @@ defmodule Autolaunch.MarketTrackingTest do
 
     assert position.status == "claimable"
     assert position.tx_actions.claim.prepared.expected_signer == @owner_address
-    assert position.tx_actions.claim.prepared.tx_request.to == @auction_address
+    assert position.tx_actions.claim.prepared.wallet_action.to == @auction_address
     assert position.tokens_filled == "12"
   end
 
@@ -299,7 +324,7 @@ defmodule Autolaunch.MarketTrackingTest do
                   topic_word(7),
                   topic_word(@owner_address)
                 ],
-                data: encode_words([3 * @q96, 2_000_000_000_000_000_000]),
+                data: encode_words([price_q96("3.0"), 2_000_000]),
                 block_number: 150,
                 transaction_hash: tx_hash("11"),
                 log_index: 0
@@ -308,6 +333,15 @@ defmodule Autolaunch.MarketTrackingTest do
           }
         }
       }
+    end
+
+    defp scenario_data(:mismatched_bid_event) do
+      :register_bid
+      |> scenario_data()
+      |> put_in(
+        [:receipts, tx_hash("11"), :logs, Access.at(0), :data],
+        encode_words([price_q96("4.0"), 2_000_000])
+      )
     end
 
     defp scenario_data(:claimable_bid) do
@@ -386,6 +420,11 @@ defmodule Autolaunch.MarketTrackingTest do
 
     defp decode_uint_arg(data) do
       data |> String.slice(10, 64) |> String.to_integer(16)
+    end
+
+    defp price_q96(value) do
+      {:ok, q96} = Autolaunch.Launch.Core.decimal_price_to_q96(Decimal.new(value))
+      q96
     end
 
     defp checkpoint_log(block_number, clearing_price_q96, cumulative_mps) do

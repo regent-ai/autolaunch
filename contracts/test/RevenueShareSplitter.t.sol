@@ -978,6 +978,7 @@ contract RevenueShareSplitterTest is Test {
         stakeToken.mint(address(splitter), 25 * XYZ);
 
         assertEq(splitter.stakeTokenRewardPool(), 75 * XYZ);
+        assertEq(splitter.sweepableStakeTokenRewardPool(), 75 * XYZ);
 
         vm.prank(TREASURY);
         vm.expectRevert("REWARD_POOL_LOW");
@@ -996,6 +997,39 @@ contract RevenueShareSplitterTest is Test {
 
         assertEq(stakeToken.balanceOf(ALICE), ALICE_STAKE);
         assertEq(stakeToken.balanceOf(address(splitter)), splitter.totalStaked());
+    }
+
+    function testStakeTokenRewardPoolWithdrawalsCannotDrainAccruedRewards() external {
+        _fundStakeTokenRewards(splitter, stakeToken, 50 * XYZ);
+        stakeToken.mint(address(splitter), 25 * XYZ);
+
+        splitter.setEmissionAprBps(MAX_APR_BPS);
+        vm.warp(block.timestamp + 30 days);
+
+        uint256 aliceOwed = splitter.previewClaimableStakeToken(ALICE);
+        uint256 owed = aliceOwed + splitter.previewClaimableStakeToken(BOB)
+            + splitter.previewClaimableStakeToken(CAROL) + splitter.previewClaimableStakeToken(DAVE)
+            + splitter.previewClaimableStakeToken(EVE);
+        uint256 reserved = splitter.reservedStakeTokenRewards();
+        assertGt(owed, 0);
+        assertGe(reserved, owed);
+        assertEq(splitter.sweepableStakeTokenRewardPool(), 75 * XYZ - reserved);
+
+        vm.prank(TREASURY);
+        vm.expectRevert("REWARD_POOL_LOW");
+        splitter.sweepStakeTokenRewardPool(75 * XYZ);
+
+        vm.prank(TREASURY);
+        splitter.sweepStakeTokenRewardPool(75 * XYZ - reserved);
+
+        assertEq(splitter.stakeTokenRewardPool(), reserved);
+        assertEq(splitter.sweepableStakeTokenRewardPool(), 0);
+
+        vm.prank(ALICE);
+        uint256 claimed = splitter.claimStakeToken(ALICE);
+
+        assertEq(claimed, aliceOwed);
+        assertEq(stakeToken.balanceOf(ALICE), aliceOwed);
     }
 
     function testStakeTokenRewardPoolWithdrawalsRejectBadCallersAndRecipients() external {
