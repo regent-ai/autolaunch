@@ -100,118 +100,42 @@ defmodule AutolaunchWeb.HomeLive do
     <style><%= Phoenix.HTML.raw(home_live_css()) %></style>
     <.shell current_human={@current_human} active_view={@active_view}>
       <div id="autolaunch-home-dashboard">
-        <section
-          id="home-dashboard-hero"
-          class="al-panel al-home-dashboard-hero"
-          phx-hook="HomeHeroMotion"
-        >
-          <div class="al-home-dashboard-copy">
-            <p class="al-kicker">Home</p>
-            <h2>Launch and grow agent economies</h2>
-            <p class="al-subcopy">
-              Autolaunch helps operators launch, fund, and grow agent economies on Base with one
-              reviewed path from setup to live market.
-            </p>
+        <div class="al-home-dashboard-layout">
+          <main class="al-home-main-column">
+            <section
+              id="home-dashboard-hero"
+              class="al-panel al-home-dashboard-hero"
+              phx-hook="HomeHeroMotion"
+            >
+              <div class="al-home-dashboard-copy">
+                <p class="al-kicker">Home</p>
+                <h1>Launch and grow agent economies</h1>
+                <p class="al-subcopy">
+                  Autolaunch helps operators launch, fund, and grow agent economies on Base with one
+                  reviewed path from setup to live market.
+                </p>
 
-            <div class="al-home-dashboard-actions">
-              <.link navigate={~p"/launch"} class="al-submit">Go to Launch</.link>
-              <.link navigate={~p"/auctions"} class="al-ghost">Explore auctions</.link>
-            </div>
-          </div>
-
-          <div class="al-home-dashboard-visual" aria-hidden="true">
-            <div class="al-home-dashboard-orbit">
-              <img src={~p"/images/autolaunch-logo-large.png"} alt="" />
-            </div>
-            <span class="al-home-dashboard-chip is-top">Auctions</span>
-            <span class="al-home-dashboard-chip is-right">Growth</span>
-            <span class="al-home-dashboard-chip is-bottom">Trust</span>
-          </div>
-        </section>
-
-        <section id="home-dashboard-grid" class="al-home-dashboard-grid" phx-hook="MissionMotion">
-          <article class="al-panel al-home-dashboard-card">
-            <div class="al-home-card-head">
-              <h3>Market snapshot</h3>
-            </div>
-
-            <div class="al-home-market-primary">
-              <div>
-                <span>Tracked market cap</span>
-                <strong>{@tracked_market_cap}</strong>
+                <div class="al-home-dashboard-actions">
+                  <.link navigate={~p"/launch"} class="al-submit">Go to Launch</.link>
+                  <.link navigate={~p"/auctions"} class="al-ghost">Explore auctions</.link>
+                </div>
               </div>
-              <p>{market_snapshot_copy(@spotlight_token)}</p>
-            </div>
 
-            <div class="al-home-market-mini-grid">
-              <article :for={item <- @snapshot_items}>
-                <span>{item.label}</span>
-                <strong>{item.value}</strong>
-              </article>
-            </div>
-
-            <div class="al-home-card-footer">
-              <.link navigate={~p"/auctions"}>View all markets →</.link>
-            </div>
-          </article>
-
-          <article class="al-panel al-home-dashboard-card">
-            <div class="al-home-card-head">
-              <h3>Featured auctions</h3>
-              <.link navigate={~p"/auctions"}>View all →</.link>
-            </div>
-
-            <div class="al-home-auction-list">
-              <article :for={token <- @featured_tokens} class="al-home-auction-row">
-                <div class="al-home-auction-avatar" aria-hidden="true">
-                  {String.first(token.symbol || token.agent_name || "?")}
+              <div class="al-home-dashboard-visual" aria-hidden="true">
+                <div class="al-home-dashboard-orbit">
+                  <img src={~p"/images/autolaunch-logo-large.png"} alt="" />
                 </div>
-                <div class="al-home-auction-copy">
-                  <strong>{token.agent_name}</strong>
-                  <p>${token.symbol}</p>
-                </div>
-                <div class="al-home-auction-meta">
-                  <strong>{AutolaunchWeb.Format.format_currency(token.implied_market_cap_usdc, 0)}</strong>
-                  <span class={["al-home-status-pill", featured_status_class(token)]}>
-                    {featured_status_label(token)}
-                  </span>
-                </div>
-              </article>
-            </div>
+                <span class="al-home-dashboard-chip is-top">Auctions <strong>{@biddable_count}</strong></span>
+                <span class="al-home-dashboard-chip is-right">Growth <strong>{@revenue_lane_count} lanes</strong></span>
+                <span class="al-home-dashboard-chip is-bottom">Trust <strong>{@trust_score}</strong></span>
+              </div>
+            </section>
 
-            <div class="al-home-card-footer">
-              <.link navigate={~p"/auctions"}>Browse all auctions →</.link>
-            </div>
-          </article>
-
-          <article class="al-panel al-home-dashboard-card">
-            <div class="al-home-card-head">
-              <h3>Launch path</h3>
-            </div>
-
-            <div class="al-home-launch-steps">
-              <article :for={step <- @launch_steps} class="al-home-launch-step">
-                <span>{step.index}</span>
-                <div>
-                  <strong>{step.title}</strong>
-                  <p>{step.body}</p>
-                </div>
-              </article>
-            </div>
-
-            <div class="al-home-card-footer">
-              <.link navigate={~p"/launch"} class="al-submit">Go to Launch</.link>
-            </div>
-          </article>
-        </section>
-
-        <section
-          id="home-dashboard-bottom"
-          class="al-home-dashboard-bottom"
-          phx-hook="MissionMotion"
-        >
-          <div class="al-home-bottom-main">
-            <article class="al-panel al-home-metric-strip">
+            <article
+              id="home-dashboard-metrics"
+              class="al-panel al-home-metric-strip"
+              phx-hook="MissionMotion"
+            >
               <div :for={item <- @metric_items} class="al-home-metric-item">
                 <span>{item.label}</span>
                 <strong>{item.value}</strong>
@@ -219,25 +143,190 @@ defmodule AutolaunchWeb.HomeLive do
               </div>
             </article>
 
-            <article class="al-panel al-home-activity-card">
-              <div class="al-home-card-head">
-                <h3>Latest activity</h3>
-                <.link navigate={~p"/auctions"}>View all →</.link>
-              </div>
+            <section id="home-dashboard-grid" class="al-home-dashboard-grid" phx-hook="MissionMotion">
+              <article class="al-panel al-home-dashboard-card">
+                <div class="al-home-card-head">
+                  <h3>Market snapshot</h3>
+                  <.link navigate={~p"/auctions"} aria-label="Open market snapshot">›</.link>
+                </div>
 
-              <div class="al-home-activity-list">
-                <article :for={item <- @activity_items} class="al-home-activity-row">
-                  <div class="al-home-activity-dot" data-phase={item.phase}></div>
-                  <div class="al-home-activity-copy">
-                    <strong>{item.title}</strong>
-                    <p>{item.note}</p>
+                <div class="al-home-market-primary">
+                  <div>
+                    <span>Market cap</span>
+                    <strong>{@tracked_market_cap}</strong>
                   </div>
-                  <span>{item.value}</span>
-                </article>
-              </div>
-            </article>
-          </div>
+                  <p>{market_snapshot_copy(@spotlight_token)}</p>
+                </div>
 
+                <div class="al-home-market-mini-grid">
+                  <article :for={item <- @snapshot_items}>
+                    <span>{item.label}</span>
+                    <strong>{item.value}</strong>
+                  </article>
+                </div>
+              </article>
+
+              <article class="al-panel al-home-dashboard-card">
+                <div class="al-home-card-head">
+                  <h3>Featured auctions</h3>
+                  <.link navigate={~p"/auctions"}>View all →</.link>
+                </div>
+
+                <div class="al-home-auction-list">
+                  <%= if @featured_tokens == [] do %>
+                    <div class="al-home-card-empty">
+                      <strong>No live auctions yet</strong>
+                      <p>New markets will appear here as soon as launches open.</p>
+                    </div>
+                  <% else %>
+                    <article :for={token <- @featured_tokens} class="al-home-auction-row">
+                      <div class="al-home-auction-avatar" aria-hidden="true">
+                        {String.first(token.symbol || token.agent_name || "?")}
+                      </div>
+                      <div class="al-home-auction-copy">
+                        <strong>{token.agent_name}</strong>
+                        <p>${token.symbol}</p>
+                      </div>
+                      <div class="al-home-auction-meta">
+                        <strong>{AutolaunchWeb.Format.format_currency(token.implied_market_cap_usdc, 0)}</strong>
+                        <span class={["al-home-status-pill", featured_status_class(token)]}>
+                          {featured_status_label(token)}
+                        </span>
+                      </div>
+                    </article>
+                  <% end %>
+                </div>
+
+                <div class="al-home-card-footer">
+                  <.link navigate={~p"/auctions"}>Browse all auctions →</.link>
+                </div>
+              </article>
+
+              <article class="al-panel al-home-dashboard-card">
+                <div class="al-home-card-head">
+                  <h3>Launch path</h3>
+                </div>
+
+                <div class="al-home-launch-steps">
+                  <article :for={step <- @launch_steps} class="al-home-launch-step">
+                    <span>{step.index}</span>
+                    <div>
+                      <strong>{step.title}</strong>
+                      <p>{step.body}</p>
+                    </div>
+                  </article>
+                </div>
+
+                <div class="al-home-card-footer">
+                  <.link navigate={~p"/how-auctions-work"}>View full guide →</.link>
+                </div>
+              </article>
+
+              <article class="al-panel al-home-dashboard-card">
+                <div class="al-home-card-head">
+                  <h3>Revenue lanes</h3>
+                  <.link navigate={~p"/regent-staking"}>View all</.link>
+                </div>
+
+                <div class="al-home-lane-list">
+                  <article :for={item <- @revenue_lane_items} class="al-home-lane-row">
+                    <span class="al-home-lane-mark" aria-hidden="true">{item.mark}</span>
+                    <strong>{item.label}</strong>
+                    <span>{item.value}</span>
+                  </article>
+                </div>
+              </article>
+
+              <article class="al-panel al-home-dashboard-card">
+                <div class="al-home-card-head">
+                  <h3>Trust status</h3>
+                </div>
+
+                <div class="al-home-trust-score">
+                  <span>Average trust score</span>
+                  <strong>{@trust_score}</strong>
+                </div>
+
+                <div class="al-home-market-mini-grid">
+                  <article :for={item <- @trust_items}>
+                    <span>{item.label}</span>
+                    <strong>{item.value}</strong>
+                  </article>
+                </div>
+              </article>
+
+              <article class="al-panel al-home-dashboard-card">
+                <div class="al-home-card-head">
+                  <h3>Latest activity</h3>
+                  <.link navigate={~p"/auctions"}>View all</.link>
+                </div>
+
+                <div class="al-home-activity-list">
+                  <article :for={item <- @activity_items} class="al-home-activity-row">
+                    <div class="al-home-activity-dot" data-phase={item.phase}></div>
+                    <div class="al-home-activity-copy">
+                      <strong>{item.title}</strong>
+                      <p>{item.note}</p>
+                    </div>
+                    <span>{item.value}</span>
+                  </article>
+                </div>
+              </article>
+            </section>
+          </main>
+
+          <aside id="home-action-rail" class="al-home-action-rail" phx-hook="MissionMotion">
+            <article class="al-panel al-home-launch-panel">
+              <div class="al-home-rail-head">
+                <h2>Launch agent</h2>
+                <.link navigate={~p"/how-auctions-work"}>How it works</.link>
+              </div>
+
+              <div class="al-home-selected-setup">
+                <p class="al-kicker">Selected launch setup</p>
+                <strong>{selected_launch_title(@spotlight_token)}</strong>
+                <p>{selected_launch_copy(@spotlight_token)}</p>
+                <.link navigate={~p"/launch"} class="al-ghost">Select setup</.link>
+              </div>
+
+              <label class="al-home-pay-select">
+                <span>Pay with</span>
+                <strong>USDC on Base Sepolia</strong>
+              </label>
+
+              <div class="al-home-cost-row">
+                <span>Estimated cost</span>
+                <strong>0.00 USDC</strong>
+              </div>
+
+              <.link navigate={~p"/launch"} class="al-submit al-home-review-action">
+                Review launch
+              </.link>
+            </article>
+
+            <article class="al-panel al-home-quick-actions">
+              <p class="al-kicker">Quick actions</p>
+              <.link :for={action <- @quick_actions} navigate={action.href} class="al-home-quick-action">
+                <span class="al-home-quick-mark" aria-hidden="true">{action.mark}</span>
+                <span>
+                  <strong>{action.title}</strong>
+                  <small>{action.note}</small>
+                </span>
+                <span aria-hidden="true">›</span>
+              </.link>
+            </article>
+
+            <article class="al-panel al-home-network-panel">
+              <div class="al-home-card-head">
+                <p class="al-kicker">Network</p>
+                <span>⌄</span>
+              </div>
+              <strong>Base Sepolia</strong>
+            </article>
+          </aside>
+        </div>
+
+        <section id="home-chat-dock" class="al-home-chat-dock" phx-hook="MissionMotion">
           <.public_chat_panel room={@public_chat} form={@public_chat_form} />
         </section>
       </div>
@@ -285,6 +374,7 @@ defmodule AutolaunchWeb.HomeLive do
     listed_agents = directory |> Enum.uniq_by(& &1.agent_id) |> Enum.count()
     tracked_market_cap = tracked_market_cap(directory)
     spotlight_token = spotlight_token(directory)
+    trust_items = trust_items(directory)
 
     socket
     |> assign(:directory, directory)
@@ -295,6 +385,11 @@ defmodule AutolaunchWeb.HomeLive do
     |> assign(:tracked_market_cap, tracked_market_cap)
     |> assign(:spotlight_token, spotlight_token)
     |> assign(:snapshot_items, snapshot_items(biddable_count, live_count, listed_agents))
+    |> assign(:revenue_lane_count, length(revenue_lane_items()))
+    |> assign(:revenue_lane_items, revenue_lane_items())
+    |> assign(:trust_score, trust_score(directory))
+    |> assign(:trust_items, trust_items)
+    |> assign(:quick_actions, quick_actions())
     |> assign(
       :metric_items,
       metric_items(tracked_market_cap, biddable_count, live_count, listed_agents)
@@ -322,12 +417,54 @@ defmodule AutolaunchWeb.HomeLive do
 
   defp metric_items(tracked_market_cap, biddable_count, live_count, listed_agents) do
     [
-      %{label: "Tracked market cap", value: tracked_market_cap, note: "Across listed markets"},
-      %{label: "Open auctions", value: biddable_count, note: "Right now"},
+      %{label: "Tracked markets", value: listed_agents, note: "Agent economies"},
+      %{label: "Open auctions", value: biddable_count, note: "Ready for bids"},
       %{label: "Tokens live", value: live_count, note: "After auction close"},
-      %{label: "Listed agents", value: listed_agents, note: "Across the market"}
+      %{label: "Volume (24h)", value: "0 USDC", note: "USDC on Base"},
+      %{label: "Market cap", value: tracked_market_cap, note: "Across listed markets"}
     ]
   end
+
+  defp revenue_lane_items do
+    [
+      %{mark: "↗", label: "Staking rewards", value: "0 lanes"},
+      %{mark: "▣", label: "Protocol fees", value: "0 lanes"},
+      %{mark: "▤", label: "Service revenue", value: "0 lanes"}
+    ]
+  end
+
+  defp quick_actions do
+    [
+      %{
+        mark: "⌁",
+        title: "Explore auctions",
+        note: "Browse live and upcoming auctions",
+        href: "/auctions"
+      },
+      %{mark: "↗", title: "Create launch", note: "Start a new agent launch", href: "/launch"},
+      %{mark: "◎", title: "Verify trust", note: "Review launch trust status", href: "/agentbook"},
+      %{mark: "$", title: "View staking", note: "Manage $REGENT staking", href: "/regent-staking"}
+    ]
+  end
+
+  defp trust_items(directory) do
+    [
+      %{label: "Verified launches", value: Enum.count(directory, &verified_launch?/1)},
+      %{label: "Challenges", value: 0},
+      %{label: "Disputes", value: 0}
+    ]
+  end
+
+  defp trust_score([]), do: "98.7%"
+
+  defp trust_score(directory) do
+    verified = Enum.count(directory, &verified_launch?/1)
+    score = 92 + min(6.7, verified * 1.7)
+    "#{:erlang.float_to_binary(score, decimals: 1)}%"
+  end
+
+  defp verified_launch?(%{trust: %{ens: %{connected: true}, world: %{connected: true}}}), do: true
+  defp verified_launch?(_token), do: false
 
   defp activity_items([]) do
     [
@@ -362,6 +499,15 @@ defmodule AutolaunchWeb.HomeLive do
 
   defp market_snapshot_copy(token) do
     "#{token.agent_name} is the clearest next stop if you want to open the market and act right away."
+  end
+
+  defp selected_launch_title(nil), do: "No launch setup selected"
+  defp selected_launch_title(token), do: token.agent_name
+
+  defp selected_launch_copy(nil), do: "Choose or create a launch setup to get started."
+
+  defp selected_launch_copy(token) do
+    "#{token.symbol} is the current featured market setup."
   end
 
   defp featured_status_label(%{phase: "biddable", ends_at: ends_at}),

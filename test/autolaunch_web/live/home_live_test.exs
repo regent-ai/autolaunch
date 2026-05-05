@@ -48,9 +48,10 @@ defmodule AutolaunchWeb.HomeLiveTest do
   end
 
   test "home page renders the signed-in dashboard layout", %{conn: conn} do
-    {:ok, _view, html} = live(conn, "/")
+    {:ok, view, html} = live(conn, "/")
 
     assert html =~ "Launch and grow agent economies"
+    assert has_element?(view, "h1", "Launch and grow agent economies")
     assert html =~ "Go to Launch"
     assert html =~ "Explore auctions"
     assert html =~ "Market snapshot"

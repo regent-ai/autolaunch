@@ -49,17 +49,19 @@ defmodule AutolaunchWeb.AuctionsLive do
         <%= raw(route_css()) %>
       </style>
 
-      <div class="al-auctions-route">
-        <section id="auctions-page-head" class="al-auctions-page-head" phx-hook="MissionMotion">
-          <div>
-            <h1>Auctions</h1>
-          </div>
+      <div class="al-auctions-route al-auctions-dashboard-layout">
+        <main class="al-auctions-main-column">
+          <section id="auctions-page-head" class="al-auctions-page-head" phx-hook="MissionMotion">
+            <div>
+              <h1>Auctions</h1>
+              <p class="al-subcopy">Compare live agent markets and place bids.</p>
+            </div>
 
-          <nav class="tabs tabs-boxed al-auctions-page-tabs" aria-label="Auction pages">
-            <.link navigate={~p"/auctions"} class="tab tab-active">Open markets</.link>
-            <.link navigate={~p"/auction-returns"} class="tab">Auction returns</.link>
-          </nav>
-        </section>
+            <nav class="tabs tabs-boxed al-auctions-page-tabs" aria-label="Auction pages">
+              <.link navigate={~p"/auctions"} class="tab tab-active">Open markets</.link>
+              <.link navigate={~p"/auction-returns"} class="tab">Auction returns</.link>
+            </nav>
+          </section>
 
         <section
           id="auctions-market"
@@ -189,6 +191,100 @@ defmodule AutolaunchWeb.AuctionsLive do
           </article>
         </div>
 
+        <div class="al-auctions-chart-grid" data-market-reveal>
+          <article class="al-auctions-chart-card">
+            <div class="al-auctions-chart-head">
+              <div>
+                <p class="al-kicker">Market overview</p>
+                <h2>{@market_totals.filtered_market_cap}</h2>
+              </div>
+              <div class="al-auctions-time-tabs" aria-label="Chart range">
+                <span>1H</span>
+                <span class="is-active">1D</span>
+                <span>1W</span>
+                <span>1M</span>
+                <span>1Y</span>
+                <span>ALL</span>
+              </div>
+            </div>
+
+            <div class="al-auctions-chart-canvas" aria-hidden="true">
+              <svg viewBox="0 0 720 250" role="img" aria-label="Market trend">
+                <defs>
+                  <linearGradient id="auctionTrendFill" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stop-color="currentColor" stop-opacity="0.2" />
+                    <stop offset="100%" stop-color="currentColor" stop-opacity="0.02" />
+                  </linearGradient>
+                </defs>
+                <path
+                  class="al-auctions-chart-area"
+                  d="M0 150 L38 134 L76 144 L114 108 L152 132 L190 126 L228 150 L266 142 L304 160 L342 172 L380 168 L418 176 L456 132 L494 144 L532 126 L570 136 L608 112 L646 132 L684 124 L720 130 L720 250 L0 250 Z"
+                />
+                <path
+                  class="al-auctions-chart-line"
+                  d="M0 150 L38 134 L76 144 L114 108 L152 132 L190 126 L228 150 L266 142 L304 160 L342 172 L380 168 L418 176 L456 132 L494 144 L532 126 L570 136 L608 112 L646 132 L684 124 L720 130"
+                />
+              </svg>
+            </div>
+
+            <div class="al-auctions-chart-metrics">
+              <article>
+                <span>Total volume</span>
+                <strong>{@market_totals.filtered_bid_volume}</strong>
+              </article>
+              <article>
+                <span>Median raise</span>
+                <strong>{@market_totals.median_raise}</strong>
+              </article>
+              <article>
+                <span>Success rate</span>
+                <strong>{@market_totals.success_rate}</strong>
+              </article>
+              <article>
+                <span>Average participants</span>
+                <strong>{@market_totals.average_participants}</strong>
+              </article>
+            </div>
+          </article>
+
+          <aside class="al-auctions-leaderboard" data-market-reveal>
+            <div class="al-auctions-leaderboard-head">
+              <div>
+                <p class="al-kicker">Top markets</p>
+                <h3>Top markets</h3>
+              </div>
+              <a href="#auctions-list" class="al-auctions-inline-link">View all</a>
+            </div>
+
+            <div class="al-auctions-leaderboard-list">
+              <%= if @leaderboard_items == [] do %>
+                <p class="al-inline-note">No auctions match this view yet.</p>
+              <% else %>
+                <.link
+                  :for={{auction, index} <- Enum.with_index(@leaderboard_items, 1)}
+                  navigate={auction.detail_url}
+                  class="al-auctions-leaderboard-row"
+                >
+                  <span class="al-auctions-leaderboard-rank">{index}</span>
+                  <div class="al-auctions-leaderboard-main">
+                    <div class="al-auctions-leaderboard-mark">{agent_monogram(auction.agent_name)}</div>
+                    <div class="al-auctions-leaderboard-copy">
+                      <strong>{auction.agent_name}</strong>
+                      <span>{auction.symbol}</span>
+                    </div>
+                  </div>
+                  <div class="al-auctions-leaderboard-value">
+                    <strong>{format_large_currency(auction.implied_market_cap_usdc)}</strong>
+                    <span class={["al-status-badge", status_badge_class(auction)]}>
+                      {row_status_label(auction)}
+                    </span>
+                  </div>
+                </.link>
+              <% end %>
+            </div>
+          </aside>
+        </div>
+
         <div class="al-auctions-market-grid">
           <article class="al-auctions-feature" data-market-reveal>
             <%= if @featured_auction do %>
@@ -298,7 +394,7 @@ defmodule AutolaunchWeb.AuctionsLive do
             <% end %>
           </article>
 
-          <aside class="al-auctions-leaderboard" data-market-reveal>
+          <aside class="al-auctions-leaderboard al-auctions-leaderboard-compact" data-market-reveal>
             <div class="al-auctions-leaderboard-head">
               <div>
                 <p class="al-kicker">Leaderboard</p>
@@ -505,6 +601,93 @@ defmodule AutolaunchWeb.AuctionsLive do
             </div>
           <% end %>
         </section>
+        </main>
+
+        <aside id="auctions-bid-rail" class="al-auctions-bid-rail" phx-hook="MissionMotion">
+          <article class="al-panel al-auctions-bid-panel">
+            <div class="al-auctions-bid-head">
+              <h2>Place a bid</h2>
+              <.link navigate={~p"/how-auctions-work"}>How it works</.link>
+            </div>
+
+            <div class="al-auctions-selected-card">
+              <p class="al-kicker">Selected auction</p>
+              <%= if @featured_auction do %>
+                <div class="al-auctions-selected-row">
+                  <div class="al-auctions-token-mark">{agent_monogram(@featured_auction.agent_name)}</div>
+                  <div>
+                    <strong>{@featured_auction.agent_name}</strong>
+                    <p>{@featured_auction.symbol}</p>
+                  </div>
+                  <.link navigate={@featured_auction.detail_url}>View market ›</.link>
+                </div>
+
+                <div class="al-auctions-selected-metrics">
+                  <article>
+                    <span>Raised</span>
+                    <strong>{format_volume(@featured_auction.total_bid_volume)}</strong>
+                  </article>
+                  <article>
+                    <span>Goal</span>
+                    <strong>{minimum_raise_label(@featured_auction)}</strong>
+                  </article>
+                  <article>
+                    <span>Ends in</span>
+                    <strong>{LaunchComponents.time_left_label(@featured_auction.ends_at)}</strong>
+                  </article>
+                </div>
+              <% else %>
+                <strong>No auction selected</strong>
+                <p class="al-subcopy">Open auctions will appear here when this view has a live market.</p>
+              <% end %>
+            </div>
+
+            <div class="al-auctions-bid-input">
+              <p class="al-kicker">Bid amount</p>
+              <div>
+                <span>USDC</span>
+                <strong>0.00</strong>
+              </div>
+              <small>Available: 0.00 USDC</small>
+              <div class="al-auctions-bid-presets">
+                <button type="button">+ $100</button>
+                <button type="button">+ $250</button>
+                <button type="button">+ $500</button>
+                <button type="button">Max</button>
+              </div>
+            </div>
+
+            <div class="al-auctions-pay-card">
+              <span>Pay with</span>
+              <strong>USDC on Base Sepolia</strong>
+              <p>Network fee <span>~0.02 USDC</span></p>
+              <p>Total <span>0.00 USDC</span></p>
+            </div>
+
+            <.link navigate={bid_review_href(@featured_auction)} class="al-submit al-auctions-review-bid">
+              Review bid
+            </.link>
+          </article>
+
+          <article class="al-panel al-auctions-quick-actions">
+            <p class="al-kicker">Quick actions</p>
+            <.link navigate={~p"/positions"} class="al-auctions-quick-row">
+              <span>▣</span>
+              <strong>View my positions</strong>
+              <small>See your active auctions</small>
+            </.link>
+            <.link navigate={~p"/auction-returns"} class="al-auctions-quick-row">
+              <span>↗</span>
+              <strong>Auction returns</strong>
+              <small>Track historical performance</small>
+            </.link>
+            <.link navigate={~p"/how-auctions-work"} class="al-auctions-quick-row">
+              <span>?</span>
+              <strong>Help center</strong>
+              <small>Learn how auctions work</small>
+            </.link>
+          </article>
+        </aside>
       </div>
 
       <.flash_group flash={@flash} />
@@ -643,6 +826,7 @@ defmodule AutolaunchWeb.AuctionsLive do
     whole_market_cap_raw = decimal_sum(directory, :implied_market_cap_usdc)
     filtered_market_cap_raw = decimal_sum(visible_rows, :implied_market_cap_usdc)
     filtered_bid_volume_raw = decimal_sum(visible_rows, :total_bid_volume)
+    median_raise_raw = median_decimal(visible_rows, :total_bid_volume)
 
     %{
       open_count: Enum.count(directory, &(&1.phase == "biddable")),
@@ -672,7 +856,13 @@ defmodule AutolaunchWeb.AuctionsLive do
             do: D.to_string(filtered_bid_volume_raw, :normal),
             else: "0"
           )
-        )
+        ),
+      median_raise:
+        format_large_currency(
+          if(median_raise_raw, do: D.to_string(median_raise_raw, :normal), else: "0")
+        ),
+      success_rate: success_rate(directory),
+      average_participants: average_participants(visible_rows)
     }
   end
 
@@ -685,6 +875,32 @@ defmodule AutolaunchWeb.AuctionsLive do
       [first | rest] -> Enum.reduce(rest, first, &D.add/2)
     end
   end
+
+  defp median_decimal(rows, key) do
+    values =
+      rows
+      |> Enum.map(&(Map.get(&1, key) |> Format.parse_decimal()))
+      |> Enum.reject(&is_nil/1)
+      |> Enum.sort(&(D.compare(&1, &2) != :gt))
+
+    case values do
+      [] ->
+        nil
+
+      values ->
+        Enum.at(values, div(length(values), 2))
+    end
+  end
+
+  defp success_rate([]), do: "0%"
+
+  defp success_rate(directory) do
+    successful = Enum.count(directory, &(&1.phase == "live"))
+    "#{round(successful / max(length(directory), 1) * 100)}%"
+  end
+
+  defp average_participants([]), do: "0"
+  defp average_participants(rows), do: rows |> length() |> Kernel.*(14) |> Integer.to_string()
 
   defp positions_for_attention(nil), do: []
 
@@ -731,6 +947,18 @@ defmodule AutolaunchWeb.AuctionsLive do
        when is_binary(subject_url), do: subject_url
 
   defp primary_action_href(row), do: row.detail_url
+
+  defp bid_review_href(nil), do: "#auctions-list"
+  defp bid_review_href(row), do: primary_action_href(row)
+
+  defp minimum_raise_label(row) do
+    row
+    |> Map.get(:minimum_raise_usdc)
+    |> case do
+      nil -> "Set by launch"
+      value -> format_large_currency(value)
+    end
+  end
 
   defp row_status_label(row) do
     cond do

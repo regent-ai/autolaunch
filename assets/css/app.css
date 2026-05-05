@@ -1184,6 +1184,10 @@ textarea {
   color: var(--al-muted);
 }
 
+.al-inline-note.is-error {
+  color: var(--al-danger);
+}
+
 .al-brand > div,
 .al-shell-nav,
 .al-shell-utility-row,
@@ -4649,5 +4653,139 @@ textarea {
 @media (max-width: 1080px) and (prefers-reduced-motion: reduce) {
   .al-guide-rail-fill {
     transform: scaleX(1);
+  }
+}
+
+.al-submit,
+.al-ghost,
+.al-cta-link,
+.al-shell-nav-link,
+.al-shell-icon-button,
+.al-copy-trigger,
+.al-theme,
+.al-auctions-row-action,
+.al-home-quick-action,
+.al-auctions-quick-row {
+  transition:
+    transform 160ms cubic-bezier(0.23, 1, 0.32, 1),
+    border-color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease;
+}
+
+.al-submit:active,
+.al-ghost:active,
+.al-cta-link:active,
+.al-shell-nav-link:active,
+.al-shell-icon-button:active,
+.al-copy-trigger:active,
+.al-theme:active,
+.al-auctions-row-action:active,
+.al-home-quick-action:active,
+.al-auctions-quick-row:active {
+  transform: scale(0.975);
+}
+
+[data-copy-value] {
+  position: relative;
+  overflow: hidden;
+}
+
+[data-copy-value][data-copy-state="copied"] {
+  border-color: color-mix(in srgb, var(--color-success) 42%, transparent);
+  background:
+    linear-gradient(135deg, rgba(21, 128, 61, 0.2), rgba(15, 118, 110, 0.15)),
+    var(--al-component-background);
+  box-shadow: 0 14px 32px -24px rgba(21, 128, 61, 0.75);
+}
+
+[data-copy-value][data-copy-state="copied"]::after {
+  content: "";
+  position: absolute;
+  inset: -40% auto -40% -35%;
+  width: 40%;
+  transform: rotate(18deg);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.72), transparent);
+  animation: al-copy-sheen 720ms ease-out;
+  pointer-events: none;
+}
+
+@keyframes al-copy-sheen {
+  from {
+    translate: 0 0;
+  }
+
+  to {
+    translate: 340% 0;
+  }
+}
+
+.al-welcome-modal .modal-box {
+  max-height: calc(100dvh - 1.6rem);
+  overflow: auto;
+}
+
+.al-welcome-actions {
+  flex-wrap: wrap;
+}
+
+.al-terminal-command,
+.al-terminal-command code,
+.al-terminal-output,
+.al-terminal-output pre,
+.al-contract-json,
+.al-prepared-card,
+.al-contract-kv strong,
+.al-contract-list-item strong,
+.al-code-chip,
+.al-address,
+.al-token-address {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .al-submit:hover,
+  .al-cta-link:hover,
+  .al-shell-icon-button:hover,
+  .al-copy-trigger:hover,
+  .al-theme:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 18px 38px -30px rgba(21, 96, 66, 0.42);
+  }
+
+  .al-ghost:hover,
+  .al-shell-nav-link:hover {
+    border-color: color-mix(in srgb, var(--brand-primary) 18%, transparent);
+  }
+}
+
+@media (max-width: 760px) {
+  .al-welcome-modal {
+    align-items: flex-start;
+    overflow: auto;
+  }
+
+  .al-welcome-modal .modal-box {
+    width: min(100%, calc(100vw - 1rem));
+    border-radius: 1rem;
+  }
+
+  .al-welcome-copy {
+    font-size: 0.92rem;
+    line-height: 1.55;
+  }
+
+  .al-welcome-actions .al-submit,
+  .al-welcome-actions .al-ghost {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-copy-value][data-copy-state="copied"]::after {
+    animation: none;
   }
 }

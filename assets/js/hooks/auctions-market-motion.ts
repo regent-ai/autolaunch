@@ -16,6 +16,14 @@ interface AnimatedProgressState {
   value?: number
 }
 
+interface MarketCounterElement extends HTMLElement {
+  _marketUpdateTimer?: number
+}
+
+interface AnimeUpdate<T> {
+  animatables?: Array<{ target?: T }>
+}
+
 type PulseAnimation = {
   pause?: () => void
   cancel?: () => void
@@ -29,18 +37,36 @@ function reducedMotion(): boolean {
   return prefersReducedMotion()
 }
 
+function markCounterUpdated(counter: MarketCounterElement): void {
+  counter.classList.add("is-market-updated")
+
+  if (counter._marketUpdateTimer) {
+    window.clearTimeout(counter._marketUpdateTimer)
+  }
+
+  counter._marketUpdateTimer = window.setTimeout(() => {
+    counter.classList.remove("is-market-updated")
+    delete counter._marketUpdateTimer
+  }, 900)
+}
+
 function animateCounters(root: HTMLElement): void {
-  const counters = root.querySelectorAll<HTMLElement>("[data-market-counter]")
+  const counters = root.querySelectorAll<MarketCounterElement>("[data-market-counter]")
 
   for (const counter of counters) {
     const nextValue = Number(counter.dataset.marketCounter ?? "0")
 
     if (!Number.isFinite(nextValue)) continue
 
+    const hasPreviousValue = typeof counter.dataset.marketCurrentValue === "string"
     const previousValue = Number(counter.dataset.marketCurrentValue ?? "0")
     const decimals = Number(counter.dataset.marketDecimals ?? "0")
     const prefix = counter.dataset.marketPrefix ?? ""
     const suffix = counter.dataset.marketSuffix ?? ""
+
+    if (hasPreviousValue && nextValue !== previousValue) {
+      markCounterUpdated(counter)
+    }
 
     const render = (value: number) => {
       const formatted = value.toLocaleString(undefined, {
@@ -62,8 +88,8 @@ function animateCounters(root: HTMLElement): void {
       duration: 720,
       ease: "outExpo",
       round: decimals === 0 ? 1 : 100,
-      onUpdate(animation: { animatables: Array<{ target: AnimatedCounterState }> }) {
-        const value = Number(animation.animatables[0]?.target.innerValue ?? nextValue)
+      onUpdate(animation: AnimeUpdate<AnimatedCounterState>) {
+        const value = Number(animation.animatables?.[0]?.target?.innerValue ?? nextValue)
         render(value)
       },
       onComplete() {
@@ -92,8 +118,8 @@ function animateProgress(root: HTMLElement): void {
       value: boundedValue,
       duration: 900,
       ease: "outQuart",
-      onUpdate(animation: { animatables: Array<{ target: AnimatedProgressState }> }) {
-        const value = Number(animation.animatables[0]?.target.value ?? boundedValue)
+      onUpdate(animation: AnimeUpdate<AnimatedProgressState>) {
+        const value = Number(animation.animatables?.[0]?.target?.value ?? boundedValue)
         bar.style.transform = `scaleX(${value / 100})`
       },
       onComplete() {
