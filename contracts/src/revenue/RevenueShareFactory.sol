@@ -2,14 +2,14 @@
 pragma solidity ^0.8.26;
 
 import {Owned} from "src/auth/Owned.sol";
-import {RevenueShareSplitter} from "src/revenue/RevenueShareSplitter.sol";
-import {RevenueShareSplitterDeployer} from "src/revenue/RevenueShareSplitterDeployer.sol";
+import {IRegentRevenueFeeRouter} from "src/revenue/interfaces/IRegentRevenueFeeRouter.sol";
 import {SubjectRegistry} from "src/revenue/SubjectRegistry.sol";
+import {RevenueShareSplitterV2} from "src/revenue/RevenueShareSplitterV2.sol";
 
 contract RevenueShareFactory is Owned {
     address public immutable usdc;
+    address public immutable protocolFeeRouter;
     SubjectRegistry public immutable subjectRegistry;
-    RevenueShareSplitterDeployer public immutable splitterDeployer;
 
     mapping(address => address) public splitterOfStakeToken;
     mapping(bytes32 => address) public splitterOfSubject;
@@ -21,40 +21,31 @@ contract RevenueShareFactory is Owned {
         address indexed splitter,
         address splitterOwner,
         address treasuryRecipient,
-        address protocolRecipient,
+        address protocolFeeRouter,
         string label
     );
     event AuthorizedCreatorSet(address indexed account, bool enabled);
-    event SubjectRegistryOwnershipTransferStarted(
-        address indexed currentOwner, address indexed pendingOwner
-    );
 
     constructor(
         address owner_,
         address usdc_,
         SubjectRegistry subjectRegistry_,
-        RevenueShareSplitterDeployer splitterDeployer_
+        address protocolFeeRouter_
     ) Owned(owner_) {
         require(usdc_ != address(0), "USDC_ZERO");
         require(address(subjectRegistry_) != address(0), "REGISTRY_ZERO");
-        require(address(splitterDeployer_) != address(0), "SPLITTER_DEPLOYER_ZERO");
+        require(protocolFeeRouter_ != address(0), "FEE_ROUTER_ZERO");
+        require(
+            IRegentRevenueFeeRouter(protocolFeeRouter_).usdc() == usdc_, "FEE_ROUTER_USDC_MISMATCH"
+        );
         usdc = usdc_;
+        protocolFeeRouter = protocolFeeRouter_;
         subjectRegistry = subjectRegistry_;
-        splitterDeployer = splitterDeployer_;
     }
 
     modifier onlyAuthorizedCreator() {
         require(msg.sender == owner || authorizedCreators[msg.sender], "ONLY_AUTHORIZED_CREATOR");
         _;
-    }
-
-    function acceptSubjectRegistryOwnership() external onlyOwner {
-        subjectRegistry.acceptOwnership();
-    }
-
-    function transferSubjectRegistryOwnership(address newOwner) external onlyOwner {
-        subjectRegistry.transferOwnership(newOwner);
-        emit SubjectRegistryOwnershipTransferStarted(address(this), newOwner);
     }
 
     function setAuthorizedCreator(address account, bool enabled) external onlyOwner {
@@ -68,7 +59,7 @@ contract RevenueShareFactory is Owned {
         address stakeToken,
         address ingressFactory,
         address agentSafe,
-        address protocolRecipient,
+        address feeRouter,
         uint256 revenueShareSupplyDenominator,
         string calldata label,
         uint256 identityChainId,
@@ -79,10 +70,11 @@ contract RevenueShareFactory is Owned {
         require(stakeToken != address(0), "STAKE_TOKEN_ZERO");
         require(ingressFactory != address(0), "INGRESS_FACTORY_ZERO");
         require(agentSafe != address(0), "AGENT_SAFE_ZERO");
-        require(protocolRecipient != address(0), "PROTOCOL_RECIPIENT_ZERO");
+        require(feeRouter == protocolFeeRouter, "FEE_ROUTER_MISMATCH");
         require(splitterOfStakeToken[stakeToken] == address(0), "SPLITTER_EXISTS_FOR_TOKEN");
         require(splitterOfSubject[subjectId] == address(0), "SPLITTER_EXISTS_FOR_SUBJECT");
         require(revenueShareSupplyDenominator != 0, "SUPPLY_DENOMINATOR_ZERO");
+        require(subjectRegistry.canRegisterSubject(address(this)), "FACTORY_NOT_REGISTRAR");
         bool hasIdentityLink =
             identityChainId != 0 || identityRegistry != address(0) || identityAgentId != 0;
         if (hasIdentityLink) {
@@ -91,14 +83,14 @@ contract RevenueShareFactory is Owned {
             require(identityAgentId != 0, "IDENTITY_AGENT_ID_ZERO");
         }
 
-        RevenueShareSplitter deployed = splitterDeployer.deploy(
+        RevenueShareSplitterV2 deployed = new RevenueShareSplitterV2(
             stakeToken,
             usdc,
             ingressFactory,
             address(subjectRegistry),
             subjectId,
             agentSafe,
-            protocolRecipient,
+            protocolFeeRouter,
             revenueShareSupplyDenominator,
             label,
             address(this)
@@ -109,7 +101,7 @@ contract RevenueShareFactory is Owned {
         splitterOfSubject[subjectId] = splitter;
 
         emit SplitterDeployed(
-            subjectId, stakeToken, splitter, agentSafe, agentSafe, protocolRecipient, label
+            subjectId, stakeToken, splitter, agentSafe, agentSafe, protocolFeeRouter, label
         );
 
         subjectRegistry.createSubject(subjectId, stakeToken, splitter, agentSafe, true, label);

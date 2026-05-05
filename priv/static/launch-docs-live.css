@@ -741,3 +741,110 @@
     grid-column: auto;
   }
 }
+
+#al-docs-page .al-choice-card,
+#al-docs-page .al-disclosure,
+#al-docs-page .al-guide-step,
+#al-docs-page .al-guide-step-callout,
+#al-docs-page .al-guide-finish,
+#al-docs-page .al-guide-outcome,
+#al-docs-page .al-note-card,
+#al-docs-page .al-inline-banner,
+#al-docs-page .al-terrain-surface,
+#al-docs-page .al-terrain-strip,
+#al-docs-page .al-contract-kv div,
+#al-docs-page .al-contract-list-item,
+#al-docs-page .al-contract-json {
+  border-color: color-mix(in srgb, var(--brand-ink) 10%, transparent);
+  border-radius: 0.95rem;
+  background:
+    radial-gradient(circle at 96% 4%, color-mix(in srgb, var(--brand-primary) 7%, transparent), transparent 26%),
+    linear-gradient(180deg, color-mix(in srgb, white 98%, var(--color-bg) 2%), color-mix(in srgb, white 93%, var(--color-bg) 7%));
+  box-shadow: 0 20px 48px -38px rgba(28, 51, 77, 0.22);
+}
+
+#al-docs-page .al-guide-hero h2,
+#al-docs-page .al-choice-card h3,
+#al-docs-page .al-guide-step-copy h3,
+#al-docs-page .al-guide-outcome strong,
+#al-docs-page .al-contract-card h3 {
+  color: color-mix(in srgb, var(--brand-ink) 90%, black 10%);
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+#al-docs-page .al-choice-command,
+#al-docs-page .al-choice-command code,
+#al-docs-page .al-contract-json,
+#al-docs-page .al-contract-json code,
+#al-docs-page .al-contract-kv strong,
+#al-docs-page .al-contract-list-item strong,
+#al-docs-page .al-guide-step,
+#al-docs-page .al-guide-outcome,
+#al-docs-page .al-note-card,
+#al-docs-page .al-inline-banner {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+#al-docs-page .al-choice-command code,
+#al-docs-page .al-contract-json code {
+  white-space: pre-wrap;
+}
+
+#al-docs-page .al-launch-tag,
+#al-docs-page .al-network-badge,
+#al-docs-page .al-guide-pill {
+  min-height: 1.9rem;
+  border-radius: 999px;
+  border-color: color-mix(in srgb, var(--brand-ink) 9%, transparent);
+  background: color-mix(in srgb, white 92%, var(--brand-primary) 8%);
+  color: color-mix(in srgb, var(--brand-ink) 76%, black 24%);
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: normal;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  #al-docs-page .al-choice-card,
+  #al-docs-page .al-guide-step,
+  #al-docs-page .al-guide-outcome,
+  #al-docs-page .al-note-card,
+  #al-docs-page .al-contract-card {
+    transition:
+      transform 180ms cubic-bezier(0.23, 1, 0.32, 1),
+      border-color 180ms ease,
+      box-shadow 180ms ease;
+  }
+
+  #al-docs-page .al-choice-card:hover,
+  #al-docs-page .al-guide-step:hover,
+  #al-docs-page .al-guide-outcome:hover,
+  #al-docs-page .al-note-card:hover,
+  #al-docs-page .al-contract-card:hover {
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, var(--brand-primary) 18%, transparent);
+    box-shadow: 0 24px 52px -42px rgba(21, 96, 66, 0.34);
+  }
+}
+
+@media (max-width: 720px) {
+  #al-docs-page .al-choice-actions,
+  #al-docs-page .al-disclosure-summary,
+  #al-docs-page .al-guide-step,
+  #al-docs-page .al-section-head,
+  #al-docs-page .al-contract-action-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    justify-items: stretch;
+  }
+
+  #al-docs-page .al-choice-actions .al-submit,
+  #al-docs-page .al-choice-actions .al-ghost,
+  #al-docs-page .al-contract-action-row .al-submit,
+  #al-docs-page .al-contract-action-row .al-ghost {
+    width: 100%;
+    justify-content: center;
+  }
+}
