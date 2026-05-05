@@ -19,6 +19,18 @@ command_groups:
     auth_mode: agent-siwa
     auth_audience: autolaunch
     output_envelope: loose-object
+    agent_metadata:
+      category: agents
+      prompt_behavior: never_prompt
+      json_support: supported
+      mutation_class: read
+      retry_behavior: safe
+      pagination: cursor
+      async_behavior: synchronous
+      input_mode: args-and-flags
+      examples:
+        - regents autolaunch agents list
+        - regents autolaunch agent <id>
     help:
       summary: List and inspect launchable Agent account projects.
       usage: regents autolaunch agents list
@@ -31,19 +43,31 @@ command_groups:
       - /v1/agent/agents
       - /v1/agent/agents/{id}
       - /v1/agent/agents/{id}/readiness
-      - /v1/agent/trust/agents/{id}
   - name: prelaunch-launch
     interface: mixed
     auth_mode: agent-siwa
     auth_audience: autolaunch
     output_envelope: launch-envelopes
+    agent_metadata:
+      category: launch
+      prompt_behavior: confirm_before_publish_or_submit
+      json_support: supported
+      mutation_class: workflow-write
+      retry_behavior: retry_status_and_prepare_only
+      pagination: bounded
+      async_behavior: job_or_polling
+      input_mode: mixed
+      examples:
+        - regents autolaunch prelaunch get --plan <id>
+        - regents autolaunch prelaunch validate --plan <id>
+        - regents autolaunch jobs watch <job_id>
     help:
       summary: Prepare, validate, publish, and launch an Agent account project.
       usage: regents autolaunch prelaunch wizard
       next_step: Use `regents autolaunch jobs watch <job-id>`.
     commands:
       - autolaunch prelaunch wizard
-      - autolaunch prelaunch show
+      - autolaunch prelaunch get
       - autolaunch prelaunch validate
       - autolaunch prelaunch publish
       - autolaunch launch preview
@@ -57,8 +81,6 @@ command_groups:
       - autolaunch vesting propose-beneficiary-rotation
       - autolaunch vesting cancel-beneficiary-rotation
       - autolaunch vesting execute-beneficiary-rotation
-      - autolaunch identities list
-      - autolaunch identities mint
     path_templates:
       - /v1/agent/prelaunch/plans
       - /v1/agent/prelaunch/plans/{id}
@@ -76,10 +98,40 @@ command_groups:
       - /v1/agent/lifecycle/jobs/{id}/finalize/register
       - /v1/agent/lifecycle/jobs/{id}/vesting
       - /v1/agent/contracts/jobs/{id}/{resource}/{action}/prepare
+  - name: identities
+    interface: onchain
+    auth_mode: local-wallet
+    output_envelope: loose-object
+    agent_metadata:
+      category: identity
+      prompt_behavior: prompt_when_signing
+      json_support: supported
+      mutation_class: onchain-read-or-write
+      retry_behavior: retry_reads_only
+      pagination: bounded
+      async_behavior: synchronous
+      input_mode: args-and-flags
+      examples:
+        - regents autolaunch identities list --chain base-sepolia
+        - regents autolaunch identities mint --chain base-sepolia
+    commands:
+      - autolaunch identities list
+      - autolaunch identities mint
   - name: safe-setup
     interface: local
     auth_mode: none
     output_envelope: loose-object
+    agent_metadata:
+      category: wallet-setup
+      prompt_behavior: prompt_for_local_wallet_changes
+      json_support: supported
+      mutation_class: local-write
+      retry_behavior: manual
+      pagination: none
+      async_behavior: synchronous
+      input_mode: interactive
+      examples:
+        - regents autolaunch safe wizard
     commands:
       - autolaunch safe wizard
       - autolaunch safe create
@@ -88,6 +140,19 @@ command_groups:
     auth_mode: agent-siwa
     auth_audience: autolaunch
     output_envelope: market-envelopes
+    agent_metadata:
+      category: market
+      prompt_behavior: confirm_before_submit
+      json_support: supported
+      mutation_class: read-or-transaction-prepare
+      retry_behavior: retry_reads_and_quotes
+      pagination: cursor
+      async_behavior: synchronous
+      input_mode: args-and-flags
+      examples:
+        - regents autolaunch auctions list
+        - regents autolaunch subjects get <subject_id>
+        - regents autolaunch bids quote --auction <auction_id>
     commands:
       - autolaunch auctions list
       - autolaunch auction <id>
@@ -102,7 +167,7 @@ command_groups:
       - autolaunch holdings claim-emissions
       - autolaunch holdings claim-and-stake-emissions
       - autolaunch holdings sweep-ingress
-      - autolaunch subjects show
+      - autolaunch subjects get
       - autolaunch subjects ingress
       - autolaunch subjects stake
       - autolaunch subjects unstake
@@ -151,6 +216,20 @@ command_groups:
     auth_mode: agent-siwa
     auth_audience: autolaunch
     output_envelope: prepared-action-or-status
+    agent_metadata:
+      category: contracts
+      prompt_behavior: confirm_before_submit
+      json_support: supported
+      mutation_class: read-or-transaction-prepare
+      retry_behavior: retry_reads_and_prepares
+      pagination: none
+      async_behavior: synchronous
+      input_mode: args-and-flags
+      examples:
+        - regents autolaunch fee-registry get --job <job_id>
+        - regents autolaunch fee-vault get --job <job_id>
+        - regents autolaunch splitter get --subject <subject_id>
+        - regents autolaunch registry get --subject <subject_id>
     commands:
       - autolaunch ens plan
       - autolaunch ens prepare-ensip25
@@ -162,10 +241,10 @@ command_groups:
       - autolaunch strategy migrate
       - autolaunch strategy sweep-token
       - autolaunch strategy sweep-currency
-      - autolaunch fee-registry show
-      - autolaunch fee-vault show
+      - autolaunch fee-registry get
+      - autolaunch fee-vault get
       - autolaunch fee-vault withdraw-regent
-      - autolaunch splitter show
+      - autolaunch splitter get
       - autolaunch splitter accept-ownership
       - autolaunch splitter pull-treasury-share
       - autolaunch splitter set-paused
@@ -185,7 +264,7 @@ command_groups:
       - autolaunch ingress set-default
       - autolaunch ingress set-label
       - autolaunch ingress rescue
-      - autolaunch registry show
+      - autolaunch registry get
       - autolaunch registry rotate-safe
       - autolaunch registry set-subject-manager
       - autolaunch registry link-identity
