@@ -71,7 +71,12 @@ defmodule AutolaunchWeb.ContractsLive do
           )
 
         "admin" ->
-          context_module().prepare_admin_action(resource, action, attrs)
+          context_module().prepare_admin_action(
+            resource,
+            action,
+            attrs,
+            socket.assigns.current_human
+          )
       end
 
     case result do

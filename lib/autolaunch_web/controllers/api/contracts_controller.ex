@@ -34,8 +34,8 @@ defmodule AutolaunchWeb.Api.ContractsController do
   end
 
   def prepare_admin(conn, %{"resource" => resource, "action" => action} = params) do
-    render_authed(conn, fn _human ->
-      context_module().prepare_admin_action(resource, action, params)
+    render_authed(conn, fn human ->
+      context_module().prepare_admin_action(resource, action, params, human)
     end)
   end
 

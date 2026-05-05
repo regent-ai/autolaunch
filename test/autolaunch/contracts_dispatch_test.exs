@@ -1,6 +1,8 @@
 defmodule Autolaunch.ContractsDispatchTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
+  alias Autolaunch.Accounts.HumanUser
+  alias Autolaunch.Contracts
   alias Autolaunch.Contracts.Abi
   alias Autolaunch.Contracts.Dispatch
 
@@ -91,6 +93,43 @@ defmodule Autolaunch.ContractsDispatchTest do
              Dispatch.build_job_action(job, "hook", "accept_ownership", %{})
 
     assert hook_acceptance.wallet_action.to == job.hook_address
+  end
+
+  test "admin prepare attaches the signed-in wallet to the wallet action" do
+    previous_launch = Application.get_env(:autolaunch, :launch, [])
+
+    on_exit(fn ->
+      Application.put_env(:autolaunch, :launch, previous_launch)
+    end)
+
+    Application.put_env(
+      :autolaunch,
+      :launch,
+      Keyword.merge(previous_launch,
+        chain_id: 84_532,
+        revenue_share_factory_address: "0x2222222222222222222222222222222222222222",
+        revenue_ingress_factory_address: "0x3333333333333333333333333333333333333333"
+      )
+    )
+
+    human = %HumanUser{
+      wallet_address: "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      wallet_addresses: []
+    }
+
+    assert {:ok, %{prepared: prepared}} =
+             Contracts.prepare_admin_action(
+               "revenue_share_factory",
+               "set_authorized_creator",
+               %{
+                 "account" => "0x1111111111111111111111111111111111111111",
+                 "enabled" => "true"
+               },
+               human
+             )
+
+    assert prepared.expected_signer == "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    assert prepared.wallet_action.expected_signer == prepared.expected_signer
   end
 
   test "subject dispatch returns stable invalid address and ingress errors" do

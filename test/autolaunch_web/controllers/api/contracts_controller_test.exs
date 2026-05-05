@@ -281,26 +281,34 @@ defmodule AutolaunchWeb.Api.ContractsControllerTest do
       end
     end
 
-    def prepare_admin_action("revenue_share_factory", "set_authorized_creator", _attrs) do
+    def prepare_admin_action("revenue_share_factory", "set_authorized_creator", _attrs, human) do
+      expected_signer =
+        human
+        |> Map.get(:wallet_address)
+        |> normalize_address()
+
       {:ok,
        %{
          prepared: %{
            resource: "revenue_share_factory",
            action: "set_authorized_creator",
+           expected_signer: expected_signer,
            wallet_action: %{
              chain_id: 84_532,
              to: "0x1111111111111111111111111111111111111111",
              value: "0x0",
-             data: "0xe1434f4e"
+             data: "0xe1434f4e",
+             expected_signer: expected_signer
            }
          }
        }}
     end
 
-    def prepare_admin_action("broken", "set_authorized_creator", _attrs),
+    def prepare_admin_action("broken", "set_authorized_creator", _attrs, _human),
       do: {:error, :invalid_uint}
 
-    def prepare_admin_action(_resource, _action, _attrs), do: {:error, :unsupported_action}
+    def prepare_admin_action(_resource, _action, _attrs, _human),
+      do: {:error, :unsupported_action}
 
     defp access_status(nil), do: :unauthorized
 
@@ -697,7 +705,8 @@ defmodule AutolaunchWeb.Api.ContractsControllerTest do
              "prepared" => %{
                "resource" => "revenue_share_factory",
                "action" => "set_authorized_creator",
-               "wallet_action" => %{"data" => "0xe1434f4e"}
+               "expected_signer" => @wallet,
+               "wallet_action" => %{"data" => "0xe1434f4e", "expected_signer" => @wallet}
              }
            } = json_response(conn, 200)
   end

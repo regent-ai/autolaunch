@@ -84,7 +84,11 @@ defmodule Autolaunch.Contracts do
   def prepare_job_action(job_id, resource, action, attrs, current_human \\ nil) do
     with {:ok, %{job: job, scope: _scope}} <- job_state(job_id, current_human),
          {:ok, prepared} <- Dispatch.build_job_action(job, resource, action, attrs) do
-      {:ok, %{job_id: job_id, prepared: put_expected_signer(prepared, signer_for(current_human) || job.owner_address)}}
+      {:ok,
+       %{
+         job_id: job_id,
+         prepared: put_expected_signer(prepared, signer_for(current_human) || job.owner_address)
+       }}
     end
   end
 
@@ -102,18 +106,30 @@ defmodule Autolaunch.Contracts do
            Dispatch.build_subject_action(subject, registry, resource, action, attrs, %{
              ingress_factory_address: ingress_factory_address(subject.chain_id)
            }) do
-      {:ok, %{subject_id: subject.subject_id, prepared: put_expected_signer(prepared, signer_for(current_human))}}
+      {:ok,
+       %{
+         subject_id: subject.subject_id,
+         prepared: put_expected_signer(prepared, signer_for(current_human))
+       }}
     end
   end
 
-  def prepare_admin_action(resource, action, attrs) do
+  def prepare_admin_action(resource, action, attrs, current_human) do
     with {:ok, prepared} <-
            Dispatch.build_admin_action(resource, action, attrs, %{
              chain_id: launch_chain_id(),
              ingress_factory_address: ingress_factory_address(launch_chain_id()),
              revenue_share_factory_address: revenue_share_factory_address(launch_chain_id())
            }) do
-      {:ok, %{prepared: put_expected_signer(prepared, Map.get(attrs, "expected_signer") || Map.get(attrs, :expected_signer))}}
+      {:ok,
+       %{
+         prepared:
+           put_expected_signer(
+             prepared,
+             signer_for(current_human) || Map.get(attrs, "expected_signer") ||
+               Map.get(attrs, :expected_signer)
+           )
+       }}
     end
   end
 

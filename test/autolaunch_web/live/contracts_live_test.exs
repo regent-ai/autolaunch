@@ -245,7 +245,7 @@ defmodule AutolaunchWeb.ContractsLiveTest do
        }}
     end
 
-    def prepare_admin_action("revenue_share_factory", "set_authorized_creator", _attrs) do
+    def prepare_admin_action("revenue_share_factory", "set_authorized_creator", _attrs, _human) do
       {:ok,
        %{
          prepared:
