@@ -11,8 +11,5 @@ interface IRegentUsdOracle {
         uint128 regentWethLiquidity;
     }
 
-    function quoteRegentForUsdc(uint256 usdcAmount)
-        external
-        view
-        returns (Quote memory quote);
+    function quoteRegentForUsdc(uint256 usdcAmount) external view returns (Quote memory quote);
 }

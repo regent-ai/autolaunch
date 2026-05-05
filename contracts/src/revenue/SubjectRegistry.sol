@@ -101,9 +101,11 @@ contract SubjectRegistry is Owned, ISubjectRegistry {
         subjectOfStakeToken[stakeToken] = subjectId;
         subjectsByStakeToken[stakeToken].push(subjectId);
         subjectManagers[subjectId][treasurySafe] = true;
+        subjectManagers[subjectId][msg.sender] = true;
 
         emit SubjectCreated(subjectId, stakeToken, splitter, treasurySafe, label);
         emit SubjectManagerSet(subjectId, treasurySafe, true);
+        emit SubjectManagerSet(subjectId, msg.sender, true);
     }
 
     function createPermissionlessSubject(

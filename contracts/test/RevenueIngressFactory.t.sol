@@ -6,9 +6,9 @@ import {Test} from "forge-std/Test.sol";
 import {RevenueIngressAccount} from "src/revenue/RevenueIngressAccount.sol";
 import {RevenueIngressFactory} from "src/revenue/RevenueIngressFactory.sol";
 import {RevenueShareFactory} from "src/revenue/RevenueShareFactory.sol";
-import {RevenueShareSplitterDeployer} from "src/revenue/RevenueShareSplitterDeployer.sol";
 import {SubjectRegistry} from "src/revenue/SubjectRegistry.sol";
 import {MintableERC20Mock} from "test/mocks/MintableERC20Mock.sol";
+import {MockRegentRevenueFeeRouter} from "test/mocks/MockRegentRevenueFeeRouter.sol";
 
 contract RevenueIngressFactoryTest is Test {
     bytes32 internal constant SUBJECT_ID = keccak256("subject");
@@ -20,24 +20,25 @@ contract RevenueIngressFactoryTest is Test {
     SubjectRegistry internal subjectRegistry;
     RevenueShareFactory internal revenueShareFactory;
     RevenueIngressFactory internal ingressFactory;
+    MockRegentRevenueFeeRouter internal feeRouter;
 
     function setUp() external {
         usdc = new MintableERC20Mock("USD Coin", "USDC");
         subjectRegistry = new SubjectRegistry(address(this));
+        feeRouter = new MockRegentRevenueFeeRouter(address(usdc), address(0x8888));
         revenueShareFactory = new RevenueShareFactory(
-            address(this), address(usdc), subjectRegistry, new RevenueShareSplitterDeployer()
+            address(this), address(usdc), subjectRegistry, address(feeRouter)
         );
         ingressFactory =
             new RevenueIngressFactory(address(usdc), address(subjectRegistry), address(this));
-        subjectRegistry.transferOwnership(address(revenueShareFactory));
-        revenueShareFactory.acceptSubjectRegistryOwnership();
+        subjectRegistry.setAuthorizedRegistrar(address(revenueShareFactory), true);
 
         revenueShareFactory.createSubjectSplitter(
             SUBJECT_ID,
             address(0xB0B),
             address(ingressFactory),
             TREASURY_SAFE,
-            REGENT_RECIPIENT,
+            address(feeRouter),
             1000e18,
             "Subject",
             block.chainid,

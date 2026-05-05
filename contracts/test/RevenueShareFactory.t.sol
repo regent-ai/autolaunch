@@ -4,9 +4,9 @@ pragma solidity ^0.8.26;
 import {Test} from "forge-std/Test.sol";
 
 import {RevenueShareFactory} from "src/revenue/RevenueShareFactory.sol";
-import {RevenueShareSplitterDeployer} from "src/revenue/RevenueShareSplitterDeployer.sol";
 import {SubjectRegistry} from "src/revenue/SubjectRegistry.sol";
 import {MintableBurnableERC20Mock} from "test/mocks/MintableBurnableERC20Mock.sol";
+import {MockRegentRevenueFeeRouter} from "test/mocks/MockRegentRevenueFeeRouter.sol";
 
 contract RevenueShareFactoryTest is Test {
     address internal constant OWNER = address(0xA11CE);
@@ -15,31 +15,22 @@ contract RevenueShareFactoryTest is Test {
     address internal constant USDC = address(0x2222);
     address internal constant INGRESS_FACTORY = address(0x3333);
     address internal constant TREASURY_SAFE = address(0xCAFE);
-    address internal constant TREASURY = address(0x7000);
-    address internal constant PROTOCOL = address(0x9000);
     bytes32 internal constant SUBJECT_ID = keccak256("factory-subject");
 
     SubjectRegistry internal subjectRegistry;
     RevenueShareFactory internal factory;
     MintableBurnableERC20Mock internal stakeToken;
+    MockRegentRevenueFeeRouter internal feeRouter;
 
     function setUp() external {
         subjectRegistry = new SubjectRegistry(OWNER);
-        factory = new RevenueShareFactory(
-            OWNER, USDC, subjectRegistry, new RevenueShareSplitterDeployer()
-        );
+        feeRouter = new MockRegentRevenueFeeRouter(USDC, address(0x8888));
+        factory = new RevenueShareFactory(OWNER, USDC, subjectRegistry, address(feeRouter));
         stakeToken = new MintableBurnableERC20Mock("Agent", "AGENT", 18);
         stakeToken.mint(address(this), 1000 ether);
 
         vm.prank(OWNER);
-        subjectRegistry.transferOwnership(address(factory));
-
-        vm.prank(ATTACKER);
-        vm.expectRevert("ONLY_OWNER");
-        factory.acceptSubjectRegistryOwnership();
-
-        vm.prank(OWNER);
-        factory.acceptSubjectRegistryOwnership();
+        subjectRegistry.setAuthorizedRegistrar(address(factory), true);
     }
 
     function testRejectsUnauthorizedSplitterCreation() external {
@@ -50,7 +41,7 @@ contract RevenueShareFactoryTest is Test {
             address(stakeToken),
             INGRESS_FACTORY,
             TREASURY_SAFE,
-            PROTOCOL,
+            address(feeRouter),
             1000 ether,
             "Agent",
             1,
@@ -69,7 +60,7 @@ contract RevenueShareFactoryTest is Test {
             address(stakeToken),
             INGRESS_FACTORY,
             TREASURY_SAFE,
-            PROTOCOL,
+            address(feeRouter),
             1000 ether,
             "Agent",
             1,
@@ -94,7 +85,7 @@ contract RevenueShareFactoryTest is Test {
             address(stakeToken),
             INGRESS_FACTORY,
             TREASURY_SAFE,
-            PROTOCOL,
+            address(feeRouter),
             1000 ether,
             "Agent",
             1,
@@ -114,7 +105,7 @@ contract RevenueShareFactoryTest is Test {
             address(stakeToken),
             INGRESS_FACTORY,
             address(0),
-            PROTOCOL,
+            address(feeRouter),
             1000 ether,
             "Agent",
             0,
@@ -123,7 +114,7 @@ contract RevenueShareFactoryTest is Test {
         );
 
         vm.prank(CREATOR);
-        vm.expectRevert("PROTOCOL_RECIPIENT_ZERO");
+        vm.expectRevert("FEE_ROUTER_MISMATCH");
         factory.createSubjectSplitter(
             SUBJECT_ID,
             address(stakeToken),
@@ -136,17 +127,5 @@ contract RevenueShareFactoryTest is Test {
             address(0),
             0
         );
-    }
-
-    function testOwnerCanTransferSubjectRegistryOwnershipOutOfFactory() external {
-        vm.prank(OWNER);
-        factory.transferSubjectRegistryOwnership(TREASURY);
-
-        assertEq(subjectRegistry.pendingOwner(), TREASURY);
-
-        vm.prank(TREASURY);
-        subjectRegistry.acceptOwnership();
-
-        assertEq(subjectRegistry.owner(), TREASURY);
     }
 }

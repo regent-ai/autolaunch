@@ -15,7 +15,13 @@ interface AggregatorV3Interface {
     function latestRoundData()
         external
         view
-        returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);
+        returns (
+            uint80 roundId,
+            int256 answer,
+            uint256 startedAt,
+            uint256 updatedAt,
+            uint80 answeredInRound
+        );
 }
 
 contract RegentV4SpotPriceOracle is Owned, IRegentUsdOracle {
@@ -130,10 +136,10 @@ contract RegentV4SpotPriceOracle is Owned, IRegentUsdOracle {
         emit MinRegentWethLiquiditySet(minLiquidity);
     }
 
-    function setStaleness(
-        uint256 maxEthUsdStalenessSeconds_,
-        uint256 sequencerGracePeriodSeconds_
-    ) external onlyOwner {
+    function setStaleness(uint256 maxEthUsdStalenessSeconds_, uint256 sequencerGracePeriodSeconds_)
+        external
+        onlyOwner
+    {
         require(maxEthUsdStalenessSeconds_ != 0, "STALENESS_ZERO");
         maxEthUsdStalenessSeconds = maxEthUsdStalenessSeconds_;
         sequencerGracePeriodSeconds = sequencerGracePeriodSeconds_;
@@ -190,10 +196,7 @@ contract RegentV4SpotPriceOracle is Owned, IRegentUsdOracle {
             || (currency0 == weth_ && currency1 == regent_);
     }
 
-    function _validateBounds(uint256 minRegentUsdE18_, uint256 maxRegentUsdE18_)
-        internal
-        pure
-    {
+    function _validateBounds(uint256 minRegentUsdE18_, uint256 maxRegentUsdE18_) internal pure {
         require(minRegentUsdE18_ != 0, "MIN_PRICE_ZERO");
         require(maxRegentUsdE18_ >= minRegentUsdE18_, "PRICE_BOUNDS_INVALID");
     }

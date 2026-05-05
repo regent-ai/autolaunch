@@ -10,13 +10,13 @@ import {RegentLBPStrategy} from "src/RegentLBPStrategy.sol";
 import {RegentLBPStrategyFactory} from "src/RegentLBPStrategyFactory.sol";
 import {RevenueIngressFactory} from "src/revenue/RevenueIngressFactory.sol";
 import {RevenueShareFactory} from "src/revenue/RevenueShareFactory.sol";
-import {RevenueShareSplitterDeployer} from "src/revenue/RevenueShareSplitterDeployer.sol";
-import {RevenueShareSplitter} from "src/revenue/RevenueShareSplitter.sol";
+import {RevenueShareSplitterV2} from "src/revenue/RevenueShareSplitterV2.sol";
 import {SubjectRegistry} from "src/revenue/SubjectRegistry.sol";
 import {ExampleCCADeploymentScript} from "scripts/ExampleCCADeploymentScript.s.sol";
 import {
     MockContinuousClearingAuctionFactory
 } from "test/mocks/MockContinuousClearingAuctionFactory.sol";
+import {MockRegentRevenueFeeRouter} from "test/mocks/MockRegentRevenueFeeRouter.sol";
 import {MockHookPoolManager} from "test/mocks/MockHookPoolManager.sol";
 import {UERC20Factory} from "@uniswap/uerc20-factory/src/factories/UERC20Factory.sol";
 
@@ -48,6 +48,7 @@ contract ExampleCCADeploymentScriptTest is Test {
     RevenueIngressFactory internal revenueIngressFactory;
     RegentLBPStrategyFactory internal strategyFactory;
     UERC20Factory internal tokenFactory;
+    MockRegentRevenueFeeRouter internal feeRouter;
 
     function setUp() external {
         script = new ExampleCCADeploymentScript();
@@ -55,17 +56,14 @@ contract ExampleCCADeploymentScriptTest is Test {
         auctionFactory = new MockContinuousClearingAuctionFactory();
         poolManager = new MockHookPoolManager();
         subjectRegistry = new SubjectRegistry(address(this));
-        revenueShareFactory = new RevenueShareFactory(
-            address(script), USDC, subjectRegistry, new RevenueShareSplitterDeployer()
-        );
+        feeRouter = new MockRegentRevenueFeeRouter(USDC, address(0x8888));
+        revenueShareFactory =
+            new RevenueShareFactory(address(script), USDC, subjectRegistry, address(feeRouter));
         revenueIngressFactory =
             new RevenueIngressFactory(USDC, address(subjectRegistry), address(script));
         strategyFactory = new RegentLBPStrategyFactory(address(script));
         tokenFactory = new UERC20Factory();
-        subjectRegistry.transferOwnership(address(revenueShareFactory));
-
-        vm.prank(address(script));
-        revenueShareFactory.acceptSubjectRegistryOwnership();
+        subjectRegistry.setAuthorizedRegistrar(address(revenueShareFactory), true);
 
         _setEnvAddress("AUTOLAUNCH_AGENT_SAFE_ADDRESS", AGENT_SAFE);
         _setEnvAddress("REGENT_MULTISIG_ADDRESS", REGENT_MULTISIG);
@@ -143,12 +141,11 @@ contract ExampleCCADeploymentScriptTest is Test {
         assertEq(poolConfig.treasury, result.revenueShareSplitterAddress);
         assertEq(poolConfig.regentRecipient, REGENT_MULTISIG);
 
-        RevenueShareSplitter splitter = RevenueShareSplitter(result.revenueShareSplitterAddress);
+        RevenueShareSplitterV2 splitter = RevenueShareSplitterV2(result.revenueShareSplitterAddress);
         assertEq(splitter.stakeToken(), result.tokenAddress);
         assertEq(splitter.usdc(), USDC);
         assertEq(splitter.treasuryRecipient(), AGENT_SAFE);
-        assertEq(splitter.protocolRecipient(), REGENT_MULTISIG);
-        assertEq(splitter.protocolSkimBps(), 100);
+        assertEq(splitter.protocolRecipient(), address(feeRouter));
         assertEq(strategyFactory.owner(), address(script));
 
         assertEq(

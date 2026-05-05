@@ -152,7 +152,8 @@ contract RevenueIngressAccount is Owned {
     {
         balance = IERC20SupplyMinimal(usdc).balanceOf(address(this));
         require(balance != 0, "NOTHING_TO_SWEEP");
-        sourceRef = keccak256(abi.encode(block.chainid, subjectId, address(this), block.number, balance));
+        sourceRef =
+            keccak256(abi.encode(block.chainid, subjectId, address(this), block.number, balance));
 
         usdc.safeTransfer(splitter, balance);
         recognized = IRevenueShareSplitter(splitter).recordIngressSweep(balance, sourceRef);

@@ -13,7 +13,9 @@ import {IERC20SupplyMinimal} from "src/revenue/interfaces/IERC20SupplyMinimal.so
 import {IRegentBuybackAdapter} from "src/revenue/interfaces/IRegentBuybackAdapter.sol";
 
 interface IUniversalRouter {
-    function execute(bytes calldata commands, bytes[] calldata inputs, uint256 deadline) external payable;
+    function execute(bytes calldata commands, bytes[] calldata inputs, uint256 deadline)
+        external
+        payable;
 }
 
 interface IPermit2Allowance {
@@ -112,7 +114,12 @@ contract UniswapV4RegentBuybackAdapter is Owned, IRegentBuybackAdapter {
 
     function _approveRouter(uint256 usdcAmount) internal {
         usdc.forceApprove(address(permit2), usdcAmount);
-        permit2.approve(usdc, address(universalRouter), uint160(usdcAmount), uint48(block.timestamp + deadlineSeconds));
+        permit2.approve(
+            usdc,
+            address(universalRouter),
+            uint160(usdcAmount),
+            uint48(block.timestamp + deadlineSeconds)
+        );
     }
 
     function _executeConfiguredSwap(uint128 usdcAmount, uint128 minRegentOut, address recipient)

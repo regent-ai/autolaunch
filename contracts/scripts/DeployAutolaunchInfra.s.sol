@@ -6,8 +6,12 @@ import {console2} from "forge-std/console2.sol";
 
 import {SubjectRegistry} from "src/revenue/SubjectRegistry.sol";
 import {RevenueShareFactory} from "src/revenue/RevenueShareFactory.sol";
-import {RevenueShareSplitterDeployer} from "src/revenue/RevenueShareSplitterDeployer.sol";
 import {RevenueIngressFactory} from "src/revenue/RevenueIngressFactory.sol";
+import {
+    PermissionlessExistingTokenRevenueFactory
+} from "src/revenue/PermissionlessExistingTokenRevenueFactory.sol";
+import {DeferredAutolaunchFactory} from "src/revenue/DeferredAutolaunchFactory.sol";
+import {IRegentRevenueFeeRouter} from "src/revenue/interfaces/IRegentRevenueFeeRouter.sol";
 import {RegentLBPStrategyFactory} from "src/RegentLBPStrategyFactory.sol";
 import {BaseUsdc} from "src/libraries/BaseUsdc.sol";
 
@@ -15,6 +19,7 @@ contract DeployAutolaunchInfraScript is Script {
     struct ScriptConfig {
         address owner;
         address usdc;
+        address protocolFeeRouter;
     }
 
     function deployFromEnv()
@@ -23,6 +28,8 @@ contract DeployAutolaunchInfraScript is Script {
             SubjectRegistry subjectRegistry,
             RevenueShareFactory revenueShareFactory,
             RevenueIngressFactory revenueIngressFactory,
+            PermissionlessExistingTokenRevenueFactory existingTokenRevenueFactory,
+            DeferredAutolaunchFactory deferredAutolaunchFactory,
             RegentLBPStrategyFactory strategyFactory
         )
     {
@@ -37,6 +44,8 @@ contract DeployAutolaunchInfraScript is Script {
             SubjectRegistry subjectRegistry,
             RevenueShareFactory revenueShareFactory,
             RevenueIngressFactory revenueIngressFactory,
+            PermissionlessExistingTokenRevenueFactory existingTokenRevenueFactory,
+            DeferredAutolaunchFactory deferredAutolaunchFactory,
             RegentLBPStrategyFactory strategyFactory
         )
     {
@@ -44,27 +53,44 @@ contract DeployAutolaunchInfraScript is Script {
 
         vm.startBroadcast(cfg.owner);
         subjectRegistry = new SubjectRegistry(cfg.owner);
-        RevenueShareSplitterDeployer splitterDeployer = new RevenueShareSplitterDeployer();
         revenueShareFactory =
-            new RevenueShareFactory(cfg.owner, cfg.usdc, subjectRegistry, splitterDeployer);
+            new RevenueShareFactory(cfg.owner, cfg.usdc, subjectRegistry, cfg.protocolFeeRouter);
         revenueIngressFactory =
             new RevenueIngressFactory(cfg.usdc, address(subjectRegistry), cfg.owner);
+        existingTokenRevenueFactory = new PermissionlessExistingTokenRevenueFactory(
+            cfg.owner,
+            cfg.usdc,
+            address(revenueIngressFactory),
+            subjectRegistry,
+            IRegentRevenueFeeRouter(cfg.protocolFeeRouter)
+        );
+        deferredAutolaunchFactory = new DeferredAutolaunchFactory(
+            cfg.owner,
+            revenueShareFactory,
+            revenueIngressFactory,
+            IRegentRevenueFeeRouter(cfg.protocolFeeRouter)
+        );
         strategyFactory = new RegentLBPStrategyFactory(cfg.owner);
-        subjectRegistry.transferOwnership(address(revenueShareFactory));
-        revenueShareFactory.acceptSubjectRegistryOwnership();
+        subjectRegistry.setAuthorizedRegistrar(address(revenueShareFactory), true);
+        subjectRegistry.setAuthorizedRegistrar(address(existingTokenRevenueFactory), true);
+        revenueIngressFactory.setAuthorizedCreator(address(revenueShareFactory), true);
+        revenueIngressFactory.setAuthorizedCreator(address(existingTokenRevenueFactory), true);
+        revenueIngressFactory.setAuthorizedCreator(address(deferredAutolaunchFactory), true);
+        revenueShareFactory.setAuthorizedCreator(address(deferredAutolaunchFactory), true);
         vm.stopBroadcast();
     }
 
     function validateConfig(ScriptConfig memory cfg) public view {
         require(cfg.owner != address(0), "OWNER_ZERO");
         require(cfg.usdc != address(0), "USDC_ZERO");
+        require(cfg.protocolFeeRouter != address(0), "FEE_ROUTER_ZERO");
         BaseUsdc.requireCanonical(cfg.usdc);
     }
 
     function loadConfigFromEnv() public view returns (ScriptConfig memory cfg) {
         cfg.owner = vm.envAddress("AUTOLAUNCH_INFRA_OWNER");
-
         cfg.usdc = vm.envAddress("AUTOLAUNCH_USDC_ADDRESS");
+        cfg.protocolFeeRouter = vm.envAddress("REGENT_REVENUE_FEE_ROUTER_ADDRESS");
         validateConfig(cfg);
     }
 
@@ -75,6 +101,8 @@ contract DeployAutolaunchInfraScript is Script {
             SubjectRegistry subjectRegistry,
             RevenueShareFactory revenueShareFactory,
             RevenueIngressFactory revenueIngressFactory,
+            PermissionlessExistingTokenRevenueFactory existingTokenRevenueFactory,
+            DeferredAutolaunchFactory deferredAutolaunchFactory,
             RegentLBPStrategyFactory strategyFactory
         ) = deploy(cfg);
 
@@ -86,10 +114,16 @@ contract DeployAutolaunchInfraScript is Script {
                 vm.toString(address(revenueShareFactory)),
                 "\",\"revenueIngressFactoryAddress\":\"",
                 vm.toString(address(revenueIngressFactory)),
+                "\",\"existingTokenRevenueFactoryAddress\":\"",
+                vm.toString(address(existingTokenRevenueFactory)),
+                "\",\"deferredAutolaunchFactoryAddress\":\"",
+                vm.toString(address(deferredAutolaunchFactory)),
                 "\",\"strategyFactoryAddress\":\"",
                 vm.toString(address(strategyFactory)),
                 "\",\"usdcAddress\":\"",
                 vm.toString(cfg.usdc),
+                "\",\"protocolFeeRouterAddress\":\"",
+                vm.toString(cfg.protocolFeeRouter),
                 "\",\"revenueShareFactoryOwner\":\"",
                 vm.toString(revenueShareFactory.owner()),
                 "\",\"revenueShareFactoryPendingOwner\":\"",

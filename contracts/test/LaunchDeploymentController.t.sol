@@ -16,8 +16,7 @@ import {RegentLBPStrategy} from "src/RegentLBPStrategy.sol";
 import {RegentLBPStrategyFactory} from "src/RegentLBPStrategyFactory.sol";
 import {RevenueIngressFactory} from "src/revenue/RevenueIngressFactory.sol";
 import {RevenueShareFactory} from "src/revenue/RevenueShareFactory.sol";
-import {RevenueShareSplitterDeployer} from "src/revenue/RevenueShareSplitterDeployer.sol";
-import {RevenueShareSplitter} from "src/revenue/RevenueShareSplitter.sol";
+import {RevenueShareSplitterV2} from "src/revenue/RevenueShareSplitterV2.sol";
 import {SubjectRegistry} from "src/revenue/SubjectRegistry.sol";
 import {HookMiner} from "src/libraries/HookMiner.sol";
 import {MintableERC20Mock} from "test/mocks/MintableERC20Mock.sol";
@@ -25,6 +24,7 @@ import {
     MockContinuousClearingAuctionFactory
 } from "test/mocks/MockContinuousClearingAuctionFactory.sol";
 import {MockHookPoolManager} from "test/mocks/MockHookPoolManager.sol";
+import {MockRegentRevenueFeeRouter} from "test/mocks/MockRegentRevenueFeeRouter.sol";
 import {UERC20Factory} from "@uniswap/uerc20-factory/src/factories/UERC20Factory.sol";
 import {UERC20Metadata} from "@uniswap/uerc20-factory/src/libraries/UERC20MetadataLibrary.sol";
 
@@ -63,6 +63,7 @@ contract LaunchDeploymentControllerTest is Test {
     RevenueIngressFactory internal revenueIngressFactory;
     RegentLBPStrategyFactory internal strategyFactory;
     MintableERC20Mock internal usdc;
+    MockRegentRevenueFeeRouter internal feeRouter;
 
     function setUp() external {
         vm.chainId(84_532);
@@ -74,13 +75,13 @@ contract LaunchDeploymentControllerTest is Test {
         strategyFactory = new RegentLBPStrategyFactory(address(this));
         usdc = _installCanonicalUsdcMock();
         subjectRegistry = new SubjectRegistry(address(this));
+        feeRouter = new MockRegentRevenueFeeRouter(address(usdc), address(0x8888));
         revenueShareFactory = new RevenueShareFactory(
-            address(this), address(usdc), subjectRegistry, new RevenueShareSplitterDeployer()
+            address(this), address(usdc), subjectRegistry, address(feeRouter)
         );
         revenueIngressFactory =
             new RevenueIngressFactory(address(usdc), address(subjectRegistry), address(this));
-        subjectRegistry.transferOwnership(address(revenueShareFactory));
-        revenueShareFactory.acceptSubjectRegistryOwnership();
+        subjectRegistry.setAuthorizedRegistrar(address(revenueShareFactory), true);
         revenueShareFactory.setAuthorizedCreator(address(controller), true);
         revenueIngressFactory.setAuthorizedCreator(address(controller), true);
         strategyFactory.setAuthorizedCreator(address(controller), true);
@@ -127,7 +128,7 @@ contract LaunchDeploymentControllerTest is Test {
     function testRejectsDeployWhenSubjectRegistryOwnershipNotAccepted() external {
         SubjectRegistry localSubjectRegistry = new SubjectRegistry(address(this));
         RevenueShareFactory localRevenueShareFactory = new RevenueShareFactory(
-            address(this), address(usdc), localSubjectRegistry, new RevenueShareSplitterDeployer()
+            address(this), address(usdc), localSubjectRegistry, address(feeRouter)
         );
         RevenueIngressFactory localRevenueIngressFactory =
             new RevenueIngressFactory(address(usdc), address(localSubjectRegistry), address(this));
@@ -139,14 +140,16 @@ contract LaunchDeploymentControllerTest is Test {
         cfg.revenueShareFactory = address(localRevenueShareFactory);
         cfg.revenueIngressFactory = address(localRevenueIngressFactory);
 
-        vm.expectRevert("SUBJECT_REGISTRY_NOT_OWNED_BY_FACTORY");
+        vm.expectRevert("REVENUE_SHARE_FACTORY_NOT_REGISTRAR");
         controller.deploy(cfg);
     }
 
     function testRejectsRevenueShareUsdcMismatch() external {
         MintableERC20Mock otherUsdc = new MintableERC20Mock("Other USD", "oUSD");
+        MockRegentRevenueFeeRouter otherRouter =
+            new MockRegentRevenueFeeRouter(address(otherUsdc), address(0x8888));
         RevenueShareFactory mismatchedRevenueShareFactory = new RevenueShareFactory(
-            address(this), address(otherUsdc), subjectRegistry, new RevenueShareSplitterDeployer()
+            address(this), address(otherUsdc), subjectRegistry, address(otherRouter)
         );
 
         LaunchDeploymentController.DeploymentConfig memory cfg = defaultConfig();
@@ -219,14 +222,13 @@ contract LaunchDeploymentControllerTest is Test {
         assertEq(registry.owner(), address(controller));
         assertEq(registry.pendingOwner(), AGENT_SAFE);
 
-        RevenueShareSplitter splitter = RevenueShareSplitter(result.revenueShareSplitterAddress);
+        RevenueShareSplitterV2 splitter = RevenueShareSplitterV2(result.revenueShareSplitterAddress);
         assertEq(splitter.stakeToken(), result.tokenAddress);
         assertEq(splitter.usdc(), address(usdc));
         assertEq(splitter.owner(), address(revenueShareFactory));
         assertEq(splitter.pendingOwner(), AGENT_SAFE);
         assertEq(splitter.treasuryRecipient(), AGENT_SAFE);
-        assertEq(splitter.protocolRecipient(), REGENT_RECIPIENT);
-        assertEq(splitter.protocolSkimBps(), 100);
+        assertEq(splitter.protocolRecipient(), address(feeRouter));
 
         LaunchFeeVault feeVault = LaunchFeeVault(payable(result.feeVaultAddress));
         assertEq(feeVault.owner(), address(controller));

@@ -69,7 +69,9 @@ contract PermissionlessExistingTokenRevenueFactory is
         IERC20SupplyMinimal(cfg.stakeToken).totalSupply();
 
         subjectId = keccak256(
-            abi.encode(block.chainid, address(this), cfg.stakeToken, cfg.treasury, msg.sender, cfg.salt)
+            abi.encode(
+                block.chainid, address(this), cfg.stakeToken, cfg.treasury, msg.sender, cfg.salt
+            )
         );
         require(splitterOfSubject[subjectId] == address(0), "SUBJECT_EXISTS");
 
@@ -95,9 +97,8 @@ contract PermissionlessExistingTokenRevenueFactory is
             subjectId, cfg.stakeToken, splitter, cfg.treasury, msg.sender, true, cfg.label
         );
 
-        ingress = RevenueIngressFactory(ingressFactory).createIngressAccount(
-            subjectId, "default-usdc-ingress", true
-        );
+        ingress = RevenueIngressFactory(ingressFactory)
+            .createIngressAccount(subjectId, "default-usdc-ingress", true);
 
         emit ExistingTokenRevenueSubjectCreated(
             subjectId,

@@ -5,8 +5,12 @@ import {FullMath} from "@uniswap/v4-core/src/libraries/FullMath.sol";
 import {Owned} from "src/auth/Owned.sol";
 import {SafeTransferLib} from "src/libraries/SafeTransferLib.sol";
 import {IERC20SupplyMinimal} from "src/revenue/interfaces/IERC20SupplyMinimal.sol";
-import {IRevenueIngressAccountMinimal} from "src/revenue/interfaces/IRevenueIngressAccountMinimal.sol";
-import {IRevenueIngressFactoryMinimal} from "src/revenue/interfaces/IRevenueIngressFactoryMinimal.sol";
+import {
+    IRevenueIngressAccountMinimal
+} from "src/revenue/interfaces/IRevenueIngressAccountMinimal.sol";
+import {
+    IRevenueIngressFactoryMinimal
+} from "src/revenue/interfaces/IRevenueIngressFactoryMinimal.sol";
 import {IRevenueShareSplitter} from "src/revenue/interfaces/IRevenueShareSplitter.sol";
 import {IRegentRevenueFeeRouter} from "src/revenue/interfaces/IRegentRevenueFeeRouter.sol";
 import {ISubjectLifecycleSync} from "src/revenue/interfaces/ISubjectLifecycleSync.sol";
@@ -372,15 +376,17 @@ contract LiveStakeFeePoolSplitter is Owned, IRevenueShareSplitter, ISubjectLifec
 
         uint256 stakeBal = stakedBalance[account];
         if (stakeBal > 0) {
-            storedClaimableUsdc[account] +=
-                FullMath.mulDiv(stakeBal, currentAcc - priorAcc, ACC_PRECISION);
+            storedClaimableUsdc[
+                account
+            ] += FullMath.mulDiv(stakeBal, currentAcc - priorAcc, ACC_PRECISION);
         }
         rewardDebtUsdc[account] = currentAcc;
     }
 
     function _subjectIsActive() internal view returns (bool) {
         return
-            !subjectLifecycleRetired && ISubjectRegistry(subjectRegistry).getSubject(subjectId).active;
+            !subjectLifecycleRetired
+                && ISubjectRegistry(subjectRegistry).getSubject(subjectId).active;
     }
 
     function _isKnownIngress(address ingress) internal view returns (bool) {
@@ -414,7 +420,10 @@ contract LiveStakeFeePoolSplitter is Owned, IRevenueShareSplitter, ISubjectLifec
         }
     }
 
-    function _pullExactStakeToken(address from, uint256 amount) internal returns (uint256 received) {
+    function _pullExactStakeToken(address from, uint256 amount)
+        internal
+        returns (uint256 received)
+    {
         uint256 beforeBalance = IERC20SupplyMinimal(stakeToken).balanceOf(address(this));
         stakeToken.safeTransferFrom(from, address(this), amount);
         uint256 afterBalance = IERC20SupplyMinimal(stakeToken).balanceOf(address(this));

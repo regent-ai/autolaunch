@@ -6,51 +6,51 @@ import {Test} from "forge-std/Test.sol";
 import {RevenueIngressAccount} from "src/revenue/RevenueIngressAccount.sol";
 import {RevenueIngressFactory} from "src/revenue/RevenueIngressFactory.sol";
 import {RevenueShareFactory} from "src/revenue/RevenueShareFactory.sol";
-import {RevenueShareSplitterDeployer} from "src/revenue/RevenueShareSplitterDeployer.sol";
-import {RevenueShareSplitter} from "src/revenue/RevenueShareSplitter.sol";
+import {RevenueShareSplitterV2} from "src/revenue/RevenueShareSplitterV2.sol";
 import {SubjectRegistry} from "src/revenue/SubjectRegistry.sol";
 import {MintableERC20Mock} from "test/mocks/MintableERC20Mock.sol";
+import {MockRegentRevenueFeeRouter} from "test/mocks/MockRegentRevenueFeeRouter.sol";
 
 contract RevenueIngressAccountTest is Test {
     bytes32 internal constant SUBJECT_ID = keccak256("subject");
     address internal constant TREASURY_SAFE = address(0x1111);
     address internal constant AGENT_TREASURY = address(0x2222);
-    address internal constant REGENT_RECIPIENT = address(0x3333);
 
     MintableERC20Mock internal usdc;
     MintableERC20Mock internal stakeToken;
     SubjectRegistry internal subjectRegistry;
     RevenueShareFactory internal revenueShareFactory;
     RevenueIngressFactory internal ingressFactory;
-    RevenueShareSplitter internal splitter;
+    RevenueShareSplitterV2 internal splitter;
     RevenueIngressAccount internal ingress;
+    MockRegentRevenueFeeRouter internal feeRouter;
 
     function setUp() external {
         usdc = new MintableERC20Mock("USD Coin", "USDC");
         stakeToken = new MintableERC20Mock("Agent", "AGENT");
         stakeToken.mint(address(this), 1000e18);
         subjectRegistry = new SubjectRegistry(address(this));
+        feeRouter = new MockRegentRevenueFeeRouter(address(usdc), address(0x8888));
         revenueShareFactory = new RevenueShareFactory(
-            address(this), address(usdc), subjectRegistry, new RevenueShareSplitterDeployer()
+            address(this), address(usdc), subjectRegistry, address(feeRouter)
         );
         ingressFactory =
             new RevenueIngressFactory(address(usdc), address(subjectRegistry), address(this));
-        subjectRegistry.transferOwnership(address(revenueShareFactory));
-        revenueShareFactory.acceptSubjectRegistryOwnership();
+        subjectRegistry.setAuthorizedRegistrar(address(revenueShareFactory), true);
 
         address splitterAddress = revenueShareFactory.createSubjectSplitter(
             SUBJECT_ID,
             address(stakeToken),
             address(ingressFactory),
             TREASURY_SAFE,
-            REGENT_RECIPIENT,
+            address(feeRouter),
             1000e18,
             "Subject",
             block.chainid,
             address(0x8004),
             42
         );
-        splitter = RevenueShareSplitter(splitterAddress);
+        splitter = RevenueShareSplitterV2(splitterAddress);
         vm.prank(TREASURY_SAFE);
         ingress = RevenueIngressAccount(
             payable(ingressFactory.createIngressAccount(SUBJECT_ID, "default-usdc-ingress", true))
@@ -66,9 +66,11 @@ contract RevenueIngressAccountTest is Test {
         assertEq(recognized, 1000e18);
         assertTrue(sourceRef != bytes32(0));
         assertEq(usdc.balanceOf(address(ingress)), 0);
-        assertEq(usdc.balanceOf(address(splitter)), 1000e18);
-        assertEq(splitter.treasuryResidualUsdc(), 990e18);
-        assertEq(splitter.protocolReserveUsdc(), 10e18);
+        assertEq(usdc.balanceOf(address(splitter)), 900e18);
+        assertEq(usdc.balanceOf(address(feeRouter)), 100e18);
+        assertEq(feeRouter.totalUsdcProcessed(), 100e18);
+        assertEq(splitter.treasuryResidualUsdc(), 900e18);
+        assertEq(splitter.protocolFeeUsdc(), 100e18);
     }
 
     function testDepositUSDCRecordsAccountingTag() external {

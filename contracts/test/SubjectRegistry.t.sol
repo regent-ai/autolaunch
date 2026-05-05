@@ -14,6 +14,8 @@ contract SubjectRegistryTest is Test {
     address internal constant INITIAL_SAFE = address(0x1111);
     address internal constant NEXT_SAFE = address(0x2222);
     address internal constant SUBJECT_MANAGER = address(0x3333);
+    address internal constant REGISTRAR = address(0x4444);
+    address internal constant CREATOR = address(0x5555);
 
     SubjectRegistry internal registry;
 
@@ -67,5 +69,62 @@ contract SubjectRegistryTest is Test {
 
         assertEq(registry.subjectForIdentity(8453, address(0x5555), 7), SUBJECT_ID);
         assertTrue(identityHash != bytes32(0));
+    }
+
+    function testAuthorizedRegistrarAndCanonicalDuplicateRules() external {
+        bytes32 nextSubjectId = keccak256("next-subject");
+
+        vm.prank(REGISTRAR);
+        vm.expectRevert("ONLY_REGISTRAR");
+        registry.createSubject(
+            nextSubjectId, address(0xAAAA), NEXT_SPLITTER, NEXT_SAFE, true, "Next"
+        );
+
+        vm.prank(OWNER);
+        registry.setAuthorizedRegistrar(REGISTRAR, true);
+
+        assertTrue(registry.canRegisterSubject(REGISTRAR));
+
+        vm.prank(REGISTRAR);
+        vm.expectRevert("STAKE_TOKEN_ALREADY_LINKED");
+        registry.createSubject(nextSubjectId, STAKE_TOKEN, NEXT_SPLITTER, NEXT_SAFE, true, "Next");
+    }
+
+    function testPermissionlessSubjectsAllowDuplicateStakeToken() external {
+        bytes32 firstPermissionlessId = keccak256("first-permissionless");
+        bytes32 secondPermissionlessId = keccak256("second-permissionless");
+
+        vm.prank(OWNER);
+        registry.setAuthorizedRegistrar(REGISTRAR, true);
+
+        vm.prank(REGISTRAR);
+        registry.createPermissionlessSubject(
+            firstPermissionlessId,
+            STAKE_TOKEN,
+            address(0xF001),
+            NEXT_SAFE,
+            CREATOR,
+            true,
+            "Shared one"
+        );
+
+        vm.prank(REGISTRAR);
+        registry.createPermissionlessSubject(
+            secondPermissionlessId,
+            STAKE_TOKEN,
+            address(0xF002),
+            NEXT_SAFE,
+            CREATOR,
+            true,
+            "Shared two"
+        );
+
+        assertEq(registry.subjectOfStakeToken(STAKE_TOKEN), SUBJECT_ID);
+        assertEq(registry.subjectCountForStakeToken(STAKE_TOKEN), 3);
+        assertEq(registry.subjectForStakeTokenAt(STAKE_TOKEN, 0), SUBJECT_ID);
+        assertEq(registry.subjectForStakeTokenAt(STAKE_TOKEN, 1), firstPermissionlessId);
+        assertEq(registry.subjectForStakeTokenAt(STAKE_TOKEN, 2), secondPermissionlessId);
+        assertTrue(registry.canManageSubject(firstPermissionlessId, NEXT_SAFE));
+        assertTrue(registry.canManageSubject(firstPermissionlessId, CREATOR));
     }
 }

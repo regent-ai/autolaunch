@@ -15,7 +15,10 @@ interface ISubjectRegistry {
     function subjectOfStakeToken(address stakeToken) external view returns (bytes32);
     function canRegisterSubject(address account) external view returns (bool);
     function subjectCountForStakeToken(address stakeToken) external view returns (uint256);
-    function subjectForStakeTokenAt(address stakeToken, uint256 index) external view returns (bytes32);
+    function subjectForStakeTokenAt(address stakeToken, uint256 index)
+        external
+        view
+        returns (bytes32);
     function subjectsForStakeToken(address stakeToken) external view returns (bytes32[] memory);
     function canManageSubject(bytes32 subjectId, address account) external view returns (bool);
 

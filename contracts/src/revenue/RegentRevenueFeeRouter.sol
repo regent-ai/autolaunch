@@ -86,8 +86,7 @@ contract RegentRevenueFeeRouter is Owned, IRegentRevenueFeeRouter {
         require(cfg.splitter == msg.sender, "ONLY_SUBJECT_SPLITTER");
         require(cfg.treasurySafe == subjectTreasury, "TREASURY_MISMATCH");
         require(
-            IERC20SupplyMinimal(usdc).balanceOf(address(this)) >= usdcAmount,
-            "USDC_NOT_RECEIVED"
+            IERC20SupplyMinimal(usdc).balanceOf(address(this)) >= usdcAmount, "USDC_NOT_RECEIVED"
         );
 
         IRegentUsdOracle.Quote memory quote = oracle.quoteRegentForUsdc(usdcAmount);
@@ -144,8 +143,7 @@ contract RegentRevenueFeeRouter is Owned, IRegentRevenueFeeRouter {
         require(buybackAdapter_ != address(0), "BUYBACK_ADAPTER_ZERO");
         require(IRegentBuybackAdapter(buybackAdapter_).usdc() == usdc, "ADAPTER_USDC_MISMATCH");
         require(
-            IRegentBuybackAdapter(buybackAdapter_).regent() == regent,
-            "ADAPTER_REGENT_MISMATCH"
+            IRegentBuybackAdapter(buybackAdapter_).regent() == regent, "ADAPTER_REGENT_MISMATCH"
         );
         buybackAdapter = IRegentBuybackAdapter(buybackAdapter_);
         emit BuybackAdapterSet(buybackAdapter_);
