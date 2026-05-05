@@ -491,7 +491,9 @@ defmodule Autolaunch.Launch.Core do
   defp ensure_agent_eligible(%{state: "eligible"}), do: :ok
   defp ensure_agent_eligible(agent), do: {:error, {:agent_not_eligible, agent}}
 
-  def serialize_wallet_action(%{chain_id: chain_id, to: to, value_hex: value_hex, data: data} = action) do
+  def serialize_wallet_action(
+        %{chain_id: chain_id, to: to, value_hex: value_hex, data: data} = action
+      ) do
     %{
       action_id: Map.fetch!(action, :action_id),
       owner_product: "autolaunch",
