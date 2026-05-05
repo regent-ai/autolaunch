@@ -1,0 +1,172 @@
+name: validation
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  ELIXIR_VERSION: "1.19.5"
+  OTP_VERSION: "28.4"
+  ELIXIR_UTILS_REF: "a5b25614055eb71b48f619f2d405ea7d763b8a10"
+  DESIGN_SYSTEM_REF: "eb1c67265c3f0f831373c06f292a7badfb50a5e7"
+  PLATFORM_REF: "9cf5a21b1f0ccb9a0f610aa07f9ed3efca0de8cf"
+  REGENTS_CLI_REF: "f7d3cbe1d426427762db9739010bc0c67e158052"
+  TECHTREE_REF: "7021cc97edfd43cad62d14399bed649981511f3f"
+  SIWA_SERVER_REF: "3b8c6c2cdefc0094d73910d5f5ce9ca7e7da02b2"
+
+jobs:
+  app:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: autolaunch_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      MIX_ENV: test
+      LOCAL_DATABASE_URL: ecto://postgres:postgres@localhost/autolaunch_test
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: autolaunch
+
+      - uses: actions/checkout@v4
+        with:
+          repository: regents-ai/elixir-utils
+          ref: ${{ env.ELIXIR_UTILS_REF }}
+          path: elixir-utils
+          token: ${{ secrets.REGENTS_CI_GITHUB_TOKEN || github.token }}
+
+      - uses: actions/checkout@v4
+        with:
+          repository: regents-ai/design-system
+          ref: ${{ env.DESIGN_SYSTEM_REF }}
+          path: design-system
+          token: ${{ secrets.REGENTS_CI_GITHUB_TOKEN || github.token }}
+
+      - uses: actions/checkout@v4
+        with:
+          repository: regents-ai/platform
+          ref: ${{ env.PLATFORM_REF }}
+          path: platform
+          token: ${{ secrets.REGENTS_CI_GITHUB_TOKEN || github.token }}
+
+      - uses: actions/checkout@v4
+        with:
+          repository: regents-ai/regents-cli
+          ref: ${{ env.REGENTS_CLI_REF }}
+          path: regents-cli
+          token: ${{ secrets.REGENTS_CI_GITHUB_TOKEN || github.token }}
+
+      - uses: erlef/setup-beam@v1
+        with:
+          elixir-version: ${{ env.ELIXIR_VERSION }}
+          otp-version: ${{ env.OTP_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Install deps
+        working-directory: autolaunch
+        run: mix deps.get
+
+      - name: Run Autolaunch validation
+        working-directory: autolaunch
+        run: mix precommit
+
+  cross-repo-contracts:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: autolaunch
+
+      - uses: actions/checkout@v4
+        with:
+          repository: regents-ai/regents-cli
+          ref: ${{ env.REGENTS_CLI_REF }}
+          path: regents-cli
+          token: ${{ secrets.REGENTS_CI_GITHUB_TOKEN || github.token }}
+
+      - uses: actions/checkout@v4
+        with:
+          repository: regents-ai/platform
+          ref: ${{ env.PLATFORM_REF }}
+          path: platform
+          token: ${{ secrets.REGENTS_CI_GITHUB_TOKEN || github.token }}
+
+      - uses: actions/checkout@v4
+        with:
+          repository: regents-ai/techtree
+          ref: ${{ env.TECHTREE_REF }}
+          path: techtree
+          token: ${{ secrets.REGENTS_CI_GITHUB_TOKEN || github.token }}
+
+      - uses: actions/checkout@v4
+        with:
+          repository: regents-ai/siwa-server
+          ref: ${{ env.SIWA_SERVER_REF }}
+          path: siwa-server
+          token: ${{ secrets.REGENTS_CI_GITHUB_TOKEN || github.token }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: "10.28.0"
+
+      - name: Install Regents CLI deps
+        working-directory: regents-cli
+        run: pnpm install --frozen-lockfile
+
+      - name: Run cross-repo contract checks
+        working-directory: regents-cli
+        run: |
+          pnpm check:openapi
+          pnpm check:cli-contract
+
+  release-image:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: autolaunch
+
+      - uses: actions/checkout@v4
+        with:
+          repository: regents-ai/elixir-utils
+          ref: ${{ env.ELIXIR_UTILS_REF }}
+          path: elixir-utils
+          token: ${{ secrets.REGENTS_CI_GITHUB_TOKEN || github.token }}
+
+      - uses: actions/checkout@v4
+        with:
+          repository: regents-ai/design-system
+          ref: ${{ env.DESIGN_SYSTEM_REF }}
+          path: design-system
+          token: ${{ secrets.REGENTS_CI_GITHUB_TOKEN || github.token }}
+
+      - name: Build release image from assembled workspace
+        run: docker build -f autolaunch/Dockerfile .

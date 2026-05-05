@@ -22,13 +22,13 @@ defmodule Autolaunch.ReleaseDoctor do
     {:usdc_addresses, "USDC address"},
     {:revenue_share_factory_addresses, "revenue share factory address"},
     {:revenue_ingress_factory_addresses, "revenue ingress factory address"},
-    {:chain_rpc_urls, "RPC url"},
-    {:erc8004_subgraph_urls, "ERC-8004 subgraph url"}
+    {:chain_rpc_urls, "RPC url"}
   ]
   @identity_warning_checks [
     {:identity_registry_address, "identity registry address"}
   ]
   @verifier_identity_warning_checks [
+    {:erc8004_subgraph_urls, "ERC-8004 subgraph url"},
     {:identity_registry_addresses, "identity registry address"}
   ]
   @trust_networks [
@@ -300,28 +300,34 @@ defmodule Autolaunch.ReleaseDoctor do
   end
 
   defp verifier_chain_address_checks do
+    active_chain_id = launch_chain_id()
+
     for %{id: chain_id, label: chain_label} <- InfrastructureConfig.base_chains(),
         {key, label} <- @verifier_chain_address_checks do
       value = InfrastructureConfig.chain_text(key, chain_id)
+      severity = verifier_chain_severity(chain_id, active_chain_id)
 
       if configured_verifier_value?(key, value) do
-        ok_check("launch_#{key}_#{chain_id}", :error, "#{chain_label} #{label} is configured.")
+        ok_check("launch_#{key}_#{chain_id}", severity, "#{chain_label} #{label} is configured.")
       else
         fail_check(
           "launch_#{key}_#{chain_id}",
-          :error,
+          severity,
           "#{chain_label} #{label} is missing or invalid."
         )
       end
     end
   end
 
+  defp verifier_chain_severity(chain_id, chain_id), do: :error
+  defp verifier_chain_severity(_chain_id, _active_chain_id), do: :warning
+
   defp verifier_identity_warning_checks do
     for %{id: chain_id, label: chain_label} <- InfrastructureConfig.base_chains(),
         {key, label} <- @verifier_identity_warning_checks do
       value = InfrastructureConfig.chain_text(key, chain_id)
 
-      if configured_address?(value) do
+      if configured_warning_value?(key, value) do
         ok_check("launch_#{key}_#{chain_id}", :warning, "#{chain_label} #{label} is configured.")
       else
         fail_check(
@@ -332,6 +338,9 @@ defmodule Autolaunch.ReleaseDoctor do
       end
     end
   end
+
+  defp configured_warning_value?(:erc8004_subgraph_urls, value), do: configured_url?(value)
+  defp configured_warning_value?(_key, value), do: configured_address?(value)
 
   defp blocking_check_ok?(%{severity: :warning}), do: true
   defp blocking_check_ok?(%{ok: ok}), do: ok
@@ -346,7 +355,7 @@ defmodule Autolaunch.ReleaseDoctor do
   defp configured_url?(_value), do: false
 
   defp configured_verifier_value?(key, value)
-       when key in [:chain_rpc_urls, :erc8004_subgraph_urls],
+       when key in [:chain_rpc_urls],
        do: configured_url?(value)
 
   defp configured_verifier_value?(_key, value), do: configured_address?(value)

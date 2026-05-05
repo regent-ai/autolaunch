@@ -32,6 +32,9 @@ config :autolaunch, :regent_staking,
   rpc_url: "",
   contract_address: ""
 
+config :autolaunch, :contract_admin,
+  operator_wallets: ["0xB26A3609acD791e2eA3f1900619C910B45705adD"]
+
 config :esbuild,
   version: "0.25.4",
   autolaunch: [
