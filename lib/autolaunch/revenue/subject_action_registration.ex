@@ -38,8 +38,6 @@ defmodule Autolaunch.Revenue.SubjectActionRegistration do
       "stake",
       "unstake",
       "claim_usdc",
-      "claim_emissions",
-      "claim_and_stake_emissions",
       "sweep_ingress"
     ])
     |> validate_inclusion(:status, ["pending", "confirmed", "rejected"])

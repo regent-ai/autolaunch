@@ -199,14 +199,6 @@ defmodule Autolaunch.Portfolio do
     |> maybe_action(subject.wallet_token_balance_raw > 0, "stake")
     |> maybe_action(position.claimable_usdc_raw > 0, "claim_usdc")
     |> maybe_action(
-      position_value(position, :claimable_stake_token_raw, 0) > 0,
-      "claim_emissions"
-    )
-    |> maybe_action(
-      position_value(position, :claimable_stake_token_raw, 0) > 0,
-      "claim_and_stake_emissions"
-    )
-    |> maybe_action(
       subject.can_manage_ingress and
         Enum.any?(subject.ingress_accounts, &(&1.usdc_balance_raw > 0)),
       "sweep_ingress"

@@ -36,7 +36,6 @@ defmodule AutolaunchWeb.SubjectLive.Presenter do
       positive_amount?(Map.get(subject, :claimable_usdc)) -> :claim
       positive_amount?(Map.get(subject, :wallet_token_balance)) -> :stake
       positive_amount?(Map.get(subject, :wallet_stake_balance)) -> :unstake
-      positive_amount?(Map.get(subject, :claimable_stake_token)) -> :claim_and_stake_emissions
       true -> nil
     end
   end
@@ -44,9 +43,6 @@ defmodule AutolaunchWeb.SubjectLive.Presenter do
   def recommended_action_heading(:claim), do: "Claim available USDC first"
   def recommended_action_heading(:stake), do: "Stake idle wallet balance next"
   def recommended_action_heading(:unstake), do: "Unstake if you need wallet liquidity"
-
-  def recommended_action_heading(:claim_and_stake_emissions),
-    do: "Roll emissions back into stake"
 
   def recommended_action_heading(_), do: "No urgent wallet action detected"
 
@@ -62,10 +58,6 @@ defmodule AutolaunchWeb.SubjectLive.Presenter do
     "There is no claimable USDC or idle wallet balance, but #{wallet_position.wallet_stake_balance} agent tokens are still committed. Unstake only if you want that balance back in the wallet."
   end
 
-  def recommended_action_summary(:claim_and_stake_emissions, _wallet_position) do
-    "Agent-token emissions are available now. Claim them on their own or move them straight back into the subject revenue contract."
-  end
-
   def recommended_action_summary(_, _wallet_position) do
     "Everything important is in view. Use the action cards below when you need to claim, stake, sweep, or inspect the contract details."
   end
@@ -73,7 +65,6 @@ defmodule AutolaunchWeb.SubjectLive.Presenter do
   def recommended_status_label(:claim), do: "Claim ready"
   def recommended_status_label(:stake), do: "Stake ready"
   def recommended_status_label(:unstake), do: "Unstake available"
-  def recommended_status_label(:claim_and_stake_emissions), do: "Emissions ready"
   def recommended_status_label(_), do: "Active"
 
   def subject_heading(_subject, _subject_id, %{agent_name: agent_name})
@@ -126,8 +117,6 @@ defmodule AutolaunchWeb.SubjectLive.Presenter do
   def action_to_atom("stake"), do: {:ok, :stake}
   def action_to_atom("unstake"), do: {:ok, :unstake}
   def action_to_atom("claim"), do: {:ok, :claim}
-  def action_to_atom("claim_emissions"), do: {:ok, :claim_emissions}
-  def action_to_atom("claim_and_stake_emissions"), do: {:ok, :claim_and_stake_emissions}
   def action_to_atom(_action), do: :error
 
   def action_error(:unauthorized), do: "Privy session required before this wallet action."

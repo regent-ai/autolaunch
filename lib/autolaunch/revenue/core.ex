@@ -143,12 +143,6 @@ defmodule Autolaunch.Revenue.Core do
   def claim_usdc(subject_id, attrs, current_human),
     do: write_action(:claim_usdc, subject_id, attrs, current_human)
 
-  def claim_emissions(subject_id, attrs, current_human),
-    do: write_action(:claim_emissions, subject_id, attrs, current_human)
-
-  def claim_and_stake_emissions(subject_id, attrs, current_human),
-    do: write_action(:claim_and_stake_emissions, subject_id, attrs, current_human)
-
   def sweep_ingress(subject_id, ingress_address, attrs, current_human) do
     with {:ok, subject} <- get_subject(subject_id, current_human),
          {:ok, wallet_address} <- required_wallet(current_human),
@@ -234,37 +228,19 @@ defmodule Autolaunch.Revenue.Core do
     end
   end
 
-  defp build_write_request(action, subject, wallet_address, _attrs)
-       when action in [:claim_usdc, :claim_emissions] do
+  defp build_write_request(:claim_usdc, subject, wallet_address, _attrs) do
     {:ok,
      %{
        subject: subject,
        prepared:
          prepare_subject_action!(
-           action,
+           :claim_usdc,
            subject,
            wallet_address,
            chain_id: subject.chain_id,
            to: subject.splitter_address,
            value_hex: "0x0",
-           data: single_recipient_action_call(action, wallet_address)
-         )
-     }}
-  end
-
-  defp build_write_request(:claim_and_stake_emissions, subject, wallet_address, _attrs) do
-    {:ok,
-     %{
-       subject: subject,
-       prepared:
-         prepare_subject_action!(
-           :claim_and_stake_emissions,
-           subject,
-           wallet_address,
-           chain_id: subject.chain_id,
-           to: subject.splitter_address,
-           value_hex: "0x0",
-           data: Abi.encode_claim_and_restake_stake_token()
+           data: single_recipient_action_call(:claim_usdc, wallet_address)
          )
      }}
   end
@@ -567,36 +543,7 @@ defmodule Autolaunch.Revenue.Core do
   end
 
   defp validate_registered_action(
-         action,
-         _subject,
-         wallet_address,
-         _attrs,
-         tx,
-         expected_to,
-         _registration_attrs,
-         _receipt_state
-       )
-       when action in [:claim_usdc, :claim_emissions] do
-    expected_decoded_action = if action == :claim_usdc, do: :claim_usdc, else: :claim_stake_token
-
-    with :ok <- validate_tx_sender(tx, wallet_address),
-         :ok <- validate_tx_target(tx, expected_to) do
-      case Abi.decode_call_data(tx.input) do
-        {:ok, %{action: ^expected_decoded_action, recipient: recipient}} ->
-          validate_equal(
-            normalize_address(recipient),
-            normalize_address(wallet_address),
-            :transaction_data_mismatch
-          )
-
-        _ ->
-          {:error, :transaction_data_mismatch}
-      end
-    end
-  end
-
-  defp validate_registered_action(
-         :claim_and_stake_emissions,
+         :claim_usdc,
          _subject,
          wallet_address,
          _attrs,
@@ -608,8 +555,15 @@ defmodule Autolaunch.Revenue.Core do
     with :ok <- validate_tx_sender(tx, wallet_address),
          :ok <- validate_tx_target(tx, expected_to) do
       case Abi.decode_call_data(tx.input) do
-        {:ok, %{action: :claim_and_restake_stake_token}} -> :ok
-        _ -> {:error, :transaction_data_mismatch}
+        {:ok, %{action: :claim_usdc, recipient: recipient}} ->
+          validate_equal(
+            normalize_address(recipient),
+            normalize_address(wallet_address),
+            :transaction_data_mismatch
+          )
+
+        _ ->
+          {:error, :transaction_data_mismatch}
       end
     end
   end
@@ -809,14 +763,9 @@ defmodule Autolaunch.Revenue.Core do
   defp single_recipient_action_call(:claim_usdc, wallet_address),
     do: Abi.encode_claim_usdc(wallet_address)
 
-  defp single_recipient_action_call(:claim_emissions, wallet_address),
-    do: Abi.encode_claim_stake_token(wallet_address)
-
   defp action_name(:stake), do: "stake"
   defp action_name(:unstake), do: "unstake"
   defp action_name(:claim_usdc), do: "claim_usdc"
-  defp action_name(:claim_emissions), do: "claim_emissions"
-  defp action_name(:claim_and_stake_emissions), do: "claim_and_stake_emissions"
   defp action_name(:sweep_ingress), do: "sweep_ingress"
 
   defp validate_receipt_state(chain_id, tx_hash, wallet_address, expected_to) do

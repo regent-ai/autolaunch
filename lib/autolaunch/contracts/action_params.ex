@@ -199,12 +199,6 @@ defmodule Autolaunch.Contracts.ActionParams do
   defp risk_copy("subject", "claim_usdc"),
     do: "Claims available Base USDC for this subject token."
 
-  defp risk_copy("subject", "claim_emissions"),
-    do: "Claims available subject token rewards."
-
-  defp risk_copy("subject", "claim_and_stake_emissions"),
-    do: "Claims available subject token rewards and stakes them."
-
   defp risk_copy("subject", "sweep_ingress"),
     do: "Moves Base USDC from this subject intake address into the subject revenue split."
 

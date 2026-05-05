@@ -214,29 +214,6 @@ defmodule AutolaunchWeb.SubjectLive do
                           Prepare unstake
                         </button>
                       <% end %>
-                    <% :claim_and_stake_emissions -> %>
-                      <%= if @pending_actions[:claim_and_stake_emissions] do %>
-                        <.wallet_tx_button
-                          id="subject-claim-and-stake-primary"
-                          class="al-subject-primary-button"
-                          wallet_action={@pending_actions[:claim_and_stake_emissions].wallet_action}
-                          register_endpoint={~p"/v1/app/subjects/#{@subject_id}/claim-and-stake-emissions"}
-                          register_body={%{}}
-                          pending_message="Claim and stake sent. Waiting for confirmation."
-                          success_message="Emission claim and stake registered."
-                        >
-                          Send claim and stake
-                        </.wallet_tx_button>
-                      <% else %>
-                        <button
-                          type="button"
-                          class="al-subject-primary-button"
-                          phx-click="prepare_action"
-                          phx-value-action="claim_and_stake_emissions"
-                        >
-                          Prepare claim and stake
-                        </button>
-                      <% end %>
                     <% _ -> %>
                       <.link navigate={~p"/contracts?subject_id=#{@subject_id}"} class="al-subject-primary-button">
                         Open advanced review
@@ -407,62 +384,6 @@ defmodule AutolaunchWeb.SubjectLive do
                         phx-value-action="unstake"
                       >
                         Prepare unstake
-                      </button>
-                    <% end %>
-                  </div>
-                </article>
-
-                <article class="al-subject-secondary-card">
-                  <div>
-                    <p class="al-kicker">Emissions</p>
-                    <h3>Claim agent-token emissions or roll them back into stake.</h3>
-                    <p>{@wallet_position.emissions_note}</p>
-                  </div>
-
-                  <div class="al-subject-split-actions">
-                    <%= if @pending_actions[:claim_emissions] do %>
-                      <.wallet_tx_button
-                        id="subject-claim-emissions"
-                        class="al-subject-ghost-button"
-                        wallet_action={@pending_actions[:claim_emissions].wallet_action}
-                        register_endpoint={~p"/v1/app/subjects/#{@subject_id}/claim-emissions"}
-                        register_body={%{}}
-                        pending_message="Agent-token emission claim sent. Waiting for confirmation."
-                        success_message="Agent-token emission claim registered."
-                      >
-                        Send emissions claim
-                      </.wallet_tx_button>
-                    <% else %>
-                      <button
-                        type="button"
-                        class="al-subject-ghost-button"
-                        phx-click="prepare_action"
-                        phx-value-action="claim_emissions"
-                      >
-                        Prepare emissions claim
-                      </button>
-                    <% end %>
-
-                    <%= if @pending_actions[:claim_and_stake_emissions] do %>
-                      <.wallet_tx_button
-                        id="subject-claim-and-stake-emissions"
-                        class="al-subject-ghost-button"
-                        wallet_action={@pending_actions[:claim_and_stake_emissions].wallet_action}
-                        register_endpoint={~p"/v1/app/subjects/#{@subject_id}/claim-and-stake-emissions"}
-                        register_body={%{}}
-                        pending_message="Agent-token emission claim and stake sent. Waiting for confirmation."
-                        success_message="Agent-token emission claim and stake registered."
-                      >
-                        Send claim and stake
-                      </.wallet_tx_button>
-                    <% else %>
-                      <button
-                        type="button"
-                        class="al-subject-ghost-button"
-                        phx-click="prepare_action"
-                        phx-value-action="claim_and_stake_emissions"
-                      >
-                        Prepare claim and stake
                       </button>
                     <% end %>
                   </div>
@@ -1579,12 +1500,6 @@ defmodule AutolaunchWeb.SubjectLive do
 
         :claim ->
           context_module().claim_usdc(subject_id, attrs, current_human)
-
-        :claim_emissions ->
-          context_module().claim_emissions(subject_id, attrs, current_human)
-
-        :claim_and_stake_emissions ->
-          context_module().claim_and_stake_emissions(subject_id, attrs, current_human)
 
         {:sweep, ingress_address} ->
           context_module().sweep_ingress(subject_id, ingress_address, attrs, current_human)
