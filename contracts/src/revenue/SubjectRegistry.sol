@@ -14,6 +14,8 @@ contract SubjectRegistry is Owned, ISubjectRegistry {
 
     mapping(bytes32 => SubjectConfig) private subjects;
     mapping(address => bytes32) public override subjectOfStakeToken;
+    mapping(address => bytes32[]) private subjectsByStakeToken;
+    mapping(address => bool) public authorizedRegistrars;
     mapping(bytes32 => mapping(address => bool)) public subjectManagers;
     mapping(bytes32 => IdentityLink[]) private identityLinks;
     mapping(bytes32 => bytes32) public subjectOfIdentityHash;
@@ -23,6 +25,15 @@ contract SubjectRegistry is Owned, ISubjectRegistry {
         address indexed stakeToken,
         address indexed splitter,
         address treasurySafe,
+        string label
+    );
+    event AuthorizedRegistrarSet(address indexed registrar, bool enabled);
+    event PermissionlessSubjectCreated(
+        bytes32 indexed subjectId,
+        address indexed stakeToken,
+        address indexed splitter,
+        address treasurySafe,
+        address creator,
         string label
     );
     event SubjectUpdated(
@@ -50,6 +61,11 @@ contract SubjectRegistry is Owned, ISubjectRegistry {
 
     constructor(address owner_) Owned(owner_) {}
 
+    modifier onlyRegistrar() {
+        require(canRegisterSubject(msg.sender), "ONLY_REGISTRAR");
+        _;
+    }
+
     modifier onlySubjectManager(bytes32 subjectId) {
         require(canManageSubject(subjectId, msg.sender), "ONLY_SUBJECT_MANAGER");
         _;
@@ -67,7 +83,7 @@ contract SubjectRegistry is Owned, ISubjectRegistry {
         address treasurySafe,
         bool active,
         string calldata label
-    ) external onlyOwner {
+    ) external override onlyRegistrar {
         require(subjectId != bytes32(0), "SUBJECT_ZERO");
         require(stakeToken != address(0), "STAKE_TOKEN_ZERO");
         require(splitter != address(0), "SPLITTER_ZERO");
@@ -83,10 +99,57 @@ contract SubjectRegistry is Owned, ISubjectRegistry {
             label: label
         });
         subjectOfStakeToken[stakeToken] = subjectId;
+        subjectsByStakeToken[stakeToken].push(subjectId);
         subjectManagers[subjectId][treasurySafe] = true;
 
         emit SubjectCreated(subjectId, stakeToken, splitter, treasurySafe, label);
         emit SubjectManagerSet(subjectId, treasurySafe, true);
+    }
+
+    function createPermissionlessSubject(
+        bytes32 subjectId,
+        address stakeToken,
+        address splitter,
+        address treasurySafe,
+        address creator,
+        bool active,
+        string calldata label
+    ) external override onlyRegistrar {
+        require(subjectId != bytes32(0), "SUBJECT_ZERO");
+        require(stakeToken != address(0), "STAKE_TOKEN_ZERO");
+        require(splitter != address(0), "SPLITTER_ZERO");
+        require(treasurySafe != address(0), "TREASURY_SAFE_ZERO");
+        require(creator != address(0), "CREATOR_ZERO");
+        require(subjects[subjectId].stakeToken == address(0), "SUBJECT_EXISTS");
+
+        subjects[subjectId] = SubjectConfig({
+            stakeToken: stakeToken,
+            splitter: splitter,
+            treasurySafe: treasurySafe,
+            active: active,
+            label: label
+        });
+
+        subjectsByStakeToken[stakeToken].push(subjectId);
+
+        if (subjectOfStakeToken[stakeToken] == bytes32(0)) {
+            subjectOfStakeToken[stakeToken] = subjectId;
+        }
+
+        subjectManagers[subjectId][treasurySafe] = true;
+        subjectManagers[subjectId][creator] = true;
+
+        emit PermissionlessSubjectCreated(
+            subjectId, stakeToken, splitter, treasurySafe, creator, label
+        );
+        emit SubjectManagerSet(subjectId, treasurySafe, true);
+        emit SubjectManagerSet(subjectId, creator, true);
+    }
+
+    function setAuthorizedRegistrar(address registrar, bool enabled) external onlyOwner {
+        require(registrar != address(0), "REGISTRAR_ZERO");
+        authorizedRegistrars[registrar] = enabled;
+        emit AuthorizedRegistrarSet(registrar, enabled);
     }
 
     function updateSubject(
@@ -215,6 +278,37 @@ contract SubjectRegistry is Owned, ISubjectRegistry {
 
         return
             account == owner || subjectManagers[subjectId][account] || account == cfg.treasurySafe;
+    }
+
+    function canRegisterSubject(address account) public view override returns (bool) {
+        return account == owner || authorizedRegistrars[account];
+    }
+
+    function subjectCountForStakeToken(address stakeToken)
+        external
+        view
+        override
+        returns (uint256)
+    {
+        return subjectsByStakeToken[stakeToken].length;
+    }
+
+    function subjectForStakeTokenAt(address stakeToken, uint256 index)
+        external
+        view
+        override
+        returns (bytes32)
+    {
+        return subjectsByStakeToken[stakeToken][index];
+    }
+
+    function subjectsForStakeToken(address stakeToken)
+        external
+        view
+        override
+        returns (bytes32[] memory)
+    {
+        return subjectsByStakeToken[stakeToken];
     }
 
     function identityLinkCount(bytes32 subjectId) external view returns (uint256) {

@@ -35,7 +35,12 @@ contract RevenueIngressAccount is Owned {
         uint256 amount,
         bytes32 sourceTag
     );
-    event USDCSwept(address indexed caller, uint256 balanceForwarded, uint256 amountRecognized);
+    event USDCSwept(
+        address indexed caller,
+        uint256 balanceForwarded,
+        uint256 amountRecognized,
+        bytes32 indexed sourceRef
+    );
 
     modifier nonReentrant() {
         require(_reentrancyGuard == 1, "REENTRANT");
@@ -140,14 +145,19 @@ contract RevenueIngressAccount is Owned {
         }
     }
 
-    function sweepUSDC() external nonReentrant returns (uint256 balance, uint256 recognized) {
+    function sweepUSDC()
+        external
+        nonReentrant
+        returns (uint256 balance, uint256 recognized, bytes32 sourceRef)
+    {
         balance = IERC20SupplyMinimal(usdc).balanceOf(address(this));
         require(balance != 0, "NOTHING_TO_SWEEP");
+        sourceRef = keccak256(abi.encode(block.chainid, subjectId, address(this), block.number, balance));
 
         usdc.safeTransfer(splitter, balance);
-        recognized = IRevenueShareSplitter(splitter).recordIngressSweep(balance);
+        recognized = IRevenueShareSplitter(splitter).recordIngressSweep(balance, sourceRef);
 
-        emit USDCSwept(msg.sender, balance, recognized);
+        emit USDCSwept(msg.sender, balance, recognized, sourceRef);
     }
 
     receive() external payable {

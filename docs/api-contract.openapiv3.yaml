@@ -1198,6 +1198,83 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/SubjectEnvelope" }
+  /v1/app/subjects/existing-token/prepare:
+    post:
+      operationId: prepareExistingTokenRevenueSubject
+      tags: [subjects]
+      security: [{ PrivySessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ExistingTokenRevenueSubjectRequest" }
+      responses:
+        "200":
+          description: Existing-token subject action prepared
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PreparedRevenueSubjectActionEnvelope" }
+  /v1/app/subjects/existing-token/confirm:
+    post:
+      operationId: confirmExistingTokenRevenueSubject
+      tags: [subjects]
+      security: [{ PrivySessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ConfirmRevenueSubjectRequest" }
+      responses:
+        "200":
+          description: Existing-token subject confirmed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RevenueSubjectEnvelope" }
+  /v1/app/subjects/deferred-autolaunch/prepare:
+    post:
+      operationId: prepareDeferredAutolaunch
+      tags: [subjects]
+      security: [{ PrivySessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DeferredAutolaunchRequest" }
+      responses:
+        "200":
+          description: DeferredAutolaunch action prepared
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PreparedRevenueSubjectActionEnvelope" }
+  /v1/app/subjects/deferred-autolaunch/confirm:
+    post:
+      operationId: confirmDeferredAutolaunch
+      tags: [subjects]
+      security: [{ PrivySessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ConfirmRevenueSubjectRequest" }
+      responses:
+        "200":
+          description: DeferredAutolaunch confirmed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RevenueSubjectEnvelope" }
+  /v1/app/subjects/by-token/{token}:
+    get:
+      operationId: listSubjectsByToken
+      tags: [subjects]
+      security: [{ PrivySessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/TokenAddress"
+      responses:
+        "200":
+          description: Revenue subjects for token
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RevenueSubjectListEnvelope" }
   /v1/app/subjects/{id}/ingress:
     get:
       operationId: getSubjectIngress
@@ -1211,6 +1288,45 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/SubjectIngressEnvelope" }
+  /v1/app/subjects/{id}/staking:
+    get:
+      operationId: getSubjectStaking
+      tags: [subjects]
+      security: [{ PrivySessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/SubjectId"
+      responses:
+        "200":
+          description: Subject staking
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SubjectStakingEnvelope" }
+  /v1/app/subjects/{id}/protocol-fee-settlements:
+    get:
+      operationId: listSubjectProtocolFeeSettlements
+      tags: [subjects]
+      security: [{ PrivySessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/SubjectId"
+      responses:
+        "200":
+          description: Protocol fee settlement history
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProtocolFeeSettlementListEnvelope" }
+  /v1/app/subjects/{id}/regent-emissions:
+    get:
+      operationId: listSubjectRegentEmissions
+      tags: [subjects]
+      security: [{ PrivySessionCookie: [] }]
+      parameters:
+        - $ref: "#/components/parameters/SubjectId"
+      responses:
+        "200":
+          description: REGENT emission history
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RegentEmissionListEnvelope" }
   /v1/app/subjects/{id}/stake:
     post:
       operationId: stakeSubject
@@ -1261,40 +1377,6 @@ paths:
       responses:
         "200":
           description: Claim prepared
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/PreparedSubjectActionEnvelope" }
-  /v1/app/subjects/{id}/claim-emissions:
-    post:
-      operationId: claimSubjectEmissions
-      tags: [subjects]
-      security: [{ PrivySessionCookie: [] }]
-      parameters:
-        - $ref: "#/components/parameters/SubjectId"
-      requestBody:
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/EmptyRequest" }
-      responses:
-        "200":
-          description: Emissions claim prepared
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/PreparedSubjectActionEnvelope" }
-  /v1/app/subjects/{id}/claim-and-stake-emissions:
-    post:
-      operationId: claimAndStakeSubjectEmissions
-      tags: [subjects]
-      security: [{ PrivySessionCookie: [] }]
-      parameters:
-        - $ref: "#/components/parameters/SubjectId"
-      requestBody:
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/EmptyRequest" }
-      responses:
-        "200":
-          description: Emissions compound prepared
           content:
             application/json:
               schema: { $ref: "#/components/schemas/PreparedSubjectActionEnvelope" }
@@ -1548,6 +1630,83 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/SubjectEnvelope" }
+  /v1/agent/subjects/existing-token/prepare:
+    post:
+      operationId: agentPrepareExistingTokenRevenueSubject
+      tags: [subjects]
+      security: [{ AgentSiwaHeaders: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ExistingTokenRevenueSubjectRequest" }
+      responses:
+        "200":
+          description: Existing-token subject action prepared
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PreparedRevenueSubjectActionEnvelope" }
+  /v1/agent/subjects/existing-token/confirm:
+    post:
+      operationId: agentConfirmExistingTokenRevenueSubject
+      tags: [subjects]
+      security: [{ AgentSiwaHeaders: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ConfirmRevenueSubjectRequest" }
+      responses:
+        "200":
+          description: Existing-token subject confirmed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RevenueSubjectEnvelope" }
+  /v1/agent/subjects/deferred-autolaunch/prepare:
+    post:
+      operationId: agentPrepareDeferredAutolaunch
+      tags: [subjects]
+      security: [{ AgentSiwaHeaders: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DeferredAutolaunchRequest" }
+      responses:
+        "200":
+          description: DeferredAutolaunch action prepared
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PreparedRevenueSubjectActionEnvelope" }
+  /v1/agent/subjects/deferred-autolaunch/confirm:
+    post:
+      operationId: agentConfirmDeferredAutolaunch
+      tags: [subjects]
+      security: [{ AgentSiwaHeaders: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ConfirmRevenueSubjectRequest" }
+      responses:
+        "200":
+          description: DeferredAutolaunch confirmed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RevenueSubjectEnvelope" }
+  /v1/agent/subjects/by-token/{token}:
+    get:
+      operationId: agentListSubjectsByToken
+      tags: [subjects]
+      security: [{ AgentSiwaHeaders: [] }]
+      parameters:
+        - $ref: "#/components/parameters/TokenAddress"
+      responses:
+        "200":
+          description: Revenue subjects for token
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RevenueSubjectListEnvelope" }
   /v1/agent/subjects/{id}/ingress:
     get:
       operationId: agentGetSubjectIngress
@@ -1561,6 +1720,45 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/SubjectIngressEnvelope" }
+  /v1/agent/subjects/{id}/staking:
+    get:
+      operationId: agentGetSubjectStaking
+      tags: [subjects]
+      security: [{ AgentSiwaHeaders: [] }]
+      parameters:
+        - $ref: "#/components/parameters/SubjectId"
+      responses:
+        "200":
+          description: Subject staking
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SubjectStakingEnvelope" }
+  /v1/agent/subjects/{id}/protocol-fee-settlements:
+    get:
+      operationId: agentListSubjectProtocolFeeSettlements
+      tags: [subjects]
+      security: [{ AgentSiwaHeaders: [] }]
+      parameters:
+        - $ref: "#/components/parameters/SubjectId"
+      responses:
+        "200":
+          description: Protocol fee settlement history
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProtocolFeeSettlementListEnvelope" }
+  /v1/agent/subjects/{id}/regent-emissions:
+    get:
+      operationId: agentListSubjectRegentEmissions
+      tags: [subjects]
+      security: [{ AgentSiwaHeaders: [] }]
+      parameters:
+        - $ref: "#/components/parameters/SubjectId"
+      responses:
+        "200":
+          description: REGENT emission history
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RegentEmissionListEnvelope" }
   /v1/agent/subjects/{id}/accounting-tags:
     get:
       operationId: agentGetSubjectAccountingTags
@@ -1636,40 +1834,6 @@ paths:
       responses:
         "200":
           description: Claim prepared
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/PreparedSubjectActionEnvelope" }
-  /v1/agent/subjects/{id}/claim-emissions:
-    post:
-      operationId: agentClaimSubjectEmissions
-      tags: [subjects]
-      security: [{ AgentSiwaHeaders: [] }]
-      parameters:
-        - $ref: "#/components/parameters/SubjectId"
-      requestBody:
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/EmptyRequest" }
-      responses:
-        "200":
-          description: Emissions claim prepared
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/PreparedSubjectActionEnvelope" }
-  /v1/agent/subjects/{id}/claim-and-stake-emissions:
-    post:
-      operationId: agentClaimAndStakeSubjectEmissions
-      tags: [subjects]
-      security: [{ AgentSiwaHeaders: [] }]
-      parameters:
-        - $ref: "#/components/parameters/SubjectId"
-      requestBody:
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/EmptyRequest" }
-      responses:
-        "200":
-          description: Emissions compound prepared
           content:
             application/json:
               schema: { $ref: "#/components/schemas/PreparedSubjectActionEnvelope" }
@@ -2310,6 +2474,11 @@ components:
       in: path
       required: true
       schema: { type: string }
+    TokenAddress:
+      name: token
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/Address" }
     SessionId:
       name: id
       in: path
@@ -2582,6 +2751,47 @@ components:
         amount: { $ref: "#/components/schemas/DecimalString" }
         receiver: { $ref: "#/components/schemas/Address" }
       additionalProperties: false
+    ExistingTokenRevenueSubjectRequest:
+      type: object
+      required: [stake_token, treasury, staker_pool_bps, label]
+      properties:
+        stake_token: { $ref: "#/components/schemas/Address" }
+        treasury: { $ref: "#/components/schemas/Address" }
+        staker_pool_bps: { type: integer, minimum: 0, maximum: 10000 }
+        label: { type: string, minLength: 1 }
+        salt: { $ref: "#/components/schemas/HexData" }
+      additionalProperties: false
+    DeferredAutolaunchRequest:
+      type: object
+      required: [token_name, token_symbol, total_supply, treasury, token_factory, subject_label]
+      properties:
+        token_name: { type: string, minLength: 1 }
+        token_symbol: { type: string, minLength: 1 }
+        total_supply: { type: string, minLength: 1 }
+        treasury: { $ref: "#/components/schemas/Address" }
+        token_factory: { $ref: "#/components/schemas/Address" }
+        token_factory_data: { $ref: "#/components/schemas/HexData" }
+        token_factory_salt: { $ref: "#/components/schemas/HexData" }
+        subject_label: { type: string, minLength: 1 }
+        identity_chain_id:
+          anyOf:
+            - { type: integer, minimum: 1 }
+            - { type: "null" }
+        identity_registry:
+          anyOf:
+            - { $ref: "#/components/schemas/Address" }
+            - { type: "null" }
+        identity_agent_id:
+          anyOf:
+            - { type: integer, minimum: 1 }
+            - { type: "null" }
+      additionalProperties: false
+    ConfirmRevenueSubjectRequest:
+      type: object
+      required: [tx_hash]
+      properties:
+        tx_hash: { $ref: "#/components/schemas/HexData" }
+      additionalProperties: false
     RegentStakingDepositPrepareRequest:
       type: object
       required: [amount, source_tag, source_ref]
@@ -2670,6 +2880,18 @@ components:
         ok: { type: boolean, enum: [true] }
         job_id: { type: string }
         subject_id: { type: string }
+        prepared:
+          $ref: "#/components/schemas/PreparedAction"
+      additionalProperties: false
+    PreparedRevenueSubjectActionEnvelope:
+      type: object
+      required: [ok, prepared]
+      properties:
+        ok: { type: boolean, enum: [true] }
+        subject:
+          anyOf:
+            - { $ref: "#/components/schemas/RevenueSubject" }
+            - { type: "null" }
         prepared:
           $ref: "#/components/schemas/PreparedAction"
       additionalProperties: false
@@ -3628,11 +3850,258 @@ components:
           type: array
           items: { $ref: "#/components/schemas/BidPosition" }
       additionalProperties: false
+    RevenueSubjectKind:
+      type: string
+      enum: [cca_launch, existing_token_revenue, deferred_autolaunch]
+    RevenueSplitterKind:
+      type: string
+      enum: [denominator_v2, live_stake_fee_pool]
+    TeamSharedStatus:
+      type: string
+      enum: [unverified, team_shared, dao_shared, official_site_linked]
+    RevenueSubject:
+      type: object
+      required:
+        - subject_id
+        - subject_kind
+        - splitter_kind
+        - token_address
+        - splitter_address
+        - ingress_address
+        - treasury_address
+        - factory_address
+        - creator_address
+        - permissionless
+        - protocol_skim_bps_snapshot
+        - current_protocol_skim_bps
+        - protocol_fee_usdc_total
+        - regent_emission_total
+        - regent_buyback_total
+        - oracle_kind
+        - regent_weth_pool_id
+        - team_shared_status
+      properties:
+        subject_id: { type: string }
+        subject_kind: { $ref: "#/components/schemas/RevenueSubjectKind" }
+        splitter_kind: { $ref: "#/components/schemas/RevenueSplitterKind" }
+        token_address: { $ref: "#/components/schemas/Address" }
+        splitter_address: { $ref: "#/components/schemas/Address" }
+        ingress_address:
+          anyOf:
+            - { $ref: "#/components/schemas/Address" }
+            - { type: "null" }
+        treasury_address: { $ref: "#/components/schemas/Address" }
+        factory_address:
+          anyOf:
+            - { $ref: "#/components/schemas/Address" }
+            - { type: "null" }
+        creator_address:
+          anyOf:
+            - { $ref: "#/components/schemas/Address" }
+            - { type: "null" }
+        permissionless: { type: boolean }
+        staker_pool_bps:
+          anyOf:
+            - { type: integer, minimum: 0, maximum: 10000 }
+            - { type: "null" }
+        protocol_skim_bps_snapshot:
+          anyOf:
+            - { type: integer, minimum: 0, maximum: 10000 }
+            - { type: "null" }
+        current_protocol_skim_bps:
+          anyOf:
+            - { type: integer, minimum: 0, maximum: 10000 }
+            - { type: "null" }
+        protocol_fee_usdc_total: { $ref: "#/components/schemas/DecimalString" }
+        protocol_fee_usdc_total_raw:
+          anyOf:
+            - { type: integer, minimum: 0 }
+            - { type: "null" }
+        regent_emission_total: { $ref: "#/components/schemas/DecimalString" }
+        regent_emission_total_raw:
+          anyOf:
+            - { type: integer, minimum: 0 }
+            - { type: "null" }
+        regent_buyback_total: { $ref: "#/components/schemas/DecimalString" }
+        regent_buyback_total_raw:
+          anyOf:
+            - { type: integer, minimum: 0 }
+            - { type: "null" }
+        oracle_kind:
+          anyOf:
+            - { type: string, enum: [v4_spot_chainlink_eth_usd] }
+            - { type: "null" }
+        regent_weth_pool_id:
+          anyOf:
+            - { $ref: "#/components/schemas/HexData" }
+            - { type: "null" }
+        team_shared_status: { $ref: "#/components/schemas/TeamSharedStatus" }
+      additionalProperties: false
+    RevenueSubjectEnvelope:
+      type: object
+      required: [ok, subject]
+      properties:
+        ok: { type: boolean, enum: [true] }
+        subject: { $ref: "#/components/schemas/RevenueSubject" }
+      additionalProperties: false
+    RevenueSubjectListEnvelope:
+      type: object
+      required: [ok, token_address, subjects]
+      properties:
+        ok: { type: boolean, enum: [true] }
+        token_address: { $ref: "#/components/schemas/Address" }
+        subjects:
+          type: array
+          items: { $ref: "#/components/schemas/RevenueSubject" }
+      additionalProperties: false
+    ProtocolFeeSettlement:
+      type: object
+      required: [subject_id, splitter_address, treasury_address, usdc_amount, regent_owed, regent_bought, source_ref]
+      properties:
+        subject_id: { type: string }
+        splitter_address: { $ref: "#/components/schemas/Address" }
+        treasury_address: { $ref: "#/components/schemas/Address" }
+        usdc_amount: { $ref: "#/components/schemas/DecimalString" }
+        usdc_amount_raw: { type: integer, minimum: 0 }
+        regent_owed: { $ref: "#/components/schemas/DecimalString" }
+        regent_owed_raw: { type: integer, minimum: 0 }
+        regent_bought: { $ref: "#/components/schemas/DecimalString" }
+        regent_bought_raw: { type: integer, minimum: 0 }
+        regent_usd_e18:
+          anyOf:
+            - { type: integer, minimum: 0 }
+            - { type: "null" }
+        source_ref: { $ref: "#/components/schemas/HexData" }
+        transaction_hash:
+          anyOf:
+            - { $ref: "#/components/schemas/HexData" }
+            - { type: "null" }
+        block_number:
+          anyOf:
+            - { type: integer, minimum: 0 }
+            - { type: "null" }
+        log_index:
+          anyOf:
+            - { type: integer, minimum: 0 }
+            - { type: "null" }
+      additionalProperties: false
+    ProtocolFeeSettlementListEnvelope:
+      type: object
+      required: [ok, subject_id, settlements]
+      properties:
+        ok: { type: boolean, enum: [true] }
+        subject_id: { type: string }
+        settlements:
+          type: array
+          items: { $ref: "#/components/schemas/ProtocolFeeSettlement" }
+      additionalProperties: false
+    RegentEmission:
+      type: object
+      required: [subject_id, recipient, amount, source_ref]
+      properties:
+        subject_id: { type: string }
+        recipient: { $ref: "#/components/schemas/Address" }
+        amount: { $ref: "#/components/schemas/DecimalString" }
+        amount_raw: { type: integer, minimum: 0 }
+        source_ref: { $ref: "#/components/schemas/HexData" }
+        transaction_hash:
+          anyOf:
+            - { $ref: "#/components/schemas/HexData" }
+            - { type: "null" }
+        block_number:
+          anyOf:
+            - { type: integer, minimum: 0 }
+            - { type: "null" }
+        log_index:
+          anyOf:
+            - { type: integer, minimum: 0 }
+            - { type: "null" }
+      additionalProperties: false
+    RegentEmissionListEnvelope:
+      type: object
+      required: [ok, subject_id, emissions]
+      properties:
+        ok: { type: boolean, enum: [true] }
+        subject_id: { type: string }
+        emissions:
+          type: array
+          items: { $ref: "#/components/schemas/RegentEmission" }
+      additionalProperties: false
+    SubjectStakingEnvelope:
+      type: object
+      required: [ok, subject_id, staking]
+      properties:
+        ok: { type: boolean, enum: [true] }
+        subject_id: { type: string }
+        staking:
+          type: object
+          additionalProperties: true
+      additionalProperties: false
     Subject:
       type: object
       required: [subject_id, chain_id, token_address, splitter_address]
       properties:
         subject_id: { type: string }
+        subject_kind:
+          anyOf:
+            - { $ref: "#/components/schemas/RevenueSubjectKind" }
+            - { type: "null" }
+        splitter_kind:
+          anyOf:
+            - { $ref: "#/components/schemas/RevenueSplitterKind" }
+            - { type: "null" }
+        treasury_address:
+          anyOf:
+            - { $ref: "#/components/schemas/Address" }
+            - { type: "null" }
+        factory_address:
+          anyOf:
+            - { $ref: "#/components/schemas/Address" }
+            - { type: "null" }
+        creator_address:
+          anyOf:
+            - { $ref: "#/components/schemas/Address" }
+            - { type: "null" }
+        permissionless:
+          anyOf:
+            - { type: boolean }
+            - { type: "null" }
+        staker_pool_bps:
+          anyOf:
+            - { type: integer, minimum: 0, maximum: 10000 }
+            - { type: "null" }
+        protocol_skim_bps_snapshot:
+          anyOf:
+            - { type: integer, minimum: 0, maximum: 10000 }
+            - { type: "null" }
+        current_protocol_skim_bps:
+          anyOf:
+            - { type: integer, minimum: 0, maximum: 10000 }
+            - { type: "null" }
+        protocol_fee_usdc_total:
+          anyOf:
+            - { $ref: "#/components/schemas/DecimalString" }
+            - { type: "null" }
+        regent_emission_total:
+          anyOf:
+            - { $ref: "#/components/schemas/DecimalString" }
+            - { type: "null" }
+        regent_buyback_total:
+          anyOf:
+            - { $ref: "#/components/schemas/DecimalString" }
+            - { type: "null" }
+        oracle_kind:
+          anyOf:
+            - { type: string, enum: [v4_spot_chainlink_eth_usd] }
+            - { type: "null" }
+        regent_weth_pool_id:
+          anyOf:
+            - { $ref: "#/components/schemas/HexData" }
+            - { type: "null" }
+        team_shared_status:
+          anyOf:
+            - { $ref: "#/components/schemas/TeamSharedStatus" }
+            - { type: "null" }
         chain_id: { type: integer }
         chain_label:
           anyOf:
@@ -3978,8 +4447,6 @@ components:
         - unstake
         - stake
         - claim_usdc
-        - claim_emissions
-        - claim_and_stake_emissions
         - sweep_ingress
     HoldingRow:
       type: object
@@ -4010,10 +4477,6 @@ components:
             - { $ref: "#/components/schemas/DecimalString" }
             - { type: "null" }
         claimable_usdc:
-          anyOf:
-            - { $ref: "#/components/schemas/DecimalString" }
-            - { type: "null" }
-        claimable_emissions:
           anyOf:
             - { $ref: "#/components/schemas/DecimalString" }
             - { type: "null" }

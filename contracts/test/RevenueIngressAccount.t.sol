@@ -60,10 +60,11 @@ contract RevenueIngressAccountTest is Test {
     function testSweepRecognizesRevenueInsideSplitter() external {
         usdc.mint(address(ingress), 1000e18);
 
-        (uint256 balance, uint256 recognized) = ingress.sweepUSDC();
+        (uint256 balance, uint256 recognized, bytes32 sourceRef) = ingress.sweepUSDC();
 
         assertEq(balance, 1000e18);
         assertEq(recognized, 1000e18);
+        assertTrue(sourceRef != bytes32(0));
         assertEq(usdc.balanceOf(address(ingress)), 0);
         assertEq(usdc.balanceOf(address(splitter)), 1000e18);
         assertEq(splitter.treasuryResidualUsdc(), 990e18);

@@ -164,18 +164,71 @@ command_groups:
       - autolaunch holdings stake
       - autolaunch holdings unstake
       - autolaunch holdings claim-usdc
-      - autolaunch holdings claim-emissions
-      - autolaunch holdings claim-and-stake-emissions
       - autolaunch holdings sweep-ingress
+      - autolaunch subjects create-existing-token
+      - autolaunch subjects create-deferred-autolaunch
+      - autolaunch subjects by-token
       - autolaunch subjects get
       - autolaunch subjects ingress
+      - autolaunch subjects staking
       - autolaunch subjects stake
       - autolaunch subjects unstake
       - autolaunch subjects claim-usdc
-      - autolaunch subjects claim-emissions
-      - autolaunch subjects claim-and-stake-emissions
       - autolaunch subjects sweep-ingress
+      - autolaunch subjects protocol-fee-settlements
+      - autolaunch subjects regent-emissions
     command_flags:
+      autolaunch subjects create-existing-token:
+        - name: --stake-token
+          type: address
+          required: true
+          description: Existing token address.
+        - name: --treasury
+          type: address
+          required: true
+          description: Treasury that receives the subject revenue lane.
+        - name: --staker-pool-bps
+          type: integer
+          required: true
+          description: Share of the post-fee lane reserved for token stakers.
+        - name: --label
+          type: string
+          required: true
+          description: Subject label.
+        - name: --salt
+          type: bytes32
+          required: false
+          description: Optional deterministic creation salt.
+      autolaunch subjects create-deferred-autolaunch:
+        - name: --token-name
+          type: string
+          required: true
+          description: New token name.
+        - name: --token-symbol
+          type: string
+          required: true
+          description: New token symbol.
+        - name: --total-supply
+          type: string
+          required: true
+          description: Total token supply.
+        - name: --treasury
+          type: address
+          required: true
+          description: Treasury that receives vested tokens and revenue.
+        - name: --token-factory
+          type: address
+          required: true
+          description: Token factory address.
+        - name: --subject-label
+          type: string
+          required: true
+          description: Subject label.
+      autolaunch subjects by-token:
+        - name: --token
+          type: address
+          required: true
+          description: Token address.
       autolaunch holdings stake:
         - name: --amount
           type: string
@@ -203,14 +256,20 @@ command_groups:
       - /v1/agent/bids/{id}/exit
       - /v1/agent/bids/{id}/return-usdc
       - /v1/agent/bids/{id}/claim
+      - /v1/agent/subjects/existing-token/prepare
+      - /v1/agent/subjects/existing-token/confirm
+      - /v1/agent/subjects/deferred-autolaunch/prepare
+      - /v1/agent/subjects/deferred-autolaunch/confirm
+      - /v1/agent/subjects/by-token/{token}
       - /v1/agent/subjects/{id}
       - /v1/agent/subjects/{id}/ingress
+      - /v1/agent/subjects/{id}/staking
       - /v1/agent/subjects/{id}/stake
       - /v1/agent/subjects/{id}/unstake
       - /v1/agent/subjects/{id}/claim-usdc
-      - /v1/agent/subjects/{id}/claim-emissions
-      - /v1/agent/subjects/{id}/claim-and-stake-emissions
       - /v1/agent/subjects/{id}/ingress/{address}/sweep
+      - /v1/agent/subjects/{id}/protocol-fee-settlements
+      - /v1/agent/subjects/{id}/regent-emissions
   - name: ens-contracts
     interface: http
     auth_mode: agent-siwa

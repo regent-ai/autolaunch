@@ -14,5 +14,7 @@ interface IRevenueShareSplitter {
         external
         returns (uint256 received);
 
-    function recordIngressSweep(uint256 amount) external returns (uint256 recognized);
+    function recordIngressSweep(uint256 amount, bytes32 sourceRef)
+        external
+        returns (uint256 recognized);
 }

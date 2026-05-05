@@ -67,6 +67,14 @@ contract RevenueIngressFactory is Owned {
         ingress = _createIngressAccount(subjectId, label, makeDefault);
     }
 
+    function createDefaultIngressAccount(bytes32 subjectId, string calldata label)
+        external
+        onlyCreateIngressManager(subjectId)
+        returns (address ingress)
+    {
+        ingress = _createIngressAccount(subjectId, label, true);
+    }
+
     function _createIngressAccount(bytes32 subjectId, string calldata label, bool makeDefault)
         internal
         returns (address ingress)

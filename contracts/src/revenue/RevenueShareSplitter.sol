@@ -395,7 +395,7 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
         );
     }
 
-    function recordIngressSweep(uint256 amount)
+    function recordIngressSweep(uint256 amount, bytes32 sourceRef)
         external
         override
         whenNotPaused
@@ -416,7 +416,7 @@ contract RevenueShareSplitter is Owned, IRevenueShareSplitter, ISubjectLifecycle
             msg.sender,
             // forge-lint: disable-next-line(unsafe-typecast)
             bytes32("ingress_sweep"),
-            subjectId
+            sourceRef
         );
     }
 
