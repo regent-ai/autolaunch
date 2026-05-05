@@ -18,6 +18,38 @@ defmodule AutolaunchWeb.Api.SubjectController do
     render_result(conn, Revenue.accounting_tags(subject_id, params, conn.assigns[:current_human]))
   end
 
+  def prepare_existing_token(conn, params) do
+    render_write(conn, Revenue.prepare_existing_token_subject(params, current_actor(conn)))
+  end
+
+  def confirm_existing_token(conn, params) do
+    render_write(conn, Revenue.confirm_existing_token_subject(params, current_actor(conn)))
+  end
+
+  def prepare_deferred_autolaunch(conn, params) do
+    render_write(conn, Revenue.prepare_deferred_autolaunch(params, current_actor(conn)))
+  end
+
+  def confirm_deferred_autolaunch(conn, params) do
+    render_write(conn, Revenue.confirm_deferred_autolaunch(params, current_actor(conn)))
+  end
+
+  def by_token(conn, %{"token" => token}) do
+    render_result(conn, Revenue.subjects_by_token(token))
+  end
+
+  def staking(conn, %{"id" => subject_id}) do
+    render_result(conn, Revenue.subject_staking(subject_id))
+  end
+
+  def protocol_fee_settlements(conn, %{"id" => subject_id}) do
+    render_result(conn, Revenue.subject_protocol_fee_settlements(subject_id))
+  end
+
+  def regent_emissions(conn, %{"id" => subject_id}) do
+    render_result(conn, Revenue.subject_regent_emissions(subject_id))
+  end
+
   def stake(conn, %{"id" => subject_id} = params) do
     render_write(conn, Revenue.stake(subject_id, params, conn.assigns[:current_human]))
   end
@@ -28,17 +60,6 @@ defmodule AutolaunchWeb.Api.SubjectController do
 
   def claim_usdc(conn, %{"id" => subject_id} = params) do
     render_write(conn, Revenue.claim_usdc(subject_id, params, conn.assigns[:current_human]))
-  end
-
-  def claim_emissions(conn, %{"id" => subject_id} = params) do
-    render_write(conn, Revenue.claim_emissions(subject_id, params, conn.assigns[:current_human]))
-  end
-
-  def claim_and_stake_emissions(conn, %{"id" => subject_id} = params) do
-    render_write(
-      conn,
-      Revenue.claim_and_stake_emissions(subject_id, params, conn.assigns[:current_human])
-    )
   end
 
   def sweep_ingress(conn, %{"id" => subject_id, "address" => ingress_address} = params) do
@@ -60,6 +81,9 @@ defmodule AutolaunchWeb.Api.SubjectController do
   defp render_write(conn, {:error, _reason} = error), do: render_result(conn, error)
 
   defp render_result(conn, result), do: render_api_result(conn, result, &translate_error/1)
+
+  defp current_actor(conn),
+    do: conn.assigns[:current_human] || conn.assigns[:current_agent_claims]
 
   defp translate_error(:unauthorized),
     do: {:unauthorized, "auth_required", "Connect a wallet first"}
@@ -113,6 +137,47 @@ defmodule AutolaunchWeb.Api.SubjectController do
 
   defp translate_error(:ingress_not_found),
     do: {:not_found, "ingress_not_found", "USDC intake address does not belong to this token"}
+
+  defp translate_error(:factory_unconfigured),
+    do:
+      {:unprocessable_entity, "factory_unconfigured",
+       "This subject creation path is not configured yet"}
+
+  defp translate_error(:revenue_subject_not_found),
+    do: {:not_found, "subject_not_found", "Token page not found"}
+
+  defp translate_error(:invalid_subject_token),
+    do: {:unprocessable_entity, "invalid_subject_token", "Token address is invalid"}
+
+  defp translate_error(:invalid_label),
+    do: {:unprocessable_entity, "invalid_label", "Name is required"}
+
+  defp translate_error(:invalid_uint),
+    do: {:unprocessable_entity, "invalid_number", "Number is invalid"}
+
+  defp translate_error(:invalid_bytes32),
+    do: {:unprocessable_entity, "invalid_hex", "Hex value is invalid"}
+
+  defp translate_error(:invalid_hex),
+    do: {:unprocessable_entity, "invalid_hex", "Hex value is invalid"}
+
+  defp translate_error(:invalid_identity),
+    do: {:unprocessable_entity, "invalid_identity", "Identity details are incomplete"}
+
+  defp translate_error(:transaction_receipt_unavailable),
+    do:
+      {:bad_gateway, "transaction_receipt_unavailable",
+       "Transaction details could not be loaded right now"}
+
+  defp translate_error(:creation_event_not_found),
+    do:
+      {:unprocessable_entity, "creation_event_not_found",
+       "This transaction did not create the requested subject"}
+
+  defp translate_error(:invalid_creation_event),
+    do:
+      {:unprocessable_entity, "invalid_creation_event",
+       "This subject creation transaction could not be read"}
 
   defp translate_error(:from_block_required),
     do: {:unprocessable_entity, "from_block_required", "Starting block is required"}

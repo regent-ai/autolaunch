@@ -106,6 +106,10 @@ if config_env() != :test do
     position_manager_address: env.("AUTOLAUNCH_UNISWAP_V4_POSITION_MANAGER", ""),
     usdc_address: Map.get(canonical_usdc_addresses, launch_chain_id, ""),
     revenue_share_factory_address: env.("AUTOLAUNCH_REVENUE_SHARE_FACTORY_ADDRESS", ""),
+    existing_token_revenue_factory_address:
+      env.("AUTOLAUNCH_EXISTING_TOKEN_REVENUE_FACTORY_ADDRESS", ""),
+    deferred_autolaunch_factory_address:
+      env.("AUTOLAUNCH_DEFERRED_AUTOLAUNCH_FACTORY_ADDRESS", ""),
     revenue_ingress_factory_address: env.("AUTOLAUNCH_REVENUE_INGRESS_FACTORY_ADDRESS", ""),
     pool_manager_addresses: %{
       8_453 => env.("AUTOLAUNCH_BASE_MAINNET_UNISWAP_V4_POOL_MANAGER", ""),

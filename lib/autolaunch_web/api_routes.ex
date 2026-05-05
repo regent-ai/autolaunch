@@ -17,8 +17,24 @@ defmodule AutolaunchWeb.ApiRoutes do
         post "/trust/x/callback", TrustController, :complete_x
       end
 
+      post "/subjects/existing-token/prepare", SubjectController, :prepare_existing_token
+      post "/subjects/existing-token/confirm", SubjectController, :confirm_existing_token
+
+      post "/subjects/deferred-autolaunch/prepare",
+           SubjectController,
+           :prepare_deferred_autolaunch
+
+      post "/subjects/deferred-autolaunch/confirm",
+           SubjectController,
+           :confirm_deferred_autolaunch
+
+      get "/subjects/by-token/:token", SubjectController, :by_token
+
       get "/subjects/:id", SubjectController, :show
       get "/subjects/:id/ingress", SubjectController, :ingress
+      get "/subjects/:id/staking", SubjectController, :staking
+      get "/subjects/:id/protocol-fee-settlements", SubjectController, :protocol_fee_settlements
+      get "/subjects/:id/regent-emissions", SubjectController, :regent_emissions
 
       if unquote(include_agent_accounting_tags?) do
         get "/subjects/:id/accounting-tags", SubjectController, :accounting_tags
@@ -27,11 +43,6 @@ defmodule AutolaunchWeb.ApiRoutes do
       post "/subjects/:id/stake", SubjectController, :stake
       post "/subjects/:id/unstake", SubjectController, :unstake
       post "/subjects/:id/claim-usdc", SubjectController, :claim_usdc
-      post "/subjects/:id/claim-emissions", SubjectController, :claim_emissions
-
-      post "/subjects/:id/claim-and-stake-emissions",
-           SubjectController,
-           :claim_and_stake_emissions
 
       post "/subjects/:id/ingress/:address/sweep", SubjectController, :sweep_ingress
 

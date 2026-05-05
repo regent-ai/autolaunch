@@ -6,12 +6,22 @@ defmodule AutolaunchWeb.Api.SubjectControllerTest do
   alias Autolaunch.Repo
 
   @subject_id "0x" <> String.duplicate("1a", 32)
+  @existing_subject_id "0x" <> String.duplicate("2b", 32)
+  @deferred_subject_id "0x" <> String.duplicate("3c", 32)
   @splitter "0x9999999999999999999999999999999999999999"
   @token "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  @deferred_token "0xdddddddddddddddddddddddddddddddddddddddd"
+  @ingress "0x7777777777777777777777777777777777777777"
   @wallet "0x1111111111111111111111111111111111111111"
+  @treasury "0x4444444444444444444444444444444444444444"
+  @existing_factory "0x1212121212121212121212121212121212121212"
+  @deferred_factory "0x3434343434343434343434343434343434343434"
+  @vesting_wallet "0x5656565656565656565656565656565656565656"
   @agent_registry "0x9999000000000000000000000000000000008004"
   @agent_token_id "42"
   @receipt_secret "autolaunch-test-receipt-secret"
+  @existing_token_created_topic0 "0x03b5cbf19327bec5313dcb772dc0ecb35f8f7fcfafe897639b0a54eebcdd9b1c"
+  @deferred_autolaunch_created_topic0 "0x36f06b6cb88844b276b8212d9b26f9948c1fff57ac44de768a170596122491f1"
 
   defmodule FakeRpc do
     @splitter "0x9999999999999999999999999999999999999999"
@@ -143,10 +153,11 @@ defmodule AutolaunchWeb.Api.SubjectControllerTest do
     Application.put_env(
       :autolaunch,
       :launch,
-      Keyword.put(
+      Keyword.merge(
         previous_launch,
-        :revenue_ingress_factory_address,
-        "0x2222222222222222222222222222222222222222"
+        revenue_ingress_factory_address: "0x2222222222222222222222222222222222222222",
+        existing_token_revenue_factory_address: @existing_factory,
+        deferred_autolaunch_factory_address: @deferred_factory
       )
     )
 
@@ -365,6 +376,144 @@ defmodule AutolaunchWeb.Api.SubjectControllerTest do
                  "amount" => "3.5"
                }
              ]
+           } = json_response(conn, 200)
+  end
+
+  test "prepare-existing-token returns the factory wallet action", %{conn: conn} do
+    conn =
+      post(conn, "/v1/app/subjects/existing-token/prepare", %{
+        "stake_token" => @token,
+        "treasury" => @treasury,
+        "staker_pool_bps" => 1000,
+        "label" => "Atlas revenue",
+        "salt" => "0x" <> String.duplicate("44", 32)
+      })
+
+    assert %{
+             "ok" => true,
+             "prepared" => %{
+               "expected_signer" => @wallet,
+               "wallet_action" => %{
+                 "chain_id" => 84_532,
+                 "to" => @existing_factory,
+                 "data" => data
+               },
+               "params" => %{"salt" => "0x" <> _}
+             }
+           } = json_response(conn, 200)
+
+    assert String.starts_with?(data, "0x4ddd061f")
+  end
+
+  test "confirm-existing-token persists the onchain subject event", %{conn: conn} do
+    tx_hash = "0x" <> String.duplicate("e", 64)
+
+    Process.put(:fake_rpc_receipt, %{
+      transaction_hash: tx_hash,
+      status: 1,
+      from: @wallet,
+      to: @existing_factory,
+      logs: [
+        %{
+          address: @existing_factory,
+          topics: [
+            @existing_token_created_topic0,
+            @existing_subject_id,
+            encode_topic_address(@token),
+            encode_topic_address(@splitter)
+          ],
+          data: encode_existing_subject_created_data(@wallet, @treasury, 1000, "Atlas revenue"),
+          block_number: 99,
+          transaction_hash: tx_hash,
+          log_index: 2
+        }
+      ]
+    })
+
+    conn = post(conn, "/v1/app/subjects/existing-token/confirm", %{"tx_hash" => tx_hash})
+
+    assert %{
+             "ok" => true,
+             "subject" => %{
+               "subject_id" => @existing_subject_id,
+               "subject_kind" => "existing_token_revenue",
+               "splitter_kind" => "live_stake_fee_pool",
+               "token_address" => @token,
+               "splitter_address" => @splitter,
+               "treasury_address" => @treasury,
+               "factory_address" => @existing_factory,
+               "creator_address" => @wallet,
+               "permissionless" => true,
+               "staker_pool_bps" => 1000
+             }
+           } = json_response(conn, 200)
+
+    conn = get(conn, "/v1/app/subjects/by-token/#{@token}")
+
+    assert %{
+             "ok" => true,
+             "token_address" => @token,
+             "subjects" => [%{"subject_id" => @existing_subject_id}]
+           } = json_response(conn, 200)
+
+    conn = get(conn, "/v1/app/subjects/#{@existing_subject_id}/staking")
+
+    assert %{
+             "ok" => true,
+             "subject_id" => @existing_subject_id,
+             "staking" => %{
+               "splitter_kind" => "live_stake_fee_pool",
+               "total_staked_raw" => 250_000_000_000_000_000_000,
+               "total_staked" => "250"
+             }
+           } = json_response(conn, 200)
+  end
+
+  test "confirm-deferred-autolaunch persists the created token and vesting wallet", %{conn: conn} do
+    tx_hash = "0x" <> String.duplicate("f", 64)
+
+    Process.put(:fake_rpc_receipt, %{
+      transaction_hash: tx_hash,
+      status: 1,
+      from: @wallet,
+      to: @deferred_factory,
+      logs: [
+        %{
+          address: @deferred_factory,
+          topics: [
+            @deferred_autolaunch_created_topic0,
+            encode_topic_address(@wallet),
+            @deferred_subject_id,
+            encode_topic_address(@deferred_token)
+          ],
+          data: encode_log_address_words([@vesting_wallet, @splitter, @ingress, @treasury]),
+          block_number: 101,
+          transaction_hash: tx_hash,
+          log_index: 0
+        }
+      ]
+    })
+
+    conn = post(conn, "/v1/app/subjects/deferred-autolaunch/confirm", %{"tx_hash" => tx_hash})
+
+    assert %{
+             "ok" => true,
+             "subject" => %{
+               "subject_id" => @deferred_subject_id,
+               "subject_kind" => "deferred_autolaunch",
+               "splitter_kind" => "denominator_v2",
+               "token_address" => @deferred_token,
+               "vesting_wallet_address" => @vesting_wallet,
+               "permissionless" => false
+             }
+           } = json_response(conn, 200)
+
+    conn = get(conn, "/v1/app/subjects/#{@deferred_subject_id}/regent-emissions")
+
+    assert %{
+             "ok" => true,
+             "subject_id" => @deferred_subject_id,
+             "emissions" => []
            } = json_response(conn, 200)
   end
 
@@ -616,10 +765,31 @@ defmodule AutolaunchWeb.Api.SubjectControllerTest do
     "0x" <> Enum.map_join(values, "", &encode_word/1)
   end
 
+  defp encode_log_address_words(values) do
+    "0x" <> Enum.map_join(values, "", &encode_address_word/1)
+  end
+
+  defp encode_existing_subject_created_data(creator, treasury, staker_pool_bps, label) do
+    head =
+      [
+        encode_address_word(@ingress),
+        encode_address_word(creator),
+        encode_address_word(treasury),
+        encode_word(staker_pool_bps),
+        encode_word(160)
+      ]
+
+    "0x" <> Enum.join(head) <> encode_string_tail(label)
+  end
+
   defp encode_topic_uint(value), do: "0x" <> encode_word(value)
 
   defp encode_topic_address("0x" <> address) do
     "0x" <> String.pad_leading(String.downcase(address), 64, "0")
+  end
+
+  defp encode_address_word("0x" <> address) do
+    String.pad_leading(String.downcase(address), 64, "0")
   end
 
   defp encode_word(value) when is_integer(value) and value >= 0 do
@@ -629,4 +799,11 @@ defmodule AutolaunchWeb.Api.SubjectControllerTest do
   end
 
   defp encode_word("0x" <> hex) when byte_size(hex) == 64, do: String.downcase(hex)
+
+  defp encode_string_tail(value) do
+    hex = Base.encode16(value, case: :lower)
+    byte_length = byte_size(value)
+    padded_bytes = byte_length + rem(32 - rem(byte_length, 32), 32)
+    encode_word(byte_length) <> String.pad_trailing(hex, padded_bytes * 2, "0")
+  end
 end

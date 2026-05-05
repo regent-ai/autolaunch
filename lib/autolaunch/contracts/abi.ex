@@ -94,7 +94,9 @@ defmodule Autolaunch.Contracts.Abi do
     sweep_token: "0x532cce18",
     sweep_currency: "0x7c121574",
     sweep_unsold_tokens: "0x5dd13ca7",
-    release_launch_token: "0xa99b3481"
+    release_launch_token: "0xa99b3481",
+    create_existing_token_revenue_subject: "0x4ddd061f",
+    create_deferred_autolaunch: "0x08f8cdcd"
   }
 
   @type encode_arg ::
@@ -103,6 +105,8 @@ defmodule Autolaunch.Contracts.Abi do
           | {:uint16, non_neg_integer()}
           | {:bool, boolean()}
           | {:bytes32, binary()}
+          | {:bytes, binary()}
+          | {:tuple, [encode_arg()]}
           | {:string, binary()}
 
   def selector(name), do: Map.fetch!(@selectors, name)
@@ -209,6 +213,24 @@ defmodule Autolaunch.Contracts.Abi do
               offset + div(byte_size(encoded_tail), 2)
             }
 
+          {:bytes, value} ->
+            encoded_tail = encode_bytes_tail(value)
+
+            {
+              [encode_uint_word(offset) | head_acc],
+              [encoded_tail | tail_acc],
+              offset + div(byte_size(encoded_tail), 2)
+            }
+
+          {:tuple, values} ->
+            encoded_tail = encode_args(values)
+
+            {
+              [encode_uint_word(offset) | head_acc],
+              [encoded_tail | tail_acc],
+              offset + div(byte_size(encoded_tail), 2)
+            }
+
           _ ->
             {[encode_static(arg) | head_acc], tail_acc, offset}
         end
@@ -227,6 +249,14 @@ defmodule Autolaunch.Contracts.Abi do
     hex = Base.encode16(value, case: :lower)
     length_word = encode_uint_word(byte_size(value))
     padded_hex = String.pad_trailing(hex, padded_hex_size(byte_size(value)), "0")
+    length_word <> padded_hex
+  end
+
+  defp encode_bytes_tail("0x" <> hex) do
+    normalized = String.downcase(hex)
+    byte_length = div(byte_size(normalized), 2)
+    length_word = encode_uint_word(byte_length)
+    padded_hex = String.pad_trailing(normalized, padded_hex_size(byte_length), "0")
     length_word <> padded_hex
   end
 
