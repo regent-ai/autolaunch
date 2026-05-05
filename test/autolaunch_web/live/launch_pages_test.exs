@@ -238,9 +238,10 @@ defmodule AutolaunchWeb.LaunchPagesTest do
   end
 
   test "launch page renders the CLI-first review page", %{conn: conn} do
-    {:ok, _view, html} = live(conn, "/launch")
+    {:ok, view, html} = live(conn, "/launch")
 
-    assert html =~ "Launch your agent on Base, the right way."
+    assert html =~ "Launch your agent on Base."
+    assert has_element?(view, "h1", "Launch your agent on Base.")
     assert html =~ "regent autolaunch prelaunch wizard"
     assert html =~ "Launch console"
     assert html =~ "Direct operator path"
@@ -249,9 +250,10 @@ defmodule AutolaunchWeb.LaunchPagesTest do
   end
 
   test "launch via agent page explains the CLI-first path", %{conn: conn} do
-    {:ok, _view, html} = live(conn, "/launch-via-agent")
+    {:ok, view, html} = live(conn, "/launch-via-agent")
 
-    assert html =~ "Launch your agent on Base, the right way."
+    assert html =~ "Launch with an operator agent."
+    assert has_element?(view, "h1", "Launch with an operator agent.")
     assert html =~ "regent autolaunch prelaunch wizard"
     assert html =~ "Agent-assisted path"
     assert html =~ "OpenClaw"

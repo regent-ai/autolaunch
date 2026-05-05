@@ -25,6 +25,7 @@ defmodule AutolaunchWeb.ContractsLive.Presenter do
   def prepare_error(:invalid_uint), do: "Amounts must be provided in whole onchain units."
   def prepare_error(:invalid_string), do: "A text value is required."
   def prepare_error(:invalid_boolean), do: "Choose a valid true or false option."
+  def prepare_error(:operator_required), do: "Use an authorized operator wallet."
   def prepare_error(:eligible_share_too_low), do: "Eligible share must be at least 10%."
   def prepare_error(:eligible_share_too_high), do: "Eligible share cannot exceed 100%."
 

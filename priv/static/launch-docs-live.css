@@ -46,8 +46,9 @@
   align-items: center;
 }
 
+#al-launch-page .al-route-hero h1,
 #al-launch-page .al-route-hero h2,
-#al-docs-page .al-docs-masthead h2,
+#al-docs-page .al-docs-masthead h1,
 #al-docs-page .al-legal-hero h2 {
   margin: 0;
   font-size: clamp(2.3rem, 4.4vw, 4.6rem);

@@ -55,7 +55,7 @@ defmodule AutolaunchWeb.DocsFamilyComponents do
     <section class="al-panel al-docs-masthead">
       <div class="al-docs-masthead-copy">
         <p class="al-kicker">{@eyebrow}</p>
-        <h2>{@title}</h2>
+        <h1>{@title}</h1>
         <p class="al-subcopy">{@body}</p>
       </div>
 

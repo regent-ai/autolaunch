@@ -299,13 +299,20 @@ defmodule AutolaunchWeb.ContractsLiveTest do
   end
 
   test "contracts page renders both job and subject scopes", %{conn: conn} do
-    {:ok, _view, html} =
+    {:ok, view, html} =
       live(
         conn,
         "/contracts?job_id=job_contracts&subject_id=0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
       )
 
     assert html =~ "Review the contract view you need before you prepare anything."
+
+    assert has_element?(
+             view,
+             "h1",
+             "Review the contract view you need before you prepare anything."
+           )
+
     assert html =~ "Contracts"
     assert html =~ "Open one launch job"
     assert html =~ "Open one subject"
@@ -324,6 +331,21 @@ defmodule AutolaunchWeb.ContractsLiveTest do
     assert html =~ "Pending eligible share"
     assert html =~ "Treasury-reserved inflow"
     refute html =~ ~s(name="form[skim_bps]")
+  end
+
+  test "contracts page explains blank entry submissions", %{conn: conn} do
+    {:ok, view, _html} = live(conn, "/contracts")
+
+    assert view
+           |> form("#contracts-job-entry-form", %{"scope" => "job", "job_id" => ""})
+           |> render_submit() =~ "Enter a launch job id to open that view."
+
+    assert view
+           |> form("#contracts-subject-entry-form", %{
+             "scope" => "subject",
+             "subject_id" => ""
+           })
+           |> render_submit() =~ "Enter a subject id to open that view."
   end
 
   test "contracts page prompts for the linked owner wallet when a different linked wallet is active",

@@ -59,10 +59,9 @@ defmodule AutolaunchWeb.LaunchLive do
         >
           <div class="al-route-hero-copy">
             <p class="al-kicker">Launch</p>
-            <h2>Launch your agent on Base, the right way.</h2>
+            <h1>{launch_heading(@path_focus)}</h1>
             <p class="al-subcopy">
-              Start with one saved plan, review the path once, and choose whether you want to run
-              the launch yourself or hand the execution to an operator agent.
+              {launch_intro(@path_focus)}
             </p>
           </div>
 
@@ -434,6 +433,17 @@ defmodule AutolaunchWeb.LaunchLive do
   defp status_token("Optional"), do: "optional"
   defp status_token("In progress"), do: "recommended"
   defp status_token(_status), do: "pending"
+
+  defp launch_heading("agent"), do: "Launch with an operator agent."
+  defp launch_heading(_focus), do: "Launch your agent on Base."
+
+  defp launch_intro("agent") do
+    "Use the agent-assisted path when you want an operator agent to carry the checklist while you approve each important step."
+  end
+
+  defp launch_intro(_focus) do
+    "Start with one saved plan, review the path once, then choose the direct command path or the agent-assisted path."
+  end
 
   defp route_css, do: @route_css
 

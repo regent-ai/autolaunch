@@ -12,6 +12,7 @@ defmodule AutolaunchWeb.OperatorStatus do
       repo_check(),
       cache_check(),
       siwa_check(),
+      wallet_sign_in_check(),
       launch_config_check(),
       regent_config_check(),
       xmtp_config_check()
@@ -40,8 +41,21 @@ defmodule AutolaunchWeb.OperatorStatus do
 
   defp siwa_check do
     case SiwaConfig.fetch_http_config() do
-      {:ok, %{internal_url: _url}} -> check(:ready, "Agent sign-in", "Agent auth is configured.")
-      {:error, _reason} -> check(:blocked, "Agent sign-in", "Agent auth needs configuration.")
+      {:ok, %{internal_url: _url}} ->
+        check(:ready, "Agent API sign-in", "Agent request auth is configured.")
+
+      {:error, _reason} ->
+        check(:blocked, "Agent API sign-in", "Agent request auth needs configuration.")
+    end
+  end
+
+  defp wallet_sign_in_check do
+    privy = Application.get_env(:autolaunch, :privy, [])
+
+    if present?(Keyword.get(privy, :app_id)) and present?(Keyword.get(privy, :verification_key)) do
+      check(:ready, "Wallet sign-in", "Wallet sign-in is configured.")
+    else
+      check(:blocked, "Wallet sign-in", "Wallet sign-in needs configuration.")
     end
   end
 
@@ -78,4 +92,7 @@ defmodule AutolaunchWeb.OperatorStatus do
   end
 
   defp check(state, label, detail), do: %{state: state, label: label, detail: detail}
+
+  defp present?(value) when is_binary(value), do: String.trim(value) != ""
+  defp present?(_value), do: false
 end

@@ -33,6 +33,7 @@ defmodule AutolaunchWeb.ContractsLive.Components do
 
   attr :job_id, :string, default: nil
   attr :subject_id, :string, default: nil
+  attr :entry_errors, :map, default: %{}
 
   def entry_selector(assigns) do
     ~H"""
@@ -43,10 +44,12 @@ defmodule AutolaunchWeb.ContractsLive.Components do
         <p class="al-inline-note">
           Use this when you want deploy results, strategy state, vesting, or fee details.
         </p>
-        <form method="get" action={~p"/contracts"} class="al-contract-form-grid">
+        <form id="contracts-job-entry-form" phx-submit="open_contract_scope" class="al-contract-form-grid">
+          <input type="hidden" name="scope" value="job" />
           <input type="text" name="job_id" value={@job_id} placeholder="Launch job id" />
           <button type="submit" class="al-submit">Open launch view</button>
         </form>
+        <p :if={@entry_errors[:job]} class="al-inline-note is-error">{@entry_errors[:job]}</p>
       </article>
 
       <article class="al-panel al-contract-card">
@@ -55,10 +58,14 @@ defmodule AutolaunchWeb.ContractsLive.Components do
         <p class="al-inline-note">
           Use this when you want splitter, ingress, and registry tools for a launched token.
         </p>
-        <form method="get" action={~p"/contracts"} class="al-contract-form-grid">
+        <form id="contracts-subject-entry-form" phx-submit="open_contract_scope" class="al-contract-form-grid">
+          <input type="hidden" name="scope" value="subject" />
           <input type="text" name="subject_id" value={@subject_id} placeholder="Subject id" />
           <button type="submit" class="al-submit">Open subject view</button>
         </form>
+        <p :if={@entry_errors[:subject]} class="al-inline-note is-error">
+          {@entry_errors[:subject]}
+        </p>
       </article>
 
       <article class="al-panel al-contract-card">

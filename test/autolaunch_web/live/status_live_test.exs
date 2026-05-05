@@ -11,6 +11,16 @@ defmodule AutolaunchWeb.StatusLiveTest do
         checks: [
           %{state: :ready, label: "Database", detail: "Reads and writes are available."},
           %{state: :ready, label: "Local cache", detail: "Cache is ready."},
+          %{
+            state: :ready,
+            label: "Agent API sign-in",
+            detail: "Agent request auth is configured."
+          },
+          %{
+            state: :blocked,
+            label: "Wallet sign-in",
+            detail: "Wallet sign-in needs configuration."
+          },
           %{state: :blocked, label: "Launch stack", detail: "One setting needs a value."}
         ]
       }
@@ -29,6 +39,8 @@ defmodule AutolaunchWeb.StatusLiveTest do
     assert html =~ "Autolaunch needs attention."
     assert html =~ "Database"
     assert html =~ "Local cache"
+    assert html =~ "Agent API sign-in"
+    assert html =~ "Wallet sign-in"
     assert html =~ "Launch stack"
     assert html =~ "Attention"
 

@@ -38,7 +38,7 @@ defmodule AutolaunchWeb.Layouts do
           <div class="al-shell-brand-block">
             <.link navigate={~p"/"} class="al-shell-brand">
               <img
-                src="/regent/regent-sigil-preview.svg"
+                src={~p"/regent/sigils/seal.svg"}
                 alt=""
                 aria-hidden="true"
                 width="44"
@@ -238,7 +238,7 @@ defmodule AutolaunchWeb.Layouts do
             <div class="al-shell-footer-brand">
               <.link navigate={~p"/"} class="al-shell-footer-logo">
                 <img
-                  src="/regent/regent-sigil-preview.svg"
+                  src={~p"/regent/sigils/seal.svg"}
                   alt=""
                   aria-hidden="true"
                   width="38"

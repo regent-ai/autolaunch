@@ -26,6 +26,7 @@ defmodule AutolaunchWeb.ContractsLive do
      |> assign(:subject_scope, nil)
      |> assign(:admin_scope, nil)
      |> assign(:wallet_switch, nil)
+     |> assign(:entry_errors, %{})
      |> assign(:forms, Presenter.default_forms())
      |> assign(:prepared, nil)
      |> load_console()}
@@ -36,11 +37,38 @@ defmodule AutolaunchWeb.ContractsLive do
      socket
      |> assign(:job_id, AutolaunchWeb.Format.blank_to_nil(Map.get(params, "job_id")))
      |> assign(:subject_id, AutolaunchWeb.Format.blank_to_nil(Map.get(params, "subject_id")))
+     |> assign(:entry_errors, %{})
      |> load_console()}
   end
 
   def handle_event("update_form", %{"form_name" => form_name, "form" => attrs}, socket) do
     {:noreply, assign(socket, :forms, Map.put(socket.assigns.forms, form_name, attrs))}
+  end
+
+  def handle_event("open_contract_scope", %{"scope" => "job", "job_id" => job_id}, socket) do
+    case AutolaunchWeb.Format.blank_to_nil(job_id) do
+      nil ->
+        {:noreply,
+         assign(socket, :entry_errors, %{job: "Enter a launch job id to open that view."})}
+
+      value ->
+        {:noreply, push_patch(socket, to: ~p"/contracts?#{%{job_id: value}}")}
+    end
+  end
+
+  def handle_event(
+        "open_contract_scope",
+        %{"scope" => "subject", "subject_id" => subject_id},
+        socket
+      ) do
+    case AutolaunchWeb.Format.blank_to_nil(subject_id) do
+      nil ->
+        {:noreply,
+         assign(socket, :entry_errors, %{subject: "Enter a subject id to open that view."})}
+
+      value ->
+        {:noreply, push_patch(socket, to: ~p"/contracts?#{%{subject_id: value}}")}
+    end
   end
 
   def handle_event(
@@ -122,7 +150,11 @@ defmodule AutolaunchWeb.ContractsLive do
 
       <ContractComponents.hero prepared={@prepared} />
 
-      <ContractComponents.entry_selector job_id={@job_id} subject_id={@subject_id} />
+      <ContractComponents.entry_selector
+        job_id={@job_id}
+        subject_id={@subject_id}
+        entry_errors={@entry_errors}
+      />
 
       <%= if is_nil(@job_scope) and is_nil(@subject_scope) do %>
         <.empty_state
@@ -565,6 +597,8 @@ defmodule AutolaunchWeb.ContractsLive do
         <ContractComponents.prepared_preview prepared={@prepared} />
       </section>
       </div>
+
+      <.flash_group flash={@flash} />
     </.shell>
     """
   end

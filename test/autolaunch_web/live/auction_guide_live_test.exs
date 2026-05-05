@@ -4,9 +4,16 @@ defmodule AutolaunchWeb.AuctionGuideLiveTest do
   import Phoenix.LiveViewTest
 
   test "guide page renders the auction timeline and summary", %{conn: conn} do
-    {:ok, _view, html} = live(conn, "/how-auctions-work")
+    {:ok, view, html} = live(conn, "/how-auctions-work")
 
     assert html =~ "Everything you need to understand and operate on Autolaunch."
+
+    assert has_element?(
+             view,
+             "h1",
+             "Everything you need to understand and operate on Autolaunch."
+           )
+
     assert html =~ "Guide strip"
     assert html =~ "Understand the sale before touching the controls."
     assert html =~ "Back an active auction with USDC."

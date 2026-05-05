@@ -4,6 +4,10 @@ This guide has moved to the root docs folder:
 
 - `/Users/sean/Documents/regent/docs/regent-local-and-fly-launch-testing.md`
 
+The Autolaunch-only mirror is:
+
+- `/Users/sean/Documents/regent/autolaunch/docs/regent-local-and-fly-launch-testing.md`
+
 Use that guide for the full deploy, test, and launch path across:
 
 - Base mainnet `$REGENT` staking
