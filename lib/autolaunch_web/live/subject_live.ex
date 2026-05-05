@@ -1311,6 +1311,184 @@ defmodule AutolaunchWeb.SubjectLive do
         color: var(--al-text);
       }
 
+      .al-subject-header,
+      .al-subject-metric-card,
+      .al-routing-policy-panel,
+      .al-routing-history-panel,
+      .al-routing-ledger-card,
+      .al-routing-policy-stats article,
+      .al-routing-history-item,
+      .al-subject-hero-panel,
+      .al-subject-flow-box,
+      .al-subject-action-card,
+      .al-subject-secondary-card,
+      .al-subject-side-panel,
+      .al-subject-review-panel,
+      .al-subject-review-card,
+      .al-subject-state-card {
+        border-color: color-mix(in srgb, var(--brand-ink) 10%, transparent);
+        border-radius: 0.95rem;
+        background:
+          radial-gradient(circle at 96% 4%, color-mix(in srgb, var(--brand-primary) 7%, transparent), transparent 26%),
+          linear-gradient(180deg, color-mix(in srgb, white 98%, var(--color-bg) 2%), color-mix(in srgb, white 93%, var(--color-bg) 7%));
+        box-shadow: 0 20px 48px -38px rgba(28, 51, 77, 0.22);
+      }
+
+      .al-subject-hero-panel,
+      .al-subject-flow-box,
+      .al-subject-flow-box.is-featured {
+        color: color-mix(in srgb, var(--brand-ink) 88%, black 12%);
+      }
+
+      .al-subject-hero-panel::after {
+        opacity: 0.12;
+      }
+
+      .al-subject-heading-line h1,
+      .al-routing-policy-copy h2,
+      .al-routing-history-head h3,
+      .al-subject-hero-copy h2,
+      .al-subject-metric-card strong,
+      .al-subject-action-card h3,
+      .al-subject-secondary-card h3,
+      .al-subject-review-panel h3,
+      .al-subject-state-card strong,
+      .al-routing-ledger-card strong,
+      .al-routing-policy-stats strong {
+        color: color-mix(in srgb, var(--brand-ink) 90%, black 10%);
+        letter-spacing: 0;
+        overflow-wrap: anywhere;
+        text-wrap: balance;
+      }
+
+      .al-subject-hero-copy p,
+      .al-subject-footnote,
+      .al-subject-flow-box span,
+      .al-subject-flow-box p,
+      .al-subject-flow-arrow {
+        color: var(--al-muted);
+      }
+
+      .al-subject-header,
+      .al-subject-title-row,
+      .al-subject-heading-block,
+      .al-subject-main-grid,
+      .al-routing-policy-panel,
+      .al-routing-policy-stats article,
+      .al-routing-ledger-card,
+      .al-routing-history-item,
+      .al-subject-hero-panel,
+      .al-subject-action-card,
+      .al-subject-secondary-card,
+      .al-subject-review-card,
+      .al-subject-state-card,
+      .al-subject-side-list div,
+      .al-subject-address-list article {
+        min-width: 0;
+      }
+
+      .al-subject-chip,
+      .al-subject-badge,
+      .al-routing-history-pill {
+        min-height: 1.9rem;
+        border-radius: 999px;
+        background: color-mix(in srgb, white 92%, var(--brand-primary) 8%);
+        color: color-mix(in srgb, var(--brand-ink) 76%, black 24%);
+        letter-spacing: 0;
+        text-transform: none;
+        white-space: normal;
+      }
+
+      .al-subject-form label {
+        letter-spacing: 0;
+        text-transform: none;
+      }
+
+      .al-subject-form input {
+        min-width: 0;
+        min-height: 2.95rem;
+        border-radius: 0.85rem;
+        border-color: color-mix(in srgb, var(--brand-ink) 10%, transparent);
+        background: color-mix(in srgb, white 96%, var(--color-bg) 4%);
+      }
+
+      .al-subject-form input:focus-visible {
+        outline: none;
+        border-color: color-mix(in srgb, var(--brand-primary) 44%, transparent);
+        box-shadow:
+          0 0 0 0.22rem color-mix(in srgb, var(--brand-primary) 12%, transparent),
+          inset 0 1px 0 rgba(255, 255, 255, 0.7);
+      }
+
+      .al-subject-primary-button,
+      .al-subject-secondary-button,
+      .al-subject-action-button,
+      .al-subject-ghost-button,
+      .al-subject-side-tab {
+        min-width: 0;
+        min-height: 2.75rem;
+        border-radius: 0.75rem;
+        transition:
+          transform 160ms cubic-bezier(0.23, 1, 0.32, 1),
+          border-color 160ms ease,
+          background-color 160ms ease,
+          box-shadow 160ms ease,
+          color 160ms ease;
+      }
+
+      .al-subject-primary-button,
+      .al-subject-action-button {
+        border: 1px solid color-mix(in srgb, var(--brand-primary) 62%, black 8%);
+        background: linear-gradient(
+          180deg,
+          color-mix(in srgb, var(--brand-primary) 84%, white 16%),
+          var(--brand-primary)
+        );
+      }
+
+      .al-subject-secondary-button,
+      .al-subject-ghost-button,
+      .al-subject-side-tab {
+        border: 1px solid color-mix(in srgb, var(--brand-ink) 9%, transparent);
+        background: color-mix(in srgb, white 96%, var(--color-bg) 4%);
+      }
+
+      .al-subject-primary-button:active,
+      .al-subject-secondary-button:active,
+      .al-subject-action-button:active,
+      .al-subject-ghost-button:active,
+      .al-subject-side-tab:active {
+        transform: scale(0.975);
+      }
+
+      @media (hover: hover) and (pointer: fine) {
+        .al-subject-metric-card,
+        .al-subject-action-card,
+        .al-subject-secondary-card,
+        .al-subject-review-card,
+        .al-subject-state-card,
+        .al-routing-ledger-card,
+        .al-routing-history-item {
+          transition:
+            transform 180ms cubic-bezier(0.23, 1, 0.32, 1),
+            border-color 180ms ease,
+            box-shadow 180ms ease,
+            background-color 180ms ease;
+        }
+
+        .al-subject-metric-card:hover,
+        .al-subject-action-card:hover,
+        .al-subject-secondary-card:hover,
+        .al-subject-review-card:hover,
+        .al-subject-state-card:hover,
+        .al-routing-ledger-card:hover,
+        .al-routing-history-item:hover {
+          transform: translateY(-2px);
+          border-color: color-mix(in srgb, var(--brand-primary) 18%, transparent);
+          box-shadow: 0 24px 52px -42px rgba(21, 96, 66, 0.34);
+        }
+      }
+
       @media (max-width: 1120px) {
         .al-subject-main-grid,
         .al-subject-hero-panel,
@@ -1345,6 +1523,28 @@ defmodule AutolaunchWeb.SubjectLive do
 
         .al-subject-side-tabs {
           grid-template-columns: 1fr;
+        }
+
+        .al-subject-header,
+        .al-subject-title-row,
+        .al-subject-meta,
+        .al-subject-header-actions,
+        .al-subject-hero-actions,
+        .al-subject-action-footer,
+        .al-subject-review-actions,
+        .al-subject-split-actions,
+        .al-routing-history-head,
+        .al-subject-state-head {
+          display: grid;
+          grid-template-columns: 1fr;
+          justify-items: stretch;
+        }
+
+        .al-subject-primary-button,
+        .al-subject-secondary-button,
+        .al-subject-action-button,
+        .al-subject-ghost-button {
+          width: 100%;
         }
       }
     </style>

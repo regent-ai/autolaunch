@@ -438,7 +438,8 @@ contract LaunchDeploymentController is Owned {
     {
         subjectRegistry = RevenueShareFactory(revenueShareFactory).subjectRegistry();
         require(
-            subjectRegistry.owner() == revenueShareFactory, "SUBJECT_REGISTRY_NOT_OWNED_BY_FACTORY"
+            subjectRegistry.canRegisterSubject(revenueShareFactory),
+            "REVENUE_SHARE_FACTORY_NOT_REGISTRAR"
         );
     }
 
@@ -491,7 +492,7 @@ contract LaunchDeploymentController is Owned {
                 token,
                 cfg.revenueIngressFactory,
                 cfg.agentSafe,
-                cfg.regentRecipient,
+                RevenueShareFactory(cfg.revenueShareFactory).protocolFeeRouter(),
                 cfg.totalSupply,
                 cfg.subjectLabel,
                 identityChainId,

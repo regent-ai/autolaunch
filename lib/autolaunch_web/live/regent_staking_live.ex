@@ -699,6 +699,123 @@ defmodule AutolaunchWeb.RegentStakingLive do
         padding: 1.2rem;
       }
 
+      .al-regent-hero,
+      .al-regent-status,
+      .al-regent-metric,
+      .al-regent-action-card,
+      .al-regent-wallet-strip div,
+      .al-regent-addresses,
+      .al-regent-empty {
+        border-color: color-mix(in srgb, var(--brand-ink) 10%, transparent);
+        border-radius: 0.95rem;
+        background:
+          radial-gradient(circle at 96% 4%, color-mix(in srgb, var(--brand-primary) 7%, transparent), transparent 26%),
+          linear-gradient(180deg, color-mix(in srgb, white 98%, var(--color-bg) 2%), color-mix(in srgb, white 93%, var(--color-bg) 7%));
+        box-shadow: 0 20px 48px -38px rgba(28, 51, 77, 0.22);
+      }
+
+      .al-regent-status,
+      .al-regent-status.is-paused {
+        background: color-mix(in srgb, white 93%, var(--brand-primary) 7%);
+      }
+
+      .al-regent-hero h1,
+      .al-regent-status strong,
+      .al-regent-metric strong,
+      .al-regent-action-card h2,
+      .al-regent-wallet-strip strong,
+      .al-regent-addresses strong {
+        color: color-mix(in srgb, var(--brand-ink) 90%, black 10%);
+        letter-spacing: 0;
+        overflow-wrap: anywhere;
+        text-wrap: balance;
+      }
+
+      .al-regent-status,
+      .al-regent-metric,
+      .al-regent-action-card,
+      .al-regent-wallet-strip,
+      .al-regent-wallet-strip div,
+      .al-regent-addresses,
+      .al-regent-addresses div,
+      .al-regent-form {
+        min-width: 0;
+      }
+
+      .al-regent-form label,
+      .al-regent-status span,
+      .al-regent-metric span,
+      .al-regent-addresses span,
+      .al-regent-wallet-strip span {
+        letter-spacing: 0;
+        text-transform: none;
+      }
+
+      .al-regent-form input {
+        min-height: 2.95rem;
+        border-radius: 0.85rem;
+        border-color: color-mix(in srgb, var(--brand-ink) 10%, transparent);
+        background: color-mix(in srgb, white 96%, var(--color-bg) 4%);
+      }
+
+      .al-regent-form input:focus-visible {
+        outline: none;
+        border-color: color-mix(in srgb, var(--brand-primary) 44%, transparent);
+        box-shadow:
+          0 0 0 0.22rem color-mix(in srgb, var(--brand-primary) 12%, transparent),
+          inset 0 1px 0 rgba(255, 255, 255, 0.7);
+      }
+
+      .al-regent-primary-button,
+      .al-regent-secondary-button {
+        min-width: 0;
+        min-height: 2.75rem;
+        border-radius: 0.75rem;
+        transition:
+          transform 160ms cubic-bezier(0.23, 1, 0.32, 1),
+          border-color 160ms ease,
+          background-color 160ms ease,
+          box-shadow 160ms ease,
+          color 160ms ease;
+      }
+
+      .al-regent-primary-button {
+        border: 1px solid color-mix(in srgb, var(--brand-primary) 62%, black 8%);
+        background: linear-gradient(
+          180deg,
+          color-mix(in srgb, var(--brand-primary) 84%, white 16%),
+          var(--brand-primary)
+        );
+      }
+
+      .al-regent-secondary-button {
+        border: 1px solid color-mix(in srgb, var(--brand-ink) 9%, transparent);
+        background: color-mix(in srgb, white 96%, var(--color-bg) 4%);
+      }
+
+      .al-regent-primary-button:active,
+      .al-regent-secondary-button:active {
+        transform: scale(0.975);
+      }
+
+      @media (hover: hover) and (pointer: fine) {
+        .al-regent-metric,
+        .al-regent-action-card {
+          transition:
+            transform 180ms cubic-bezier(0.23, 1, 0.32, 1),
+            border-color 180ms ease,
+            box-shadow 180ms ease,
+            background-color 180ms ease;
+        }
+
+        .al-regent-metric:hover,
+        .al-regent-action-card:hover {
+          transform: translateY(-2px);
+          border-color: color-mix(in srgb, var(--brand-primary) 18%, transparent);
+          box-shadow: 0 24px 52px -42px rgba(21, 96, 66, 0.34);
+        }
+      }
+
       @media (max-width: 980px) {
         .al-regent-hero,
         .al-regent-action-grid,
@@ -715,6 +832,16 @@ defmodule AutolaunchWeb.RegentStakingLive do
         .al-regent-metrics,
         .al-regent-wallet-strip {
           grid-template-columns: 1fr;
+        }
+
+        .al-regent-split-actions {
+          display: grid;
+          grid-template-columns: 1fr;
+        }
+
+        .al-regent-primary-button,
+        .al-regent-secondary-button {
+          width: 100%;
         }
       }
     </style>
