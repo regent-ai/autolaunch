@@ -11,7 +11,7 @@ defmodule AutolaunchWeb.Api.SubjectControllerTest do
   @wallet "0x1111111111111111111111111111111111111111"
   @agent_registry "0x9999000000000000000000000000000000008004"
   @agent_token_id "42"
-  @receipt_secret "subject-controller-agent-secret"
+  @receipt_secret "autolaunch-test-receipt-secret"
 
   defmodule FakeRpc do
     @splitter "0x9999999999999999999999999999999999999999"
@@ -136,7 +136,6 @@ defmodule AutolaunchWeb.Api.SubjectControllerTest do
 
     Application.put_env(:autolaunch, :siwa,
       internal_url: "http://127.0.0.1:#{port}",
-      shared_secret: @receipt_secret,
       http_connect_timeout_ms: 2_000,
       http_receive_timeout_ms: 5_000
     )

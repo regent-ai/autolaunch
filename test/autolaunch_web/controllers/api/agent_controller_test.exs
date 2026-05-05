@@ -6,7 +6,7 @@ defmodule AutolaunchWeb.Api.AgentControllerTest do
   @wallet "0x1111111111111111111111111111111111111111"
   @registry "0x2222222222222222222222222222222222222222"
   @token_id "44"
-  @receipt_secret "autolaunch-test-shared-secret"
+  @receipt_secret "autolaunch-test-receipt-secret"
 
   defmodule LaunchStub do
     def list_agents(nil) do
@@ -100,7 +100,6 @@ defmodule AutolaunchWeb.Api.AgentControllerTest do
 
     Application.put_env(:autolaunch, :siwa,
       internal_url: "http://127.0.0.1:#{port}",
-      shared_secret: @receipt_secret,
       http_connect_timeout_ms: 2_000,
       http_receive_timeout_ms: 5_000
     )
@@ -132,7 +131,6 @@ defmodule AutolaunchWeb.Api.AgentControllerTest do
 
     Application.put_env(:autolaunch, :siwa,
       internal_url: "http://127.0.0.1:#{port}",
-      shared_secret: @receipt_secret,
       http_connect_timeout_ms: 2_000,
       http_receive_timeout_ms: 5_000
     )
@@ -166,7 +164,6 @@ defmodule AutolaunchWeb.Api.AgentControllerTest do
 
     Application.put_env(:autolaunch, :siwa,
       internal_url: "http://127.0.0.1:#{port}",
-      shared_secret: @receipt_secret,
       http_connect_timeout_ms: 2_000,
       http_receive_timeout_ms: 5_000
     )

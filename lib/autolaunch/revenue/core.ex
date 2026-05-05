@@ -1671,14 +1671,12 @@ defmodule Autolaunch.Revenue.Core do
 
   defp parse_non_negative_int(_value, error), do: {:error, error}
 
-  defp required_wallet(%HumanUser{} = human) do
-    case primary_wallet_address(human) do
+  defp required_wallet(current_actor) do
+    case primary_wallet_address(current_actor) do
       nil -> wallet_issue()
       address -> {:ok, address}
     end
   end
-
-  defp required_wallet(_human), do: wallet_issue()
 
   defp primary_wallet_address(%HumanUser{} = human) do
     [human.wallet_address | List.wrap(human.wallet_addresses)]
@@ -1686,7 +1684,24 @@ defmodule Autolaunch.Revenue.Core do
     |> normalize_address()
   end
 
+  defp primary_wallet_address(%{"wallet_address" => wallet_address}) do
+    wallet_address
+    |> normalize_primary_wallet()
+  end
+
+  defp primary_wallet_address(%{wallet_address: wallet_address}) do
+    wallet_address
+    |> normalize_primary_wallet()
+  end
+
   defp primary_wallet_address(_human), do: nil
+
+  defp normalize_primary_wallet(value) do
+    case normalize_address(value) do
+      "" -> nil
+      normalized -> normalized
+    end
+  end
 
   defp normalize_address_list(values) when is_list(values) do
     values

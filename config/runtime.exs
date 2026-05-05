@@ -21,9 +21,9 @@ env_bool = fn key, default ->
   env.(key, if(default, do: "true", else: "false")) in ["1", "true", "TRUE"]
 end
 
-env_list = fn key ->
+env_list = fn key, default ->
   key
-  |> env.("")
+  |> env.(default)
   |> String.split(",", trim: true)
   |> Enum.map(&String.trim/1)
   |> Enum.reject(&(&1 == ""))
@@ -77,7 +77,6 @@ if config_env() != :test do
 
   config :autolaunch, :siwa,
     internal_url: env.("SIWA_INTERNAL_URL", "http://siwa-sidecar:4100"),
-    shared_secret: env.("SIWA_SHARED_SECRET", ""),
     http_connect_timeout_ms: env_int.("SIWA_HTTP_CONNECT_TIMEOUT_MS", 2_000),
     http_receive_timeout_ms: env_int.("SIWA_HTTP_RECEIVE_TIMEOUT_MS", 5_000)
 
@@ -171,7 +170,14 @@ if config_env() != :test do
     chain_label: env.("REGENT_STAKING_CHAIN_LABEL", "Base"),
     rpc_url: env.("REGENT_STAKING_RPC_URL", ""),
     contract_address: env.("REGENT_REVENUE_STAKING_ADDRESS", ""),
-    operator_wallets: env_list.("REGENT_STAKING_OPERATOR_WALLETS")
+    operator_wallets: env_list.("REGENT_STAKING_OPERATOR_WALLETS", "")
+
+  config :autolaunch, :contract_admin,
+    operator_wallets:
+      env_list.(
+        "AUTOLAUNCH_CONTRACT_ADMIN_OPERATOR_WALLETS",
+        "0xB26A3609acD791e2eA3f1900619C910B45705adD"
+      )
 
   config :agent_world, :world_id,
     app_id: env.("WORLD_ID_APP_ID", ""),

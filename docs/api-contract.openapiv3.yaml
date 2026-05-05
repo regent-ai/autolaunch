@@ -1474,6 +1474,11 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/PreparedActionEnvelope" }
+        "403":
+          description: Signed-in wallet is not an authorized contract operator
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
   /v1/agent/agents:
     get:
       operationId: agentListAgents
@@ -1987,6 +1992,11 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/PreparedActionEnvelope" }
+        "403":
+          description: Signed agent wallet is not an authorized contract operator
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
   /v1/agent/launch/preview:
     post:
       operationId: agentPreviewLaunch

@@ -43,10 +43,14 @@ defmodule AutolaunchWeb.Api.ContractsController do
     do: render_api_result(conn, result, &ContractsError.translate/1)
 
   defp render_authed(conn, fun) do
-    with_current_human(conn, fn human -> render_result(conn, fun.(human)) end, fn conn ->
-      render_result(conn, {:error, :unauthorized})
-    end)
+    case contract_actor(conn) do
+      nil -> render_result(conn, {:error, :unauthorized})
+      actor -> render_result(conn, fun.(actor))
+    end
   end
+
+  defp contract_actor(conn),
+    do: conn.assigns[:current_agent_claims] || conn.assigns[:current_human]
 
   defp context_module do
     configured_module(:contracts_api, :context_module, Contracts)

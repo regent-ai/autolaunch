@@ -95,12 +95,17 @@ defmodule Autolaunch.ContractsDispatchTest do
     assert hook_acceptance.wallet_action.to == job.hook_address
   end
 
-  test "admin prepare attaches the signed-in wallet to the wallet action" do
+  test "admin prepare uses a linked contract operator wallet" do
     previous_launch = Application.get_env(:autolaunch, :launch, [])
+    previous_contract_admin = Application.get_env(:autolaunch, :contract_admin, [])
+    operator_wallet = "0xB26A3609acD791e2eA3f1900619C910B45705adD"
 
     on_exit(fn ->
       Application.put_env(:autolaunch, :launch, previous_launch)
+      Application.put_env(:autolaunch, :contract_admin, previous_contract_admin)
     end)
+
+    Application.put_env(:autolaunch, :contract_admin, operator_wallets: [operator_wallet])
 
     Application.put_env(
       :autolaunch,
@@ -114,7 +119,7 @@ defmodule Autolaunch.ContractsDispatchTest do
 
     human = %HumanUser{
       wallet_address: "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-      wallet_addresses: []
+      wallet_addresses: [operator_wallet]
     }
 
     assert {:ok, %{prepared: prepared}} =
@@ -128,8 +133,35 @@ defmodule Autolaunch.ContractsDispatchTest do
                human
              )
 
-    assert prepared.expected_signer == "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    assert prepared.expected_signer == String.downcase(operator_wallet)
     assert prepared.wallet_action.expected_signer == prepared.expected_signer
+  end
+
+  test "admin prepare rejects a wallet outside the contract operator list" do
+    previous_contract_admin = Application.get_env(:autolaunch, :contract_admin, [])
+    operator_wallet = "0xB26A3609acD791e2eA3f1900619C910B45705adD"
+
+    on_exit(fn ->
+      Application.put_env(:autolaunch, :contract_admin, previous_contract_admin)
+    end)
+
+    Application.put_env(:autolaunch, :contract_admin, operator_wallets: [operator_wallet])
+
+    human = %HumanUser{
+      wallet_address: "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      wallet_addresses: []
+    }
+
+    assert {:error, :operator_required} =
+             Contracts.prepare_admin_action(
+               "revenue_share_factory",
+               "set_authorized_creator",
+               %{
+                 "account" => "0x1111111111111111111111111111111111111111",
+                 "enabled" => "true"
+               },
+               human
+             )
   end
 
   test "subject dispatch returns stable invalid address and ingress errors" do

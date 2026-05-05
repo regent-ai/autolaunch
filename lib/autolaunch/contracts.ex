@@ -4,6 +4,7 @@ defmodule Autolaunch.Contracts do
   alias Autolaunch.Accounts.HumanUser
   alias Autolaunch.BaseChain
   alias Autolaunch.CCA.Rpc
+  alias Autolaunch.ContractAdminAccess
   alias Autolaunch.Contracts.Abi
   alias Autolaunch.Contracts.Dispatch
   alias Autolaunch.InfrastructureConfig
@@ -115,21 +116,14 @@ defmodule Autolaunch.Contracts do
   end
 
   def prepare_admin_action(resource, action, attrs, current_human) do
-    with {:ok, prepared} <-
+    with {:ok, signer} <- ContractAdminAccess.authorized_operator_wallet(current_human),
+         {:ok, prepared} <-
            Dispatch.build_admin_action(resource, action, attrs, %{
              chain_id: launch_chain_id(),
              ingress_factory_address: ingress_factory_address(launch_chain_id()),
              revenue_share_factory_address: revenue_share_factory_address(launch_chain_id())
            }) do
-      {:ok,
-       %{
-         prepared:
-           put_expected_signer(
-             prepared,
-             signer_for(current_human) || Map.get(attrs, "expected_signer") ||
-               Map.get(attrs, :expected_signer)
-           )
-       }}
+      {:ok, %{prepared: put_expected_signer(prepared, signer)}}
     end
   end
 
@@ -144,24 +138,42 @@ defmodule Autolaunch.Contracts do
 
   defp put_expected_signer(prepared, _signer), do: prepared
 
-  defp signer_for(%HumanUser{} = current_human) do
+  defp signer_for(current_actor), do: current_actor |> wallet_addresses_for() |> List.first()
+
+  defp wallet_addresses_for(%HumanUser{} = current_human) do
     [current_human.wallet_address | List.wrap(current_human.wallet_addresses)]
-    |> Enum.find(&(is_binary(&1) and String.trim(&1) != ""))
-    |> normalize_address()
+    |> normalize_wallet_candidates()
   end
 
-  defp signer_for(_current_human), do: nil
+  defp wallet_addresses_for(%{"wallet_address" => wallet_address}) do
+    [wallet_address]
+    |> normalize_wallet_candidates()
+  end
 
-  defp authorize_job_scope(%{owner_address: owner_address}, %HumanUser{} = current_human) do
-    wallets =
-      [current_human.wallet_address | List.wrap(current_human.wallet_addresses)]
-      |> Enum.map(&normalize_address/1)
-      |> Enum.reject(&is_nil/1)
+  defp wallet_addresses_for(%{wallet_address: wallet_address}) do
+    [wallet_address]
+    |> normalize_wallet_candidates()
+  end
 
-    if normalize_address(owner_address) in wallets do
-      {:ok, %{owner_matched: true}}
-    else
-      {:error, :forbidden}
+  defp wallet_addresses_for(_current_actor), do: []
+
+  defp normalize_wallet_candidates(wallets) do
+    wallets
+    |> Enum.map(&normalize_address/1)
+    |> Enum.reject(&(&1 in [nil, ""]))
+  end
+
+  defp authorize_job_scope(%{owner_address: owner_address}, current_actor) do
+    case wallet_addresses_for(current_actor) do
+      [] ->
+        {:error, :unauthorized}
+
+      wallets ->
+        if normalize_address(owner_address) in wallets do
+          {:ok, %{owner_matched: true}}
+        else
+          {:error, :forbidden}
+        end
     end
   end
 
@@ -432,16 +444,7 @@ defmodule Autolaunch.Contracts do
           nil
       end
 
-    wallet_address =
-      case current_human do
-        %HumanUser{} ->
-          [current_human.wallet_address | List.wrap(current_human.wallet_addresses)]
-          |> Enum.find(&(is_binary(&1) and String.trim(&1) != ""))
-          |> normalize_address()
-
-        _ ->
-          nil
-      end
+    wallet_address = signer_for(current_human)
 
     identity_links = load_identity_links(subject.chain_id, address, subject.subject_id)
 

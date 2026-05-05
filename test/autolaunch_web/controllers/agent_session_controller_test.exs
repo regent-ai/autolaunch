@@ -5,7 +5,7 @@ defmodule AutolaunchWeb.AgentSessionControllerTest do
   @chain_id "84532"
   @registry_address "0x2222222222222222222222222222222222222222"
   @token_id "44"
-  @receipt_secret "autolaunch-test-shared-secret"
+  @receipt_secret "autolaunch-test-receipt-secret"
 
   setup_all do
     original_siwa_cfg = Application.get_env(:autolaunch, :siwa, [])
@@ -17,7 +17,6 @@ defmodule AutolaunchWeb.AgentSessionControllerTest do
 
     Application.put_env(:autolaunch, :siwa,
       internal_url: "http://127.0.0.1:#{port}",
-      shared_secret: @receipt_secret,
       http_connect_timeout_ms: 2_000,
       http_receive_timeout_ms: 5_000
     )

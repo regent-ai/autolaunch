@@ -3,6 +3,8 @@ defmodule Autolaunch.Application do
 
   use Application
 
+  alias Autolaunch.Siwa.Config, as: SiwaConfig
+
   @impl true
   def start(_type, _args) do
     :ok = enforce_siwa_runtime_guard!()
@@ -30,15 +32,20 @@ defmodule Autolaunch.Application do
     :ok
   end
 
-  defp enforce_siwa_runtime_guard! do
+  @doc false
+  def enforce_siwa_runtime_guard! do
     runtime_env = Application.get_env(:autolaunch, :runtime_env, :dev)
-    siwa_cfg = Application.get_env(:autolaunch, :siwa, [])
-    shared_secret = Keyword.get(siwa_cfg, :shared_secret)
 
-    if runtime_env == :prod and (not is_binary(shared_secret) or String.trim(shared_secret) == "") do
-      raise """
-      invalid SIWA configuration: :siwa, shared_secret must be configured in :prod.
-      """
+    if runtime_env == :prod do
+      case SiwaConfig.fetch_http_config() do
+        {:ok, _config} ->
+          :ok
+
+        {:error, reason} ->
+          raise """
+          invalid SIWA configuration: #{inspect(reason)}
+          """
+      end
     end
 
     :ok

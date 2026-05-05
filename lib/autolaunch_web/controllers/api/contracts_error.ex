@@ -10,6 +10,9 @@ defmodule AutolaunchWeb.Api.ContractsError do
   def translate(:unauthorized),
     do: {:unauthorized, "auth_required", "Privy session required"}
 
+  def translate(:operator_required),
+    do: {:forbidden, "operator_required", "Use an authorized operator wallet"}
+
   def translate(:job_lookup_failed),
     do: {:internal_server_error, "job_lookup_failed", "Contract scope could not be loaded"}
 

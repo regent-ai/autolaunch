@@ -4,9 +4,16 @@ defmodule AutolaunchWeb.Api.ContractsControllerTest do
   alias Autolaunch.Accounts
 
   @wallet "0x1111111111111111111111111111111111111111"
+  @agent_wallet "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  @agent_chain_id "84532"
+  @agent_registry "0x2222222222222222222222222222222222222222"
+  @agent_token_id "44"
+  @receipt_secret "autolaunch-test-receipt-secret"
 
   defmodule ContractsStub do
     @authorized_wallet "0x1111111111111111111111111111111111111111"
+    @agent_wallet "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    @authorized_wallets [@authorized_wallet, @agent_wallet]
 
     def admin_overview do
       {:ok,
@@ -284,7 +291,8 @@ defmodule AutolaunchWeb.Api.ContractsControllerTest do
     def prepare_admin_action("revenue_share_factory", "set_authorized_creator", _attrs, human) do
       expected_signer =
         human
-        |> Map.get(:wallet_address)
+        |> actor_wallets()
+        |> List.first()
         |> normalize_address()
 
       {:ok,
@@ -307,15 +315,19 @@ defmodule AutolaunchWeb.Api.ContractsControllerTest do
     def prepare_admin_action("broken", "set_authorized_creator", _attrs, _human),
       do: {:error, :invalid_uint}
 
+    def prepare_admin_action("operator_required", "set_authorized_creator", _attrs, _human),
+      do: {:error, :operator_required}
+
     def prepare_admin_action(_resource, _action, _attrs, _human),
       do: {:error, :unsupported_action}
 
     defp access_status(nil), do: :unauthorized
 
-    defp access_status(%{} = human) do
-      [Map.get(human, :wallet_address) | List.wrap(Map.get(human, :wallet_addresses))]
+    defp access_status(%{} = actor) do
+      actor
+      |> actor_wallets()
       |> Enum.map(&normalize_address/1)
-      |> Enum.any?(&(&1 == @authorized_wallet))
+      |> Enum.any?(&(&1 in @authorized_wallets))
       |> then(fn
         true -> :authorized
         false -> :forbidden
@@ -324,11 +336,36 @@ defmodule AutolaunchWeb.Api.ContractsControllerTest do
 
     defp access_status(_human), do: :unauthorized
 
+    defp actor_wallets(%{"wallet_address" => wallet_address}), do: [wallet_address]
+
+    defp actor_wallets(%{} = actor) do
+      [Map.get(actor, :wallet_address) | List.wrap(Map.get(actor, :wallet_addresses))]
+    end
+
     defp normalize_address(value) when is_binary(value) do
       value |> String.trim() |> String.downcase()
     end
 
     defp normalize_address(_value), do: nil
+  end
+
+  setup_all do
+    original_siwa_cfg = Application.get_env(:autolaunch, :siwa, [])
+    port = available_port()
+
+    start_supervised!(
+      {Bandit, plug: Autolaunch.TestSupport.SiwaBrokerStub, ip: {127, 0, 0, 1}, port: port}
+    )
+
+    Application.put_env(:autolaunch, :siwa,
+      internal_url: "http://127.0.0.1:#{port}",
+      http_connect_timeout_ms: 2_000,
+      http_receive_timeout_ms: 5_000
+    )
+
+    on_exit(fn -> Application.put_env(:autolaunch, :siwa, original_siwa_cfg) end)
+
+    :ok
   end
 
   setup %{conn: conn} do
@@ -372,6 +409,53 @@ defmodule AutolaunchWeb.Api.ContractsControllerTest do
 
   defp contracts_admin_prepare_path(resource, action) do
     "/v1/app/contracts/admin/#{resource}/#{action}/prepare"
+  end
+
+  defp with_agent_headers(conn) do
+    conn
+    |> put_req_header("accept", "application/json")
+    |> put_req_header("x-agent-wallet-address", @agent_wallet)
+    |> put_req_header("x-agent-chain-id", @agent_chain_id)
+    |> put_req_header("x-agent-registry-address", @agent_registry)
+    |> put_req_header("x-agent-token-id", @agent_token_id)
+    |> put_req_header("x-siwa-receipt", receipt_token("autolaunch"))
+  end
+
+  defp receipt_token(audience) do
+    now_ms = DateTime.utc_now() |> DateTime.to_unix(:millisecond)
+
+    payload =
+      %{
+        "typ" => "siwa_receipt",
+        "jti" => Ecto.UUID.generate(),
+        "sub" => @agent_wallet,
+        "aud" => audience,
+        "verified" => "onchain",
+        "iat" => now_ms,
+        "exp" => now_ms + 600_000,
+        "chain_id" => String.to_integer(@agent_chain_id),
+        "nonce" => "nonce-#{System.unique_integer([:positive])}",
+        "key_id" => @agent_wallet,
+        "registry_address" => @agent_registry,
+        "token_id" => @agent_token_id
+      }
+      |> Jason.encode!()
+      |> Base.url_encode64(padding: false)
+
+    signature =
+      :crypto.mac(:hmac, :sha256, @receipt_secret, payload)
+      |> Base.url_encode64(padding: false)
+
+    "#{payload}.#{signature}"
+  end
+
+  defp available_port do
+    {:ok, socket} =
+      :gen_tcp.listen(0, [:binary, packet: :raw, active: false, ip: {127, 0, 0, 1}])
+
+    {:ok, port} = :inet.port(socket)
+    :ok = :gen_tcp.close(socket)
+    port
   end
 
   test "contract routes reject unauthenticated access across admin, job, subject, and prepare flows",
@@ -711,6 +795,31 @@ defmodule AutolaunchWeb.Api.ContractsControllerTest do
            } = json_response(conn, 200)
   end
 
+  test "agent admin prepare route uses the signed agent wallet without a browser session", %{
+    conn: conn
+  } do
+    conn =
+      conn
+      |> with_agent_headers()
+      |> post(
+        "/v1/agent/contracts/admin/revenue_share_factory/set_authorized_creator/prepare",
+        %{"account" => "0x1111111111111111111111111111111111111111", "enabled" => "true"}
+      )
+
+    assert %{
+             "ok" => true,
+             "prepared" => %{
+               "resource" => "revenue_share_factory",
+               "action" => "set_authorized_creator",
+               "expected_signer" => @agent_wallet,
+               "wallet_action" => %{
+                 "data" => "0xe1434f4e",
+                 "expected_signer" => @agent_wallet
+               }
+             }
+           } = json_response(conn, 200)
+  end
+
   test "prepare routes translate stable contract errors for the signed-in owner", %{
     conn: conn,
     human: human
@@ -750,5 +859,15 @@ defmodule AutolaunchWeb.Api.ContractsControllerTest do
                "message" => "Amount must be a whole onchain unit"
              }
            } = json_response(invalid_uint_conn, 422)
+
+    operator_required_conn =
+      post(conn, contracts_admin_prepare_path("operator_required", "set_authorized_creator"), %{})
+
+    assert %{
+             "error" => %{
+               "code" => "operator_required",
+               "message" => "Use an authorized operator wallet"
+             }
+           } = json_response(operator_required_conn, 403)
   end
 end

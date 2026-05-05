@@ -39,7 +39,10 @@ config :autolaunch, :privy,
 
 config :autolaunch, :siwa,
   internal_url: "http://localhost:4100",
-  shared_secret: "autolaunch-test-shared-secret"
+  http_connect_timeout_ms: 2_000,
+  http_receive_timeout_ms: 5_000
+
+config :autolaunch, :siwa_broker_stub, receipt_secret: "autolaunch-test-receipt-secret"
 
 config :autolaunch, :prelaunch_uploads,
   root_dir: Path.join(System.tmp_dir!(), "autolaunch-test-prelaunch-assets")

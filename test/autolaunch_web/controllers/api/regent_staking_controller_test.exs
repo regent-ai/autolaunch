@@ -7,7 +7,7 @@ defmodule AutolaunchWeb.Api.RegentStakingControllerTest do
   @agent_chain_id "84532"
   @agent_registry "0x2222222222222222222222222222222222222222"
   @agent_token_id "44"
-  @receipt_secret "autolaunch-test-shared-secret"
+  @receipt_secret "autolaunch-test-receipt-secret"
 
   defmodule RegentStakingStub do
     def overview(_human) do
@@ -176,7 +176,6 @@ defmodule AutolaunchWeb.Api.RegentStakingControllerTest do
 
     Application.put_env(:autolaunch, :siwa,
       internal_url: "http://127.0.0.1:#{port}",
-      shared_secret: @receipt_secret,
       http_connect_timeout_ms: 2_000,
       http_receive_timeout_ms: 5_000
     )
