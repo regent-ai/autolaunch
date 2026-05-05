@@ -5298,3 +5298,226 @@ textarea {
     justify-content: center;
   }
 }
+
+.al-shell-route-host :is(
+  .al-status-hero,
+  .al-status-check,
+  .al-hero.al-panel,
+  .al-main-panel,
+  .al-side-panel,
+  .al-stat-card,
+  .al-review-card,
+  .al-note-card,
+  .al-inline-banner,
+  .al-muted-box,
+  .al-check-item,
+  .al-agent-card,
+  .al-agentbook-session,
+  .al-agentbook-qr-frame,
+  .al-guide-hero,
+  .al-guide-summary,
+  .al-choice-card,
+  .al-disclosure,
+  .al-guide-step,
+  .al-guide-step-callout,
+  .al-guide-finish,
+  .al-guide-outcome,
+  .al-guide-invariant,
+  .al-guide-surface,
+  .al-guide-surface-card,
+  .al-guide-cta-strip,
+  .al-guide-cta-card,
+  .al-terrain-surface,
+  .al-terrain-strip,
+  .al-action-desk,
+  .al-action-desk-stat,
+  .al-action-desk-card,
+  .al-agent-meta div
+) {
+  border-color: color-mix(in srgb, var(--brand-ink) 10%, transparent);
+  border-radius: 0.95rem;
+  background:
+    radial-gradient(circle at 96% 4%, color-mix(in srgb, var(--brand-primary) 7%, transparent), transparent 26%),
+    linear-gradient(180deg, color-mix(in srgb, white 98%, var(--color-bg) 2%), color-mix(in srgb, white 93%, var(--color-bg) 7%));
+  box-shadow: 0 20px 48px -38px rgba(28, 51, 77, 0.22);
+}
+
+.al-shell-route-host :is(
+  .al-status-hero h1,
+  .al-status-check h2,
+  .al-hero h2,
+  .al-guide-hero h2,
+  .al-choice-card h3,
+  .al-guide-step-copy h3,
+  .al-guide-outcome strong,
+  .al-section-head h3,
+  .al-agent-card-head strong,
+  .al-note-card strong,
+  .al-review-card strong,
+  .al-stat-card strong
+) {
+  color: color-mix(in srgb, var(--brand-ink) 90%, black 10%);
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+.al-shell-route-host :is(
+  .al-inline-note,
+  .al-muted-box,
+  .al-note-card,
+  .al-review-card,
+  .al-stat-card,
+  .al-agent-card,
+  .al-agentbook-session,
+  .al-guide-step,
+  .al-guide-outcome,
+  .al-status-check,
+  .al-choice-command,
+  .al-contract-json,
+  .al-compact-list,
+  .al-checklist
+) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.al-shell-route-host :is(.al-choice-command, .al-contract-json) {
+  max-width: 100%;
+  border-radius: 0.85rem;
+}
+
+.al-shell-route-host :is(.al-choice-command code, .al-contract-json code) {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.al-shell-route-host :is(
+  .al-launch-tag,
+  .al-guide-pill,
+  .al-step-chip,
+  .al-action-desk-status,
+  .al-access-badge,
+  .al-account-chip,
+  .al-account-wallet
+) {
+  min-height: 1.9rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--brand-ink) 9%, transparent);
+  background: color-mix(in srgb, white 92%, var(--brand-primary) 8%);
+  color: color-mix(in srgb, var(--brand-ink) 76%, black 24%);
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: normal;
+}
+
+.al-shell-route-host :is(
+  .al-identity-back,
+  .al-docs-feature-link,
+  .al-account-link,
+  .al-account-footer-link,
+  .al-filter,
+  .al-nav-link,
+  .al-utility-link
+) {
+  min-width: 0;
+  min-height: 2.5rem;
+  border-radius: 999px;
+  touch-action: manipulation;
+  transition:
+    transform 160ms var(--al-ease-out),
+    border-color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease;
+}
+
+.al-shell-route-host :is(
+  .al-identity-back,
+  .al-docs-feature-link,
+  .al-account-link,
+  .al-account-footer-link,
+  .al-filter,
+  .al-nav-link,
+  .al-utility-link
+):active {
+  transform: scale(0.975);
+}
+
+.al-shell-route-host :is(
+  .al-field-grid input,
+  .al-field-grid select,
+  .al-field-grid textarea,
+  .al-filter-form select,
+  .al-check-item input
+) {
+  min-width: 0;
+  min-height: 2.95rem;
+  border-radius: 0.85rem;
+  border-color: color-mix(in srgb, var(--brand-ink) 10%, transparent);
+  background: color-mix(in srgb, white 96%, var(--color-bg) 4%);
+  color: color-mix(in srgb, var(--brand-ink) 86%, black 14%);
+}
+
+.al-shell-route-host :is(
+  .al-field-grid input,
+  .al-field-grid select,
+  .al-field-grid textarea,
+  .al-filter-form select,
+  .al-check-item input
+):focus-visible {
+  outline: none;
+  border-color: color-mix(in srgb, var(--brand-primary) 44%, transparent);
+  box-shadow:
+    0 0 0 0.22rem color-mix(in srgb, var(--brand-primary) 12%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .al-shell-route-host :is(
+    .al-status-check,
+    .al-stat-card,
+    .al-review-card,
+    .al-note-card,
+    .al-check-item,
+    .al-agent-card,
+    .al-choice-card,
+    .al-guide-step,
+    .al-guide-outcome,
+    .al-agentbook-session,
+    .al-inline-banner,
+    .al-action-desk-stat
+  ):hover {
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, var(--brand-primary) 18%, transparent);
+    box-shadow: 0 24px 52px -42px rgba(21, 96, 66, 0.34);
+  }
+}
+
+@media (max-width: 720px) {
+  .al-shell-route-host :is(
+    .al-action-row,
+    .al-choice-actions,
+    .al-agentbook-session-head,
+    .al-agent-card-head,
+    .al-stack-right,
+    .al-section-head,
+    .al-disclosure-summary
+  ) {
+    display: grid;
+    grid-template-columns: 1fr;
+    justify-items: stretch;
+  }
+
+  .al-shell-route-host :is(
+    .al-action-row .al-submit,
+    .al-action-row .al-ghost,
+    .al-action-row .al-cta-link,
+    .al-choice-actions .al-submit,
+    .al-choice-actions .al-ghost,
+    .al-choice-actions .al-cta-link
+  ) {
+    width: 100%;
+    justify-content: center;
+  }
+}

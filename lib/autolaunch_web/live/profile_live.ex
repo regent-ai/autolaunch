@@ -770,6 +770,92 @@ defmodule AutolaunchWeb.ProfileLive do
         margin: 0;
       }
 
+      .al-profile-header,
+      .al-profile-card,
+      .al-profile-wallet-metrics article,
+      .al-profile-identity-card,
+      .al-profile-inline-banner,
+      .al-profile-next-step {
+        border-color: color-mix(in srgb, var(--brand-ink) 10%, transparent);
+        border-radius: 0.95rem;
+        background:
+          radial-gradient(circle at 96% 4%, color-mix(in srgb, var(--brand-primary) 7%, transparent), transparent 26%),
+          linear-gradient(180deg, color-mix(in srgb, white 98%, var(--color-bg) 2%), color-mix(in srgb, white 93%, var(--color-bg) 7%));
+        box-shadow: 0 20px 48px -38px rgba(28, 51, 77, 0.22);
+      }
+
+      .al-profile-header-copy h1,
+      .al-profile-card h2,
+      .al-profile-card h3,
+      .al-profile-wallet-metrics strong,
+      .al-profile-identity-card strong {
+        color: color-mix(in srgb, var(--brand-ink) 90%, black 10%);
+        letter-spacing: 0;
+        overflow-wrap: anywhere;
+        text-wrap: balance;
+      }
+
+      .al-profile-card-head,
+      .al-profile-identity-head,
+      .al-profile-table-token,
+      .al-profile-activity-list div,
+      .al-profile-next-step,
+      .al-profile-wallet-metrics article {
+        min-width: 0;
+      }
+
+      .al-profile-table-token strong,
+      .al-profile-table-token span,
+      .al-profile-activity-list dd,
+      .al-profile-next-step strong,
+      .al-profile-next-step p {
+        overflow-wrap: anywhere;
+      }
+
+      .al-profile-chip,
+      .al-profile-status-pill {
+        letter-spacing: 0;
+        text-transform: none;
+        white-space: normal;
+      }
+
+      .al-profile-history-table {
+        min-width: 54rem;
+      }
+
+      .al-profile-mini-actions .al-ghost,
+      .al-profile-card-head .al-ghost,
+      .al-profile-history-table .al-submit,
+      .al-profile-history-table .al-ghost {
+        min-height: 2.65rem;
+        justify-content: center;
+      }
+
+      .al-profile-next-step:active,
+      .al-profile-mini-actions .al-ghost:active,
+      .al-profile-card-head .al-ghost:active {
+        transform: scale(0.975);
+      }
+
+      @media (hover: hover) and (pointer: fine) {
+        .al-profile-card,
+        .al-profile-identity-card,
+        .al-profile-next-step {
+          transition:
+            transform 180ms cubic-bezier(0.23, 1, 0.32, 1),
+            border-color 180ms ease,
+            box-shadow 180ms ease,
+            background-color 180ms ease;
+        }
+
+        .al-profile-identity-card:hover,
+        .al-profile-next-step:hover {
+          transform: translateY(-2px);
+          border-color: color-mix(in srgb, var(--brand-primary) 18%, transparent);
+          box-shadow: 0 24px 52px -42px rgba(21, 96, 66, 0.34);
+        }
+      }
+
       @media (max-width: 1100px) {
         .al-profile-grid,
         .al-profile-verification-grid {
@@ -789,6 +875,22 @@ defmodule AutolaunchWeb.ProfileLive do
         .al-profile-wallet-metrics,
         .al-profile-identity-grid {
           grid-template-columns: 1fr;
+        }
+
+        .al-profile-card-head,
+        .al-profile-identity-head,
+        .al-profile-activity-list div,
+        .al-profile-next-step {
+          display: grid;
+          grid-template-columns: 1fr;
+          justify-items: stretch;
+        }
+
+        .al-profile-mini-actions .al-ghost,
+        .al-profile-card-head .al-ghost,
+        .al-profile-history-table .al-submit,
+        .al-profile-history-table .al-ghost {
+          width: 100%;
         }
       }
     </style>

@@ -892,6 +892,80 @@ defmodule AutolaunchWeb.PositionsLive do
         font-size: clamp(1.4rem, 2.6vw, 2.2rem);
       }
 
+      .al-positions-header,
+      .al-positions-summary-card,
+      .al-positions-priority-card,
+      .al-positions-table-card,
+      .al-positions-activity-card,
+      .al-positions-desk-ledger {
+        border-color: color-mix(in srgb, var(--brand-ink) 10%, transparent);
+        border-radius: 0.95rem;
+        background:
+          radial-gradient(circle at 96% 4%, color-mix(in srgb, var(--brand-primary) 7%, transparent), transparent 26%),
+          linear-gradient(180deg, color-mix(in srgb, white 98%, var(--color-bg) 2%), color-mix(in srgb, white 93%, var(--color-bg) 7%));
+        box-shadow: 0 20px 48px -38px rgba(28, 51, 77, 0.22);
+      }
+
+      .al-positions-header-copy h1,
+      .al-positions-summary-card strong,
+      .al-positions-priority-copy h2,
+      .al-positions-table-topline h3,
+      .al-positions-activity-head h3,
+      .al-positions-desk-ledger strong {
+        color: color-mix(in srgb, var(--brand-ink) 90%, black 10%);
+        letter-spacing: 0;
+        overflow-wrap: anywhere;
+        text-wrap: balance;
+      }
+
+      .al-positions-summary-card,
+      .al-positions-priority-card,
+      .al-positions-priority-copy,
+      .al-positions-filter-row,
+      .al-positions-activity-row,
+      .al-positions-desk-ledger {
+        min-width: 0;
+      }
+
+      .al-positions-summary-card strong,
+      .al-positions-summary-card p,
+      .al-positions-priority-copy h2,
+      .al-positions-priority-copy p,
+      .al-positions-activity-row strong,
+      .al-positions-activity-row p,
+      .al-positions-desk-ledger strong,
+      .al-positions-desk-ledger p {
+        overflow-wrap: anywhere;
+      }
+
+      .al-positions-priority-actions .al-submit,
+      .al-positions-priority-actions .al-ghost {
+        min-height: 2.65rem;
+        justify-content: center;
+      }
+
+      .al-table {
+        min-width: 64rem;
+      }
+
+      @media (hover: hover) and (pointer: fine) {
+        .al-positions-summary-card,
+        .al-positions-priority-card {
+          transition:
+            transform 180ms cubic-bezier(0.23, 1, 0.32, 1),
+            border-color 180ms ease,
+            box-shadow 180ms ease,
+            background-color 180ms ease;
+        }
+
+        .al-positions-summary-card:hover,
+        .al-positions-priority-card:hover {
+          transform: translateY(-2px);
+          border-color: color-mix(in srgb, var(--brand-primary) 18%, transparent);
+          box-shadow: 0 24px 52px -42px rgba(21, 96, 66, 0.34);
+        }
+      }
+
       @media (max-width: 1100px) {
         .al-positions-summary-row,
         .al-positions-priority-grid,
@@ -906,6 +980,21 @@ defmodule AutolaunchWeb.PositionsLive do
 
         .al-positions-header-actions {
           justify-items: start;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .al-positions-priority-card,
+        .al-positions-activity-row,
+        .al-positions-priority-actions {
+          display: grid;
+          grid-template-columns: 1fr;
+          align-items: stretch;
+        }
+
+        .al-positions-priority-actions .al-submit,
+        .al-positions-priority-actions .al-ghost {
+          width: 100%;
         }
       }
     </style>
