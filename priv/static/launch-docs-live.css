@@ -616,3 +616,128 @@
     grid-column: 2;
   }
 }
+
+#al-launch-page .al-route-hero,
+#al-docs-page .al-docs-masthead,
+#al-docs-page .al-legal-hero,
+#al-launch-page .al-launch-console-strip,
+#al-launch-page .al-launch-checklist-card,
+#al-launch-page .al-launch-path-card,
+#al-launch-page .al-launch-metadata-card,
+#al-launch-page .al-launch-preview-card,
+#al-launch-page .al-launch-companion-empty,
+#al-launch-page .al-launch-footnote-strip,
+#al-docs-page .al-guide-hero,
+#al-docs-page .al-guide-summary,
+#al-docs-page .al-legal-card,
+#al-docs-page .al-legal-footer,
+#al-docs-page .al-contract-card,
+#al-docs-page .al-empty-state {
+  border-radius: 0.95rem;
+  border-color: color-mix(in srgb, var(--brand-ink) 10%, transparent);
+  background:
+    radial-gradient(circle at 96% 4%, color-mix(in srgb, var(--brand-primary) 7%, transparent), transparent 26%),
+    linear-gradient(180deg, color-mix(in srgb, white 98%, var(--color-bg) 2%), color-mix(in srgb, white 93%, var(--color-bg) 7%));
+  box-shadow: 0 20px 48px -38px rgba(28, 51, 77, 0.22);
+}
+
+#al-launch-page .al-route-hero h1,
+#al-launch-page .al-route-hero h2,
+#al-docs-page .al-docs-masthead h1,
+#al-docs-page .al-legal-hero h2 {
+  color: color-mix(in srgb, var(--brand-ink) 92%, black 8%);
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+#al-launch-page .al-route-hero-visual,
+#al-launch-page .al-route-hero-step,
+#al-launch-page .al-launch-preview-art,
+#al-docs-page .al-docs-feature-card {
+  border-radius: 0.85rem;
+  border-color: color-mix(in srgb, var(--brand-ink) 9%, transparent);
+  background: color-mix(in srgb, white 95%, var(--color-bg) 5%);
+}
+
+#al-launch-page .al-launch-command-bar {
+  border-radius: 0.85rem;
+  background:
+    radial-gradient(circle at 94% 8%, color-mix(in srgb, var(--brand-primary) 14%, transparent), transparent 30%),
+    linear-gradient(180deg, color-mix(in srgb, var(--brand-ink) 92%, black 8%), color-mix(in srgb, var(--brand-ink) 82%, black 18%));
+}
+
+#al-launch-page .al-launch-command-bar code {
+  min-width: 0;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+}
+
+#al-launch-page .al-launch-checklist-item,
+#al-launch-page .al-launch-agent-guide {
+  border-radius: 0.75rem;
+  padding: 0.8rem;
+  border: 1px solid color-mix(in srgb, var(--brand-ink) 8%, transparent);
+  background: color-mix(in srgb, white 95%, var(--color-bg) 5%);
+}
+
+#al-launch-page .al-launch-checklist-item + .al-launch-checklist-item,
+#al-launch-page .al-launch-agent-guide + .al-launch-agent-guide {
+  margin-top: 0.55rem;
+}
+
+#al-launch-page .al-launch-checklist-item:last-child,
+#al-launch-page .al-launch-agent-guide:last-child {
+  border-bottom: 1px solid color-mix(in srgb, var(--brand-ink) 8%, transparent);
+}
+
+#al-launch-page .al-launch-pill {
+  background: color-mix(in srgb, var(--brand-primary) 10%, white 90%);
+  color: color-mix(in srgb, var(--brand-ink) 76%, black 24%);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+#al-launch-page .al-launch-metadata-form input,
+#al-launch-page .al-launch-metadata-form textarea {
+  min-width: 0;
+  border-radius: 0.85rem;
+  border-color: color-mix(in srgb, var(--brand-ink) 10%, transparent);
+  background: color-mix(in srgb, white 96%, var(--color-bg) 4%);
+  color: color-mix(in srgb, var(--brand-ink) 86%, black 14%);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  #al-launch-page .al-launch-path-card,
+  #al-launch-page .al-launch-checklist-item,
+  #al-launch-page .al-launch-agent-guide,
+  #al-docs-page .al-docs-feature-card,
+  #al-docs-page .al-legal-card {
+    transition:
+      transform 180ms cubic-bezier(0.23, 1, 0.32, 1),
+      border-color 180ms ease,
+      box-shadow 180ms ease;
+  }
+
+  #al-launch-page .al-launch-path-card:hover,
+  #al-launch-page .al-launch-checklist-item:hover,
+  #al-launch-page .al-launch-agent-guide:hover,
+  #al-docs-page .al-docs-feature-card:hover,
+  #al-docs-page .al-legal-card:hover {
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, var(--brand-primary) 18%, transparent);
+    box-shadow: 0 24px 52px -42px rgba(21, 96, 66, 0.34);
+  }
+}
+
+@media (max-width: 640px) {
+  #al-launch-page .al-launch-checklist-item,
+  #al-launch-page .al-launch-agent-guide {
+    grid-template-columns: 1fr;
+  }
+
+  #al-launch-page .al-launch-pill,
+  #al-launch-page .al-launch-agent-guide-actions .al-ghost {
+    grid-column: auto;
+  }
+}

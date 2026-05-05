@@ -865,3 +865,82 @@
     grid-template-columns: 1fr;
   }
 }
+
+#autolaunch-home-dashboard .al-home-chat-join,
+#autolaunch-home-dashboard .al-home-chat-form button {
+  min-height: 2.75rem;
+  border: 1px solid color-mix(in srgb, var(--brand-primary) 62%, black 8%);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--brand-primary) 84%, white 16%),
+    var(--brand-primary)
+  );
+  color: var(--color-fg-on-primary);
+  box-shadow: 0 18px 34px -24px color-mix(in srgb, var(--brand-primary) 62%, transparent);
+  transition:
+    transform 160ms cubic-bezier(0.23, 1, 0.32, 1),
+    box-shadow 160ms ease,
+    opacity 160ms ease;
+}
+
+#autolaunch-home-dashboard .al-home-chat-join:active,
+#autolaunch-home-dashboard .al-home-chat-form button:active {
+  transform: scale(0.975);
+}
+
+#autolaunch-home-dashboard .al-home-chat-form textarea:focus-visible {
+  outline: none;
+  border-color: color-mix(in srgb, var(--brand-primary) 44%, transparent);
+  box-shadow:
+    0 0 0 0.22rem color-mix(in srgb, var(--brand-primary) 12%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+#autolaunch-home-dashboard .al-home-auction-row,
+#autolaunch-home-dashboard .al-home-activity-row,
+#autolaunch-home-dashboard .al-home-lane-row,
+#autolaunch-home-dashboard .al-home-quick-action {
+  min-width: 0;
+}
+
+#autolaunch-home-dashboard .al-home-auction-copy,
+#autolaunch-home-dashboard .al-home-activity-copy,
+#autolaunch-home-dashboard .al-home-lane-row > div,
+#autolaunch-home-dashboard .al-home-quick-action > div {
+  min-width: 0;
+}
+
+#autolaunch-home-dashboard .al-home-auction-copy strong,
+#autolaunch-home-dashboard .al-home-activity-copy strong,
+#autolaunch-home-dashboard .al-home-lane-row strong,
+#autolaunch-home-dashboard .al-home-quick-action strong {
+  overflow-wrap: anywhere;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  #autolaunch-home-dashboard .al-home-chat-join:hover,
+  #autolaunch-home-dashboard .al-home-chat-form button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 20px 40px -30px color-mix(in srgb, var(--brand-primary) 52%, transparent);
+  }
+}
+
+@media (max-width: 520px) {
+  #autolaunch-home-dashboard .al-home-auction-row,
+  #autolaunch-home-dashboard .al-home-activity-row,
+  #autolaunch-home-dashboard .al-home-lane-row,
+  #autolaunch-home-dashboard .al-home-quick-action,
+  #autolaunch-home-dashboard .al-home-pay-select,
+  #autolaunch-home-dashboard .al-home-cost-row,
+  #autolaunch-home-dashboard .al-home-chat-composer-row {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  #autolaunch-home-dashboard .al-home-auction-meta,
+  #autolaunch-home-dashboard .al-home-lane-row > span:last-child {
+    justify-items: start;
+    justify-self: start;
+  }
+}

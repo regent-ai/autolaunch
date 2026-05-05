@@ -28,6 +28,8 @@
   --al-font-display: "GeistPixel Circle", var(--font-family-title);
   --al-font-body: "GeistPixel Square", var(--font-family-ui);
   --al-font-prose: "GeistPixel Square", var(--font-family-paragraph);
+  --al-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --al-ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --al-bg:
     radial-gradient(
       circle at 14% 10%,
@@ -72,6 +74,8 @@
   --al-font-display: "GeistPixel Circle", var(--font-family-title);
   --al-font-body: "GeistPixel Square", var(--font-family-ui);
   --al-font-prose: "GeistPixel Square", var(--font-family-paragraph);
+  --al-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --al-ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --al-bg:
     radial-gradient(
       circle at 14% 12%,
@@ -111,6 +115,12 @@ html,
 body {
   min-height: 100%;
   margin: 0;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
 body {
@@ -4787,5 +4797,504 @@ textarea {
 @media (prefers-reduced-motion: reduce) {
   [data-copy-value][data-copy-state="copied"]::after {
     animation: none;
+  }
+}
+
+/* Autolaunch route sweep: keep every LiveView aligned with the Home/Auctions system. */
+.al-shell-route-host :is(
+  .al-positions-header,
+  .al-positions-summary-card,
+  .al-positions-priority-card,
+  .al-positions-table-card,
+  .al-positions-activity-card,
+  .al-profile-header,
+  .al-profile-card,
+  .al-identity-header,
+  .al-regent-hero,
+  .al-regent-status,
+  .al-regent-metric,
+  .al-regent-action-card,
+  .al-regent-addresses,
+  .al-regent-empty,
+  .al-subject-header,
+  .al-subject-hero-panel,
+  .al-subject-metric-card,
+  .al-routing-policy-panel,
+  .al-routing-history-panel,
+  .al-routing-ledger-card,
+  .al-subject-action-card,
+  .al-subject-secondary-card,
+  .al-subject-side-panel,
+  .al-subject-review-panel,
+  .al-subject-state-card,
+  .al-contract-card,
+  .al-auction-returns-hero,
+  .al-auction-returns-board,
+  .al-auction-detail-estimator,
+  .al-auction-detail-info-card,
+  .al-auction-detail-curve-card,
+  .al-auction-detail-position-card
+) {
+  border-color: color-mix(in srgb, var(--brand-ink) 10%, transparent);
+  border-radius: 0.95rem;
+  background:
+    radial-gradient(circle at 96% 4%, color-mix(in srgb, var(--brand-primary) 7%, transparent), transparent 26%),
+    linear-gradient(180deg, color-mix(in srgb, white 98%, var(--color-bg) 2%), color-mix(in srgb, white 93%, var(--color-bg) 7%));
+  box-shadow: 0 20px 48px -38px rgba(28, 51, 77, 0.22);
+}
+
+.al-shell-route-host :is(
+  .al-profile-header-copy h1,
+  .al-positions-header-copy h1,
+  .al-identity-header-copy h1,
+  .al-regent-hero h1,
+  .al-subject-heading-line h1,
+  .al-subject-hero-copy h2,
+  .al-auctions-page-head h1,
+  .al-auction-detail-page-head h1,
+  #al-launch-page .al-route-hero h1,
+  #al-docs-page .al-docs-masthead h1
+) {
+  color: color-mix(in srgb, var(--brand-ink) 92%, black 8%);
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+.al-shell-route-host :is(.al-regent-status, .al-subject-flow-box, .al-subject-flow-box.is-featured) {
+  border-color: color-mix(in srgb, var(--brand-primary) 14%, transparent);
+  background: color-mix(in srgb, white 93%, var(--brand-primary) 7%);
+  color: color-mix(in srgb, var(--brand-ink) 86%, black 14%);
+}
+
+.al-shell-route-host .al-regent-status.is-paused {
+  border-color: color-mix(in srgb, var(--brand-accent) 24%, transparent);
+  background: color-mix(in srgb, var(--brand-accent) 9%, white 91%);
+}
+
+.al-shell-route-host .al-subject-hero-panel {
+  color: color-mix(in srgb, var(--brand-ink) 88%, black 12%);
+}
+
+.al-shell-route-host .al-subject-hero-panel::after {
+  opacity: 0.12;
+}
+
+.al-shell-route-host .al-subject-hero-copy p,
+.al-shell-route-host .al-subject-footnote,
+.al-shell-route-host .al-subject-flow-box span,
+.al-shell-route-host .al-subject-flow-box p,
+.al-shell-route-host .al-subject-flow-arrow {
+  color: var(--al-muted);
+}
+
+.al-shell-route-host :is(
+  .al-profile-card h2,
+  .al-profile-card h3,
+  .al-positions-table-topline h3,
+  .al-positions-activity-head h3,
+  .al-positions-priority-copy h2,
+  .al-regent-action-card h2,
+  .al-subject-action-card h3,
+  .al-subject-secondary-card h3,
+  .al-contract-card h3,
+  .al-auction-detail-card-head h3,
+  .al-auction-returns-board-head h3
+) {
+  color: color-mix(in srgb, var(--brand-ink) 90%, black 10%);
+  letter-spacing: 0;
+  text-wrap: balance;
+}
+
+.al-shell-route-host :is(
+  .al-profile-header-copy p:not(.al-kicker),
+  .al-positions-header-copy p:not(.al-kicker),
+  .al-identity-header-copy p:not(.al-kicker),
+  .al-regent-hero p,
+  .al-regent-action-card p,
+  .al-subject-summary,
+  .al-subject-muted-copy,
+  .al-subject-review-card p,
+  .al-auction-return-token p,
+  .al-auction-return-metric p,
+  .al-auction-detail-position-row p
+) {
+  line-height: 1.58;
+}
+
+.al-shell-route-host :is(
+  .al-submit,
+  .al-ghost,
+  .al-cta-link,
+  .al-account-tab,
+  .al-account-pill,
+  .al-regent-primary-button,
+  .al-regent-secondary-button,
+  .al-subject-primary-button,
+  .al-subject-secondary-button,
+  .al-subject-action-button,
+  .al-subject-ghost-button,
+  .al-subject-side-tab,
+  .al-auction-detail-preset,
+  .al-auctions-bid-presets button,
+  .al-auctions-time-tabs span,
+  .al-profile-next-step,
+  .al-home-chat-join,
+  .al-home-chat-form button
+) {
+  min-width: 0;
+  min-height: 2.75rem;
+  border-radius: 0.75rem;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition:
+    transform 160ms var(--al-ease-out),
+    border-color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease,
+    opacity 160ms ease;
+}
+
+.al-shell-route-host :is(
+  .al-submit,
+  .al-ghost,
+  .al-cta-link,
+  .al-account-pill,
+  .al-regent-primary-button,
+  .al-regent-secondary-button,
+  .al-subject-primary-button,
+  .al-subject-secondary-button,
+  .al-subject-action-button,
+  .al-subject-ghost-button,
+  .al-auction-detail-preset,
+  .al-auctions-bid-presets button
+):disabled,
+.al-shell-route-host :is(
+  .al-submit,
+  .al-ghost,
+  .al-cta-link,
+  .al-account-pill,
+  .al-regent-primary-button,
+  .al-regent-secondary-button,
+  .al-subject-primary-button,
+  .al-subject-secondary-button,
+  .al-subject-action-button,
+  .al-subject-ghost-button,
+  .al-auction-detail-preset,
+  .al-auctions-bid-presets button
+).is-disabled {
+  cursor: not-allowed;
+  opacity: 0.56;
+  transform: none;
+  box-shadow: none;
+}
+
+.al-shell-route-host :is(
+  .al-regent-primary-button,
+  .al-subject-primary-button,
+  .al-subject-action-button
+) {
+  border: 1px solid color-mix(in srgb, var(--brand-primary) 62%, black 8%);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--brand-primary) 84%, white 16%),
+    var(--brand-primary)
+  );
+  color: var(--color-fg-on-primary);
+  box-shadow: 0 18px 34px -24px color-mix(in srgb, var(--brand-primary) 62%, transparent);
+}
+
+.al-shell-route-host :is(
+  .al-regent-secondary-button,
+  .al-subject-secondary-button,
+  .al-subject-ghost-button,
+  .al-subject-side-tab,
+  .al-auction-detail-preset,
+  .al-auctions-bid-presets button,
+  .al-profile-next-step
+) {
+  border: 1px solid color-mix(in srgb, var(--brand-ink) 9%, transparent);
+  background: color-mix(in srgb, white 96%, var(--color-bg) 4%);
+  color: color-mix(in srgb, var(--brand-ink) 84%, black 16%);
+}
+
+.al-shell-route-host :is(
+  .al-submit,
+  .al-ghost,
+  .al-cta-link,
+  .al-account-pill,
+  .al-regent-primary-button,
+  .al-regent-secondary-button,
+  .al-subject-primary-button,
+  .al-subject-secondary-button,
+  .al-subject-action-button,
+  .al-subject-ghost-button,
+  .al-subject-side-tab,
+  .al-auction-detail-preset,
+  .al-auctions-bid-presets button,
+  .al-profile-next-step,
+  .al-home-chat-join,
+  .al-home-chat-form button
+):active {
+  transform: scale(0.975);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .al-shell-route-host :is(
+    .al-positions-summary-card,
+    .al-positions-priority-card,
+    .al-profile-identity-card,
+    .al-profile-next-step,
+    .al-regent-metric,
+    .al-regent-action-card,
+    .al-subject-metric-card,
+    .al-subject-action-card,
+    .al-subject-secondary-card,
+    .al-subject-state-card,
+    .al-routing-ledger-card,
+    .al-contract-card,
+    .al-auction-return-row,
+    .al-auction-detail-strip article,
+    .al-auction-detail-preset
+  ) {
+    transition:
+      transform 180ms var(--al-ease-out),
+      border-color 180ms ease,
+      box-shadow 180ms ease,
+      background-color 180ms ease;
+  }
+
+  .al-shell-route-host :is(
+    .al-positions-summary-card,
+    .al-positions-priority-card,
+    .al-profile-identity-card,
+    .al-profile-next-step,
+    .al-regent-metric,
+    .al-subject-metric-card,
+    .al-subject-state-card,
+    .al-contract-card,
+    .al-auction-return-row,
+    .al-auction-detail-strip article,
+    .al-auction-detail-preset
+  ):hover {
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, var(--brand-primary) 18%, transparent);
+    box-shadow: 0 24px 52px -42px rgba(21, 96, 66, 0.34);
+  }
+}
+
+.al-shell-route-host :is(
+  .al-form input,
+  .al-form select,
+  .al-form textarea,
+  .al-inline-form input,
+  .al-inline-form select,
+  .al-contract-form-grid input,
+  .al-contract-form-grid select,
+  .al-account-search input,
+  .al-account-search select,
+  .al-regent-form input,
+  .al-subject-form input,
+  .al-auction-detail-input-shell,
+  .al-auctions-search input,
+  .al-auctions-filter-field select
+) {
+  min-width: 0;
+  min-height: 2.95rem;
+  border-radius: 0.85rem;
+  border-color: color-mix(in srgb, var(--brand-ink) 10%, transparent);
+  background: color-mix(in srgb, white 96%, var(--color-bg) 4%);
+  color: color-mix(in srgb, var(--brand-ink) 86%, black 14%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
+.al-shell-route-host :is(
+  .al-form input,
+  .al-form select,
+  .al-form textarea,
+  .al-inline-form input,
+  .al-inline-form select,
+  .al-contract-form-grid input,
+  .al-contract-form-grid select,
+  .al-account-search input,
+  .al-account-search select,
+  .al-regent-form input,
+  .al-subject-form input,
+  .al-auction-detail-input-shell input,
+  .al-auctions-search input,
+  .al-auctions-filter-field select
+):focus,
+.al-shell-route-host :is(
+  .al-form input,
+  .al-form select,
+  .al-form textarea,
+  .al-inline-form input,
+  .al-inline-form select,
+  .al-contract-form-grid input,
+  .al-contract-form-grid select,
+  .al-account-search input,
+  .al-account-search select,
+  .al-regent-form input,
+  .al-subject-form input,
+  .al-auction-detail-input-shell input,
+  .al-auctions-search input,
+  .al-auctions-filter-field select
+):focus-visible {
+  outline: none;
+  border-color: color-mix(in srgb, var(--brand-primary) 44%, transparent);
+  box-shadow:
+    0 0 0 0.22rem color-mix(in srgb, var(--brand-primary) 12%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.al-shell-route-host :is(
+  .al-status-badge,
+  .al-network-badge,
+  .al-profile-chip,
+  .al-profile-status-pill,
+  .al-subject-chip,
+  .al-subject-badge,
+  .al-launch-pill,
+  .al-auctions-trust-pill,
+  .al-auctions-feature-chip
+) {
+  min-height: 1.9rem;
+  border-radius: 999px;
+  border-color: color-mix(in srgb, var(--brand-ink) 9%, transparent);
+  background: color-mix(in srgb, white 92%, var(--brand-primary) 8%);
+  color: color-mix(in srgb, var(--brand-ink) 76%, black 24%);
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: normal;
+}
+
+.al-shell-route-host :is(
+  .al-contract-kv,
+  .al-contract-form-grid,
+  .al-contract-action-row,
+  .al-account-token-row,
+  .al-account-filter-row,
+  .al-profile-card-head,
+  .al-profile-identity-head,
+  .al-profile-history-shell,
+  .al-positions-filter-row,
+  .al-positions-priority-card,
+  .al-regent-wallet-strip,
+  .al-regent-addresses,
+  .al-subject-side-list,
+  .al-subject-address-list,
+  .al-auction-detail-estimator-foot,
+  .al-auction-detail-input-shell,
+  .al-auction-return-row
+) {
+  min-width: 0;
+}
+
+.al-shell-route-host :is(
+  .al-contract-kv div,
+  .al-contract-list-item,
+  .al-regent-wallet-strip div,
+  .al-regent-addresses div,
+  .al-subject-side-list div,
+  .al-subject-address-list article,
+  .al-profile-activity-list div,
+  .al-auction-detail-plan-card > div,
+  .al-auction-detail-estimator-grid article,
+  .al-auction-detail-position-metrics article
+) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.al-shell-route-host :is(.al-table-shell, .al-account-table-shell, .al-profile-history-shell, .al-auctions-table-shell) {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.al-shell-route-host :is(.al-table, .al-account-position-table, .al-profile-history-table, .al-auctions-table) {
+  width: 100%;
+}
+
+.al-shell-route-host :is(
+  .al-empty-state,
+  .al-home-card-empty,
+  .al-auctions-empty-state,
+  .al-auction-returns-loading,
+  .al-regent-empty
+) {
+  border-radius: 0.9rem;
+  border: 1px dashed color-mix(in srgb, var(--brand-ink) 12%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, white 97%, var(--color-bg) 3%), color-mix(in srgb, white 92%, var(--color-bg) 8%));
+}
+
+.al-shell-route-host .al-segmented {
+  position: relative;
+  gap: 0.25rem;
+  border-color: color-mix(in srgb, var(--brand-ink) 8%, transparent);
+  background: color-mix(in srgb, var(--brand-ink) 4%, white 96%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.74);
+}
+
+.al-shell-route-host .al-segmented-option {
+  min-height: 2.55rem;
+  border-radius: 999px;
+}
+
+.al-shell-route-host .al-segmented-option.is-active {
+  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--brand-primary) 10%, white 90%);
+  color: var(--brand-primary);
+  box-shadow: 0 12px 28px -24px color-mix(in srgb, var(--brand-primary) 42%, transparent);
+}
+
+@media (max-width: 720px) {
+  .al-shell-route-host :is(
+    .al-profile-card-head,
+    .al-profile-identity-head,
+    .al-positions-priority-card,
+    .al-auction-detail-estimator-foot
+  ) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .al-shell-route-host :is(
+    .al-regent-primary-button,
+    .al-regent-secondary-button,
+    .al-subject-primary-button,
+    .al-subject-secondary-button,
+    .al-subject-action-button,
+    .al-subject-ghost-button,
+    .al-account-pill,
+    .al-auction-detail-preset
+  ) {
+    width: 100%;
+  }
+
+  .al-shell-route-host :is(.al-contract-action-row, .al-regent-split-actions, .al-subject-split-actions) {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .al-shell-route-host .al-identity-header-links {
+    width: 100%;
+    grid-auto-flow: row;
+    justify-items: stretch;
+  }
+
+  .al-shell-route-host :is(
+    .al-identity-header-links .al-ghost,
+    .al-profile-mini-actions .al-ghost,
+    .al-profile-mini-actions .al-submit,
+    .al-profile-history-table .al-submit,
+    .al-profile-history-table .al-ghost
+  ) {
+    width: 100%;
+    justify-content: center;
   }
 }

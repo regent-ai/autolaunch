@@ -20,6 +20,10 @@ interface MarketCounterElement extends HTMLElement {
   _marketUpdateTimer?: number
 }
 
+interface MarketFlashElement extends HTMLElement {
+  _marketFlashTimer?: number
+}
+
 interface AnimeUpdate<T> {
   animatables?: Array<{ target?: T }>
 }
@@ -37,7 +41,22 @@ function reducedMotion(): boolean {
   return prefersReducedMotion()
 }
 
-function markCounterUpdated(counter: MarketCounterElement): void {
+function markMarketUpdated(target: MarketFlashElement | null): void {
+  if (!target) return
+
+  target.classList.add("is-market-updated")
+
+  if (target._marketFlashTimer) {
+    window.clearTimeout(target._marketFlashTimer)
+  }
+
+  target._marketFlashTimer = window.setTimeout(() => {
+    target.classList.remove("is-market-updated")
+    delete target._marketFlashTimer
+  }, 900)
+}
+
+function markCounterTextUpdated(counter: MarketCounterElement): void {
   counter.classList.add("is-market-updated")
 
   if (counter._marketUpdateTimer) {
@@ -48,6 +67,11 @@ function markCounterUpdated(counter: MarketCounterElement): void {
     counter.classList.remove("is-market-updated")
     delete counter._marketUpdateTimer
   }, 900)
+}
+
+function markCounterUpdated(counter: MarketCounterElement): void {
+  markMarketUpdated(counter.closest<MarketFlashElement>(".al-auctions-market-stat"))
+  markCounterTextUpdated(counter)
 }
 
 function animateCounters(root: HTMLElement): void {
@@ -85,7 +109,7 @@ function animateCounters(root: HTMLElement): void {
 
     animate(counter, {
       innerValue: [previousValue, nextValue],
-      duration: 720,
+      duration: 480,
       ease: "outExpo",
       round: decimals === 0 ? 1 : 100,
       onUpdate(animation: AnimeUpdate<AnimatedCounterState>) {
@@ -106,7 +130,16 @@ function animateProgress(root: HTMLElement): void {
   for (const bar of progressBars) {
     const nextValue = Number(bar.dataset.marketProgress ?? "0")
     const boundedValue = Math.max(0, Math.min(100, nextValue))
+    const hasPreviousValue = typeof bar.dataset.marketCurrentProgress === "string"
     const currentValue = Number(bar.dataset.marketCurrentProgress ?? "0")
+
+    if (hasPreviousValue && boundedValue !== currentValue) {
+      markMarketUpdated(
+        bar.closest<MarketFlashElement>(
+          ".al-auctions-progress-track, .al-auctions-feature-meter-track",
+        ),
+      )
+    }
 
     if (reducedMotion()) {
       bar.style.transform = `scaleX(${boundedValue / 100})`
@@ -116,7 +149,7 @@ function animateProgress(root: HTMLElement): void {
 
     animate({ value: currentValue }, {
       value: boundedValue,
-      duration: 900,
+      duration: 520,
       ease: "outQuart",
       onUpdate(animation: AnimeUpdate<AnimatedProgressState>) {
         const value = Number(animation.animatables?.[0]?.target?.value ?? boundedValue)
